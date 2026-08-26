@@ -1,0 +1,57 @@
+# Built outputs and artifacts
+/build
+*/build
+*.apk
+*.aab
+*.aar
+*.dex
+*.class
+release/
+
+# Gradle cache and files
+.gradle/
+build/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Android Studio & IntelliJ IDEA
+.idea/
+*.iml
+.navigation/
+captures/
+*.hprof
+sysconf.xml
+
+# C++ and CMake native build outputs
+.externalNativeBuild/
+.cxx/
+cmake-build-*/
+
+# Local configuration & environment files
+local.properties
+key.properties
+signing.properties
+*.keystore
+*.jks
+google-services.json
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+*~
+*.swp
+*.bak
+
+# Profiling & log files
+*.log
+captures/
+
+# Antigravity & AI workspace temp files
+.antigravity/
+.agents/

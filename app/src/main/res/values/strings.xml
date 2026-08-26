@@ -1,0 +1,247 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App & General -->
+    <string name="app_name">MineServe</string>
+    <string name="app_tagline">Dedicated Minecraft Servers in Your Pocket</string>
+    <string name="app_description">MineServe is a free and open-source Android app created to host and manage dedicated Minecraft servers entirely on your mobile device.</string>
+    <string name="app_version_format">Version %s</string>
+    <string name="notification_channel_name">MineServe Server Engine</string>
+    <string name="notification_channel_desc">Active Minecraft server runtime and background monitor</string>
+    <string name="stop_servers">Stop Servers</string>
+    <string name="server_engine_idle">Server engine idle</string>
+    <string name="server_engine_running">Server engine running</string>
+    <string name="action_stop">Stop Server</string>
+    <string name="action_console">Open Console</string>
+    <string name="back">Back</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    <string name="save">Save</string>
+    <string name="close">Close</string>
+    <string name="retry">Retry</string>
+    <string name="refresh">Refresh</string>
+    <string name="next">Next</string>
+    <string name="confirm">Confirm</string>
+
+    <!-- Splash & Initialization Screen -->
+    <string name="splash_init_title">First-Time Runtime Setup</string>
+    <string name="splash_init_desc">MineServe runs a lightweight, rootless Linux container and OpenJDK environment to host high-performance Minecraft Java &amp; Bedrock servers on your phone.</string>
+    <string name="splash_init_btn">Initialize Server Runtime</string>
+    <string name="splash_downloading_runtime">Downloading Runtime (%d%%)</string>
+    <string name="splash_extracting_runtime">Extracting Runtime (%d%%)</string>
+    <string name="splash_setup_error">Setup Error</string>
+    <string name="splash_retry_setup">Retry Setup</string>
+    <string name="splash_loading_servers">Loading servers…</string>
+
+    <!-- Notification Permission Card (Init & Settings) -->
+    <string name="notif_card_title">Background Notifications</string>
+    <string name="notif_card_desc">MineServe requires notification permission to run dedicated Minecraft servers in the background. This displays active server status, live player counts, and prevents Android from killing your servers when switching apps or locking your screen.</string>
+    <string name="notif_status_granted">Permission Granted</string>
+    <string name="notif_status_needed">Permission Required</string>
+    <string name="notif_status_disabled">Notifications Disabled</string>
+    <string name="notif_grant_button">Grant Notification Permission</string>
+    <string name="notif_open_settings_button">Open App Notification Settings</string>
+
+    <!-- Dashboard Screen -->
+    <string name="dash_total_servers">Total Servers</string>
+    <string name="dash_active_online">Active Online</string>
+    <string name="dash_active_ram">Active RAM</string>
+    <string name="dash_empty_title">No Minecraft Servers Yet</string>
+    <string name="dash_empty_desc">Create your first dedicated Paper, Purpur, Fabric, NeoForge, or Vanilla Minecraft server in seconds.</string>
+    <string name="dash_create_first_server">Create Your First Server</string>
+    <string name="dash_create_server">Create Server</string>
+    <string name="dash_supporters_credits">Supporters &amp; Credits</string>
+    <string name="dash_settings">Settings</string>
+
+    <!-- Server Card Component -->
+    <string name="status_online">Online</string>
+    <string name="status_starting">Starting…</string>
+    <string name="status_stopping">Stopping…</string>
+    <string name="status_error">Error</string>
+    <string name="status_offline">Offline</string>
+    <string name="card_ram_label">RAM</string>
+    <string name="card_cpu_label">CPU</string>
+    <string name="card_no_players">No players online</string>
+    <string name="card_players_online_format">%1$d player(s) online: %2$s</string>
+    <string name="card_players_count_format">%d online</string>
+    <string name="card_ram_allocated_format">RAM: %d MB</string>
+    <string name="card_storage_format">Storage: %s</string>
+    <string name="card_java_format">Java %d</string>
+    <string name="btn_start_server">Start Server</string>
+    <string name="btn_stop_server">Stop</string>
+    <string name="btn_console">Console</string>
+
+    <!-- Quick Commands Bar -->
+    <string name="quick_cmd_help">Help</string>
+    <string name="quick_cmd_list">List Players</string>
+    <string name="quick_cmd_save_all">Save World</string>
+    <string name="quick_cmd_tps">Check TPS</string>
+    <string name="quick_cmd_say_hello">Say Hello</string>
+    <string name="quick_cmd_time_day">Set Day</string>
+    <string name="quick_cmd_weather_clear">Clear Weather</string>
+
+    <!-- Create Server Wizard -->
+    <string name="wizard_title">Create Minecraft Server</string>
+    <string name="wizard_step_1_of_4">Step 1 of 4: Server Identity</string>
+    <string name="wizard_step_2_of_4">Step 2 of 4: Platform &amp; Version</string>
+    <string name="wizard_step_3_of_4">Step 3 of 4: Resources &amp; Network</string>
+    <string name="wizard_step_4_of_4">Step 4 of 4: Review &amp; Launch</string>
+    <string name="wizard_step1_name_label">Server Name</string>
+    <string name="wizard_step1_name_placeholder">e.g. Survival SMP, Modded World</string>
+    <string name="wizard_step1_motd_label">Server MOTD (Description)</string>
+    <string name="wizard_step1_motd_placeholder">A MineServe Minecraft Server</string>
+    <string name="wizard_step2_platform_label">Select Server Platform</string>
+    <string name="wizard_step2_version_label">Minecraft Version</string>
+    <string name="wizard_step2_loading_versions">Loading versions…</string>
+    <string name="wizard_step3_ram_label">Allocated RAM Memory</string>
+    <string name="wizard_step3_ram_desc">Amount of device RAM dedicated to this server instance when running.</string>
+    <string name="wizard_step3_port_label">Server Port</string>
+    <string name="wizard_step3_port_desc">Default Minecraft Java Edition port is 25565.</string>
+    <string name="wizard_step4_summary_title">Server Configuration Summary</string>
+    <string name="wizard_step4_name">Name</string>
+    <string name="wizard_step4_platform">Platform</string>
+    <string name="wizard_step4_version">Version</string>
+    <string name="wizard_step4_ram">Allocated RAM</string>
+    <string name="wizard_step4_port">Network Port</string>
+    <string name="wizard_step4_java">Required Java</string>
+    <string name="wizard_step4_eula_label">I agree to the Minecraft End User License Agreement (EULA)</string>
+    <string name="wizard_step4_eula_prefix">I agree to the </string>
+    <string name="wizard_step4_eula_link">Minecraft End User License Agreement (EULA)</string>
+    <string name="minecraft_eula_url">https://aka.ms/MinecraftEULA</string>
+    <string name="wizard_btn_next">Next Step</string>
+    <string name="wizard_btn_back">Back</string>
+    <string name="wizard_btn_create">Create Server</string>
+    <string name="wizard_progress_title">Creating Server…</string>
+    <string name="wizard_progress_downloading">Downloading server jar: %d%%</string>
+    <string name="wizard_progress_configuring">Configuring container environment…</string>
+
+    <!-- Server Detail Screen & Tabs -->
+    <string name="tab_console">Console</string>
+    <string name="tab_performance">Performance</string>
+    <string name="tab_settings">Settings</string>
+    <string name="tab_players">Players</string>
+    <string name="tab_backups">Backups</string>
+    <string name="tab_plugins">Plugins</string>
+    <string name="tab_network">Network</string>
+    <string name="detail_delete_server">Delete Server</string>
+    <string name="detail_delete_confirm_title">Delete Server Permanently?</string>
+    <string name="detail_delete_confirm_msg">Are you sure you want to delete \'%s\'?\n\n⚠️ This action CANNOT be undone:\n• World saves, Nether, and End dimensions will be permanently erased.\n• All player inventories, configs, backups, and installed plugins/mods will be deleted.\n• If the server is currently running, it will be stopped and terminated immediately.</string>
+    <string name="detail_delete_confirm_btn">Delete Permanently</string>
+
+    <!-- Console Tab -->
+    <string name="console_input_placeholder">Enter command (e.g. /op steve, /save-all)…</string>
+    <string name="console_send">Send</string>
+    <string name="console_quick_actions">Quick Commands</string>
+
+    <!-- Settings Tab (server.properties) -->
+    <string name="settings_tab_title">Server Properties</string>
+    <string name="settings_tab_save">Save Properties</string>
+    <string name="settings_gamemode">Default Gamemode</string>
+    <string name="settings_difficulty">Difficulty</string>
+    <string name="settings_pvp">Player vs Player (PVP)</string>
+    <string name="settings_online_mode">Online Mode (Mojang Authentication)</string>
+    <string name="settings_allow_flight">Allow Flight</string>
+    <string name="settings_command_blocks">Enable Command Blocks</string>
+    <string name="settings_spawn_monsters">Spawn Monsters</string>
+    <string name="settings_spawn_animals">Spawn Animals</string>
+    <string name="settings_spawn_npcs">Spawn NPCs (Villagers)</string>
+    <string name="settings_max_players">Max Players</string>
+    <string name="settings_view_distance">View Distance (Chunks)</string>
+    <string name="settings_simulation_distance">Simulation Distance (Chunks)</string>
+    <string name="settings_level_name">World Name</string>
+    <string name="settings_level_seed">World Seed</string>
+    <string name="settings_saved_toast">Server properties saved successfully</string>
+
+    <!-- Players Tab -->
+    <string name="players_title">Connected Players</string>
+    <string name="players_empty">No players currently connected to this server.</string>
+    <string name="players_op">Make OP</string>
+    <string name="players_deop">Remove OP</string>
+    <string name="players_kick">Kick</string>
+    <string name="players_ban">Ban</string>
+
+    <!-- Backups Tab -->
+    <string name="backups_title">World &amp; Server Backups</string>
+    <string name="backups_desc">Create snapshot zip backups of your world save or complete server directory.</string>
+    <string name="backups_create_world_btn">Backup World Only</string>
+    <string name="backups_create_full_btn">Full Server Backup</string>
+    <string name="backups_empty">No backups created yet.</string>
+    <string name="backups_restore">Restore</string>
+    <string name="backups_export">Export to Downloads</string>
+    <string name="backups_restored_toast">Backup restored successfully</string>
+    <string name="backups_exported_toast">Exported backup to Downloads folder</string>
+
+    <string name="tab_mods">Mods</string>
+    <string name="tab_plugins_mods">Plugins &amp; Mods</string>
+    <!-- Plugins / Mods Tab -->
+    <string name="plugins_title">Plugins</string>
+    <string name="mods_title">Mods</string>
+    <string name="plugins_mods_title">Plugins &amp; Mods</string>
+    <string name="plugins_search_placeholder">Search Modrinth plugins…</string>
+    <string name="mods_search_placeholder">Search Modrinth mods…</string>
+    <string name="plugins_installed_section">Installed Plugins</string>
+    <string name="mods_installed_section">Installed Mods</string>
+    <string name="plugins_installed_empty">No plugins installed in this server yet.</string>
+    <string name="mods_installed_empty">No mods installed in this server yet.</string>
+    <string name="plugins_install_btn">Install</string>
+    <string name="plugins_installed_badge">Installed</string>
+    <string name="plugins_delete_btn">Delete</string>
+    <string name="import_jar_btn">Upload / Import .JAR</string>
+
+    <!-- Network Tab -->
+    <string name="network_local_ip_title">Local Network Address</string>
+    <string name="network_copied_toast">Copied server IP address to clipboard!</string>
+    <string name="network_how_to_connect_title">How to Connect to this Server</string>
+    <string name="network_connect_wifi_title">Connect via Same Wi-Fi Network</string>
+    <string name="network_connect_wifi_desc">Any PC, console, or phone on the same Wi-Fi network can join by adding your phone\'s local IP address and port in the Minecraft Multiplayer screen.</string>
+    <string name="network_connect_hotspot_title">Connect via Phone Hotspot</string>
+    <string name="network_connect_hotspot_desc">Turn on your phone\'s Personal Hotspot and have other players connect their Wi-Fi to your hotspot to play anywhere on the go.</string>
+    <string name="network_connect_tunnel_title">Internet Tunnel (Playit.gg / ngrok)</string>
+    <string name="network_connect_tunnel_desc">To play with friends over the public internet, run a Playit.gg or ngrok tunnel to get a public join domain.</string>
+
+    <!-- App Settings Screen -->
+    <string name="settings_screen_title">App Settings</string>
+    <string name="settings_runtime_section">Container Runtime</string>
+    <string name="settings_rootfs_storage_label">Rootfs Storage Footprint</string>
+    <string name="settings_reinstall_runtime_btn">Reinstall Container Runtime</string>
+    <string name="settings_reinstall_dialog_title">Reinstall Server Runtime?</string>
+    <string name="settings_reinstall_dialog_msg">Are you sure you want to reinstall the Ubuntu runtime container? This will re-extract the base rootfs and reinstall OpenJDK packages.</string>
+    <string name="settings_java_section">Java Runtime Environments</string>
+    <string name="settings_java_desc">Different Minecraft versions require specific Java runtimes.</string>
+    <string name="settings_java_25_title">Java 25</string>
+    <string name="settings_java_21_title">Java 21</string>
+    <string name="settings_java_17_title">Java 17</string>
+    <string name="settings_java_8_title">Java 8</string>
+    <string name="settings_java_installed_badge">Installed</string>
+    <string name="settings_java_install_btn">Install</string>
+    <string name="settings_behavior_section">Behavior &amp; Performance</string>
+    <string name="settings_keep_awake_title">Keep Screen Awake</string>
+    <string name="settings_keep_awake_desc">Prevents screen timeout when actively viewing the live server console</string>
+    <string name="settings_about_section">About MineServe</string>
+    <string name="settings_github_btn">GitHub Repository</string>
+    <string name="settings_github_url">https://github.com/devwithzachary/mineserve</string>
+
+    <!-- About Screen -->
+    <string name="about_page_title">About MineServe</string>
+    <string name="about_website_url">https://mineserve.app</string>
+    <string name="about_website_domain">mineserve.app</string>
+    <string name="about_github_repo_url">https://github.com/devwithzachary/MineServe</string>
+    <string name="about_github_issues_url">https://github.com/devwithzachary/MineServe/issues</string>
+    <string name="about_discord_url">https://discord.gg/csGrrg5MGF</string>
+    <string name="about_support_title">Support MineServe</string>
+    <string name="about_support_text">MineServe is free and open source. If you find it helpful, consider supporting ongoing development!</string>
+    <string name="about_discord_title">Discord Community</string>
+    <string name="about_discord_text">Join other server creators to ask questions, share server configurations, and get assistance.</string>
+    <string name="about_bug_title">Feedback &amp; Bug Reports</string>
+    <string name="about_bug_text">MineServe is in active development. If you encounter bugs, missing features, or runtime errors, let us know on GitHub.</string>
+    <string name="about_info_title">System &amp; Build Metadata</string>
+
+    <!-- Credits Screen -->
+    <string name="credits_page_title">Software &amp; Open Source Credits</string>
+    <string name="credits_page_desc">Open source software, libraries, and server engines powering MineServe.</string>
+    <string name="credits_contributors_title">Contributors &amp; Pull Requests</string>
+    <string name="credits_contributors_desc">Special thanks to everyone who tests builds, reports issues on GitHub, and submits pull requests. Community contributors and PR authors will be featured here!</string>
+    <string name="credits_patreon">Patreon</string>
+    <string name="credits_patreon_url">https://patreon.com/devwithzachary</string>
+    <string name="credits_buymeacoffee">Buy Me a Coffee</string>
+    <string name="credits_buymeacoffee_url">https://buymeacoffee.com/linuxonandroid</string>
+</resources>
