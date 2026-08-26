@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -78,6 +79,7 @@ fun AboutScreen(
     val buymeacoffeeUrl = stringResource(R.string.credits_buymeacoffee_url)
     val githubIssuesUrl = stringResource(R.string.about_github_issues_url)
     val githubRepoUrl = stringResource(R.string.about_github_repo_url)
+    val privacyUrl = stringResource(R.string.about_privacy_url)
 
     Scaffold(
         topBar = {
@@ -350,6 +352,18 @@ fun AboutScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Repository", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
+                    }
+
+                    Button(
+                        onClick = { uriHandler.openUri(privacyUrl) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                        border = BorderStroke(1.dp, Slate700),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Security, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.about_privacy_title), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }

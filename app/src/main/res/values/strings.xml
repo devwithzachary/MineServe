@@ -224,6 +224,8 @@
     <string name="about_page_title">About MineServe</string>
     <string name="about_website_url">https://mineserve.app</string>
     <string name="about_website_domain">mineserve.app</string>
+    <string name="about_privacy_url">https://mineserve.app/privacy.html</string>
+    <string name="about_privacy_title">Privacy Policy</string>
     <string name="about_github_repo_url">https://github.com/devwithzachary/MineServe</string>
     <string name="about_github_issues_url">https://github.com/devwithzachary/MineServe/issues</string>
     <string name="about_discord_url">https://discord.gg/csGrrg5MGF</string>
