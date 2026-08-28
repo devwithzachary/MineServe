@@ -52,6 +52,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Draggable Teardrop Selection Handles: Fine-tune multi-line text selection ranges using interactive teardrop touch handles with live haptic tick feedback.",
             "Visual Character Highlighting: High-contrast theme-aware text highlight overlays across single-line and multi-line selection bounding boxes.",
             "Floating Action Toolbar: 1-tap floating toolbar supporting Copy, Select All, Share, and Clear selection.",
+            "GitHub Release Update Checker: Real-time update checks against GitHub Releases with Play Store certificate transition guidance and in-app settings controls.",
             "Patreon Supporters Recognition: Added dedicated supporters recognition on the Credits and About screens honoring Patreon supporters (Old PC Gunk (and stuff), насэр Хорр)."
         )
     ),

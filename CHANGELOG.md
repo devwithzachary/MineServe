@@ -30,6 +30,11 @@ All notable changes to the MineServe project will be documented in this file.
   - **Share**: Export and share log selections directly to external apps via Android's share sheet.
   - **Clear**: Dismiss the active selection overlay.
 
+### 🔄 GitHub Release Update Checker & Play Store Migration Guidance
+- **Automated GitHub Update Checks**: Real-time checking against the GitHub Releases API to notify users immediately when new releases are published without waiting for store approval delays.
+- **Google Play vs GitHub Certificate Advisory**: In-app migration guidance clarifying Android package signing certificate differences between Google Play builds and direct GitHub APKs, providing clear steps for 1-tap backup creation and transition.
+- **App Updates Configuration**: Dedicated settings section in App Settings to toggle automatic GitHub update notifications and manually trigger update checks anytime with live status reporting.
+
 ### ❤️ Community & Supporters
 - **Patreon Supporters Recognition**: Dedicated supporters section on the **Credits** and **About** screens celebrating Patreon supporters (**Old PC Gunk (and stuff)**, **насэр Хорр**) who fuel ongoing MineServe development.
 

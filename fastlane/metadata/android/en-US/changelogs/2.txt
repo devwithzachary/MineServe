@@ -5,4 +5,5 @@
 • Native touch log selection with draggable teardrop handles and haptic feedback
 • Floating action toolbar for instant Copy, Select All, and Share
 • In-App Version History & Changelog viewer on the About screen
+• GitHub Release update checker & Play Store migration guide
 • Added Patreon supporters & community contributors recognition

@@ -1,7 +1,9 @@
 package com.devwithzachary.mineserve
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -31,6 +33,7 @@ import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.ui.MainViewModel
+import com.devwithzachary.mineserve.ui.components.GitHubUpdateDialog
 import com.devwithzachary.mineserve.ui.screens.about.AboutScreen
 import com.devwithzachary.mineserve.ui.screens.credits.CreditsScreen
 import com.devwithzachary.mineserve.ui.screens.dashboard.DashboardScreen
@@ -88,6 +91,10 @@ fun MineServeApp(viewModel: MainViewModel) {
     val serverPluginsMap by viewModel.serverPluginsMap.collectAsStateWithLifecycle()
     val serverStorageMap by viewModel.serverStorageMap.collectAsStateWithLifecycle()
     val tunnelStates by viewModel.tunnelStates.collectAsStateWithLifecycle()
+    val isCheckGitHubUpdatesEnabled by viewModel.isCheckGitHubUpdatesEnabled.collectAsStateWithLifecycle()
+    val availableUpdate by viewModel.availableUpdate.collectAsStateWithLifecycle()
+    val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
+    val updateCheckStatus by viewModel.updateCheckStatus.collectAsStateWithLifecycle()
 
     var currentScreen by remember {
         mutableStateOf<Screen>(
@@ -249,6 +256,17 @@ fun MineServeApp(viewModel: MainViewModel) {
                         viewModel.startRootfsSetup()
                         currentScreen = Screen.Splash
                     },
+                    isCheckGitHubUpdatesEnabled = isCheckGitHubUpdatesEnabled,
+                    onToggleCheckGitHubUpdates = { viewModel.toggleCheckGitHubUpdates(it) },
+                    isCheckingUpdate = isCheckingUpdate,
+                    updateCheckStatusMessage = updateCheckStatus,
+                    onCheckForUpdatesNow = { viewModel.checkForGitHubUpdates(isManual = true) },
+                    onOpenGitHubReleases = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/devwithzachary/MineServe/releases"))
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    },
                     onBack = { currentScreen = Screen.Dashboard },
                     onAboutClick = { currentScreen = Screen.About }
                 )
@@ -266,5 +284,23 @@ fun MineServeApp(viewModel: MainViewModel) {
                 )
             }
         }
+    }
+
+    // GitHub Update Dialog Modal
+    availableUpdate?.let { release ->
+        GitHubUpdateDialog(
+            release = release,
+            currentVersion = BuildConfig.VERSION_NAME,
+            onDismiss = { viewModel.dismissUpdateDialog() },
+            onDownload = { url ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            },
+            onDisableFuturePrompts = {
+                viewModel.disableGitHubUpdatePrompts()
+            }
+        )
     }
 }
