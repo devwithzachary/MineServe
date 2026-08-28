@@ -7,6 +7,7 @@ data class TerminalTheme(
     val defaultFg: Color,
     val defaultBg: Color,
     val cursorColor: Color,
+    val selectionColor: Color = Color(0x6610B981),
     val ansiColors: List<Color>
 ) {
     companion object {
@@ -15,6 +16,7 @@ data class TerminalTheme(
             defaultFg = Color(0xFFE2E8F0),
             defaultBg = Color(0xFF0F172A),
             cursorColor = Color(0xFF10B981), // Emerald accent
+            selectionColor = Color(0x6610B981),
             ansiColors = listOf(
                 Color(0xFF0F172A), // 0: Black
                 Color(0xFFEF4444), // 1: Red
@@ -40,6 +42,7 @@ data class TerminalTheme(
             defaultFg = Color(0xFFF8F8F2),
             defaultBg = Color(0xFF282A36),
             cursorColor = Color(0xFF50FA7B),
+            selectionColor = Color(0x66BD93F9),
             ansiColors = listOf(
                 Color(0xFF21222C), Color(0xFFFF5555), Color(0xFF50FA7B), Color(0xFFF1FA8C),
                 Color(0xFFBD93F9), Color(0xFFFF79C6), Color(0xFF8BE9FD), Color(0xFFF8F8F2),
@@ -438,7 +441,78 @@ class TerminalEmulator(
         }
     }
 
+    fun getWordAt(row: Int, col: Int): Pair<Int, Int> {
+        if (rows == 0 || cols == 0) return Pair(0, 0)
+        val r = row.coerceIn(0, rows - 1)
+        val c = col.coerceIn(0, cols - 1)
+        val rowChars = getRenderRow(r)
+        val ch = rowChars.getOrNull(c)?.ch ?: ' '
+
+        fun isWordChar(char: Char): Boolean =
+            char.isLetterOrDigit() || char == '_' || char == '-' || char == '.' || char == '/' ||
+                    char == '~' || char == ':' || char == '@' || char == '$' || char == '[' || char == ']'
+
+        if (ch == ' ') {
+            return Pair(c, c)
+        }
+
+        val isWord = isWordChar(ch)
+        var startC = c
+        while (startC > 0) {
+            val prevChar = rowChars.getOrNull(startC - 1)?.ch ?: ' '
+            if (isWord && isWordChar(prevChar)) {
+                startC--
+            } else if (!isWord && prevChar != ' ' && !isWordChar(prevChar)) {
+                startC--
+            } else {
+                break
+            }
+        }
+
+        var endC = c
+        while (endC < cols - 1) {
+            val nextChar = rowChars.getOrNull(endC + 1)?.ch ?: ' '
+            if (isWord && isWordChar(nextChar)) {
+                endC++
+            } else if (!isWord && nextChar != ' ' && !isWordChar(nextChar)) {
+                endC++
+            } else {
+                break
+            }
+        }
+
+        return Pair(startC, endC)
+    }
+
     fun getSelectedText(startRow: Int, startCol: Int, endRow: Int, endCol: Int): String {
-        return getVisibleText()
+        if (rows == 0 || cols == 0) return ""
+        val sR = startRow.coerceIn(0, rows - 1)
+        val sC = startCol.coerceIn(0, cols - 1)
+        val eR = endRow.coerceIn(0, rows - 1)
+        val eC = endCol.coerceIn(0, cols - 1)
+
+        val startLinear = sR * cols + sC
+        val endLinear = eR * cols + eC
+        val (fromR, fromC) = if (startLinear <= endLinear) Pair(sR, sC) else Pair(eR, eC)
+        val (toR, toC) = if (startLinear <= endLinear) Pair(eR, eC) else Pair(sR, sC)
+
+        val sb = StringBuilder()
+        for (r in fromR..toR) {
+            val rowChars = getRenderRow(r)
+            val c1 = if (r == fromR) fromC else 0
+            val c2 = if (r == toR) toC else cols - 1
+
+            val lineChars = CharArray(maxOf(0, c2 - c1 + 1))
+            for (c in c1..c2) {
+                lineChars[c - c1] = rowChars.getOrNull(c)?.ch ?: ' '
+            }
+            val lineStr = String(lineChars)
+            if (r < toR) {
+                sb.append(lineStr.trimEnd()).append("\n")
+            } else {
+                sb.append(lineStr)
+            }
+        }
+        return sb.toString()
     }
 }

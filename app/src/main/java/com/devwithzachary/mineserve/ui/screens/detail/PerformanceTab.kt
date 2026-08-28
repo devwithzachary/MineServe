@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.model.MinecraftServer
@@ -231,7 +232,7 @@ fun PerformanceTab(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Memory (RAM) Diagnostics",
+                            text = "Memory (RAM)",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -469,13 +470,17 @@ fun PerformanceInfoRow(
         Text(
             text = label,
             style = MaterialTheme.typography.bodySmall,
-            color = Slate400
+            color = Slate400,
+            modifier = Modifier.weight(1f, fill = false)
         )
+        Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White
+            color = Color.White,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f, fill = false)
         )
     }
 }

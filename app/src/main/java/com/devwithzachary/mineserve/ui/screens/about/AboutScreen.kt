@@ -1,10 +1,12 @@
 package com.devwithzachary.mineserve.ui.screens.about
 
 import android.os.Build
+import com.devwithzachary.mineserve.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,6 +28,8 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.VolunteerActivism
+import com.devwithzachary.mineserve.ui.screens.credits.PATREON_SUPPORTERS
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,6 +54,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
@@ -64,6 +69,7 @@ import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate700
 import com.devwithzachary.mineserve.ui.theme.Slate800
+import com.devwithzachary.mineserve.ui.theme.Slate900
 import com.devwithzachary.mineserve.ui.theme.Slate950
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -152,7 +158,7 @@ fun AboutScreen(
                             border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.4f))
                         ) {
                             Text(
-                                text = "v1.0.0",
+                                text = "v${BuildConfig.VERSION_NAME}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = EmeraldLight,
@@ -226,28 +232,92 @@ fun AboutScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = { uriHandler.openUri(patreonUrl) },
                             colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.credits_patreon), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(R.string.credits_patreon),
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
 
                         Button(
                             onClick = { uriHandler.openUri(buymeacoffeeUrl) },
                             colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
                             shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.LocalCafe, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(stringResource(R.string.credits_buymeacoffee), color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Icon(Icons.Default.LocalCafe, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(R.string.credits_buymeacoffee),
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(color = Slate800, thickness = 0.5.dp)
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(16.dp))
+                            Text(
+                                text = "Patreon Supporters",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = RedstoneLight
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            PATREON_SUPPORTERS.forEach { supporter ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Slate900,
+                                    border = BorderStroke(1.dp, Slate800),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text("❤️", fontSize = 12.sp)
+                                        Text(
+                                            text = supporter.name,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -393,7 +463,7 @@ fun AboutScreen(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        MetadataRow(label = "Application Version", value = "1.0.0")
+                        MetadataRow(label = "Application Version", value = BuildConfig.VERSION_NAME)
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
                         MetadataRow(label = "Container Rootfs", value = "Ubuntu 24.04 LTS (PRoot)")
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
@@ -407,6 +477,9 @@ fun AboutScreen(
                     }
                 }
             }
+
+            // Version History & Changelog Card
+            AboutChangelogSection()
 
             Spacer(modifier = Modifier.height(16.dp))
         }

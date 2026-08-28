@@ -2,6 +2,42 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.1.0] - 2026-08-28
+
+### 🌐 Public Tunneling & Zero-Port-Forwarding (CGNAT & Cellular Multiplayer)
+- **Dual Provider Tunnel Architecture**: Full support for both **Instant Free Tunnel (bore.pub)** and **Playit.gg** persistent tunnels.
+- **Playit.gg Native Tunnel Integration**: Embedded Playit agent management supporting instant setup via claim URLs or custom Playit Secret keys with persistent subdomains (e.g. `*.ply.gg`, `*.joinmc.link`).
+- **1-Tap Playit.gg Claiming**: Interactive claim banner and status badge when starting Playit.gg tunnels for the first time, opening the setup link directly in the browser to link and activate custom subdomains.
+- **Dismissable Security Notice**: Embedded 1-tap dismissable security warning alerts across the network card, share modal, and server settings explaining that public tunnels expose the port over the Internet and recommending server whitelisting to protect against griefers.
+- **Graceful Disconnection Handling**: Turning off public tunneling disconnects sockets cleanly and transitions state to Offline without throwing false "Socket closed" error toasts.
+- **Tunnel Customization in Server Settings**: Instant provider switching (`bore.pub`, `Playit.gg`, custom bore relays) with auto-saving, secret key management, dashboard linking, and auto-start configuration.
+
+### 📱 Bedrock & Java Dynamic QR Code & Deep-Link Sharing
+- **Interactive Server Share Modal**: Dedicated share sheet featuring dynamic QR codes and connection details for both **Public Online Link (Tunnel)** and **Local Wi-Fi (LAN)** networks.
+- **Bedrock 1-Tap Import**: Automatically builds `minecraft://?addExternalServer=` deep links. Mobile players can tap "Join Bedrock" or scan the QR code to immediately launch Minecraft Bedrock and import the server.
+- **Java Edition Quick Connection**: 1-tap copy of the public or LAN address for direct connection in Minecraft Java Edition.
+- **System Share Sheet Integration**: Formatted multi-platform invite text exportable to Discord, WhatsApp, Telegram, SMS, and other messaging apps.
+
+### ⚡ Interactive Console & Terminal Scrollback Enhancements
+- **Smooth Terminal Scrollback Navigation**: Drag up and down on the live terminal canvas to review historical Minecraft server startup logs and execution output with smooth scrolling.
+- **Scroll to Bottom Indicator**: Floating jump-to-bottom badge displaying the current scroll depth offset with 1-tap return to real-time logs.
+- **Native Touch Word Detection & Selection**: Long-press on any log output or command argument to automatically select word boundaries with tactile haptic feedback.
+- **Draggable Teardrop Selection Handles**: Fine-tune multi-line text selection ranges using interactive teardrop touch handles with live haptic tick feedback.
+- **Visual Character Highlighting**: High-contrast theme-aware text highlight overlays across single-line and multi-line selection bounding boxes.
+- **Floating Action Toolbar**: 1-tap floating toolbar supporting:
+  - **Copy**: Instantly copy selected log text to the Android system clipboard.
+  - **Select All**: Select the entire visible viewport buffer.
+  - **Share**: Export and share log selections directly to external apps via Android's share sheet.
+  - **Clear**: Dismiss the active selection overlay.
+
+### 🔄 GitHub Release Update Checker & Play Store Migration Guidance
+- **Automated GitHub Update Checks**: Real-time checking against the GitHub Releases API to notify users immediately when new releases are published without waiting for store approval delays.
+- **Google Play vs GitHub Certificate Advisory**: In-app migration guidance clarifying Android package signing certificate differences between Google Play builds and direct GitHub APKs, providing clear steps for 1-tap backup creation and transition.
+- **App Updates Configuration**: Dedicated settings section in App Settings to toggle automatic GitHub update notifications and manually trigger update checks anytime with live status reporting.
+
+### ❤️ Community & Supporters
+- **Patreon Supporters Recognition**: Dedicated supporters section on the **Credits** and **About** screens celebrating Patreon supporters (**Old PC Gunk (and stuff)**, **насэр Хорр**) who fuel ongoing MineServe development.
+
 ## [1.0.0] - 2026-08-26
 
 ### 🎮 Multi-Engine Minecraft Server Creation & Management

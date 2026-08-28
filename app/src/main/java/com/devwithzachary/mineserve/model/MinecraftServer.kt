@@ -3,6 +3,23 @@ package com.devwithzachary.mineserve.model
 import kotlinx.serialization.Serializable
 
 @Serializable
+enum class TunnelProvider(val displayName: String) {
+    BORE("Instant Free Tunnel (bore.pub)"),
+    PLAYIT("Playit.gg"),
+    CUSTOM_BORE("Custom Bore Relay")
+}
+
+@Serializable
+data class TunnelConfig(
+    val enabled: Boolean = false,
+    val provider: TunnelProvider = TunnelProvider.BORE,
+    val autoStart: Boolean = false,
+    val customRelayHost: String = "bore.pub",
+    val customRelayPort: Int = 7835,
+    val playitSecret: String = ""
+)
+
+@Serializable
 data class MinecraftServer(
     val id: String,
     val name: String,
@@ -18,7 +35,8 @@ data class MinecraftServer(
     val jvmArgs: String = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200",
     val createdAt: Long = System.currentTimeMillis(),
     val lastStartedAt: Long? = null,
-    val jarFileName: String = "server.jar"
+    val jarFileName: String = "server.jar",
+    val tunnelConfig: TunnelConfig = TunnelConfig()
 ) {
     val isRunning: Boolean get() = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
 }

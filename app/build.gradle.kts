@@ -13,8 +13,8 @@ android {
         applicationId = "com.devwithzachary.mineserve"
         minSdk = 23
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
     }
 
     dependenciesInfo {
@@ -109,6 +109,7 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.kotlinx.coroutines.android)
   implementation("io.coil-kt:coil-compose:2.7.0")
+  implementation(libs.zxing.core)
 
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)

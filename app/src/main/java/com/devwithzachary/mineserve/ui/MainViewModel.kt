@@ -5,9 +5,14 @@ import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.api.FabricApiClient
+import com.devwithzachary.mineserve.api.GitHubRelease
+import com.devwithzachary.mineserve.api.GitHubUpdateChecker
 import com.devwithzachary.mineserve.api.MojangApiClient
 import com.devwithzachary.mineserve.api.PaperApiClient
+import com.devwithzachary.mineserve.api.UpdateCheckResult
+import com.devwithzachary.mineserve.repository.UpdatePreferences
 import com.devwithzachary.mineserve.engine.JavaInstallState
 import com.devwithzachary.mineserve.engine.JavaRuntimeManager
 import com.devwithzachary.mineserve.engine.PRootEngine
@@ -21,10 +26,13 @@ import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.service.MineServeForegroundService
+import com.devwithzachary.mineserve.tunnel.TunnelManager
+import com.devwithzachary.mineserve.tunnel.TunnelState
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -50,11 +58,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val serverRepository = ServerRepository(application, pRootEngine)
     val backupRepository = BackupRepository(application)
     val pluginRepository = PluginRepository()
+    val tunnelManager = TunnelManager.getInstance(application)
+    val updateChecker = GitHubUpdateChecker()
+    val updatePreferences = UpdatePreferences(application)
 
     val servers: StateFlow<List<MinecraftServer>> = serverRepository.servers
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = processManager.serverStatuses
     val serverMetrics: StateFlow<Map<String, ServerMetrics>> = processManager.serverMetrics
     val refreshTriggers: StateFlow<Map<String, Long>> = processManager.refreshTriggers
+    val tunnelStates: StateFlow<Map<String, TunnelState>> = tunnelManager.tunnelStates
+
+    private val _isCheckGitHubUpdatesEnabled = MutableStateFlow(updatePreferences.isCheckGitHubUpdatesEnabled)
+    val isCheckGitHubUpdatesEnabled: StateFlow<Boolean> = _isCheckGitHubUpdatesEnabled.asStateFlow()
+
+    private val _availableUpdate = MutableStateFlow<GitHubRelease?>(null)
+    val availableUpdate: StateFlow<GitHubRelease?> = _availableUpdate.asStateFlow()
+
+    private val _isCheckingUpdate = MutableStateFlow(false)
+    val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
+
+    private val _updateCheckStatus = MutableStateFlow<String?>(null)
+    val updateCheckStatus: StateFlow<String?> = _updateCheckStatus.asStateFlow()
 
     private val _isRootfsInstalled = MutableStateFlow(rootfsManager.isInstalled())
     val isRootfsInstalled: StateFlow<Boolean> = _isRootfsInstalled.asStateFlow()
@@ -93,6 +117,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         refreshData()
+
+        if (updatePreferences.isCheckGitHubUpdatesEnabled) {
+            checkForGitHubUpdates(isManual = false)
+        }
     }
 
     fun refreshData() {
@@ -447,5 +475,72 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onResult(false)
             }
         }
+    }
+
+    fun toggleTunnel(server: MinecraftServer) {
+        tunnelManager.toggleTunnel(server)
+    }
+
+    fun updateTunnelConfig(server: MinecraftServer, config: TunnelConfig) {
+        viewModelScope.launch {
+            val updated = server.copy(tunnelConfig = config)
+            serverRepository.updateServer(updated)
+            if (config.enabled && !tunnelManager.isTunnelActive(server.id)) {
+                tunnelManager.startTunnel(updated)
+            } else if (!config.enabled && tunnelManager.isTunnelActive(server.id)) {
+                tunnelManager.stopTunnel(server.id)
+            }
+        }
+    }
+
+    fun updateServer(server: MinecraftServer) {
+        viewModelScope.launch {
+            serverRepository.updateServer(server)
+        }
+    }
+
+    fun toggleCheckGitHubUpdates(enabled: Boolean) {
+        updatePreferences.isCheckGitHubUpdatesEnabled = enabled
+        _isCheckGitHubUpdatesEnabled.value = enabled
+        if (!enabled) {
+            _availableUpdate.value = null
+        }
+    }
+
+    fun checkForGitHubUpdates(isManual: Boolean = false) {
+        viewModelScope.launch {
+            _isCheckingUpdate.value = true
+            if (isManual) {
+                _updateCheckStatus.value = "Checking GitHub for updates..."
+            }
+            val result = updateChecker.checkLatestRelease(BuildConfig.VERSION_NAME)
+            _isCheckingUpdate.value = false
+
+            when (result) {
+                is UpdateCheckResult.UpdateAvailable -> {
+                    if (isManual || updatePreferences.ignoredVersion != result.release.tagName) {
+                        _availableUpdate.value = result.release
+                    }
+                    _updateCheckStatus.value = "Update available: ${result.release.tagName}"
+                }
+                is UpdateCheckResult.UpToDate -> {
+                    _updateCheckStatus.value = "You are on the latest version (v${BuildConfig.VERSION_NAME})"
+                }
+                is UpdateCheckResult.Error -> {
+                    if (isManual) {
+                        _updateCheckStatus.value = "Check failed: ${result.message}"
+                    }
+                }
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _availableUpdate.value = null
+    }
+
+    fun disableGitHubUpdatePrompts() {
+        toggleCheckGitHubUpdates(false)
+        _availableUpdate.value = null
     }
 }

@@ -43,6 +43,9 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.ui.theme.DiamondCyan
+import com.devwithzachary.mineserve.ui.theme.DiamondLight
+import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
@@ -52,6 +55,9 @@ import com.devwithzachary.mineserve.ui.theme.RedstoneLight
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate700
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Language
+import com.devwithzachary.mineserve.tunnel.TunnelState
 
 @Composable
 fun ServerCard(
@@ -59,6 +65,7 @@ fun ServerCard(
     status: ServerStatus,
     metrics: ServerMetrics?,
     storageBytes: Long,
+    tunnelState: TunnelState = TunnelState.Disconnected,
     onCardClick: () -> Unit,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
@@ -144,7 +151,48 @@ fun ServerCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Public Online Tunnel Line (own line before RAM/CPU)
+            if (tunnelState is TunnelState.Connected || (tunnelState is TunnelState.Connecting && tunnelState.claimUrl != null)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (tunnelState is TunnelState.Connected) EmeraldDark.copy(alpha = 0.25f) else DiamondCyan.copy(alpha = 0.15f),
+                    border = BorderStroke(0.5.dp, if (tunnelState is TunnelState.Connected) EmeraldPrimary.copy(alpha = 0.4f) else DiamondCyan.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            tint = if (tunnelState is TunnelState.Connected) EmeraldLight else DiamondLight,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Public Link:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Slate400,
+                            fontSize = 11.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (tunnelState is TunnelState.Connected) tunnelState.fullAddress else "Setup needed (tap server to view)",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (tunnelState is TunnelState.Connected) EmeraldLight else DiamondLight,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Body: Live metrics or Specs with Per-Server Storage
             if (isRunning && metrics != null) {

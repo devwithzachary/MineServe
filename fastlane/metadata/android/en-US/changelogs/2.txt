@@ -1,0 +1,5 @@
+• 1-Tap Public Tunneling: Host over Cellular (4G/5G) via bore.pub & Playit.gg without port-forwarding
+• Dynamic QR Code & 1-tap Minecraft Bedrock deep link sharing
+• Interactive console scrollback, touch text selection & copy toolbar
+• In-App Changelog history & GitHub Release update checker
+• Patreon supporters & contributor recognition

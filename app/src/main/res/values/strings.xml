@@ -236,6 +236,7 @@
     <string name="about_bug_title">Feedback &amp; Bug Reports</string>
     <string name="about_bug_text">MineServe is in active development. If you encounter bugs, missing features, or runtime errors, let us know on GitHub.</string>
     <string name="about_info_title">System &amp; Build Metadata</string>
+    <string name="about_changelog_title">Version History &amp; Changelog</string>
 
     <!-- Credits Screen -->
     <string name="credits_page_title">Software &amp; Open Source Credits</string>
@@ -246,4 +247,19 @@
     <string name="credits_patreon_url">https://patreon.com/devwithzachary</string>
     <string name="credits_buymeacoffee">Buy Me a Coffee</string>
     <string name="credits_buymeacoffee_url">https://buymeacoffee.com/linuxonandroid</string>
+
+    <!-- Public Tunneling & QR Code Sharing -->
+    <string name="tunnel_title">Public Tunnel &amp; Zero-Port-Forwarding</string>
+    <string name="tunnel_desc">Expose your Minecraft server to the public Internet without router port forwarding or static IPs.</string>
+    <string name="tunnel_online_badge">ONLINE</string>
+    <string name="tunnel_connecting_badge">CONNECTING</string>
+    <string name="tunnel_offline_badge">OFFLINE</string>
+    <string name="tunnel_share_dialog_title">Share Server</string>
+    <string name="tunnel_tab_public">Public Online</string>
+    <string name="tunnel_tab_lan">Local Wi-Fi</string>
+    <string name="tunnel_join_bedrock">Join Bedrock</string>
+    <string name="tunnel_copy_address">Copy IP</string>
+    <string name="tunnel_share_invite">Share Full Invite</string>
+    <string name="tunnel_security_warning_title">Security Notice</string>
+    <string name="tunnel_security_warning">Anyone with your public link can connect to your server. We recommend enabling Whitelisting in Server Properties to protect against griefers and unauthorized players.</string>
 </resources>

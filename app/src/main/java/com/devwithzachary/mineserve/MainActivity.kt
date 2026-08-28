@@ -1,7 +1,9 @@
 package com.devwithzachary.mineserve
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -31,6 +33,7 @@ import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.ui.MainViewModel
+import com.devwithzachary.mineserve.ui.components.GitHubUpdateDialog
 import com.devwithzachary.mineserve.ui.screens.about.AboutScreen
 import com.devwithzachary.mineserve.ui.screens.credits.CreditsScreen
 import com.devwithzachary.mineserve.ui.screens.dashboard.DashboardScreen
@@ -87,6 +90,11 @@ fun MineServeApp(viewModel: MainViewModel) {
     val serverBackupsMap by viewModel.serverBackupsMap.collectAsStateWithLifecycle()
     val serverPluginsMap by viewModel.serverPluginsMap.collectAsStateWithLifecycle()
     val serverStorageMap by viewModel.serverStorageMap.collectAsStateWithLifecycle()
+    val tunnelStates by viewModel.tunnelStates.collectAsStateWithLifecycle()
+    val isCheckGitHubUpdatesEnabled by viewModel.isCheckGitHubUpdatesEnabled.collectAsStateWithLifecycle()
+    val availableUpdate by viewModel.availableUpdate.collectAsStateWithLifecycle()
+    val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
+    val updateCheckStatus by viewModel.updateCheckStatus.collectAsStateWithLifecycle()
 
     var currentScreen by remember {
         mutableStateOf<Screen>(
@@ -122,6 +130,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     serverStatuses = serverStatuses,
                     serverMetrics = serverMetrics,
                     serverStorageMap = serverStorageMap,
+                    tunnelStates = tunnelStates,
                     onServerClick = { server ->
                         Log.d("MainActivity", "onServerClick: ${server.id}")
                         viewModel.loadServerDetails(server.id)
@@ -146,8 +155,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onCreateServerClick = { currentScreen = Screen.Wizard },
                     onSettingsClick = { currentScreen = Screen.Settings },
                     onAboutClick = { currentScreen = Screen.About },
-                    onCreditsClick = { currentScreen = Screen.Credits },
-                    onRefresh = { viewModel.refreshData() }
+                    onCreditsClick = { currentScreen = Screen.Credits }
                 )
             }
 
@@ -184,6 +192,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     val backups = serverBackupsMap[server.id] ?: emptyList()
                     val plugins = serverPluginsMap[server.id] ?: emptyList()
                     val storageBytes = serverStorageMap[server.id] ?: 0L
+                    val tunnelState = tunnelStates[server.id] ?: com.devwithzachary.mineserve.tunnel.TunnelState.Disconnected
 
                     ServerDetailScreen(
                         server = server,
@@ -195,6 +204,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         backups = backups,
                         plugins = plugins,
                         storageBytes = storageBytes,
+                        tunnelState = tunnelState,
                         onBack = { currentScreen = Screen.Dashboard },
                         onStartServer = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -205,6 +215,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                             viewModel.startServer(server)
                         },
                         onStopServer = { viewModel.stopServer(server.id) },
+                        onToggleTunnel = { viewModel.toggleTunnel(server) },
+                        onSaveServer = { updatedServer -> viewModel.updateServer(updatedServer) },
                         onSendCommand = { cmd -> viewModel.sendCommand(server.id, cmd) },
                         onResizeTerminal = { cols, rows -> viewModel.resizeTerminal(server.id, cols, rows) },
                         onSaveProperties = { updatedProps -> viewModel.saveProperties(server.id, updatedProps) },
@@ -244,7 +256,19 @@ fun MineServeApp(viewModel: MainViewModel) {
                         viewModel.startRootfsSetup()
                         currentScreen = Screen.Splash
                     },
-                    onBack = { currentScreen = Screen.Dashboard }
+                    isCheckGitHubUpdatesEnabled = isCheckGitHubUpdatesEnabled,
+                    onToggleCheckGitHubUpdates = { viewModel.toggleCheckGitHubUpdates(it) },
+                    isCheckingUpdate = isCheckingUpdate,
+                    updateCheckStatusMessage = updateCheckStatus,
+                    onCheckForUpdatesNow = { viewModel.checkForGitHubUpdates(isManual = true) },
+                    onOpenGitHubReleases = {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/devwithzachary/MineServe/releases"))
+                            context.startActivity(intent)
+                        } catch (_: Exception) {}
+                    },
+                    onBack = { currentScreen = Screen.Dashboard },
+                    onAboutClick = { currentScreen = Screen.About }
                 )
             }
 
@@ -260,5 +284,23 @@ fun MineServeApp(viewModel: MainViewModel) {
                 )
             }
         }
+    }
+
+    // GitHub Update Dialog Modal
+    availableUpdate?.let { release ->
+        GitHubUpdateDialog(
+            release = release,
+            currentVersion = BuildConfig.VERSION_NAME,
+            onDismiss = { viewModel.dismissUpdateDialog() },
+            onDownload = { url ->
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    context.startActivity(intent)
+                } catch (_: Exception) {}
+            },
+            onDisableFuturePrompts = {
+                viewModel.disableGitHubUpdatePrompts()
+            }
+        )
     }
 }

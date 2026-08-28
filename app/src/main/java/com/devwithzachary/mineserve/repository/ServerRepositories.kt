@@ -55,7 +55,17 @@ class ServerRepository(
                 if (configFile.exists()) {
                     try {
                         val server = json.decodeFromString<MinecraftServer>(configFile.readText())
-                        list.add(server.copy(status = ServerStatus.STOPPED))
+                        val propFile = File(dir, "server.properties")
+                        val actualPort = if (propFile.exists()) {
+                            try {
+                                ServerProperties.parse(propFile.readText()).serverPort
+                            } catch (_: Exception) {
+                                if (server.port in 1..65535) server.port else 25565
+                            }
+                        } else {
+                            if (server.port in 1..65535) server.port else 25565
+                        }
+                        list.add(server.copy(port = actualPort, status = ServerStatus.STOPPED))
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed reading server config in ${dir.name}", e)
                     }

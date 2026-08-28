@@ -7,6 +7,7 @@ import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.service.MineServeForegroundService
+import com.devwithzachary.mineserve.tunnel.TunnelManager
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
@@ -101,6 +102,7 @@ class ServerProcessManager private constructor(
     }
 
     fun stopAllServers() {
+        TunnelManager.getInstance(context).stopAllTunnels()
         for ((id, status) in _serverStatuses.value) {
             if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
                 stopServer(id)
@@ -371,6 +373,9 @@ class ServerProcessManager private constructor(
             }
         }
 
+        // Stop tunnel if active
+        TunnelManager.getInstance(context).stopTunnel(serverId)
+
         // 4. Force-kill all processes in process tree (libproot, java, bash, etc.)
         killProcessesForServer(serverId, pid)
 
@@ -492,6 +497,15 @@ class ServerProcessManager private constructor(
         current[serverId] = status
         _serverStatuses.value = current
         callback?.invoke(status)
+
+        if (status == ServerStatus.RUNNING) {
+            val session = sessions[serverId]
+            if (session != null && (session.server.tunnelConfig.autoStart || session.server.tunnelConfig.enabled)) {
+                TunnelManager.getInstance(context).startTunnel(session.server)
+            }
+        } else if (status == ServerStatus.STOPPED || status == ServerStatus.ERROR) {
+            TunnelManager.getInstance(context).stopTunnel(serverId)
+        }
 
         if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
             MineServeForegroundService.start(context)
