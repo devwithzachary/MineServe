@@ -47,9 +47,9 @@ fun JavaEnvironmentCard(
 ) {
     val runtimes = listOf(
         JavaRuntimeItem(25, R.string.settings_java_25_title, "Supports Minecraft 26.2+"),
-        JavaRuntimeItem(21, R.string.settings_java_21_title, "Supports Minecraft 1.20.5 – 1.21.11"),
-        JavaRuntimeItem(17, R.string.settings_java_17_title, "Supports Minecraft 1.18 – 1.20.4"),
-        JavaRuntimeItem(8, R.string.settings_java_8_title, "Supports Minecraft 1.12.2 – 1.16.5")
+        JavaRuntimeItem(21, R.string.settings_java_21_title, "Supports Minecraft 1.20.5 - 1.21.11"),
+        JavaRuntimeItem(17, R.string.settings_java_17_title, "Supports Minecraft 1.18 - 1.20.4"),
+        JavaRuntimeItem(8, R.string.settings_java_8_title, "Supports Minecraft 1.12.2 - 1.16.5")
     )
 
     Column(

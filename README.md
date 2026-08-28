@@ -30,7 +30,7 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * **Bedrock Geyser / Floodgate**: Seamless protocol translation proxy enabling Bedrock edition players on iOS, Android, and consoles to connect to your Java server.
 * **☕ Isolated Java Runtime Environments**: Automatic detection and 1-tap installation of OpenJDK versions inside the container:
   * **Java 25 / Java 21**: For modern Minecraft 1.20.5+ and snapshots.
-  * **Java 17**: For Minecraft 1.17 – 1.20.4.
+  * **Java 17**: For Minecraft 1.17 - 1.20.4.
   * **Java 8**: For legacy Minecraft 1.12.2 and older server versions.
 * **⚡ Interactive Live Terminal & Console**: Built-in VT100/ANSI terminal emulator with direct standard input command delivery (`op`, `gamemode`, `whitelist`, `stop`), colored log streaming, instant buffer clearing, and automatic scroll-to-bottom.
 * **📊 Live Telemetry & Resource Monitoring**: Real-time tracking of active container CPU utilization, resident RAM consumption (RSS via `/proc`), allocated memory, live player counts, and per-server storage footprints.
@@ -102,7 +102,7 @@ Interactive server consoles require a Unix pseudo-terminal (PTY) to handle windo
 ### 3. Isolated Java Runtime Architecture (`JavaRuntimeManager.kt`)
 Different Minecraft versions require specific OpenJDK bytecode compatibility:
 * Minecraft 1.20.5+ requires **Java 21** or **Java 25**.
-* Minecraft 1.17 – 1.20.4 requires **Java 17**.
+* Minecraft 1.17 - 1.20.4 requires **Java 17**.
 * Minecraft 1.12.2 and older requires **Java 8**.
 
 MineServe provisions isolated OpenJDK runtimes inside the container filesystem and dynamically passes the correct binary path (`/usr/lib/jvm/java-<version>-openjdk-arm64/bin/java`) when executing each server.
