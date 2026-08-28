@@ -1,9 +1,5 @@
-• 1-Tap Public Tunneling & Zero-Port-Forwarding (bore.pub & Playit.gg) to host servers over Cellular (4G/5G) and remote networks
-• Graceful 1-tap tunnel shutdown and dismissable security notices
-• Dynamic QR Code & Share Modal with 1-tap Minecraft Bedrock deep link import and Java connection addresses
-• Interactive terminal console scrollback history and touch drag navigation
-• Native touch log selection with draggable teardrop handles and haptic feedback
-• Floating action toolbar for instant Copy, Select All, and Share
-• In-App Version History & Changelog viewer on the About screen
-• GitHub Release update checker & Play Store migration guide
-• Added Patreon supporters & community contributors recognition
+• 1-Tap Public Tunneling: Host over Cellular (4G/5G) via bore.pub & Playit.gg without port-forwarding
+• Dynamic QR Code & 1-tap Minecraft Bedrock deep link sharing
+• Interactive console scrollback, touch text selection & copy toolbar
+• In-App Changelog history & GitHub Release update checker
+• Patreon supporters & contributor recognition
