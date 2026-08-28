@@ -148,8 +148,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onCreateServerClick = { currentScreen = Screen.Wizard },
                     onSettingsClick = { currentScreen = Screen.Settings },
                     onAboutClick = { currentScreen = Screen.About },
-                    onCreditsClick = { currentScreen = Screen.Credits },
-                    onRefresh = { viewModel.refreshData() }
+                    onCreditsClick = { currentScreen = Screen.Credits }
                 )
             }
 
