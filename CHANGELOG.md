@@ -16,6 +16,9 @@ All notable changes to the MineServe project will be documented in this file.
   - **Share**: Export and share log selections directly to external apps via Android's share sheet.
   - **Clear**: Dismiss the active selection overlay.
 
+### ❤️ Community & Supporters
+- **Patreon Supporters Recognition**: Dedicated supporters section on the **Credits** and **About** screens celebrating Patreon supporters (**Old PC Gunk (and stuff)**, **насэр Хорр**) who fuel ongoing MineServe development.
+
 ## [1.0.0] - 2026-08-26
 
 ### 🎮 Multi-Engine Minecraft Server Creation & Management

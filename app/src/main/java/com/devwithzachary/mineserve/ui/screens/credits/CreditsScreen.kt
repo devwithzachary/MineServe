@@ -1,8 +1,11 @@
 package com.devwithzachary.mineserve.ui.screens.credits
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,6 +28,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Handshake
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,6 +51,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -59,10 +65,28 @@ import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
+import com.devwithzachary.mineserve.ui.theme.RedstoneLight
+import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate900
 import com.devwithzachary.mineserve.ui.theme.Slate950
+
+data class PatreonSupporter(
+    val name: String,
+    val tier: String = "Patreon Supporter"
+)
+
+val PATREON_SUPPORTERS: List<PatreonSupporter> = listOf(
+    PatreonSupporter(
+        name = "Old PC Gunk (and stuff)",
+        tier = "Patreon Supporter"
+    ),
+    PatreonSupporter(
+        name = "насэр Хорр",
+        tier = "Patreon Supporter"
+    )
+)
 
 enum class CreditCategory(val label: String) {
     ALL("All"),
@@ -305,6 +329,115 @@ fun CreditsScreen(
                         Icon(Icons.Default.Code, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Contribute on GitHub", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+
+            // Patreon Supporters Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(22.dp))
+                        Text(
+                            text = "Patreon Supporters",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    Text(
+                        text = "Special thanks to our generous Patreon members whose support powers ongoing MineServe development!",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Slate400
+                    )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        PATREON_SUPPORTERS.forEach { supporter ->
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Slate900,
+                                border = BorderStroke(1.dp, Slate800),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(36.dp)
+                                                .clip(CircleShape)
+                                                .background(RedstoneRed.copy(alpha = 0.2f))
+                                                .border(1.dp, RedstoneRed.copy(alpha = 0.4f), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = "❤️",
+                                                fontSize = 14.sp
+                                            )
+                                        }
+
+                                        Column {
+                                            Text(
+                                                text = supporter.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White
+                                            )
+                                            Text(
+                                                text = supporter.tier,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = EmeraldLight
+                                            )
+                                        }
+                                    }
+
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = RedstoneRed.copy(alpha = 0.15f),
+                                        border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.3f))
+                                    ) {
+                                        Text(
+                                            text = "Patron",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = RedstoneLight,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Button(
+                        onClick = { uriHandler.openUri("https://patreon.com/devwithzachary") },
+                        colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Become a Patron", color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }

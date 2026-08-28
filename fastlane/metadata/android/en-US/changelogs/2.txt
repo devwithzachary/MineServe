@@ -1,0 +1,5 @@
+• Added interactive terminal console scrollback history and touch drag navigation
+• Native touch log selection with draggable teardrop handles and haptic feedback
+• Floating action toolbar for instant Copy, Select All, and Share
+• In-App Version History & Changelog viewer on the About screen
+• Added Patreon supporters & community contributors recognition

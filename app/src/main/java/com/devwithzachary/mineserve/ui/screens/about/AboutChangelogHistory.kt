@@ -46,7 +46,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Native Touch Word Detection & Selection: Long-press on any log output or command argument to automatically select word boundaries with tactile haptic feedback.",
             "Draggable Teardrop Selection Handles: Fine-tune multi-line text selection ranges using interactive teardrop touch handles with live haptic tick feedback.",
             "Visual Character Highlighting: High-contrast theme-aware text highlight overlays across single-line and multi-line selection bounding boxes.",
-            "Floating Action Toolbar: 1-tap floating toolbar supporting Copy, Select All, Share, and Clear selection."
+            "Floating Action Toolbar: 1-tap floating toolbar supporting Copy, Select All, Share, and Clear selection.",
+            "Patreon Supporters Recognition: Added dedicated supporters recognition on the Credits and About screens honoring Patreon supporters (Old PC Gunk (and stuff), насэр Хорр)."
         )
     ),
     ReleaseChangelog(
