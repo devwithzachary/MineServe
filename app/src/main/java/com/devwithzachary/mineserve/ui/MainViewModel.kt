@@ -21,10 +21,13 @@ import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.service.MineServeForegroundService
+import com.devwithzachary.mineserve.tunnel.TunnelManager
+import com.devwithzachary.mineserve.tunnel.TunnelState
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -50,11 +53,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val serverRepository = ServerRepository(application, pRootEngine)
     val backupRepository = BackupRepository(application)
     val pluginRepository = PluginRepository()
+    val tunnelManager = TunnelManager.getInstance(application)
 
     val servers: StateFlow<List<MinecraftServer>> = serverRepository.servers
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = processManager.serverStatuses
     val serverMetrics: StateFlow<Map<String, ServerMetrics>> = processManager.serverMetrics
     val refreshTriggers: StateFlow<Map<String, Long>> = processManager.refreshTriggers
+    val tunnelStates: StateFlow<Map<String, TunnelState>> = tunnelManager.tunnelStates
 
     private val _isRootfsInstalled = MutableStateFlow(rootfsManager.isInstalled())
     val isRootfsInstalled: StateFlow<Boolean> = _isRootfsInstalled.asStateFlow()
@@ -446,6 +451,28 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 Log.e("MainViewModel", "Failed importing JAR", e)
                 onResult(false)
             }
+        }
+    }
+
+    fun toggleTunnel(server: MinecraftServer) {
+        tunnelManager.toggleTunnel(server)
+    }
+
+    fun updateTunnelConfig(server: MinecraftServer, config: TunnelConfig) {
+        viewModelScope.launch {
+            val updated = server.copy(tunnelConfig = config)
+            serverRepository.updateServer(updated)
+            if (config.enabled && !tunnelManager.isTunnelActive(server.id)) {
+                tunnelManager.startTunnel(updated)
+            } else if (!config.enabled && tunnelManager.isTunnelActive(server.id)) {
+                tunnelManager.stopTunnel(server.id)
+            }
+        }
+    }
+
+    fun updateServer(server: MinecraftServer) {
+        viewModelScope.launch {
+            serverRepository.updateServer(server)
         }
     }
 }

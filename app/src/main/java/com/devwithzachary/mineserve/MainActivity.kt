@@ -87,6 +87,7 @@ fun MineServeApp(viewModel: MainViewModel) {
     val serverBackupsMap by viewModel.serverBackupsMap.collectAsStateWithLifecycle()
     val serverPluginsMap by viewModel.serverPluginsMap.collectAsStateWithLifecycle()
     val serverStorageMap by viewModel.serverStorageMap.collectAsStateWithLifecycle()
+    val tunnelStates by viewModel.tunnelStates.collectAsStateWithLifecycle()
 
     var currentScreen by remember {
         mutableStateOf<Screen>(
@@ -122,6 +123,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     serverStatuses = serverStatuses,
                     serverMetrics = serverMetrics,
                     serverStorageMap = serverStorageMap,
+                    tunnelStates = tunnelStates,
                     onServerClick = { server ->
                         Log.d("MainActivity", "onServerClick: ${server.id}")
                         viewModel.loadServerDetails(server.id)
@@ -184,6 +186,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     val backups = serverBackupsMap[server.id] ?: emptyList()
                     val plugins = serverPluginsMap[server.id] ?: emptyList()
                     val storageBytes = serverStorageMap[server.id] ?: 0L
+                    val tunnelState = tunnelStates[server.id] ?: com.devwithzachary.mineserve.tunnel.TunnelState.Disconnected
 
                     ServerDetailScreen(
                         server = server,
@@ -195,6 +198,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         backups = backups,
                         plugins = plugins,
                         storageBytes = storageBytes,
+                        tunnelState = tunnelState,
                         onBack = { currentScreen = Screen.Dashboard },
                         onStartServer = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -205,6 +209,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                             viewModel.startServer(server)
                         },
                         onStopServer = { viewModel.stopServer(server.id) },
+                        onToggleTunnel = { viewModel.toggleTunnel(server) },
+                        onSaveServer = { updatedServer -> viewModel.updateServer(updatedServer) },
                         onSendCommand = { cmd -> viewModel.sendCommand(server.id, cmd) },
                         onResizeTerminal = { cols, rows -> viewModel.resizeTerminal(server.id, cols, rows) },
                         onSaveProperties = { updatedProps -> viewModel.saveProperties(server.id, updatedProps) },

@@ -20,13 +20,24 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
+import androidx.compose.ui.platform.LocalContext
+import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.TunnelConfig
+import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.ui.components.TunnelSecurityWarningCard
+import com.devwithzachary.mineserve.ui.theme.Slate400
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -85,13 +96,16 @@ enum class SettingsEditorMode {
 
 @Composable
 fun SettingsTab(
+    server: MinecraftServer,
     initialProperties: ServerProperties,
     onSaveProperties: (ServerProperties) -> Unit,
+    onSaveServer: (MinecraftServer) -> Unit = {},
     onReadRawConfigFile: suspend (String) -> String = { "" },
     onSaveRawConfigFile: suspend (String, String) -> Boolean = { _, _ -> true },
     onListConfigFiles: suspend () -> List<String> = { listOf("server.properties") },
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var editorMode by remember { mutableStateOf(SettingsEditorMode.VISUAL) }
 
@@ -111,6 +125,13 @@ fun SettingsTab(
     var simulationDistance by remember(props.simulationDistance) { mutableIntStateOf(props.simulationDistance) }
     var levelSeed by remember(props.levelSeed) { mutableStateOf(props.levelSeed) }
     var visualSavedMessage by remember { mutableStateOf<String?>(null) }
+
+    // Tunnel config state
+    var tunnelAutoStart by remember(server.tunnelConfig.autoStart) { mutableStateOf(server.tunnelConfig.autoStart) }
+    var tunnelProvider by remember(server.tunnelConfig.provider) { mutableStateOf(server.tunnelConfig.provider) }
+    var customRelayHost by remember(server.tunnelConfig.customRelayHost) { mutableStateOf(server.tunnelConfig.customRelayHost) }
+    var customRelayPort by remember(server.tunnelConfig.customRelayPort) { mutableIntStateOf(server.tunnelConfig.customRelayPort) }
+    var playitSecret by remember(server.tunnelConfig.playitSecret) { mutableStateOf(server.tunnelConfig.playitSecret) }
 
     // Raw File editor state
     var configFiles by remember { mutableStateOf(listOf("server.properties")) }
@@ -238,7 +259,15 @@ fun SettingsTab(
                                 levelSeed = levelSeed
                             )
                             onSaveProperties(updated)
-                            visualSavedMessage = "Saved properties successfully!"
+                            val updatedTunnelConfig = server.tunnelConfig.copy(
+                                autoStart = tunnelAutoStart,
+                                provider = tunnelProvider,
+                                customRelayHost = customRelayHost,
+                                customRelayPort = customRelayPort,
+                                playitSecret = playitSecret
+                            )
+                            onSaveServer(server.copy(tunnelConfig = updatedTunnelConfig))
+                            visualSavedMessage = "Saved properties & tunnel configuration!"
                             scope.launch {
                                 delay(2500)
                                 visualSavedMessage = null
@@ -353,6 +382,207 @@ fun SettingsTab(
                             checked = allowNether,
                             onCheckedChange = { allowNether = it }
                         )
+                    }
+                }
+
+                // Public Tunneling & Zero Port Forwarding Card
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Language, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
+                            Text(
+                                text = "Public Tunnel & Zero-Port-Forwarding",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+
+                        Text(
+                            text = "Expose your Minecraft server to the public Internet without router port forwarding or static IPs. Friends can join over cellular (4G/5G) or remote Wi-Fi.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400
+                        )
+
+                        TunnelSecurityWarningCard()
+
+                        SettingSwitchRow(
+                            title = "Auto-start tunnel with server",
+                            checked = tunnelAutoStart,
+                            onCheckedChange = {
+                                tunnelAutoStart = it
+                                val updated = server.tunnelConfig.copy(
+                                    autoStart = it,
+                                    provider = tunnelProvider,
+                                    customRelayHost = customRelayHost,
+                                    customRelayPort = customRelayPort,
+                                    playitSecret = playitSecret
+                                )
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            }
+                        )
+
+                        Text(
+                            text = "Tunnel Network Provider",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(TunnelProvider.entries) { provider ->
+                                FilterChip(
+                                    selected = tunnelProvider == provider,
+                                    onClick = {
+                                        tunnelProvider = provider
+                                        val updated = server.tunnelConfig.copy(
+                                            autoStart = tunnelAutoStart,
+                                            provider = provider,
+                                            customRelayHost = customRelayHost,
+                                            customRelayPort = customRelayPort,
+                                            playitSecret = playitSecret
+                                        )
+                                        onSaveServer(server.copy(tunnelConfig = updated))
+                                    },
+                                    label = { Text(provider.displayName) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = EmeraldPrimary,
+                                        selectedLabelColor = Color.Black,
+                                        containerColor = Slate800,
+                                        labelColor = Color.White
+                                    )
+                                )
+                            }
+                        }
+
+                        if (tunnelProvider == TunnelProvider.BORE) {
+                            Text(
+                                text = "Instant free zero-configuration public tunnel via bore.pub. No account or token required.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate400,
+                                fontSize = 12.sp
+                            )
+                        } else if (tunnelProvider == TunnelProvider.PLAYIT) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(
+                                    text = "Playit.gg provides persistent custom domains (e.g. *.joinmc.link, *.ply.gg). Enter a secret key or start the tunnel to link your device.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate400,
+                                    fontSize = 12.sp
+                                )
+                                OutlinedTextField(
+                                    value = playitSecret,
+                                    onValueChange = {
+                                        playitSecret = it
+                                        val updated = server.tunnelConfig.copy(
+                                            autoStart = tunnelAutoStart,
+                                            provider = tunnelProvider,
+                                            customRelayHost = customRelayHost,
+                                            customRelayPort = customRelayPort,
+                                            playitSecret = it
+                                        )
+                                        onSaveServer(server.copy(tunnelConfig = updated))
+                                    },
+                                    label = { Text("Playit Secret Key (Optional)") },
+                                    placeholder = { Text("Paste secret key from playit.gg", color = Slate400) },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldPrimary,
+                                        unfocusedBorderColor = ObsidianCardBorder,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    androidx.compose.material3.TextButton(
+                                        onClick = {
+                                            try {
+                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://playit.gg/manage"))
+                                                context.startActivity(intent)
+                                            } catch (_: Exception) {}
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                            contentDescription = null,
+                                            tint = EmeraldPrimary,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "Open Playit.gg Dashboard",
+                                            color = EmeraldPrimary,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+                                }
+                            }
+                        } else if (tunnelProvider == TunnelProvider.CUSTOM_BORE) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                OutlinedTextField(
+                                    value = customRelayHost,
+                                    onValueChange = {
+                                        customRelayHost = it
+                                        val updated = server.tunnelConfig.copy(
+                                            autoStart = tunnelAutoStart,
+                                            provider = tunnelProvider,
+                                            customRelayHost = it,
+                                            customRelayPort = customRelayPort,
+                                            playitSecret = playitSecret
+                                        )
+                                        onSaveServer(server.copy(tunnelConfig = updated))
+                                    },
+                                    label = { Text("Relay Host") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldPrimary,
+                                        unfocusedBorderColor = ObsidianCardBorder,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier.weight(2f)
+                                )
+                                OutlinedTextField(
+                                    value = customRelayPort.toString(),
+                                    onValueChange = {
+                                        val port = it.toIntOrNull() ?: 7835
+                                        customRelayPort = port
+                                        val updated = server.tunnelConfig.copy(
+                                            autoStart = tunnelAutoStart,
+                                            provider = tunnelProvider,
+                                            customRelayHost = customRelayHost,
+                                            customRelayPort = port,
+                                            playitSecret = playitSecret
+                                        )
+                                        onSaveServer(server.copy(tunnelConfig = updated))
+                                    },
+                                    label = { Text("Port") },
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldPrimary,
+                                        unfocusedBorderColor = ObsidianCardBorder,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                 }
             }

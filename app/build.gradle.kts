@@ -109,6 +109,7 @@ dependencies {
   implementation(libs.okhttp)
   implementation(libs.kotlinx.coroutines.android)
   implementation("io.coil-kt:coil-compose:2.7.0")
+  implementation(libs.zxing.core)
 
   // Tooling
   debugImplementation(libs.androidx.compose.ui.tooling)

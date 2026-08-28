@@ -41,6 +41,11 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         date = "August 28, 2026",
         initialExpanded = true,
         highlights = listOf(
+            "Public Tunneling & Zero-Port-Forwarding: Support for both instant free tunnels (bore.pub) and persistent Playit.gg tunnels. Host multiplayer servers over 4G/5G mobile data or remote Wi-Fi bypassing Carrier-Grade NAT (CGNAT) without port forwarding.",
+            "Playit.gg Integration: Automatic agent execution supporting 1-tap browser claim setup and custom secret keys with persistent subdomains.",
+            "Graceful Disconnection: Seamless 1-tap tunnel shutdown transitioning to Offline without throwing false socket closure error messages.",
+            "Dismissable Security Notice: 1-tap dismissable security warning banners reminding server hosts to enable whitelisting in Server Properties to safeguard worlds against griefers.",
+            "Dynamic Bedrock & Java QR Code Sharing: Dynamic QR code and share sheet generation with Bedrock 1-tap import links (minecraft://) and Java quick connection addresses.",
             "Smooth Terminal Scrollback Navigation: Drag up and down on the live terminal canvas to review historical Minecraft server startup logs and execution output with smooth scrolling.",
             "Scroll to Bottom Indicator: Floating jump-to-bottom badge displaying the current scroll depth offset with 1-tap return to real-time logs.",
             "Native Touch Word Detection & Selection: Long-press on any log output or command argument to automatically select word boundaries with tactile haptic feedback.",

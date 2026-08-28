@@ -2,26 +2,25 @@ package com.devwithzachary.mineserve.ui.screens.dashboard
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -42,11 +41,11 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.tunnel.TunnelState
 import com.devwithzachary.mineserve.ui.components.NotificationPermissionCard
 import com.devwithzachary.mineserve.ui.components.ServerCard
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate950
 
@@ -57,6 +56,7 @@ fun DashboardScreen(
     serverStatuses: Map<String, ServerStatus>,
     serverMetrics: Map<String, ServerMetrics>,
     serverStorageMap: Map<String, Long> = emptyMap(),
+    tunnelStates: Map<String, TunnelState> = emptyMap(),
     onServerClick: (MinecraftServer) -> Unit,
     onStartServer: (MinecraftServer) -> Unit,
     onStopServer: (String) -> Unit,
@@ -90,18 +90,25 @@ fun DashboardScreen(
                                 .clip(RoundedCornerShape(8.dp))
                         )
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = stringResource(R.string.app_name),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
+                        Column {
+                            Text(
+                                text = stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Minecraft Server Manager",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate400
+                            )
+                        }
                     }
                 },
                 actions = {
                     IconButton(onClick = onRefresh) {
                         Icon(
-                            Icons.Default.Refresh,
+                            imageVector = Icons.Default.Refresh,
                             contentDescription = stringResource(R.string.refresh),
                             tint = Slate400
                         )
@@ -109,7 +116,7 @@ fun DashboardScreen(
 
                     IconButton(onClick = onCreditsClick) {
                         Icon(
-                            Icons.Default.Code,
+                            imageVector = Icons.Default.Code,
                             contentDescription = stringResource(R.string.credits_page_title),
                             tint = Slate400
                         )
@@ -117,7 +124,7 @@ fun DashboardScreen(
 
                     IconButton(onClick = onAboutClick) {
                         Icon(
-                            Icons.Outlined.Info,
+                            imageVector = Icons.Outlined.Info,
                             contentDescription = stringResource(R.string.about_page_title),
                             tint = EmeraldLight
                         )
@@ -125,7 +132,7 @@ fun DashboardScreen(
 
                     IconButton(onClick = onSettingsClick) {
                         Icon(
-                            Icons.Outlined.Settings,
+                            imageVector = Icons.Outlined.Settings,
                             contentDescription = stringResource(R.string.settings_screen_title),
                             tint = Slate400
                         )
@@ -135,14 +142,13 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            ExtendedFloatingActionButton(
                 onClick = onCreateServerClick,
+                icon = { Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black) },
+                text = { Text(stringResource(R.string.dash_create_server), color = Color.Black, fontWeight = FontWeight.Bold) },
                 containerColor = EmeraldPrimary,
-                contentColor = Color.Black,
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.dash_create_server))
-            }
+                shape = RoundedCornerShape(16.dp)
+            )
         },
         containerColor = Slate950,
         modifier = modifier
@@ -150,12 +156,13 @@ fun DashboardScreen(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            contentPadding = PaddingValues(16.dp),
+                .padding(innerPadding)
+                .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Notification permission banner with rationale (only shown when permission needed)
             item {
+                Spacer(modifier = Modifier.height(4.dp))
+                // Notification permission banner with rationale (only shown when permission needed)
                 NotificationPermissionCard(showOnlyWhenNeeded = true)
             }
 
@@ -178,12 +185,14 @@ fun DashboardScreen(
                     val status = serverStatuses[server.id] ?: ServerStatus.STOPPED
                     val metrics = serverMetrics[server.id]
                     val storageBytes = serverStorageMap[server.id] ?: 0L
+                    val tunnelState = tunnelStates[server.id] ?: TunnelState.Disconnected
 
                     ServerCard(
                         server = server,
                         status = status,
                         metrics = metrics,
                         storageBytes = storageBytes,
+                        tunnelState = tunnelState,
                         onCardClick = { onServerClick(server) },
                         onStartClick = { onStartServer(server) },
                         onStopClick = { onStopServer(server.id) },

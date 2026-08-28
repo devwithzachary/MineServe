@@ -43,6 +43,7 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
@@ -52,6 +53,9 @@ import com.devwithzachary.mineserve.ui.theme.RedstoneLight
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate700
+import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Language
+import com.devwithzachary.mineserve.tunnel.TunnelState
 
 @Composable
 fun ServerCard(
@@ -59,6 +63,7 @@ fun ServerCard(
     status: ServerStatus,
     metrics: ServerMetrics?,
     storageBytes: Long,
+    tunnelState: TunnelState = TunnelState.Disconnected,
     onCardClick: () -> Unit,
     onStartClick: () -> Unit,
     onStopClick: () -> Unit,
@@ -110,11 +115,38 @@ fun ServerCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "${server.type.displayName} • ${server.version} • Port ${server.port}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = "${server.type.displayName} • ${server.version} • Port ${server.port}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        if (tunnelState is TunnelState.Connected) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = EmeraldDark.copy(alpha = 0.4f),
+                                border = BorderStroke(0.5.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.Language, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(10.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
+                                    Text(
+                                        text = tunnelState.fullAddress,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = EmeraldLight,
+                                        fontSize = 9.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Status Badge
