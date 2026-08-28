@@ -1,6 +1,7 @@
 package com.devwithzachary.mineserve.ui.screens.about
 
 import android.os.Build
+import com.devwithzachary.mineserve.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -152,7 +153,7 @@ fun AboutScreen(
                             border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.4f))
                         ) {
                             Text(
-                                text = "v1.0.0",
+                                text = "v${BuildConfig.VERSION_NAME}",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = EmeraldLight,
@@ -393,7 +394,7 @@ fun AboutScreen(
                     }
 
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        MetadataRow(label = "Application Version", value = "1.0.0")
+                        MetadataRow(label = "Application Version", value = BuildConfig.VERSION_NAME)
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
                         MetadataRow(label = "Container Rootfs", value = "Ubuntu 24.04 LTS (PRoot)")
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
@@ -407,6 +408,9 @@ fun AboutScreen(
                     }
                 }
             }
+
+            // Version History & Changelog Card
+            AboutChangelogSection()
 
             Spacer(modifier = Modifier.height(16.dp))
         }

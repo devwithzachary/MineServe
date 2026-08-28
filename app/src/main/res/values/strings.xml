@@ -236,6 +236,7 @@
     <string name="about_bug_title">Feedback &amp; Bug Reports</string>
     <string name="about_bug_text">MineServe is in active development. If you encounter bugs, missing features, or runtime errors, let us know on GitHub.</string>
     <string name="about_info_title">System &amp; Build Metadata</string>
+    <string name="about_changelog_title">Version History &amp; Changelog</string>
 
     <!-- Credits Screen -->
     <string name="credits_page_title">Software &amp; Open Source Credits</string>

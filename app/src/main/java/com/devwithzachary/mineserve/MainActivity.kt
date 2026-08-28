@@ -244,7 +244,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                         viewModel.startRootfsSetup()
                         currentScreen = Screen.Splash
                     },
-                    onBack = { currentScreen = Screen.Dashboard }
+                    onBack = { currentScreen = Screen.Dashboard },
+                    onAboutClick = { currentScreen = Screen.About }
                 )
             }
 

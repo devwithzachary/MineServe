@@ -2,6 +2,20 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.1.0] - 2026-08-28
+
+### ⚡ Interactive Console & Terminal Scrollback Enhancements
+- **Smooth Terminal Scrollback Navigation**: Drag up and down on the live terminal canvas to review historical Minecraft server startup logs and execution output with smooth scrolling.
+- **Scroll to Bottom Indicator**: Floating jump-to-bottom badge displaying the current scroll depth offset with 1-tap return to real-time logs.
+- **Native Touch Word Detection & Selection**: Long-press on any log output or command argument to automatically select word boundaries with tactile haptic feedback.
+- **Draggable Teardrop Selection Handles**: Fine-tune multi-line text selection ranges using interactive teardrop touch handles with live haptic tick feedback.
+- **Visual Character Highlighting**: High-contrast theme-aware text highlight overlays across single-line and multi-line selection bounding boxes.
+- **Floating Action Toolbar**: 1-tap floating toolbar supporting:
+  - **Copy**: Instantly copy selected log text to the Android system clipboard.
+  - **Select All**: Select the entire visible viewport buffer.
+  - **Share**: Export and share log selections directly to external apps via Android's share sheet.
+  - **Clear**: Dismiss the active selection overlay.
+
 ## [1.0.0] - 2026-08-26
 
 ### 🎮 Multi-Engine Minecraft Server Creation & Management
