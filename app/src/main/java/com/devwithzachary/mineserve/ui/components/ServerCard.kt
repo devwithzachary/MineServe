@@ -43,6 +43,8 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.ui.theme.DiamondCyan
+import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
@@ -115,38 +117,11 @@ fun ServerCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = "${server.type.displayName} • ${server.version} • Port ${server.port}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        if (tunnelState is TunnelState.Connected) {
-                            Surface(
-                                shape = RoundedCornerShape(4.dp),
-                                color = EmeraldDark.copy(alpha = 0.4f),
-                                border = BorderStroke(0.5.dp, EmeraldPrimary.copy(alpha = 0.5f))
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Default.Language, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(10.dp))
-                                    Spacer(modifier = Modifier.width(3.dp))
-                                    Text(
-                                        text = tunnelState.fullAddress,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = EmeraldLight,
-                                        fontSize = 9.sp
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    Text(
+                        text = "${server.type.displayName} • ${server.version} • Port ${server.port}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
 
                 // Status Badge
@@ -176,7 +151,48 @@ fun ServerCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // Public Online Tunnel Line (own line before RAM/CPU)
+            if (tunnelState is TunnelState.Connected || (tunnelState is TunnelState.Connecting && tunnelState.claimUrl != null)) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = if (tunnelState is TunnelState.Connected) EmeraldDark.copy(alpha = 0.25f) else DiamondCyan.copy(alpha = 0.15f),
+                    border = BorderStroke(0.5.dp, if (tunnelState is TunnelState.Connected) EmeraldPrimary.copy(alpha = 0.4f) else DiamondCyan.copy(alpha = 0.4f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            tint = if (tunnelState is TunnelState.Connected) EmeraldLight else DiamondLight,
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Public Link:",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Slate400,
+                            fontSize = 11.sp
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (tunnelState is TunnelState.Connected) tunnelState.fullAddress else "Setup needed (tap server to view)",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (tunnelState is TunnelState.Connected) EmeraldLight else DiamondLight,
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Body: Live metrics or Specs with Per-Server Storage
             if (isRunning && metrics != null) {
