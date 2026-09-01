@@ -117,6 +117,7 @@
     <!-- Server Detail Screen & Tabs -->
     <string name="tab_console">Console</string>
     <string name="tab_performance">Performance</string>
+    <string name="tab_files">Files</string>
     <string name="tab_settings">Settings</string>
     <string name="tab_players">Players</string>
     <string name="tab_backups">Backups</string>

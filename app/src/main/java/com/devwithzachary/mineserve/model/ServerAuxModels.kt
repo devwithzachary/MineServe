@@ -69,3 +69,79 @@ data class PluginModEntry(
             }
         }
 }
+
+@Serializable
+data class FileEntry(
+    val name: String,
+    val relativePath: String,
+    val isDirectory: Boolean,
+    val sizeBytes: Long = 0L,
+    val lastModified: Long = 0L,
+    val extension: String = "",
+    val isEditable: Boolean = false,
+    val isLog: Boolean = false,
+    val isArchive: Boolean = false,
+    val isWorldRegion: Boolean = false
+) {
+    val formattedSize: String
+        get() {
+            if (isDirectory) return "Folder"
+            val mb = sizeBytes / (1024.0 * 1024.0)
+            return if (mb >= 1024.0) {
+                String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
+            } else if (mb >= 0.1) {
+                String.format(java.util.Locale.US, "%.1f MB", mb)
+            } else {
+                val kb = sizeBytes / 1024.0
+                String.format(java.util.Locale.US, "%.1f KB", kb)
+            }
+        }
+}
+
+enum class CrashSeverity {
+    CRITICAL,
+    WARNING,
+    INFO
+}
+
+enum class CrashIssueType {
+    INCOMPATIBLE_JAVA_VERSION,
+    OUT_OF_MEMORY,
+    MOD_CONFLICT_OR_MISSING_DEP,
+    PORT_ALREADY_IN_USE,
+    CORRUPTED_WORLD_CHUNK,
+    EULA_NOT_ACCEPTED,
+    SYNTAX_ERROR_CONFIG,
+    UNKNOWN_CRASH
+}
+
+enum class QuickFixType {
+    ACCEPT_EULA,
+    CHANGE_JAVA_VERSION,
+    INCREASE_RAM,
+    CHANGE_PORT,
+    DELETE_FILE,
+    OPEN_FILE_EDITOR
+}
+
+@Serializable
+data class QuickFixAction(
+    val label: String,
+    val description: String,
+    val actionType: QuickFixType,
+    val payload: String = ""
+)
+
+@Serializable
+data class CrashDiagnosticReport(
+    val title: String,
+    val severity: CrashSeverity,
+    val issueType: CrashIssueType,
+    val summary: String,
+    val explanation: String,
+    val suggestedFixes: List<QuickFixAction>,
+    val logSnippet: String,
+    val sourceFile: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
+

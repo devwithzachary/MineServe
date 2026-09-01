@@ -374,6 +374,111 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return serverRepository.listEditableConfigFiles(serverId)
     }
 
+    suspend fun listDirectory(serverId: String, relativePath: String = ""): List<com.devwithzachary.mineserve.model.FileEntry> {
+        return serverRepository.listDirectory(serverId, relativePath)
+    }
+
+    suspend fun createFile(serverId: String, relativePath: String, fileName: String, content: String = ""): Boolean {
+        val success = serverRepository.createFile(serverId, relativePath, fileName, content)
+        if (success) loadServerDetails(serverId)
+        return success
+    }
+
+    suspend fun createDirectory(serverId: String, relativePath: String, dirName: String): Boolean {
+        val success = serverRepository.createDirectory(serverId, relativePath, dirName)
+        if (success) loadServerDetails(serverId)
+        return success
+    }
+
+    suspend fun deleteFile(serverId: String, relativePath: String): Boolean {
+        val success = serverRepository.deleteFileOrDirectory(serverId, relativePath)
+        if (success) loadServerDetails(serverId)
+        return success
+    }
+
+    suspend fun renameFile(serverId: String, relativePath: String, newName: String): Boolean {
+        val success = serverRepository.renameFileOrDirectory(serverId, relativePath, newName)
+        if (success) loadServerDetails(serverId)
+        return success
+    }
+
+    suspend fun duplicateFile(serverId: String, relativePath: String): Boolean {
+        val success = serverRepository.duplicateFile(serverId, relativePath)
+        if (success) loadServerDetails(serverId)
+        return success
+    }
+
+    suspend fun readFile(serverId: String, relativePath: String): String {
+        return serverRepository.readFile(serverId, relativePath)
+    }
+
+    suspend fun writeFile(serverId: String, relativePath: String, content: String): Boolean {
+        val success = serverRepository.writeFile(serverId, relativePath, content)
+        if (success && (relativePath == "server.properties" || relativePath.endsWith("/server.properties"))) {
+            loadServerDetails(serverId)
+        }
+        return success
+    }
+
+    suspend fun importFile(serverId: String, relativePath: String, uri: android.net.Uri): Boolean {
+        val success = serverRepository.importFile(serverId, relativePath, uri)
+        if (success) loadServerDetails(serverId)
+        return success
+    }
+
+    suspend fun exportFile(serverId: String, relativePath: String): Boolean {
+        return serverRepository.exportFileToDownloads(serverId, relativePath)
+    }
+
+    suspend fun searchFiles(serverId: String, query: String): List<com.devwithzachary.mineserve.model.FileEntry> {
+        return serverRepository.searchFiles(serverId, query)
+    }
+
+    suspend fun analyzeCrash(serverId: String): com.devwithzachary.mineserve.model.CrashDiagnosticReport? {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        return com.devwithzachary.mineserve.engine.CrashLogAnalyzer.analyzeServer(serverDir)
+    }
+
+    suspend fun applyQuickFix(serverId: String, action: com.devwithzachary.mineserve.model.QuickFixAction): Boolean {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val currentServer = servers.value.firstOrNull { it.id == serverId } ?: return false
+
+        return when (action.actionType) {
+            com.devwithzachary.mineserve.model.QuickFixType.ACCEPT_EULA -> {
+                val eulaFile = File(serverDir, "eula.txt")
+                try {
+                    eulaFile.writeText("eula=true\n# Accepted via MineServe Quick Fix\n")
+                    true
+                } catch (e: Exception) {
+                    false
+                }
+            }
+            com.devwithzachary.mineserve.model.QuickFixType.CHANGE_JAVA_VERSION -> {
+                val newVer = action.payload.toIntOrNull() ?: 21
+                updateServer(currentServer.copy(javaVersion = newVer))
+                true
+            }
+            com.devwithzachary.mineserve.model.QuickFixType.INCREASE_RAM -> {
+                val newRam = action.payload.toIntOrNull() ?: 3072
+                updateServer(currentServer.copy(allocatedRamMb = newRam))
+                true
+            }
+            com.devwithzachary.mineserve.model.QuickFixType.CHANGE_PORT -> {
+                val usedPorts = servers.value.map { it.port }.toSet()
+                var candidate = 25565
+                while (usedPorts.contains(candidate)) candidate++
+                updateServer(currentServer.copy(port = candidate))
+                true
+            }
+            com.devwithzachary.mineserve.model.QuickFixType.DELETE_FILE -> {
+                if (action.payload.isNotBlank()) {
+                    deleteFile(serverId, action.payload)
+                } else false
+            }
+            com.devwithzachary.mineserve.model.QuickFixType.OPEN_FILE_EDITOR -> true
+        }
+    }
+
     fun createBackup(serverId: String, isWorldOnly: Boolean, onResult: (Boolean) -> Unit = {}) {
         viewModelScope.launch {
             val serverDir = serverRepository.getServerDirectory(serverId)

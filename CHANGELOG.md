@@ -4,6 +4,15 @@ All notable changes to the MineServe project will be documented in this file.
 
 ## [1.2.0] - 2026-09-01
 
+### 📁 Full In-App File Explorer & Advanced Config Editor
+- **Interactive File Explorer**: Full directory navigation for `/servers/{id}/` with breadcrumb path bar, file search, and operations for creating, deleting, renaming, duplicating, and uploading/importing files and folders.
+- **Syntax-Highlighted Code Editor**: Built-in monospace code editor with real-time syntax highlighting for `.yml`, `.json`, `.properties`, `.toml`, and config files.
+- **Editor Productivity Tools**: Integrated line numbering gutter, search & replace bar with match counter, and undo/redo history stack.
+
+### 🩺 Crash Log Analyzer & Diagnostic Engine
+- **Automated Root Cause Detection**: Automatically parses `crash-reports/crash-*.txt` and `logs/latest.log` to identify exact crash reasons (incompatible Java versions, out of memory / OOM, mod ID conflicts or missing dependencies, port already in use, corrupted chunks, unaccepted EULA).
+- **1-Tap Quick Fix Actions**: Interactive diagnostic sheet providing one-tap solutions to accept the EULA, switch Java runtimes, allocate more RAM, or auto-assign open ports.
+
 ### ⚡ Real-Time TPS, Engine Health & Local Timezone
 - **Local Timezone Console Synchronization**: Synced the container environment (`/etc/timezone`, `/etc/localtime`, `TZ` environment variable) and JVM system properties (`-Duser.timezone`) with the host device's local timezone so Minecraft server logs and console timestamps match local time instead of UTC.
 - **Dynamic TPS & MSPT Calculation**: Replaced static TPS metrics with live game engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive console overload detection (`Can't keep up!`, `/tps`, `/tick query`).

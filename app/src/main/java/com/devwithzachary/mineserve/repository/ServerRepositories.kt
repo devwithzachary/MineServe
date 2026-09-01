@@ -200,6 +200,245 @@ class ServerRepository(
         }
     }
 
+    suspend fun listDirectory(serverId: String, relativePath: String = ""): List<com.devwithzachary.mineserve.model.FileEntry> = withContext(Dispatchers.IO) {
+        val serverDir = File(serversDir, serverId)
+        val targetDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+        if (!targetDir.exists() || !targetDir.isDirectory) return@withContext emptyList()
+
+        val editableExts = setOf("properties", "txt", "json", "yml", "yaml", "toml", "cfg", "conf", "sh", "bat", "log", "mcmeta", "lang", "csv", "xml", "ini", "sk")
+        val logExts = setOf("log", "txt")
+        val archiveExts = setOf("zip", "tar", "gz", "tgz", "jar", "7z")
+        val worldExts = setOf("mca", "mcr", "dat", "dat_old")
+
+        val files = targetDir.listFiles() ?: return@withContext emptyList()
+        val entries = files.map { file ->
+            val relPath = if (relativePath.isBlank()) file.name else "$relativePath/${file.name}"
+            val ext = file.extension.lowercase()
+            com.devwithzachary.mineserve.model.FileEntry(
+                name = file.name,
+                relativePath = relPath,
+                isDirectory = file.isDirectory,
+                sizeBytes = if (file.isDirectory) 0L else file.length(),
+                lastModified = file.lastModified(),
+                extension = ext,
+                isEditable = !file.isDirectory && editableExts.contains(ext),
+                isLog = !file.isDirectory && (logExts.contains(ext) || file.name.contains("log")),
+                isArchive = !file.isDirectory && archiveExts.contains(ext),
+                isWorldRegion = !file.isDirectory && worldExts.contains(ext)
+            )
+        }
+
+        // Sort: Directories first, then files alphabetically
+        entries.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+    }
+
+    suspend fun createFile(serverId: String, relativePath: String, fileName: String, content: String = ""): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val parentDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+            if (!parentDir.exists()) parentDir.mkdirs()
+            val newFile = File(parentDir, fileName)
+            if (newFile.exists()) return@withContext false
+            newFile.writeText(content)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed creating file $fileName in $serverId/$relativePath", e)
+            false
+        }
+    }
+
+    suspend fun createDirectory(serverId: String, relativePath: String, dirName: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val parentDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+            val newDir = File(parentDir, dirName)
+            newDir.mkdirs()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed creating directory $dirName in $serverId/$relativePath", e)
+            false
+        }
+    }
+
+    suspend fun deleteFileOrDirectory(serverId: String, relativePath: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val target = File(serverDir, relativePath)
+            if (!target.exists()) return@withContext false
+            if (target.isDirectory) {
+                target.deleteRecursively()
+            } else {
+                target.delete()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed deleting $relativePath in $serverId", e)
+            false
+        }
+    }
+
+    suspend fun renameFileOrDirectory(serverId: String, relativePath: String, newName: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val target = File(serverDir, relativePath)
+            if (!target.exists()) return@withContext false
+            val destination = File(target.parentFile, newName)
+            target.renameTo(destination)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed renaming $relativePath to $newName in $serverId", e)
+            false
+        }
+    }
+
+    suspend fun duplicateFile(serverId: String, relativePath: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val source = File(serverDir, relativePath)
+            if (!source.exists() || source.isDirectory) return@withContext false
+            val parent = source.parentFile ?: serverDir
+            val nameWithoutExt = source.nameWithoutExtension
+            val ext = if (source.extension.isNotBlank()) ".${source.extension}" else ""
+            var copyIndex = 1
+            var destFile = File(parent, "${nameWithoutExt}_copy$ext")
+            while (destFile.exists()) {
+                copyIndex++
+                destFile = File(parent, "${nameWithoutExt}_copy$copyIndex$ext")
+            }
+            source.copyTo(destFile)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed duplicating $relativePath in $serverId", e)
+            false
+        }
+    }
+
+    suspend fun readFile(serverId: String, relativePath: String): String = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val target = File(serverDir, relativePath)
+            if (target.exists() && target.isFile) target.readText() else ""
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed reading $relativePath in $serverId", e)
+            ""
+        }
+    }
+
+    suspend fun writeFile(serverId: String, relativePath: String, content: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val target = File(serverDir, relativePath)
+            target.parentFile?.mkdirs()
+            target.writeText(content)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed writing $relativePath in $serverId", e)
+            false
+        }
+    }
+
+    suspend fun importFile(serverId: String, relativePath: String, sourceUri: Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val targetDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+            if (!targetDir.exists()) targetDir.mkdirs()
+
+            var fileName = "imported_file"
+            context.contentResolver.query(sourceUri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+            }
+
+            val destFile = File(targetDir, fileName)
+            context.contentResolver.openInputStream(sourceUri)?.use { input ->
+                FileOutputStream(destFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            destFile.exists() && destFile.length() > 0L
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed importing file from URI to $serverId/$relativePath", e)
+            false
+        }
+    }
+
+    suspend fun exportFileToDownloads(serverId: String, relativePath: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val serverDir = File(serversDir, serverId)
+            val sourceFile = File(serverDir, relativePath)
+            if (!sourceFile.exists() || sourceFile.isDirectory) return@withContext false
+
+            val fileName = sourceFile.name
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val values = ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                    put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/MineServe")
+                }
+                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    ?: return@withContext false
+                context.contentResolver.openOutputStream(uri)?.use { out ->
+                    FileInputStream(sourceFile).use { input ->
+                        input.copyTo(out)
+                    }
+                }
+                true
+            } else {
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                val targetFolder = File(downloadsDir, "MineServe").apply { if (!exists()) mkdirs() }
+                val destFile = File(targetFolder, fileName)
+                sourceFile.copyTo(destFile, overwrite = true)
+                true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed exporting $relativePath to downloads", e)
+            false
+        }
+    }
+
+    suspend fun searchFiles(serverId: String, query: String): List<com.devwithzachary.mineserve.model.FileEntry> = withContext(Dispatchers.IO) {
+        if (query.isBlank()) return@withContext emptyList()
+        val serverDir = File(serversDir, serverId)
+        if (!serverDir.exists()) return@withContext emptyList()
+
+        val editableExts = setOf("properties", "txt", "json", "yml", "yaml", "toml", "cfg", "conf", "sh", "bat", "log", "mcmeta", "lang", "csv", "xml", "ini", "sk")
+        val logExts = setOf("log", "txt")
+        val archiveExts = setOf("zip", "tar", "gz", "tgz", "jar", "7z")
+        val worldExts = setOf("mca", "mcr", "dat", "dat_old")
+        val q = query.lowercase()
+
+        val results = mutableListOf<com.devwithzachary.mineserve.model.FileEntry>()
+        fun searchDir(dir: File, currentRelPath: String) {
+            val files = dir.listFiles() ?: return
+            for (f in files) {
+                val rel = if (currentRelPath.isBlank()) f.name else "$currentRelPath/${f.name}"
+                if (f.name.lowercase().contains(q)) {
+                    val ext = f.extension.lowercase()
+                    results.add(
+                        com.devwithzachary.mineserve.model.FileEntry(
+                            name = f.name,
+                            relativePath = rel,
+                            isDirectory = f.isDirectory,
+                            sizeBytes = if (f.isDirectory) 0L else f.length(),
+                            lastModified = f.lastModified(),
+                            extension = ext,
+                            isEditable = !f.isDirectory && editableExts.contains(ext),
+                            isLog = !f.isDirectory && (logExts.contains(ext) || f.name.contains("log")),
+                            isArchive = !f.isDirectory && archiveExts.contains(ext),
+                            isWorldRegion = !f.isDirectory && worldExts.contains(ext)
+                        )
+                    )
+                }
+                if (f.isDirectory && results.size < 100) {
+                    searchDir(f, rel)
+                }
+            }
+        }
+        searchDir(serverDir, "")
+        results.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+    }
+
     fun getServerDirectory(serverId: String): File {
         return File(serversDir, serverId).apply { if (!exists()) mkdirs() }
     }
