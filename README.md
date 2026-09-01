@@ -1,5 +1,6 @@
 # MineServe
 
+[![Google Play](https://img.shields.io/badge/Google_Play-Get%20it%20on%20Google%20Play-414141?logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.devwithzachary.mineserve)
 [![Discord Community](https://img.shields.io/badge/Discord-Join%20Community-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/csGrrg5MGF)
 [![Android MinSDK](https://img.shields.io/badge/Min%20SDK-26%20%28Android%208.0%2B%29-brightgreen.svg)](https://developer.android.com/about/versions/oreo)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
@@ -11,6 +12,12 @@
 **MineServe** is an open-source Android application designed to download, configure, run, and manage full-featured dedicated Minecraft servers natively on Android devices **without requiring root permissions**.
 
 Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-terminal**, multi-version **OpenJDK runtime isolation (Java 8, 17, 21, 25)**, live telemetry monitoring, and a modern **Jetpack Compose** interface, MineServe turns your smartphone or tablet into a portable, high-performance Minecraft dedicated server host.
+
+<p align="center">
+  <a href="https://play.google.com/store/apps/details?id=com.devwithzachary.mineserve">
+    <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" height="80">
+  </a>
+</p>
 
 > [!NOTE]
 > **Active Development & Bug Reporting**: MineServe is under active development. If you discover any bugs, compatibility issues, or have feature suggestions, please [submit an issue on GitHub](https://github.com/devwithzachary/MineServe/issues)!
@@ -125,6 +132,13 @@ MineServe is built on the shoulders of incredible open-source projects:
 | **Ubuntu Base** | Official root filesystem tarball providing the Linux container environment. | [Canonical Ltd.](https://cdimage.ubuntu.com/ubuntu-base/) / Canonical |
 | **Modrinth API** | Public REST API for discovering and downloading Minecraft plugins and mods. | [Modrinth](https://modrinth.com/) / AGPL-3.0 |
 | **OkHttp & Coil** | High-performance HTTP client and image loading engine for Compose. | [Square](https://square.github.io/okhttp) & [Coil](https://coil-kt.github.io/coil) / Apache-2.0 |
+
+---
+
+## 📥 Download & Installation
+
+* **Google Play Store**: Install directly with automatic updates from [Google Play](https://play.google.com/store/apps/details?id=com.devwithzachary.mineserve).
+* **GitHub Releases**: Download standalone signed APK packages directly from [GitHub Releases](https://github.com/devwithzachary/MineServe/releases).
 
 ---
 

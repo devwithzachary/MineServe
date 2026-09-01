@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.VolunteerActivism
 import com.devwithzachary.mineserve.ui.screens.credits.PATREON_SUPPORTERS
 import androidx.compose.material3.Button
@@ -80,6 +81,7 @@ fun AboutScreen(
 ) {
     val uriHandler = LocalUriHandler.current
     val websiteUrl = stringResource(R.string.about_website_url)
+    val playstoreUrl = stringResource(R.string.about_playstore_url)
     val discordUrl = stringResource(R.string.about_discord_url)
     val patreonUrl = stringResource(R.string.credits_patreon_url)
     val buymeacoffeeUrl = stringResource(R.string.credits_buymeacoffee_url)
@@ -422,6 +424,18 @@ fun AboutScreen(
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Repository", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
+                    }
+
+                    Button(
+                        onClick = { uriHandler.openUri(playstoreUrl) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                        border = BorderStroke(1.dp, Slate700),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Star, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.about_rate_playstore), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
 
                     Button(
