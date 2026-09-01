@@ -197,9 +197,11 @@ class ServerProcessManager private constructor(
 
         val javaBin = javaRuntimeManager.getJavaExecutablePath(server.javaVersion)
         val memArg = "-Xms512M -Xmx${server.allocatedRamMb}M"
-        val flags = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -Dmineserve.server_id=${server.id} -Dfile.encoding=UTF-8 -Dterminal.jline=false -Dterminal.ansi=true -Duser.name=mineserve -Duser.home=/home/mineserve"
+        val deviceTz = try { java.util.TimeZone.getDefault().id.takeIf { it.isNotBlank() } ?: "UTC" } catch (_: Exception) { "UTC" }
+        val flags = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -Dmineserve.server_id=${server.id} -Dfile.encoding=UTF-8 -Duser.timezone=$deviceTz -Dterminal.jline=false -Dterminal.ansi=true -Duser.name=mineserve -Duser.home=/home/mineserve"
 
         val launchCommand = buildString {
+            append("export TZ='$deviceTz'; ")
             append("export PATH=\"$(dirname $javaBin):\$PATH\"; ")
             if (server.type == ServerType.NEOFORGE || jarName.contains("installer")) {
                 append("if [ ! -f run.sh ]; then ")

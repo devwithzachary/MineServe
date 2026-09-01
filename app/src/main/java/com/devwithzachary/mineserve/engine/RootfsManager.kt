@@ -222,6 +222,20 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                 hosts.writeText("127.0.0.1 localhost mineserve\n::1 localhost ip6-localhost ip6-loopback\n")
             }
 
+            // Timezone configuration (sync with host device local timezone)
+            val deviceTz = try { java.util.TimeZone.getDefault().id.takeIf { it.isNotBlank() } ?: "UTC" } catch (_: Exception) { "UTC" }
+            val timezoneFile = File(etcDir, "timezone")
+            timezoneFile.writeText("$deviceTz\n")
+
+            val zoneinfoFile = File(rootfsDir, "usr/share/zoneinfo/$deviceTz")
+            val localtimeFile = File(etcDir, "localtime")
+            if (zoneinfoFile.exists()) {
+                try {
+                    localtimeFile.delete()
+                    zoneinfoFile.copyTo(localtimeFile, overwrite = true)
+                } catch (_: Exception) {}
+            }
+
             // User & Group configuration for mineserve unprivileged user (UID/GID 1000) and _apt user
             val passwdFile = File(etcDir, "passwd")
             if (passwdFile.exists()) {

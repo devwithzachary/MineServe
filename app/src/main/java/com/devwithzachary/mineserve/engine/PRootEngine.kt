@@ -293,6 +293,7 @@ class PRootEngine(val context: Context) {
                 "/system/bin/sh"
             }
             val userHomeDir = if (targetUser != "root") "/home/$targetUser" else config.workingDir
+            val deviceTz = try { java.util.TimeZone.getDefault().id.takeIf { it.isNotBlank() } ?: "UTC" } catch (_: Exception) { "UTC" }
             val chrootCmd = buildString {
                 append("export PROOT_TMP_DIR='${config.tmpDir.absolutePath}'; ")
                 append("export PROOT_NO_SECCOMP='1'; ")
@@ -301,6 +302,7 @@ class PRootEngine(val context: Context) {
                 append("export PATH='$hostFallbackPath'; ")
                 append("export TERM='xterm-256color'; ")
                 append("export LANG='C.UTF-8'; ")
+                append("export TZ='$deviceTz'; ")
                 append("export TMPDIR='/tmp'; ")
                 append("export TMP='/tmp'; ")
                 append("cd '${config.rootfsDir.absolutePath}' 2>/dev/null; ")
@@ -328,6 +330,7 @@ class PRootEngine(val context: Context) {
         val guestPath = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
         val targetUser = loginUser?.takeIf { it.isNotBlank() } ?: "root"
         val userHome = if (targetUser == "root") "/root" else "/home/$targetUser"
+        val deviceTz = try { java.util.TimeZone.getDefault().id.takeIf { it.isNotBlank() } ?: "UTC" } catch (_: Exception) { "UTC" }
 
         val env = mutableMapOf(
             "LD_LIBRARY_PATH" to nativeLibDir,
@@ -344,6 +347,7 @@ class PRootEngine(val context: Context) {
             "TERM" to "xterm-256color",
             "COLORTERM" to "truecolor",
             "LANG" to "C.UTF-8",
+            "TZ" to deviceTz,
             "TMPDIR" to "/tmp",
             "TMP" to "/tmp"
         )

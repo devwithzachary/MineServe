@@ -4,9 +4,10 @@ All notable changes to the MineServe project will be documented in this file.
 
 ## [1.2.0] - 2026-09-01
 
-### ⚡ Real-Time TPS & Engine Health Diagnostics
+### ⚡ Real-Time TPS, Engine Health & Local Timezone
+- **Local Timezone Console Synchronization**: Synced the container environment (`/etc/timezone`, `/etc/localtime`, `TZ` environment variable) and JVM system properties (`-Duser.timezone`) with the host device's local timezone so Minecraft server logs and console timestamps match local time instead of UTC.
 - **Dynamic TPS & MSPT Calculation**: Replaced static TPS metrics with live game engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive console overload detection (`Can't keep up!`, `/tps`, `/tick query`).
-- **Engine Health & Tick Rate Diagnostics Card**: Added dedicated diagnostics card on the Server Performance tab with live TPS gauge, MSPT processing time, tick budget headroom, and logged overload warnings.
+- **Engine Health Diagnostics Card**: Added dedicated diagnostics card on the Server Performance tab with live TPS gauge, MSPT processing time, tick budget headroom, and logged overload warnings.
 
 ### 🌐 Open Source Tunneling Credits & Recognition
 - **In-App Tunneling Credits Directory**: Added dedicated **Tunneling** category to the Credits screen recognizing **bore (bore.pub)** and **Playit.gg** for powering zero-port-forwarding public multiplayer.
