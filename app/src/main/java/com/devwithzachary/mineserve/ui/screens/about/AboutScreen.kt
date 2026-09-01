@@ -1,6 +1,7 @@
 package com.devwithzachary.mineserve.ui.screens.about
 
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import com.devwithzachary.mineserve.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -88,6 +89,8 @@ fun AboutScreen(
     val githubIssuesUrl = stringResource(R.string.about_github_issues_url)
     val githubRepoUrl = stringResource(R.string.about_github_repo_url)
     val privacyUrl = stringResource(R.string.about_privacy_url)
+
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {

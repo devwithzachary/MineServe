@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.ui.screens.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -76,6 +77,8 @@ fun AppSettingsScreen(
 ) {
     var keepScreenAwake by remember { mutableStateOf(true) }
     var installingJavaVer by remember { mutableStateOf<Int?>(null) }
+
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {

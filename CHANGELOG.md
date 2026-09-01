@@ -9,6 +9,9 @@ All notable changes to the MineServe project will be documented in this file.
 - **Dynamic TPS & MSPT Calculation**: Replaced static TPS metrics with live game engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive console overload detection (`Can't keep up!`, `/tps`, `/tick query`).
 - **Engine Health Diagnostics Card**: Added dedicated diagnostics card on the Server Performance tab with live TPS gauge, MSPT processing time, tick budget headroom, and logged overload warnings.
 
+### 🧭 Navigation & Gesture Usability
+- **System Back Gesture Navigation**: Integrated Compose `BackHandler` and backstack tracking across all app views (About, Credits, Settings, Server Details, and Create Server Wizard). Performing the edge-swipe back gesture or tapping hardware back now smoothly navigates back to previous screens instead of exiting the app.
+
 ### 🌐 Open Source Tunneling Credits & Recognition
 - **In-App Tunneling Credits Directory**: Added dedicated **Tunneling** category to the Credits screen recognizing **bore (bore.pub)** and **Playit.gg** for powering zero-port-forwarding public multiplayer.
 - **Open Source Attribution**: Updated README documentation and in-app software directory with license metadata, official links, and architectural descriptions for all integrated tunneling proxies.

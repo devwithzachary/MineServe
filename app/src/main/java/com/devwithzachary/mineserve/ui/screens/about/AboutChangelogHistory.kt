@@ -41,6 +41,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         date = "September 1, 2026",
         initialExpanded = true,
         highlights = listOf(
+            "System Back Gesture Navigation: Integrated BackHandler and backstack management across all screens (About, Credits, Settings, Server Details, Create Server Wizard) so edge swipes return to previous views instead of closing the app.",
             "Local Timezone Console Synchronization: Synced container environment (/etc/timezone, /etc/localtime, TZ variable) and JVM system properties with the host device's local timezone for accurate console timestamps.",
             "Real-Time TPS & Engine Health Diagnostics: Replaced static TPS with live engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive overload detection.",
             "Performance Tab TPS Diagnostics Card: Added dedicated diagnostics card with live TPS gauge, MSPT processing time, tick budget headroom, and overload warning tracking.",

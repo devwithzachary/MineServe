@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.ui.screens.credits
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -252,6 +253,8 @@ fun CreditsScreen(
             SOFTWARE_CREDITS.filter { it.category == selectedCategory }
         }
     }
+
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {

@@ -3,6 +3,7 @@ package com.devwithzachary.mineserve.ui.screens.detail
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -135,6 +136,8 @@ fun ServerDetailScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
+
+    BackHandler(onBack = onBack)
 
     val showPluginsOrModsTab = server.type.supportsPlugins || server.type.supportsMods
     val pluginModTabName = when {
