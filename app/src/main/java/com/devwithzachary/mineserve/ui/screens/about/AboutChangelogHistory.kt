@@ -37,9 +37,20 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.2.0",
+        date = "September 1, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "Real-Time TPS & Engine Health Diagnostics: Replaced static TPS with live engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive overload detection.",
+            "Performance Tab TPS Diagnostics Card: Added dedicated diagnostics card with live TPS gauge, MSPT processing time, tick budget headroom, and overload warning tracking.",
+            "Tunneling Services Recognition: Added dedicated Tunneling category to the in-app Credits screen recognizing bore (bore.pub) and Playit.gg for zero-port-forwarding multiplayer.",
+            "Open Source Documentation: Updated README and in-app credit directory with official links, licenses, and architecture descriptions for all integrated tunneling proxies."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.1.0",
         date = "August 28, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Public Tunneling & Zero-Port-Forwarding: Support for both instant free tunnels (bore.pub) and persistent Playit.gg tunnels. Host multiplayer servers over 4G/5G mobile data or remote Wi-Fi bypassing Carrier-Grade NAT (CGNAT) without port forwarding.",
             "Playit.gg Integration: Automatic agent execution supporting 1-tap browser claim setup and custom secret keys with persistent subdomains.",

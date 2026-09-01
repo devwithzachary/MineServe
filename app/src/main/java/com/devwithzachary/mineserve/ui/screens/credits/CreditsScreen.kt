@@ -92,6 +92,7 @@ enum class CreditCategory(val label: String) {
     ALL("All"),
     SERVERS("Server Software"),
     SYSTEM("Runtime & Linux"),
+    TUNNELING("Tunneling"),
     LIBRARIES("APIs & Libraries")
 }
 
@@ -184,6 +185,22 @@ val SOFTWARE_CREDITS: List<SoftwareCredit> = listOf(
         url = "https://proot-me.github.io",
         license = "GPL-2.0",
         tag = "Rootless Sandbox"
+    ),
+    SoftwareCredit(
+        name = "bore (bore.pub)",
+        category = CreditCategory.TUNNELING,
+        description = "Modern, simple TCP tunnel that exposes local Minecraft server ports to the Internet with zero configuration.",
+        url = "https://github.com/ekzhang/bore",
+        license = "MIT",
+        tag = "TCP Tunnel"
+    ),
+    SoftwareCredit(
+        name = "Playit.gg",
+        category = CreditCategory.TUNNELING,
+        description = "Global tunneling proxy network enabling persistent subdomains and zero-port-forwarding multiplayer.",
+        url = "https://playit.gg",
+        license = "MIT / AGPL-3.0",
+        tag = "Global Proxy"
     ),
     SoftwareCredit(
         name = "Modrinth",

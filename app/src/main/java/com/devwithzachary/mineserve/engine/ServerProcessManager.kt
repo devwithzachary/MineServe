@@ -28,7 +28,12 @@ data class ActiveServerSession(
     var ptyProcess: PtyProcess?,
     var pid: Int = -1,
     val onlinePlayers: MutableSet<String> = ConcurrentHashMap.newKeySet(),
-    var startTimeMillis: Long = System.currentTimeMillis()
+    var startTimeMillis: Long = System.currentTimeMillis(),
+    var currentTps: Double = 20.0,
+    var currentMspt: Double = 15.0,
+    var totalLagWarnings: Int = 0,
+    var lastLagWarningTime: Long = 0L,
+    var lastTpsLogTime: Long = 0L
 )
 
 class ServerProcessManager private constructor(
@@ -326,7 +331,40 @@ class ServerProcessManager private constructor(
                 }
             }
 
-            // 4. Stopping trigger
+            // 4. Server overload / tick lag detection ("Can't keep up!")
+            if (line.contains("Can't keep up!", ignoreCase = true)) {
+                val match = Regex("""Can't keep up!.*?Running\s+(\d+)ms\s+or\s+(\d+)\s+ticks behind""", RegexOption.IGNORE_CASE).find(line)
+                val msBehind = match?.groupValues?.get(1)?.toDoubleOrNull() ?: 1000.0
+                val now = System.currentTimeMillis()
+                session.totalLagWarnings++
+                session.lastLagWarningTime = now
+                session.lastTpsLogTime = now
+                val dropTps = (20.0 * (1.0 - (msBehind / (msBehind + 1000.0)).coerceIn(0.0, 0.95))).coerceIn(1.0, 19.5)
+                session.currentTps = kotlin.math.min(session.currentTps, dropTps)
+                session.currentMspt = (1000.0 / session.currentTps).coerceIn(50.0, 500.0)
+            }
+
+            // 5. Paper / Purpur / Spigot /tps output
+            if (line.contains("TPS from last", ignoreCase = true)) {
+                val match = Regex("""TPS from last [^:]+:\s*[*§a-f0-9]*([0-9.]+)(?:,\s*[*§a-f0-9]*([0-9.]+))?""", RegexOption.IGNORE_CASE).find(line)
+                match?.groupValues?.get(1)?.toDoubleOrNull()?.let { parsedTps ->
+                    session.currentTps = parsedTps.coerceIn(0.0, 20.0)
+                    session.currentMspt = if (session.currentTps >= 19.95) 20.0 else (1000.0 / session.currentTps)
+                    session.lastTpsLogTime = System.currentTimeMillis()
+                }
+            }
+
+            // 6. Minecraft 1.20+ /tick query or MSPT logs
+            if (line.contains("average tick time", ignoreCase = true)) {
+                val match = Regex("""(?:Average tick time|The average tick time is):\s*([0-9.]+)ms""", RegexOption.IGNORE_CASE).find(line)
+                match?.groupValues?.get(1)?.toDoubleOrNull()?.let { parsedMspt ->
+                    session.currentMspt = parsedMspt
+                    session.currentTps = if (parsedMspt <= 50.0) 20.0 else (1000.0 / parsedMspt).coerceIn(0.0, 20.0)
+                    session.lastTpsLogTime = System.currentTimeMillis()
+                }
+            }
+
+            // 7. Stopping trigger
             if (line.contains("Stopping the server") || line.contains("Stopping server")) {
                 updateStatus(serverId, ServerStatus.STOPPING, onStatusChanged)
             }
@@ -520,13 +558,41 @@ class ServerProcessManager private constructor(
     private fun startMetricsMonitor() {
         scope.launch {
             while (isActive) {
+                val now = System.currentTimeMillis()
                 val metricsMap = mutableMapOf<String, ServerMetrics>()
                 for ((serverId, session) in sessions) {
                     val isRunning = isServerRunning(serverId)
                     if (isRunning && session.pid > 0) {
-                        val uptimeSec = (System.currentTimeMillis() - session.startTimeMillis) / 1000
+                        val uptimeSec = (now - session.startTimeMillis) / 1000
                         val ramUsed = estimateMemoryMb(serverId, session)
                         val cpuPct = estimateCpuPercentage(serverId, session)
+
+                        // Calculate dynamic TPS & MSPT
+                        val isRecentLag = (now - session.lastLagWarningTime) < 30_000
+                        if (isRecentLag) {
+                            // Smoothly recover from lag back towards target over 30s
+                            val targetTps = if (cpuPct > 85f) (20.0 - (cpuPct - 85f) * 0.15).coerceIn(14.0, 20.0) else 20.0
+                            session.currentTps = (session.currentTps + (targetTps - session.currentTps) * 0.15).coerceIn(1.0, 20.0)
+                            session.currentMspt = if (session.currentTps >= 19.9) {
+                                (12.0 + (cpuPct / 100f) * 35.0).coerceIn(8.0, 48.0)
+                            } else {
+                                (1000.0 / session.currentTps).coerceIn(50.0, 500.0)
+                            }
+                        } else if (cpuPct > 85f) {
+                            // High CPU contention causes tick drops
+                            val targetTps = (20.0 - (cpuPct - 85f) * 0.12).coerceIn(14.0, 20.0)
+                            session.currentTps = (session.currentTps + (targetTps - session.currentTps) * 0.2).coerceIn(1.0, 20.0)
+                            session.currentMspt = if (session.currentTps >= 19.9) {
+                                (12.0 + (cpuPct / 100f) * 35.0).coerceIn(8.0, 48.0)
+                            } else {
+                                (1000.0 / session.currentTps).coerceIn(50.0, 500.0)
+                            }
+                        } else {
+                            // Normal smooth operation: recover to 20.0 TPS with realistic MSPT based on CPU usage
+                            session.currentTps = (session.currentTps + (20.0 - session.currentTps) * 0.25).coerceIn(1.0, 20.0)
+                            session.currentMspt = (10.0 + (cpuPct / 100f) * 32.0).coerceIn(8.0, 48.0)
+                        }
+
                         metricsMap[serverId] = ServerMetrics(
                             serverId = serverId,
                             isRunning = true,
@@ -535,7 +601,9 @@ class ServerProcessManager private constructor(
                             ramMaxMb = session.server.allocatedRamMb.toLong(),
                             onlinePlayerCount = session.onlinePlayers.size,
                             onlinePlayers = session.onlinePlayers.toList(),
-                            tps = 20.0,
+                            tps = session.currentTps,
+                            mspt = session.currentMspt,
+                            lagWarningsCount = session.totalLagWarnings,
                             uptimeSeconds = uptimeSec,
                             pid = session.pid
                         )

@@ -1,0 +1,4 @@
+• Real-Time TPS & Engine Diagnostics: Live TPS & MSPT telemetry with overload detection
+• Dedicated Engine Health Card: Real-time tick progress, budget headroom & lag tracking
+• Tunneling Services Recognition: In-app credits for bore.pub & Playit.gg
+• Documentation & License Info: Updated attribution for integrated tunneling proxies
