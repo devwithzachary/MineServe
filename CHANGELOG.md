@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.2.0] - 2026-09-01
+## [1.2.0] - 2026-09-02
 
 ### 📁 Full In-App File Explorer & Advanced Config Editor
 - **Interactive File Explorer**: Full directory navigation for `/servers/{id}/` with breadcrumb path bar, file search, and operations for creating, deleting, renaming, duplicating, and uploading/importing files and folders.

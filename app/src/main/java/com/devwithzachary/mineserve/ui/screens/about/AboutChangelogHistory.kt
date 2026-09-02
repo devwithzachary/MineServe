@@ -38,7 +38,7 @@ data class ReleaseChangelog(
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.2.0",
-        date = "September 1, 2026",
+        date = "September 2, 2026",
         initialExpanded = true,
         highlights = listOf(
             "Full In-App File Explorer: Complete directory tree and list navigation for server folders with breadcrumb path bar, search, and operations for creating, deleting, renaming, duplicating, and importing/exporting files and folders.",
