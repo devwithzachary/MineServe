@@ -9,6 +9,7 @@ All notable changes to the MineServe project will be documented in this file.
 - **Syntax-Highlighted Code Editor**: Built-in monospace code editor with real-time syntax highlighting for `.yml`, `.json`, `.properties`, `.toml`, and config files.
 - **Editor Productivity Tools**: Streamlined top bar layout, integrated line numbering gutter, search & replace bar with match counter, and live line/column position tracking.
 - **Keyboard & Tap Auto-Scroll**: Automatically scrolls the editor viewport when the virtual keyboard opens or when tapping text so the active cursor line remains comfortably visible.
+- **Streamlined Server Settings**: Consolidated raw config file editing into the full In-App File Explorer and dedicated Code Editor, keeping the Settings tab clean and focused on visual Server Properties and Public Tunneling configuration.
 
 ### 🩺 Crash Log Analyzer & Diagnostic Engine
 - **Automated Root Cause Detection**: Automatically parses `crash-reports/crash-*.txt` and `logs/latest.log` to identify exact crash reasons (incompatible Java versions, out of memory / OOM, mod ID conflicts or missing dependencies, port already in use, corrupted chunks, unaccepted EULA).

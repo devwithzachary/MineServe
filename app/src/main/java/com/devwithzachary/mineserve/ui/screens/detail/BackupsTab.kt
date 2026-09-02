@@ -9,6 +9,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -51,6 +52,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
@@ -171,62 +173,62 @@ fun BackupsTab(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Header & Create Button
-        Row(
+        // Header
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            Column {
-                Text(
-                    text = stringResource(R.string.backups_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Text(
-                    text = "${backups.size} Snapshot(s) Available",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
-                )
-            }
+            Text(
+                text = stringResource(R.string.backups_title),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Text(
+                text = "${backups.size} Snapshot(s) Available",
+                style = MaterialTheme.typography.bodySmall,
+                color = Slate400
+            )
+        }
 
-            Button(
-                onClick = {
-                    if (!isCreatingBackup) {
-                        isCreatingBackup = true
-                        onCreateBackup { success ->
-                            isCreatingBackup = false
-                            if (success) {
-                                showFeedback("World backup created successfully!")
-                            } else {
-                                showFeedback("Failed to create world backup", isError = true)
-                            }
+        // Full-Width Create Backup Button
+        Button(
+            onClick = {
+                if (!isCreatingBackup) {
+                    isCreatingBackup = true
+                    onCreateBackup { success ->
+                        isCreatingBackup = false
+                        if (success) {
+                            showFeedback("World backup created successfully!")
+                        } else {
+                            showFeedback("Failed to create world backup", isError = true)
                         }
                     }
-                },
-                enabled = !isCreatingBackup,
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                if (isCreatingBackup) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Zipping World...", color = Color.Black, fontWeight = FontWeight.Bold)
-                } else {
-                    Icon(
-                        Icons.Default.Backup,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.backups_create_world_btn),
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold
-                    )
                 }
+            },
+            enabled = !isCreatingBackup,
+            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+            shape = RoundedCornerShape(10.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isCreatingBackup) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Zipping World...", color = Color.Black, fontWeight = FontWeight.Bold)
+            } else {
+                Icon(
+                    Icons.Default.Backup,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.backups_create_world_btn),
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
@@ -344,27 +346,35 @@ fun BackupsTab(
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             // Restore Button
                             OutlinedButton(
                                 onClick = { backupToRestore = b },
                                 enabled = !isRestoringThis && !isExportingThis,
                                 shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 if (isRestoringThis) {
                                     CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Restoring…", fontSize = 12.sp)
+                                    Text("Restoring...", fontSize = 12.sp, maxLines = 1, softWrap = false)
                                 } else {
-                                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(14.dp), tint = GoldYellow)
+                                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(15.dp), tint = GoldYellow)
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(stringResource(R.string.backups_restore), fontSize = 12.sp)
+                                    Text(
+                                        text = stringResource(R.string.backups_restore),
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
 
-                            // Export to Downloads Button
+                            // Export Button
                             OutlinedButton(
                                 onClick = {
                                     exportingBackupId = b.id
@@ -379,16 +389,23 @@ fun BackupsTab(
                                 },
                                 enabled = !isRestoringThis && !isExportingThis,
                                 shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
                                 if (isExportingThis) {
                                     CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Exporting…", fontSize = 12.sp)
+                                    Text("Exporting...", fontSize = 12.sp, maxLines = 1, softWrap = false)
                                 } else {
-                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(14.dp), tint = EmeraldLight)
+                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(15.dp), tint = EmeraldLight)
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(stringResource(R.string.backups_export), fontSize = 12.sp)
+                                    Text(
+                                        text = stringResource(R.string.backups_export),
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        softWrap = false,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
                                 }
                             }
 
@@ -403,10 +420,9 @@ fun BackupsTab(
                                     }
                                 },
                                 shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.size(width = 44.dp, height = 38.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                             ) {
-                                Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(16.dp), tint = Color.White)
+                                Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(15.dp), tint = Color.White)
                             }
                         }
                     }

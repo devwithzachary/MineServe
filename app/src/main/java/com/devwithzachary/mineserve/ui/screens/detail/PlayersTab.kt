@@ -3,6 +3,7 @@ package com.devwithzachary.mineserve.ui.screens.detail
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
@@ -40,7 +42,6 @@ import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
 
 @Composable
 fun PlayersTab(
@@ -98,13 +99,30 @@ fun PlayersTab(
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             OutlinedButton(
                                 onClick = { onSendCommand("op $player") },
-                                shape = RoundedCornerShape(6.dp)
-                            ) { Text(stringResource(R.string.players_op), fontSize = 12.sp) }
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.players_op),
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
 
                             OutlinedButton(
                                 onClick = { onSendCommand("kick $player") },
-                                shape = RoundedCornerShape(6.dp)
-                            ) { Text(stringResource(R.string.players_kick), fontSize = 12.sp, color = RedstoneLight) }
+                                shape = RoundedCornerShape(6.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.players_kick),
+                                    fontSize = 12.sp,
+                                    color = RedstoneLight,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
                 }
@@ -135,7 +153,10 @@ fun PlayersTab(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
                     Button(
                         onClick = {
                             if (newPlayerName.isNotBlank()) {
@@ -143,9 +164,24 @@ fun PlayersTab(
                                 newPlayerName = ""
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = EmeraldPrimary,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
                         modifier = Modifier.weight(1f)
-                    ) { Text(stringResource(R.string.players_op), color = Color.Black, fontWeight = FontWeight.Bold) }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.players_op),
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
 
                     Button(
                         onClick = {
@@ -154,9 +190,24 @@ fun PlayersTab(
                                 newPlayerName = ""
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
                         modifier = Modifier.weight(1f)
-                    ) { Text("Whitelist") }
+                    ) {
+                        Text(
+                            text = "Whitelist",
+                            color = Color.Black,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
 
                     Button(
                         onClick = {
@@ -165,9 +216,24 @@ fun PlayersTab(
                                 newPlayerName = ""
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = RedstoneRed,
+                            contentColor = Color.White
+                        ),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
                         modifier = Modifier.weight(1f)
-                    ) { Text(stringResource(R.string.players_ban)) }
+                    ) {
+                        Text(
+                            text = stringResource(R.string.players_ban),
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.5.sp,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }

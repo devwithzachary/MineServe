@@ -42,7 +42,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         initialExpanded = true,
         highlights = listOf(
             "Full In-App File Explorer: Complete directory tree and list navigation for server folders with breadcrumb path bar, search, and operations for creating, deleting, renaming, duplicating, and importing/exporting files and folders.",
-            "Syntax-Highlighted Code Editor: Built-in code editor with syntax highlighting for YAML, JSON, TOML, and properties files, accompanied by line numbering, search & replace, live line/column indicators, and auto-scrolling when tapping text or opening the keyboard.",
+            "Syntax-Highlighted Code Editor: Built-in code editor with syntax highlighting for YAML, JSON, TOML, and properties files, accompanied by line numbering, search & replace, live line/column indicators, and auto-scrolling when tapping text or opening the keyboard. Server Settings is streamlined to visual properties and public tunneling.",
             "Crash Log Analyzer & Diagnostic Engine: Automated root cause detection for unexpected server shutdowns (Java runtime incompatibility, OOM heap exhaustion, mod ID conflicts, port conflicts, corrupted chunks) with 1-tap quick fixes.",
             "System Back Gesture Navigation: Integrated BackHandler and backstack management across all screens (About, Credits, Settings, Server Details, Create Server Wizard) so edge swipes return to previous views instead of closing the app.",
             "Local Timezone Console Synchronization: Synced container environment (/etc/timezone, /etc/localtime, TZ variable) and JVM system properties with the host device's local timezone for accurate console timestamps.",

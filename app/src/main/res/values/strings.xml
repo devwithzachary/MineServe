@@ -167,7 +167,7 @@
     <string name="backups_create_full_btn">Full Server Backup</string>
     <string name="backups_empty">No backups created yet.</string>
     <string name="backups_restore">Restore</string>
-    <string name="backups_export">Export to Downloads</string>
+    <string name="backups_export">Export</string>
     <string name="backups_restored_toast">Backup restored successfully</string>
     <string name="backups_exported_toast">Exported backup to Downloads folder</string>
 

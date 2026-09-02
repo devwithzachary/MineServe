@@ -401,10 +401,7 @@ fun ServerDetailScreen(
                         server = server,
                         initialProperties = properties,
                         onSaveProperties = onSaveProperties,
-                        onSaveServer = onSaveServer,
-                        onReadRawConfigFile = onReadRawConfigFile,
-                        onSaveRawConfigFile = onSaveRawConfigFile,
-                        onListConfigFiles = onListConfigFiles
+                        onSaveServer = onSaveServer
                     )
                     4 -> PlayersTab(
                         metrics = metrics,
