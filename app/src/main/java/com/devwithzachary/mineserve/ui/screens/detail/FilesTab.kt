@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -729,39 +730,63 @@ fun FilesTab(
         // Action Buttons Row: New File, New Folder, Import
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             OutlinedButton(
                 onClick = { showNewFileDialog = true },
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(1.dp, Slate800),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("New File", color = Color.White, fontSize = 12.sp)
+                Icon(Icons.Default.Add, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "New File",
+                    color = Color.White,
+                    fontSize = 11.5.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             OutlinedButton(
                 onClick = { showNewFolderDialog = true },
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(1.dp, Slate800),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.CreateNewFolder, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("New Folder", color = Color.White, fontSize = 12.sp)
+                Icon(Icons.Default.CreateNewFolder, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "New Folder",
+                    color = Color.White,
+                    fontSize = 11.5.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
 
             OutlinedButton(
                 onClick = { importFileLauncher.launch("*/*") },
                 shape = RoundedCornerShape(8.dp),
                 border = BorderStroke(1.dp, Slate800),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.UploadFile, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("Import", color = Color.White, fontSize = 12.sp)
+                Icon(Icons.Default.UploadFile, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(15.dp))
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "Import",
+                    color = Color.White,
+                    fontSize = 11.5.sp,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
 

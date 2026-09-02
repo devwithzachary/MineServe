@@ -28,8 +28,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Redo
-import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
@@ -83,6 +81,10 @@ import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
+import androidx.compose.ui.platform.LocalDensity
 import androidx.activity.compose.BackHandler
 import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
@@ -101,7 +103,7 @@ import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AdvancedCodeEditor(
     file: FileEntry,
@@ -111,6 +113,7 @@ fun AdvancedCodeEditor(
     modifier: Modifier = Modifier
 ) {
     val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
     var textFieldValue by remember { mutableStateOf(TextFieldValue(initialContent)) }
     var initialLoadedContent by remember { mutableStateOf(initialContent) }
 
@@ -137,6 +140,65 @@ fun AdvancedCodeEditor(
     // Synchronized scroll states
     val verticalScrollState = rememberScrollState()
     val horizontalScrollState = rememberScrollState()
+
+    // IME / Keyboard visibility
+    val isImeVisible = WindowInsets.isImeVisible
+
+    fun getLineAndColumn(text: String, charOffset: Int): Pair<Int, Int> {
+        if (charOffset <= 0 || text.isEmpty()) return Pair(0, 0)
+        val safeOffset = charOffset.coerceIn(0, text.length)
+        var line = 0
+        var lastNewline = -1
+        for (i in 0 until safeOffset) {
+            if (text[i] == '\n') {
+                line++
+                lastNewline = i
+            }
+        }
+        val col = safeOffset - (lastNewline + 1)
+        return Pair(line, col)
+    }
+
+    val (cursorLine, cursorCol) = remember(textFieldValue.text, textFieldValue.selection) {
+        getLineAndColumn(textFieldValue.text, textFieldValue.selection.min)
+    }
+
+    // Auto-scroll when keyboard opens to ensure tapped text is visible in upper portion of viewport
+    LaunchedEffect(isImeVisible) {
+        if (isImeVisible) {
+            delay(100) // Allow IME resize animation to settle
+            val lineHeightPx = with(density) { 20.sp.toPx() }
+            val topPaddingPx = with(density) { 8.dp.toPx() }
+            val lineTopY = topPaddingPx + cursorLine * lineHeightPx
+            val viewportH = verticalScrollState.viewportSize
+            if (viewportH > 0) {
+                val targetScroll = (lineTopY - (viewportH / 3f))
+                    .coerceIn(0f, verticalScrollState.maxValue.toFloat())
+                    .toInt()
+                verticalScrollState.animateScrollTo(targetScroll)
+            }
+        }
+    }
+
+    // Auto-scroll when cursor line changes (user clicks text or types) outside current viewport
+    LaunchedEffect(cursorLine) {
+        val lineHeightPx = with(density) { 20.sp.toPx() }
+        val topPaddingPx = with(density) { 8.dp.toPx() }
+        val lineTopY = topPaddingPx + cursorLine * lineHeightPx
+        val lineBottomY = lineTopY + lineHeightPx
+        val currentScroll = verticalScrollState.value
+        val viewportH = verticalScrollState.viewportSize
+
+        if (viewportH > 0) {
+            val bufferPx = with(density) { 32.dp.toPx() }
+            if (lineTopY < currentScroll + bufferPx || lineBottomY > currentScroll + viewportH - bufferPx) {
+                val targetScroll = (lineTopY - (viewportH / 3f))
+                    .coerceIn(0f, verticalScrollState.maxValue.toFloat())
+                    .toInt()
+                verticalScrollState.animateScrollTo(targetScroll)
+            }
+        }
+    }
 
     fun pushHistory(newText: String) {
         if (newText != lastRecordedText) {
@@ -193,6 +255,24 @@ fun AdvancedCodeEditor(
 
     if (searchMatches.isNotEmpty() && currentMatchIndex >= searchMatches.size) {
         currentMatchIndex = 0
+    }
+
+    // Auto-scroll to search match when currentMatchIndex changes
+    LaunchedEffect(currentMatchIndex, searchMatches) {
+        if (searchMatches.isNotEmpty() && currentMatchIndex in searchMatches.indices) {
+            val matchOffset = searchMatches[currentMatchIndex].first
+            val (matchLine, _) = getLineAndColumn(textFieldValue.text, matchOffset)
+            val lineHeightPx = with(density) { 20.sp.toPx() }
+            val topPaddingPx = with(density) { 8.dp.toPx() }
+            val lineTopY = topPaddingPx + matchLine * lineHeightPx
+            val viewportH = verticalScrollState.viewportSize
+            if (viewportH > 0) {
+                val targetScroll = (lineTopY - (viewportH / 3f))
+                    .coerceIn(0f, verticalScrollState.maxValue.toFloat())
+                    .toInt()
+                verticalScrollState.animateScrollTo(targetScroll)
+            }
+        }
     }
 
     // Custom Visual Transformation for Syntax Highlighting & Search Highlighting
@@ -293,30 +373,6 @@ fun AdvancedCodeEditor(
                     }
                 },
                 actions = {
-                    // Undo
-                    IconButton(
-                        onClick = { undo() },
-                        enabled = undoStack.isNotEmpty()
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Undo,
-                            contentDescription = "Undo",
-                            tint = if (undoStack.isNotEmpty()) Color.White else Slate700
-                        )
-                    }
-
-                    // Redo
-                    IconButton(
-                        onClick = { redo() },
-                        enabled = redoStack.isNotEmpty()
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Redo,
-                            contentDescription = "Redo",
-                            tint = if (redoStack.isNotEmpty()) Color.White else Slate700
-                        )
-                    }
-
                     // Find & Replace Toggle
                     IconButton(onClick = { isSearchOpen = !isSearchOpen }) {
                         Icon(
@@ -377,6 +433,13 @@ fun AdvancedCodeEditor(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
+                        Text(
+                            text = "Ln ${cursorLine + 1}, Col ${cursorCol + 1}",
+                            fontFamily = FontFamily.Monospace,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = EmeraldLight
+                        )
                         Text(
                             text = "Lines: $lineCount",
                             fontFamily = FontFamily.Monospace,
