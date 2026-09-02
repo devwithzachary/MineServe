@@ -131,6 +131,8 @@ MineServe is built on the shoulders of incredible open-source projects:
 | **GeyserMC & Floodgate** | Protocol translation proxy enabling Bedrock players to join Java servers. | [GeyserMC](https://geysermc.org/) / MIT |
 | **Ubuntu Base** | Official root filesystem tarball providing the Linux container environment. | [Canonical Ltd.](https://cdimage.ubuntu.com/ubuntu-base/) / Canonical |
 | **Modrinth API** | Public REST API for discovering and downloading Minecraft plugins and mods. | [Modrinth](https://modrinth.com/) / AGPL-3.0 |
+| **bore (`bore.pub`)** | Modern, zero-config TCP tunneling tool enabling instant public port forwarding. | [bore](https://github.com/ekzhang/bore) / MIT |
+| **Playit.gg** | Global game server tunneling proxy network providing persistent subdomains. | [Playit.gg](https://playit.gg) / MIT |
 | **OkHttp & Coil** | High-performance HTTP client and image loading engine for Compose. | [Square](https://square.github.io/okhttp) & [Coil](https://coil-kt.github.io/coil) / Apache-2.0 |
 
 ---

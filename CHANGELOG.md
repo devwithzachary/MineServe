@@ -2,6 +2,35 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.2.0] - 2026-09-02
+
+### 📁 Full In-App File Explorer & Advanced Config Editor
+- **Interactive File Explorer**: Full directory navigation for `/servers/{id}/` with breadcrumb path bar, file search, and operations for creating, deleting, renaming, duplicating, and uploading/importing files and folders.
+- **Syntax-Highlighted Code Editor**: Built-in monospace code editor with real-time syntax highlighting for `.yml`, `.json`, `.properties`, `.toml`, and config files.
+- **Editor Productivity Tools**: Streamlined top bar layout, integrated line numbering gutter, search & replace bar with match counter, and live line/column position tracking.
+- **Keyboard & Tap Auto-Scroll**: Automatically scrolls the editor viewport when the virtual keyboard opens or when tapping text so the active cursor line remains comfortably visible.
+- **Streamlined Server Settings**: Consolidated raw config file editing into the full In-App File Explorer and dedicated Code Editor, keeping the Settings tab clean and focused on visual Server Properties and Public Tunneling configuration.
+
+### 🩺 Crash Log Analyzer & Diagnostic Engine
+- **Automated Root Cause Detection**: Automatically parses `crash-reports/crash-*.txt` and `logs/latest.log` to identify exact crash reasons (incompatible Java versions, out of memory / OOM, mod ID conflicts or missing dependencies, port already in use, corrupted chunks, unaccepted EULA).
+- **1-Tap Quick Fix Actions**: Interactive diagnostic sheet providing one-tap solutions to accept the EULA, switch Java runtimes, allocate more RAM, or auto-assign open ports.
+
+### ⚡ Real-Time TPS, Engine Health & Local Timezone
+- **Local Timezone Console Synchronization**: Synced the container environment (`/etc/timezone`, `/etc/localtime`, `TZ` environment variable) and JVM system properties (`-Duser.timezone`) with the host device's local timezone so Minecraft server logs and console timestamps match local time instead of UTC.
+- **Dynamic TPS & MSPT Calculation**: Replaced static TPS metrics with live game engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive console overload detection (`Can't keep up!`, `/tps`, `/tick query`).
+- **Engine Health Diagnostics Card**: Added dedicated diagnostics card on the Server Performance tab with live TPS gauge, MSPT processing time, tick budget headroom, and logged overload warnings.
+
+### 🧭 Navigation & Gesture Usability
+- **System Back Gesture Navigation**: Integrated Compose `BackHandler` and backstack tracking across all app views (About, Credits, Settings, Server Details, and Create Server Wizard). Performing the edge-swipe back gesture or tapping hardware back now smoothly navigates back to previous screens instead of exiting the app.
+
+### 🌐 Playit.gg Tunnel Claiming & Connection Improvements
+- **Claim Banner Auto-Dismissal**: Automatically clears the claim banner and prompt as soon as the Playit.gg agent is claimed in the browser or authenticated with credentials.
+- **Robust Public Tunnel Address Detection**: Enhanced regex and ANSI escape sequence filtering to instantly detect all public tunnel domains, IP mappings, and custom domains without getting stuck on "Connecting to Playit.gg network".
+
+### 🌐 Open Source Tunneling Credits & Recognition
+- **In-App Tunneling Credits Directory**: Added dedicated **Tunneling** category to the Credits screen recognizing **bore (bore.pub)** and **Playit.gg** for powering zero-port-forwarding public multiplayer.
+- **Open Source Attribution**: Updated README documentation and in-app software directory with license metadata, official links, and architectural descriptions for all integrated tunneling proxies.
+
 ## [1.1.0] - 2026-08-28
 
 ### 🌐 Public Tunneling & Zero-Port-Forwarding (CGNAT & Cellular Multiplayer)

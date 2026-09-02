@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Timer
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -82,9 +83,12 @@ fun PerformanceTab(
     val ramPercentage = (ramRatio * 100f).toInt()
 
     val tps = if (isOnline) (metrics?.tps ?: 20.0) else 0.0
+    val mspt = if (isOnline) (metrics?.mspt ?: 20.0) else 0.0
+    val lagWarnings = if (isOnline) (metrics?.lagWarningsCount ?: 0) else 0
     val uptimeSeconds = if (isOnline) (metrics?.uptimeSeconds ?: 0L) else 0L
     val pid = if (isOnline) (metrics?.pid ?: -1) else -1
 
+    val tpsRatio = (tps / 20.0).coerceIn(0.0, 1.0).toFloat()
     val formattedDisk = formatStorageSize(storageBytes)
     val formattedUptime = formatUptime(uptimeSeconds)
 
@@ -106,8 +110,19 @@ fun PerformanceTab(
         label = "ramColor"
     )
 
+    val tpsColor by animateColorAsState(
+        targetValue = when {
+            !isOnline -> Slate400
+            tps >= 19.0 -> EmeraldPrimary
+            tps >= 15.0 -> GoldYellow
+            else -> RedstoneRed
+        },
+        label = "tpsColor"
+    )
+
     val animatedCpuProgress by animateFloatAsState(targetValue = (cpuPct / 100f).coerceIn(0f, 1f), label = "cpuProgress")
     val animatedRamProgress by animateFloatAsState(targetValue = ramRatio, label = "ramProgress")
+    val animatedTpsProgress by animateFloatAsState(targetValue = tpsRatio, label = "tpsProgress")
 
     Column(
         modifier = modifier
@@ -193,16 +208,129 @@ fun PerformanceTab(
 
             // Health & TPS Tile
             MetricTile(
-                icon = if (isOnline) Icons.Default.CheckCircle else Icons.Default.Timer,
-                iconColor = if (isOnline) EmeraldPrimary else Slate400,
+                icon = if (isOnline) (if (tps >= 19.0) Icons.Default.CheckCircle else Icons.Default.Warning) else Icons.Default.Timer,
+                iconColor = tpsColor,
                 title = "Health & TPS",
                 value = if (isOnline) String.format(Locale.US, "%.1f TPS", tps) else "Offline",
-                subtitle = if (isOnline) "Uptime: $formattedUptime" else "Process Stopped",
-                progress = 0f,
-                progressColor = EmeraldPrimary,
-                showProgress = false,
+                subtitle = if (isOnline) "${String.format(Locale.US, "%.1f", mspt)}ms / 50ms tick" else "Process Stopped",
+                progress = animatedTpsProgress,
+                progressColor = tpsColor,
+                showProgress = isOnline,
                 modifier = Modifier.weight(1f)
             )
+        }
+
+        // Engine Health & TPS Diagnostics Card
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Speed,
+                            contentDescription = null,
+                            tint = tpsColor,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Engine Health",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    if (isOnline) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = tpsColor.copy(alpha = 0.15f)
+                        ) {
+                            Text(
+                                text = when {
+                                    tps >= 19.5 -> "Optimal (20.0 TPS)"
+                                    tps >= 15.0 -> "Moderate Load"
+                                    else -> "Lag Detected"
+                                },
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = tpsColor,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (isOnline) {
+                    LinearProgressIndicator(
+                        progress = { animatedTpsProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = tpsColor,
+                        trackColor = Slate800
+                    )
+                }
+
+                HorizontalDivider(color = ObsidianCardBorder)
+
+                PerformanceInfoRow(
+                    label = "Target Tick Rate",
+                    value = "20.0 TPS (50.0 ms / tick)"
+                )
+                PerformanceInfoRow(
+                    label = "Current Tick Rate",
+                    value = if (isOnline) "${String.format(Locale.US, "%.1f", tps)} TPS (${(tps / 20.0 * 100).toInt()}%)" else "0.0 TPS"
+                )
+                PerformanceInfoRow(
+                    label = "Tick Processing Time (MSPT)",
+                    value = if (isOnline) "${String.format(Locale.US, "%.1f", mspt)} ms (Budget: 50.0 ms)" else "0.0 ms"
+                )
+                PerformanceInfoRow(
+                    label = "Tick Budget Headroom",
+                    value = if (isOnline) {
+                        val headroom = 50.0 - mspt
+                        if (headroom >= 0.0) {
+                            "+${String.format(Locale.US, "%.1f", headroom)} ms headroom"
+                        } else {
+                            "-${String.format(Locale.US, "%.1f", -headroom)} ms behind"
+                        }
+                    } else {
+                        "N/A (Stopped)"
+                    }
+                )
+                PerformanceInfoRow(
+                    label = "Game Loop State",
+                    value = when {
+                        !isOnline -> "Process Stopped"
+                        tps >= 19.5 -> "Smooth (Normal game loop)"
+                        tps >= 15.0 -> "Slight Delay (Catching up)"
+                        else -> "Overloaded (Server lagging)"
+                    }
+                )
+                PerformanceInfoRow(
+                    label = "Overload Warnings Logged",
+                    value = if (isOnline) {
+                        if (lagWarnings == 0) "0 (Smooth game loop)" else "$lagWarnings detected (Can't keep up)"
+                    } else {
+                        "None (Stopped)"
+                    }
+                )
+            }
         }
 
         // Memory Deep-Dive Card

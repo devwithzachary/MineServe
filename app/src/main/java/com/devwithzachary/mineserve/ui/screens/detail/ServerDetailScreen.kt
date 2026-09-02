@@ -3,6 +3,7 @@ package com.devwithzachary.mineserve.ui.screens.detail
 import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -72,8 +73,11 @@ import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.engine.TerminalEmulator
 import com.devwithzachary.mineserve.model.BackupEntry
+import com.devwithzachary.mineserve.model.CrashDiagnosticReport
+import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PluginModEntry
+import com.devwithzachary.mineserve.model.QuickFixAction
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
@@ -121,6 +125,19 @@ fun ServerDetailScreen(
     onReadRawConfigFile: suspend (String) -> String = { "" },
     onSaveRawConfigFile: suspend (String, String) -> Boolean = { _, _ -> true },
     onListConfigFiles: suspend () -> List<String> = { listOf("server.properties") },
+    onListDirectory: suspend (String) -> List<FileEntry> = { emptyList() },
+    onCreateFile: suspend (String, String, String) -> Boolean = { _, _, _ -> false },
+    onCreateDirectory: suspend (String, String) -> Boolean = { _, _ -> false },
+    onDeleteFile: suspend (String) -> Boolean = { false },
+    onRenameFile: suspend (String, String) -> Boolean = { _, _ -> false },
+    onDuplicateFile: suspend (String) -> Boolean = { false },
+    onReadFile: suspend (String) -> String = { "" },
+    onWriteFile: suspend (String, String) -> Boolean = { _, _ -> false },
+    onImportFile: suspend (String, android.net.Uri) -> Boolean = { _, _ -> false },
+    onExportFile: suspend (String) -> Boolean = { false },
+    onSearchFiles: suspend (String) -> List<FileEntry> = { emptyList() },
+    onAnalyzeCrash: suspend () -> CrashDiagnosticReport? = { null },
+    onApplyQuickFix: suspend (QuickFixAction) -> Boolean = { false },
     onCreateBackup: ((Boolean) -> Unit) -> Unit = {},
     onRestoreBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
@@ -136,6 +153,8 @@ fun ServerDetailScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
 
+    BackHandler(onBack = onBack)
+
     val showPluginsOrModsTab = server.type.supportsPlugins || server.type.supportsMods
     val pluginModTabName = when {
         server.type.supportsMods && !server.type.supportsPlugins -> stringResource(R.string.tab_mods)
@@ -145,6 +164,7 @@ fun ServerDetailScreen(
 
     val consoleStr = stringResource(R.string.tab_console)
     val perfStr = stringResource(R.string.tab_performance)
+    val filesStr = stringResource(R.string.tab_files)
     val settingsStr = stringResource(R.string.tab_settings)
     val playersStr = stringResource(R.string.tab_players)
     val backupsStr = stringResource(R.string.tab_backups)
@@ -153,6 +173,7 @@ fun ServerDetailScreen(
         buildList {
             add(consoleStr)
             add(perfStr)
+            add(filesStr)
             add(settingsStr)
             add(playersStr)
             add(backupsStr)
@@ -360,27 +381,40 @@ fun ServerDetailScreen(
                         metrics = metrics,
                         storageBytes = storageBytes
                     )
-                    2 -> SettingsTab(
+                    2 -> FilesTab(
+                        server = server,
+                        onListDirectory = onListDirectory,
+                        onCreateFile = onCreateFile,
+                        onCreateDirectory = onCreateDirectory,
+                        onDeleteFile = onDeleteFile,
+                        onRenameFile = onRenameFile,
+                        onDuplicateFile = onDuplicateFile,
+                        onReadFile = onReadFile,
+                        onWriteFile = onWriteFile,
+                        onImportFile = onImportFile,
+                        onExportFile = onExportFile,
+                        onSearchFiles = onSearchFiles,
+                        onAnalyzeCrash = onAnalyzeCrash,
+                        onApplyQuickFix = onApplyQuickFix
+                    )
+                    3 -> SettingsTab(
                         server = server,
                         initialProperties = properties,
                         onSaveProperties = onSaveProperties,
-                        onSaveServer = onSaveServer,
-                        onReadRawConfigFile = onReadRawConfigFile,
-                        onSaveRawConfigFile = onSaveRawConfigFile,
-                        onListConfigFiles = onListConfigFiles
+                        onSaveServer = onSaveServer
                     )
-                    3 -> PlayersTab(
+                    4 -> PlayersTab(
                         metrics = metrics,
                         onSendCommand = onSendCommand
                     )
-                    4 -> BackupsTab(
+                    5 -> BackupsTab(
                         backups = backups,
                         onCreateBackup = onCreateBackup,
                         onRestoreBackup = onRestoreBackup,
                         onExportBackup = onExportBackup,
                         onGetShareIntent = onGetShareIntent
                     )
-                    5 -> {
+                    6 -> {
                         if (showPluginsOrModsTab) {
                             PluginsTab(
                                 server = server,

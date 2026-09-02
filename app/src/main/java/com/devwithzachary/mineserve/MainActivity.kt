@@ -8,6 +8,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,6 +23,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -96,10 +98,29 @@ fun MineServeApp(viewModel: MainViewModel) {
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     val updateCheckStatus by viewModel.updateCheckStatus.collectAsStateWithLifecycle()
 
-    var currentScreen by remember {
-        mutableStateOf<Screen>(
-            if (viewModel.rootfsManager.isInstalled()) Screen.Dashboard else Screen.Splash
-        )
+    val initialScreen = remember {
+        if (viewModel.rootfsManager.isInstalled()) Screen.Dashboard else Screen.Splash
+    }
+    val backStack = remember { mutableStateListOf<Screen>(initialScreen) }
+    val currentScreen = backStack.lastOrNull() ?: Screen.Dashboard
+
+    fun navigateTo(screen: Screen) {
+        if (screen is Screen.Dashboard) {
+            backStack.clear()
+            backStack.add(Screen.Dashboard)
+        } else {
+            backStack.add(screen)
+        }
+    }
+
+    fun navigateBack() {
+        if (backStack.size > 1) {
+            backStack.removeAt(backStack.size - 1)
+        }
+    }
+
+    BackHandler(enabled = backStack.size > 1 && currentScreen !is Screen.Splash) {
+        navigateBack()
     }
 
     // Permission launcher for Android 13+ Notification permission
@@ -120,7 +141,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     isRootfsInstalled = isRootfsInstalled,
                     setupState = rootfsSetupState,
                     onStartSetup = { viewModel.startRootfsSetup() },
-                    onContinueToDashboard = { currentScreen = Screen.Dashboard }
+                    onContinueToDashboard = { navigateTo(Screen.Dashboard) }
                 )
             }
 
@@ -134,7 +155,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onServerClick = { server ->
                         Log.d("MainActivity", "onServerClick: ${server.id}")
                         viewModel.loadServerDetails(server.id)
-                        currentScreen = Screen.Detail(server.id)
+                        navigateTo(Screen.Detail(server.id))
                     },
                     onStartServer = { server ->
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -150,12 +171,12 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onConsoleClick = { server ->
                         Log.d("MainActivity", "onConsoleClick: ${server.id}")
                         viewModel.loadServerDetails(server.id)
-                        currentScreen = Screen.Detail(server.id)
+                        navigateTo(Screen.Detail(server.id))
                     },
-                    onCreateServerClick = { currentScreen = Screen.Wizard },
-                    onSettingsClick = { currentScreen = Screen.Settings },
-                    onAboutClick = { currentScreen = Screen.About },
-                    onCreditsClick = { currentScreen = Screen.Credits }
+                    onCreateServerClick = { navigateTo(Screen.Wizard) },
+                    onSettingsClick = { navigateTo(Screen.Settings) },
+                    onAboutClick = { navigateTo(Screen.About) },
+                    onCreditsClick = { navigateTo(Screen.Credits) }
                 )
             }
 
@@ -170,9 +191,11 @@ fun MineServeApp(viewModel: MainViewModel) {
                         viewModel.refreshData()
                         viewModel.loadServerDetails(createdServer.id)
                         viewModel.startServer(createdServer)
-                        currentScreen = Screen.Detail(createdServer.id)
+                        backStack.clear()
+                        backStack.add(Screen.Dashboard)
+                        backStack.add(Screen.Detail(createdServer.id))
                     },
-                    onCancel = { currentScreen = Screen.Dashboard },
+                    onCancel = { navigateBack() },
                     existingServers = servers,
                     onDownloadAndCreateServer = { name, type, version, port, ramMb, motd, onProgress ->
                         viewModel.downloadAndCreateServer(name, type, version, port, ramMb, motd, onProgress)
@@ -205,7 +228,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         plugins = plugins,
                         storageBytes = storageBytes,
                         tunnelState = tunnelState,
-                        onBack = { currentScreen = Screen.Dashboard },
+                        onBack = { navigateBack() },
                         onStartServer = {
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                 if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
@@ -223,6 +246,19 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onReadRawConfigFile = { fileName -> viewModel.readRawConfigFile(server.id, fileName) },
                         onSaveRawConfigFile = { fileName, content -> viewModel.saveRawConfigFile(server.id, fileName, content) },
                         onListConfigFiles = { viewModel.listEditableConfigFiles(server.id) },
+                        onListDirectory = { relPath -> viewModel.listDirectory(server.id, relPath) },
+                        onCreateFile = { relPath, name, content -> viewModel.createFile(server.id, relPath, name, content) },
+                        onCreateDirectory = { relPath, name -> viewModel.createDirectory(server.id, relPath, name) },
+                        onDeleteFile = { relPath -> viewModel.deleteFile(server.id, relPath) },
+                        onRenameFile = { relPath, newName -> viewModel.renameFile(server.id, relPath, newName) },
+                        onDuplicateFile = { relPath -> viewModel.duplicateFile(server.id, relPath) },
+                        onReadFile = { relPath -> viewModel.readFile(server.id, relPath) },
+                        onWriteFile = { relPath, content -> viewModel.writeFile(server.id, relPath, content) },
+                        onImportFile = { relPath, uri -> viewModel.importFile(server.id, relPath, uri) },
+                        onExportFile = { relPath -> viewModel.exportFile(server.id, relPath) },
+                        onSearchFiles = { query -> viewModel.searchFiles(server.id, query) },
+                        onAnalyzeCrash = { viewModel.analyzeCrash(server.id) },
+                        onApplyQuickFix = { action -> viewModel.applyQuickFix(server.id, action) },
                         onCreateBackup = { onResult -> viewModel.createBackup(server.id, true, onResult) },
                         onRestoreBackup = { b, onResult -> viewModel.restoreBackup(server.id, b, onResult) },
                         onExportBackup = { b, onResult -> viewModel.exportBackup(b, onResult) },
@@ -236,13 +272,13 @@ fun MineServeApp(viewModel: MainViewModel) {
                             viewModel.importPluginOrMod(server.id, uri, isMod, onResult)
                         },
                         onDeleteServer = {
-                            currentScreen = Screen.Dashboard
+                            navigateTo(Screen.Dashboard)
                             viewModel.deleteServer(server.id)
                         }
                     )
                 } else {
                     LaunchedEffect(Unit) {
-                        currentScreen = Screen.Dashboard
+                        navigateTo(Screen.Dashboard)
                     }
                 }
             }
@@ -254,7 +290,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onInstallJava = { ver -> viewModel.installJava(ver) },
                     onReinstallRuntime = {
                         viewModel.startRootfsSetup()
-                        currentScreen = Screen.Splash
+                        backStack.clear()
+                        backStack.add(Screen.Splash)
                     },
                     isCheckGitHubUpdatesEnabled = isCheckGitHubUpdatesEnabled,
                     onToggleCheckGitHubUpdates = { viewModel.toggleCheckGitHubUpdates(it) },
@@ -267,20 +304,20 @@ fun MineServeApp(viewModel: MainViewModel) {
                             context.startActivity(intent)
                         } catch (_: Exception) {}
                     },
-                    onBack = { currentScreen = Screen.Dashboard },
-                    onAboutClick = { currentScreen = Screen.About }
+                    onBack = { navigateBack() },
+                    onAboutClick = { navigateTo(Screen.About) }
                 )
             }
 
             is Screen.About -> {
                 AboutScreen(
-                    onBack = { currentScreen = Screen.Dashboard }
+                    onBack = { navigateBack() }
                 )
             }
 
             is Screen.Credits -> {
                 CreditsScreen(
-                    onBack = { currentScreen = Screen.Dashboard }
+                    onBack = { navigateBack() }
                 )
             }
         }

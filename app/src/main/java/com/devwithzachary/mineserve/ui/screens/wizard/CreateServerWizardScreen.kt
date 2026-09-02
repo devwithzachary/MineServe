@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.ui.screens.wizard
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +80,14 @@ fun CreateServerWizardScreen(
 ) {
     var step by remember { mutableIntStateOf(1) }
     val scope = rememberCoroutineScope()
+
+    BackHandler {
+        if (step > 1) {
+            step--
+        } else {
+            onCancel()
+        }
+    }
 
     // Calculate next available default port starting from 25565
     val defaultUnusedPort = remember(existingServers) {

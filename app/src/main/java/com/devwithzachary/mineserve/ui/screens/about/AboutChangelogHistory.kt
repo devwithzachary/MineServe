@@ -37,9 +37,25 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.2.0",
+        date = "September 2, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "Full In-App File Explorer: Complete directory tree and list navigation for server folders with breadcrumb path bar, search, and operations for creating, deleting, renaming, duplicating, and importing/exporting files and folders.",
+            "Syntax-Highlighted Code Editor: Built-in code editor with syntax highlighting for YAML, JSON, TOML, and properties files, accompanied by line numbering, search & replace, live line/column indicators, and auto-scrolling when tapping text or opening the keyboard. Server Settings is streamlined to visual properties and public tunneling.",
+            "Crash Log Analyzer & Diagnostic Engine: Automated root cause detection for unexpected server shutdowns (Java runtime incompatibility, OOM heap exhaustion, mod ID conflicts, port conflicts, corrupted chunks) with 1-tap quick fixes.",
+            "System Back Gesture Navigation: Integrated BackHandler and backstack management across all screens (About, Credits, Settings, Server Details, Create Server Wizard) so edge swipes return to previous views instead of closing the app.",
+            "Local Timezone Console Synchronization: Synced container environment (/etc/timezone, /etc/localtime, TZ variable) and JVM system properties with the host device's local timezone for accurate console timestamps.",
+            "Real-Time TPS & Engine Health Diagnostics: Replaced static TPS with live engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive overload detection.",
+            "Performance Tab TPS Diagnostics Card: Added dedicated diagnostics card with live TPS gauge, MSPT processing time, tick budget headroom, and overload warning tracking.",
+            "Playit.gg Claim & Connection Reliability: Automatic claim banner dismissal upon account authorization, ANSI escape code filtering, and reliable public address resolution for all Playit domain and IP mappings.",
+            "Tunneling Services Recognition: Added dedicated Tunneling category to the in-app Credits screen recognizing bore (bore.pub) and Playit.gg for zero-port-forwarding multiplayer."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.1.0",
         date = "August 28, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Public Tunneling & Zero-Port-Forwarding: Support for both instant free tunnels (bore.pub) and persistent Playit.gg tunnels. Host multiplayer servers over 4G/5G mobile data or remote Wi-Fi bypassing Carrier-Grade NAT (CGNAT) without port forwarding.",
             "Playit.gg Integration: Automatic agent execution supporting 1-tap browser claim setup and custom secret keys with persistent subdomains.",

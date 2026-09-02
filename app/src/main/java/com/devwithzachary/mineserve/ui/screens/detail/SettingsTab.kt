@@ -1,11 +1,13 @@
 package com.devwithzachary.mineserve.ui.screens.detail
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,39 +16,23 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.ui.platform.LocalContext
-import com.devwithzachary.mineserve.model.MinecraftServer
-import com.devwithzachary.mineserve.model.TunnelConfig
-import com.devwithzachary.mineserve.model.TunnelProvider
-import com.devwithzachary.mineserve.ui.components.TunnelSecurityWarningCard
-import com.devwithzachary.mineserve.ui.theme.Slate400
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -56,7 +42,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -66,22 +51,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerProperties
+import com.devwithzachary.mineserve.model.TunnelConfig
+import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.ui.components.TunnelSecurityWarningCard
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate900
@@ -89,25 +75,17 @@ import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class SettingsEditorMode {
-    VISUAL,
-    RAW_FILE
-}
-
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsTab(
     server: MinecraftServer,
     initialProperties: ServerProperties,
     onSaveProperties: (ServerProperties) -> Unit,
     onSaveServer: (MinecraftServer) -> Unit = {},
-    onReadRawConfigFile: suspend (String) -> String = { "" },
-    onSaveRawConfigFile: suspend (String, String) -> Boolean = { _, _ -> true },
-    onListConfigFiles: suspend () -> List<String> = { listOf("server.properties") },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var editorMode by remember { mutableStateOf(SettingsEditorMode.VISUAL) }
 
     // Visual editor state
     var props by remember(initialProperties) { mutableStateOf(initialProperties) }
@@ -133,603 +111,493 @@ fun SettingsTab(
     var customRelayPort by remember(server.tunnelConfig.customRelayPort) { mutableIntStateOf(server.tunnelConfig.customRelayPort) }
     var playitSecret by remember(server.tunnelConfig.playitSecret) { mutableStateOf(server.tunnelConfig.playitSecret) }
 
-    // Raw File editor state
-    var configFiles by remember { mutableStateOf(listOf("server.properties")) }
-    var selectedFile by remember { mutableStateOf("server.properties") }
-    var rawFileContent by remember { mutableStateOf("") }
-    var isFileLoading by remember { mutableStateOf(false) }
-    var isFileSaving by remember { mutableStateOf(false) }
-    var fileSaveStatus by remember { mutableStateOf<String?>(null) }
-
-    // Load available config files and content when switching to Raw File mode
-    LaunchedEffect(editorMode) {
-        if (editorMode == SettingsEditorMode.RAW_FILE) {
-            val list = onListConfigFiles()
-            if (list.isNotEmpty()) {
-                configFiles = list
-                if (!list.contains(selectedFile)) {
-                    selectedFile = list.first()
-                }
-            }
-            isFileLoading = true
-            rawFileContent = onReadRawConfigFile(selectedFile)
-            isFileLoading = false
-        }
-    }
-
-    // Load file content when switching selectedFile
-    LaunchedEffect(selectedFile) {
-        if (editorMode == SettingsEditorMode.RAW_FILE) {
-            isFileLoading = true
-            rawFileContent = onReadRawConfigFile(selectedFile)
-            isFileLoading = false
-        }
-    }
-
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // Mode Switcher Header
+        // Section: Server Properties (Visual Editor)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = editorMode == SettingsEditorMode.VISUAL,
-                    onClick = { editorMode = SettingsEditorMode.VISUAL },
-                    label = { Text("Visual Settings") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldPrimary,
-                        selectedLabelColor = Color.Black,
-                        selectedLeadingIconColor = Color.Black,
-                        containerColor = Slate800,
-                        labelColor = Color.White
-                    )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Default.Tune, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
+                Text(
+                    text = stringResource(R.string.settings_tab_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
                 )
+            }
 
-                FilterChip(
-                    selected = editorMode == SettingsEditorMode.RAW_FILE,
-                    onClick = { editorMode = SettingsEditorMode.RAW_FILE },
-                    label = { Text("Raw Config File") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Code,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldPrimary,
-                        selectedLabelColor = Color.Black,
-                        selectedLeadingIconColor = Color.Black,
-                        containerColor = Slate800,
-                        labelColor = Color.White
+            Button(
+                onClick = {
+                    val updated = props.copy(
+                        motd = motd,
+                        gamemode = gamemode,
+                        difficulty = difficulty,
+                        pvp = pvp,
+                        hardcore = hardcore,
+                        onlineMode = onlineMode,
+                        whiteList = whitelist,
+                        allowFlight = allowFlight,
+                        allowNether = allowNether,
+                        maxPlayers = maxPlayers,
+                        viewDistance = viewDistance,
+                        simulationDistance = simulationDistance,
+                        levelSeed = levelSeed
                     )
+                    props = updated
+                    onSaveProperties(updated)
+                    visualSavedMessage = "Saved properties!"
+                    scope.launch {
+                        delay(2000)
+                        visualSavedMessage = null
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.settings_tab_save),
+                    color = Color.Black,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
 
-        if (editorMode == SettingsEditorMode.VISUAL) {
-            // Visual Config Editor
+        AnimatedVisibility(visible = visualSavedMessage != null) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = EmeraldDark.copy(alpha = 0.3f),
+                border = BorderStroke(1.dp, EmeraldPrimary),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                    Text(text = visualSavedMessage ?: "", color = EmeraldLight, fontSize = 13.sp)
+                }
+            }
+        }
+
+        // MOTD Card
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Message of the Day (MOTD)",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Slate400
+                )
+                OutlinedTextField(
+                    value = motd,
+                    onValueChange = { motd = it },
+                    placeholder = { Text("A Minecraft Server", color = Slate400) },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldPrimary,
+                        unfocusedBorderColor = ObsidianCardBorder,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // Gameplay Card
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Gameplay & Difficulty", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+
+                // Gamemode
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.settings_gamemode), style = MaterialTheme.typography.labelSmall, color = Slate400)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("survival", "creative", "adventure", "spectator").forEach { mode ->
+                            FilterChip(
+                                selected = gamemode == mode,
+                                onClick = { gamemode = mode },
+                                label = { Text(mode.replaceFirstChar { it.uppercase() }) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = EmeraldPrimary,
+                                    selectedLabelColor = Color.Black,
+                                    containerColor = Slate800,
+                                    labelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Difficulty
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(stringResource(R.string.settings_difficulty), style = MaterialTheme.typography.labelSmall, color = Slate400)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        listOf("peaceful", "easy", "normal", "hard").forEach { diff ->
+                            FilterChip(
+                                selected = difficulty == diff,
+                                onClick = { difficulty = diff },
+                                label = { Text(diff.replaceFirstChar { it.uppercase() }) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = EmeraldPrimary,
+                                    selectedLabelColor = Color.Black,
+                                    containerColor = Slate800,
+                                    labelColor = Color.White
+                                )
+                            )
+                        }
+                    }
+                }
+
+                // Switches
+                SettingSwitchRow(
+                    title = stringResource(R.string.settings_pvp),
+                    checked = pvp,
+                    onCheckedChange = { pvp = it }
+                )
+                SettingSwitchRow(
+                    title = "Hardcore Mode (One Life)",
+                    checked = hardcore,
+                    onCheckedChange = { hardcore = it }
+                )
+                SettingSwitchRow(
+                    title = stringResource(R.string.settings_allow_flight),
+                    checked = allowFlight,
+                    onCheckedChange = { allowFlight = it }
+                )
+                SettingSwitchRow(
+                    title = "Allow Nether Dimension",
+                    checked = allowNether,
+                    onCheckedChange = { allowNether = it }
+                )
+            }
+        }
+
+        // Security & Networking Card
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Text("Security & Networking", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+
+                SettingSwitchRow(
+                    title = stringResource(R.string.settings_online_mode),
+                    checked = onlineMode,
+                    onCheckedChange = { onlineMode = it }
+                )
+                SettingSwitchRow(
+                    title = "Whitelist Only (Private Server)",
+                    checked = whitelist,
+                    onCheckedChange = { whitelist = it }
+                )
+            }
+        }
+
+        // World & Sizing Card
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("World & Capacity", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = maxPlayers.toString(),
+                        onValueChange = { maxPlayers = it.toIntOrNull() ?: maxPlayers },
+                        label = { Text(stringResource(R.string.settings_max_players)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = ObsidianCardBorder,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = viewDistance.toString(),
+                        onValueChange = { viewDistance = it.toIntOrNull() ?: viewDistance },
+                        label = { Text(stringResource(R.string.settings_view_distance)) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = ObsidianCardBorder,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = simulationDistance.toString(),
+                        onValueChange = { simulationDistance = it.toIntOrNull() ?: simulationDistance },
+                        label = { Text("Sim Distance") },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = ObsidianCardBorder,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = levelSeed,
+                        onValueChange = { levelSeed = it },
+                        label = { Text("Level Seed") },
+                        placeholder = { Text("Random", color = Slate400) },
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = ObsidianCardBorder,
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White
+                        ),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+
+        // Section: Public Multiplayer Tunneling
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = stringResource(R.string.settings_tab_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-
-                    Button(
-                        onClick = {
-                            val updated = props.copy(
-                                motd = motd,
-                                gamemode = gamemode,
-                                difficulty = difficulty,
-                                pvp = pvp,
-                                hardcore = hardcore,
-                                onlineMode = onlineMode,
-                                whiteList = whitelist,
-                                allowFlight = allowFlight,
-                                allowNether = allowNether,
-                                maxPlayers = maxPlayers,
-                                viewDistance = viewDistance,
-                                simulationDistance = simulationDistance,
-                                levelSeed = levelSeed
-                            )
-                            onSaveProperties(updated)
-                            val updatedTunnelConfig = server.tunnelConfig.copy(
-                                autoStart = tunnelAutoStart,
-                                provider = tunnelProvider,
-                                customRelayHost = customRelayHost,
-                                customRelayPort = customRelayPort,
-                                playitSecret = playitSecret
-                            )
-                            onSaveServer(server.copy(tunnelConfig = updatedTunnelConfig))
-                            visualSavedMessage = "Saved properties & tunnel configuration!"
-                            scope.launch {
-                                delay(2500)
-                                visualSavedMessage = null
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(8.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            tint = EmeraldPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Text(
-                            text = stringResource(R.string.settings_tab_save),
-                            color = Color.Black,
+                            text = "Public Multiplayer Tunneling",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                if (visualSavedMessage != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = EmeraldDark.copy(alpha = 0.3f),
-                        border = BorderStroke(1.dp, EmeraldPrimary),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(18.dp))
-                            Text(visualSavedMessage ?: "", color = EmeraldLight, fontSize = 13.sp)
-                        }
+                Text(
+                    text = "Configure zero-port-forwarding public access so players can join your server from outside your local network.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate400,
+                    fontSize = 12.sp
+                )
+
+                SettingSwitchRow(
+                    title = "Auto-Start Tunnel on Server Boot",
+                    checked = tunnelAutoStart,
+                    onCheckedChange = {
+                        tunnelAutoStart = it
+                        val updated = server.tunnelConfig.copy(autoStart = it)
+                        onSaveServer(server.copy(tunnelConfig = updated))
                     }
-                }
+                )
 
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = motd,
-                            onValueChange = { motd = it },
-                            label = { Text(stringResource(R.string.wizard_step1_motd_label)) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldPrimary,
-                                unfocusedBorderColor = ObsidianCardBorder
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        OutlinedTextField(
-                            value = levelSeed,
-                            onValueChange = { levelSeed = it },
-                            label = { Text(stringResource(R.string.settings_level_seed)) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldPrimary,
-                                unfocusedBorderColor = ObsidianCardBorder
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            OutlinedTextField(
-                                value = maxPlayers.toString(),
-                                onValueChange = { maxPlayers = it.toIntOrNull() ?: 20 },
-                                label = { Text(stringResource(R.string.settings_max_players)) },
-                                modifier = Modifier.weight(1f)
-                            )
-
-                            OutlinedTextField(
-                                value = viewDistance.toString(),
-                                onValueChange = { viewDistance = it.toIntOrNull() ?: 10 },
-                                label = { Text(stringResource(R.string.settings_view_distance)) },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        SettingSwitchRow(
-                            title = stringResource(R.string.settings_pvp),
-                            checked = pvp,
-                            onCheckedChange = { pvp = it }
-                        )
-                        SettingSwitchRow(
-                            title = "Hardcore Mode",
-                            checked = hardcore,
-                            onCheckedChange = { hardcore = it }
-                        )
-                        SettingSwitchRow(
-                            title = stringResource(R.string.settings_online_mode),
-                            checked = onlineMode,
-                            onCheckedChange = { onlineMode = it }
-                        )
-                        SettingSwitchRow(
-                            title = "Enforce Whitelist",
-                            checked = whitelist,
-                            onCheckedChange = { whitelist = it }
-                        )
-                        SettingSwitchRow(
-                            title = stringResource(R.string.settings_allow_flight),
-                            checked = allowFlight,
-                            onCheckedChange = { allowFlight = it }
-                        )
-                        SettingSwitchRow(
-                            title = "Allow Nether Dimension",
-                            checked = allowNether,
-                            onCheckedChange = { allowNether = it }
-                        )
-                    }
-                }
-
-                // Public Tunneling & Zero Port Forwarding Card
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                // Provider Selection
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("Tunnel Service Provider", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.Language, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
-                            Text(
-                                text = "Public Tunnel & Zero-Port-Forwarding",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-
-                        Text(
-                            text = "Expose your Minecraft server to the public Internet without router port forwarding or static IPs. Friends can join over cellular (4G/5G) or remote Wi-Fi.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
-                        )
-
-                        TunnelSecurityWarningCard()
-
-                        SettingSwitchRow(
-                            title = "Auto-start tunnel with server",
-                            checked = tunnelAutoStart,
-                            onCheckedChange = {
-                                tunnelAutoStart = it
-                                val updated = server.tunnelConfig.copy(
-                                    autoStart = it,
-                                    provider = tunnelProvider,
-                                    customRelayHost = customRelayHost,
-                                    customRelayPort = customRelayPort,
-                                    playitSecret = playitSecret
-                                )
+                        FilterChip(
+                            selected = tunnelProvider == TunnelProvider.BORE,
+                            onClick = {
+                                tunnelProvider = TunnelProvider.BORE
+                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.BORE)
                                 onSaveServer(server.copy(tunnelConfig = updated))
-                            }
-                        )
-
-                        Text(
-                            text = "Tunnel Network Provider",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(TunnelProvider.entries) { provider ->
-                                FilterChip(
-                                    selected = tunnelProvider == provider,
-                                    onClick = {
-                                        tunnelProvider = provider
-                                        val updated = server.tunnelConfig.copy(
-                                            autoStart = tunnelAutoStart,
-                                            provider = provider,
-                                            customRelayHost = customRelayHost,
-                                            customRelayPort = customRelayPort,
-                                            playitSecret = playitSecret
-                                        )
-                                        onSaveServer(server.copy(tunnelConfig = updated))
-                                    },
-                                    label = { Text(provider.displayName) },
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = EmeraldPrimary,
-                                        selectedLabelColor = Color.Black,
-                                        containerColor = Slate800,
-                                        labelColor = Color.White
-                                    )
-                                )
-                            }
-                        }
-
-                        if (tunnelProvider == TunnelProvider.BORE) {
-                            Text(
-                                text = "Instant free zero-configuration public tunnel via bore.pub. No account or token required.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Slate400,
-                                fontSize = 12.sp
-                            )
-                        } else if (tunnelProvider == TunnelProvider.PLAYIT) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(
-                                    text = "Playit.gg provides persistent custom domains (e.g. *.joinmc.link, *.ply.gg). Enter a secret key or start the tunnel to link your device.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Slate400,
-                                    fontSize = 12.sp
-                                )
-                                OutlinedTextField(
-                                    value = playitSecret,
-                                    onValueChange = {
-                                        playitSecret = it
-                                        val updated = server.tunnelConfig.copy(
-                                            autoStart = tunnelAutoStart,
-                                            provider = tunnelProvider,
-                                            customRelayHost = customRelayHost,
-                                            customRelayPort = customRelayPort,
-                                            playitSecret = it
-                                        )
-                                        onSaveServer(server.copy(tunnelConfig = updated))
-                                    },
-                                    label = { Text("Playit Secret Key (Optional)") },
-                                    placeholder = { Text("Paste secret key from playit.gg", color = Slate400) },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = ObsidianCardBorder,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    androidx.compose.material3.TextButton(
-                                        onClick = {
-                                            try {
-                                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://playit.gg/manage"))
-                                                context.startActivity(intent)
-                                            } catch (_: Exception) {}
-                                        }
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                            contentDescription = null,
-                                            tint = EmeraldPrimary,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(
-                                            text = "Open Playit.gg Dashboard",
-                                            color = EmeraldPrimary,
-                                            fontSize = 12.sp
-                                        )
-                                    }
-                                }
-                            }
-                        } else if (tunnelProvider == TunnelProvider.CUSTOM_BORE) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = customRelayHost,
-                                    onValueChange = {
-                                        customRelayHost = it
-                                        val updated = server.tunnelConfig.copy(
-                                            autoStart = tunnelAutoStart,
-                                            provider = tunnelProvider,
-                                            customRelayHost = it,
-                                            customRelayPort = customRelayPort,
-                                            playitSecret = playitSecret
-                                        )
-                                        onSaveServer(server.copy(tunnelConfig = updated))
-                                    },
-                                    label = { Text("Relay Host") },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = ObsidianCardBorder,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    modifier = Modifier.weight(2f)
-                                )
-                                OutlinedTextField(
-                                    value = customRelayPort.toString(),
-                                    onValueChange = {
-                                        val port = it.toIntOrNull() ?: 7835
-                                        customRelayPort = port
-                                        val updated = server.tunnelConfig.copy(
-                                            autoStart = tunnelAutoStart,
-                                            provider = tunnelProvider,
-                                            customRelayHost = customRelayHost,
-                                            customRelayPort = port,
-                                            playitSecret = playitSecret
-                                        )
-                                        onSaveServer(server.copy(tunnelConfig = updated))
-                                    },
-                                    label = { Text("Port") },
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = ObsidianCardBorder,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        } else {
-            // Raw Config File Document Editor
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                // File Selector Row & Actions
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        items(configFiles) { fileName ->
-                            FilterChip(
-                                selected = selectedFile == fileName,
-                                onClick = { selectedFile = fileName },
-                                label = { Text(fileName, fontFamily = FontFamily.Monospace, fontSize = 12.sp) },
-                                leadingIcon = {
-                                    Icon(
-                                        Icons.Default.Description,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = EmeraldPrimary,
-                                    selectedLabelColor = Color.Black,
-                                    selectedLeadingIconColor = Color.Black,
-                                    containerColor = Slate800,
-                                    labelColor = Slate400
-                                )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    IconButton(
-                        onClick = {
-                            scope.launch {
-                                isFileLoading = true
-                                rawFileContent = onReadRawConfigFile(selectedFile)
-                                isFileLoading = false
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Reload File", tint = Slate400)
-                    }
-
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                isFileSaving = true
-                                val success = onSaveRawConfigFile(selectedFile, rawFileContent)
-                                isFileSaving = false
-                                fileSaveStatus = if (success) "Saved $selectedFile" else "Failed to save"
-                                delay(2500)
-                                fileSaveStatus = null
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        if (isFileSaving) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black)
-                        } else {
-                            Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save", color = Color.Black, fontWeight = FontWeight.Bold)
-                        }
-                    }
-                }
-
-                if (fileSaveStatus != null) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (fileSaveStatus?.contains("Failed") == true) RedstoneLight.copy(alpha = 0.2f) else EmeraldDark.copy(alpha = 0.3f),
-                        border = BorderStroke(1.dp, if (fileSaveStatus?.contains("Failed") == true) RedstoneLight else EmeraldPrimary),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                if (fileSaveStatus?.contains("Failed") == true) Icons.Default.Description else Icons.Default.Check,
-                                contentDescription = null,
-                                tint = if (fileSaveStatus?.contains("Failed") == true) RedstoneLight else EmeraldLight,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = fileSaveStatus ?: "",
-                                color = if (fileSaveStatus?.contains("Failed") == true) RedstoneLight else EmeraldLight,
-                                fontSize = 13.sp
-                            )
-                        }
-                    }
-                }
-
-                // Monospace Code Document Editor
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = Slate950),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    if (isFileLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(color = EmeraldPrimary)
-                        }
-                    } else {
-                        OutlinedTextField(
-                            value = rawFileContent,
-                            onValueChange = { rawFileContent = it },
-                            textStyle = TextStyle(
-                                fontFamily = FontFamily.Monospace,
-                                fontSize = 13.sp,
-                                color = Color(0xFFE2E8F0),
-                                lineHeight = 18.sp
-                            ),
-                            placeholder = {
-                                Text("Empty file content...", fontFamily = FontFamily.Monospace, color = Slate400)
                             },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Slate950,
-                                unfocusedContainerColor = Slate950,
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent
-                            ),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(8.dp)
+                            label = { Text("bore.pub (Free)") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary,
+                                selectedLabelColor = Color.Black,
+                                containerColor = Slate800,
+                                labelColor = Color.White
+                            )
                         )
+
+                        FilterChip(
+                            selected = tunnelProvider == TunnelProvider.PLAYIT,
+                            onClick = {
+                                tunnelProvider = TunnelProvider.PLAYIT
+                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.PLAYIT)
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            },
+                            label = { Text("Playit.gg") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary,
+                                selectedLabelColor = Color.Black,
+                                containerColor = Slate800,
+                                labelColor = Color.White
+                            )
+                        )
+
+                        FilterChip(
+                            selected = tunnelProvider == TunnelProvider.CUSTOM_BORE,
+                            onClick = {
+                                tunnelProvider = TunnelProvider.CUSTOM_BORE
+                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.CUSTOM_BORE)
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            },
+                            label = { Text("Custom Bore") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary,
+                                selectedLabelColor = Color.Black,
+                                containerColor = Slate800,
+                                labelColor = Color.White
+                            )
+                        )
+                    }
+                }
+
+                // Playit.gg configuration
+                if (tunnelProvider == TunnelProvider.PLAYIT) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = playitSecret,
+                            onValueChange = {
+                                playitSecret = it
+                                val updated = server.tunnelConfig.copy(playitSecret = it.trim())
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            },
+                            label = { Text("Playit Secret Key (Optional)") },
+                            placeholder = { Text("Auto-generated if empty", color = Slate400) },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldPrimary,
+                                unfocusedBorderColor = ObsidianCardBorder,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "Leave blank to claim in browser upon first start, or paste your account agent secret key.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                // Custom Bore configuration
+                if (tunnelProvider == TunnelProvider.CUSTOM_BORE) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = customRelayHost,
+                                onValueChange = {
+                                    customRelayHost = it
+                                    val updated = server.tunnelConfig.copy(
+                                        provider = TunnelProvider.CUSTOM_BORE,
+                                        customRelayHost = it.trim(),
+                                        customRelayPort = customRelayPort,
+                                        playitSecret = playitSecret
+                                    )
+                                    onSaveServer(server.copy(tunnelConfig = updated))
+                                },
+                                label = { Text("Relay Host") },
+                                placeholder = { Text("bore.pub", color = Slate400) },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldPrimary,
+                                    unfocusedBorderColor = ObsidianCardBorder,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier.weight(2f)
+                            )
+
+                            OutlinedTextField(
+                                value = customRelayPort.toString(),
+                                onValueChange = {
+                                    val port = it.toIntOrNull() ?: customRelayPort
+                                    customRelayPort = port
+                                    val updated = server.tunnelConfig.copy(
+                                        provider = TunnelProvider.CUSTOM_BORE,
+                                        customRelayHost = customRelayHost.trim(),
+                                        customRelayPort = port,
+                                        playitSecret = playitSecret
+                                    )
+                                    onSaveServer(server.copy(tunnelConfig = updated))
+                                },
+                                label = { Text("Port") },
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = EmeraldPrimary,
+                                    unfocusedBorderColor = ObsidianCardBorder,
+                                    focusedTextColor = Color.White,
+                                    unfocusedTextColor = Color.White
+                                ),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 

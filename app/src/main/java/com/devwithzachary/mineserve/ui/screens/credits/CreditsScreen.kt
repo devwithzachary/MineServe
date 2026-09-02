@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.ui.screens.credits
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -92,6 +93,7 @@ enum class CreditCategory(val label: String) {
     ALL("All"),
     SERVERS("Server Software"),
     SYSTEM("Runtime & Linux"),
+    TUNNELING("Tunneling"),
     LIBRARIES("APIs & Libraries")
 }
 
@@ -186,6 +188,22 @@ val SOFTWARE_CREDITS: List<SoftwareCredit> = listOf(
         tag = "Rootless Sandbox"
     ),
     SoftwareCredit(
+        name = "bore (bore.pub)",
+        category = CreditCategory.TUNNELING,
+        description = "Modern, simple TCP tunnel that exposes local Minecraft server ports to the Internet with zero configuration.",
+        url = "https://github.com/ekzhang/bore",
+        license = "MIT",
+        tag = "TCP Tunnel"
+    ),
+    SoftwareCredit(
+        name = "Playit.gg",
+        category = CreditCategory.TUNNELING,
+        description = "Global tunneling proxy network enabling persistent subdomains and zero-port-forwarding multiplayer.",
+        url = "https://playit.gg",
+        license = "MIT / AGPL-3.0",
+        tag = "Global Proxy"
+    ),
+    SoftwareCredit(
         name = "Modrinth",
         category = CreditCategory.LIBRARIES,
         description = "Open-source community platform and public REST API for discovering and downloading Minecraft plugins and mods.",
@@ -235,6 +253,8 @@ fun CreditsScreen(
             SOFTWARE_CREDITS.filter { it.category == selectedCategory }
         }
     }
+
+    BackHandler(onBack = onBack)
 
     Scaffold(
         topBar = {

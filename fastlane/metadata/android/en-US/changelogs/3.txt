@@ -1,0 +1,7 @@
+• In-App File Explorer: Full directory navigation, CRUD & export
+• Syntax-Highlighted Editor: YAML, JSON, TOML & properties editor
+• Crash Log Diagnostics: Auto-detect root causes with 1-tap fixes
+• Playit.gg Reliability: Instant claim dismissal & address sync
+• Real-Time TPS & Health: Live engine TPS & MSPT telemetry
+• Local Timezone Sync: Console timestamps match device timezone
+• System Back Navigation: Smooth back gesture support
