@@ -31,8 +31,21 @@ class PlayitTunnelClient(
     companion object {
         private const val TAG = "PlayitTunnelClient"
         private const val PLAYIT_VERSION = "v0.15.26"
+        private val ANSI_REGEX = Regex("\u001B\\[[0-9;]*[a-zA-Z]")
         private val CLAIM_URL_REGEX = Regex("https://playit\\.gg/claim/[a-zA-Z0-9_-]+")
-        private val TUNNEL_ADDR_REGEX = Regex("([a-zA-Z0-9.-]+\\.(?:ply\\.gg|joinmc\\.link|playit\\.gg))(?::([0-9]+))?")
+
+        // 1. Matches: "abc.ply.gg:12345 => 127.0.0.1:25565" or "cool.joinmc.link => 127.0.0.1:25565" or "147.185.221.16:12345 => 127.0.0.1:25565"
+        private val MAPPING_ARROW_REGEX = Regex("""([a-zA-Z0-9_.-]+(?::[0-9]+)?)\s*=>\s*(?:127\.0\.0\.1|localhost|0\.0\.0\.0|\[::1\]|local)""", RegexOption.IGNORE_CASE)
+
+        // 2. Matches playit / joinmc domains: "abc.ply.gg:12345" or "xyz.gl.joinmc.link" or "myname.playit.gg:25565"
+        private val DOMAIN_ADDR_REGEX = Regex("""\b([a-zA-Z0-9_.-]+\.(?:ply\.gg|joinmc\.link|playit\.gg))(?::([0-9]+))?\b""", RegexOption.IGNORE_CASE)
+
+        // 3. Matches IP:port before arrow: "147.185.221.16:12345 =>"
+        private val IP_PORT_ARROW_REGEX = Regex("""\b((?:\d{1,3}\.){3}\d{1,3}):([0-9]+)\s*=>""")
+
+        private fun stripAnsi(text: String): String {
+            return ANSI_REGEX.replace(text, "")
+        }
     }
 
     private val pRootEngine = PRootEngine(context)
@@ -113,14 +126,61 @@ class PlayitTunnelClient(
 
                 val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
                 var assignedAddress: String? = null
+                var hasClaimed = false
+
+                // Parallel coroutine to query Playit REST API using the secret key
+                val apiPollJob = parentScope.launch(Dispatchers.IO) {
+                    while (isActive && !isExplicitlyStopped.get()) {
+                        val currentSecret = findSecretKey()
+                        if (currentSecret != null) {
+                            val runData = fetchPlayitTunnels(currentSecret)
+                            if (runData != null) {
+                                hasClaimed = true
+                                if (runData.tunnels.isNotEmpty()) {
+                                    val matchingTunnel = runData.tunnels.firstOrNull { it.localPort == effectiveLocalPort }
+                                        ?: runData.tunnels.first()
+
+                                    val host = matchingTunnel.customDomain?.ifBlank { null }
+                                        ?: matchingTunnel.assignedDomain
+                                    val port = matchingTunnel.portFrom
+                                    val full = if (port == 25565 && host.endsWith("joinmc.link")) host else "$host:$port"
+
+                                    if (assignedAddress != full) {
+                                        assignedAddress = full
+                                        Log.i(TAG, "Playit tunnel active from REST API: $full")
+                                        onStateChanged(
+                                            TunnelState.Connected(
+                                                publicHost = host,
+                                                publicPort = port,
+                                                fullAddress = full,
+                                                provider = TunnelProvider.PLAYIT
+                                            )
+                                        )
+                                    }
+                                } else {
+                                    if (assignedAddress == null) {
+                                        onStateChanged(
+                                            TunnelState.Connecting(
+                                                message = "Playit online: No tunnel created on playit.gg",
+                                                claimUrl = null
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        delay(2500L)
+                    }
+                }
 
                 while (parentScope.isActive && !isExplicitlyStopped.get()) {
-                    val line = reader.readLine() ?: break
+                    val rawLine = reader.readLine() ?: break
+                    val line = stripAnsi(rawLine).trim()
                     Log.d(TAG, "[playit] $line")
 
-                    // Check for Claim URL
+                    // 1. Check for Claim URL
                     val claimMatch = CLAIM_URL_REGEX.find(line)
-                    if (claimMatch != null) {
+                    if (claimMatch != null && !hasClaimed && assignedAddress == null) {
                         val claimUrl = claimMatch.value
                         onStateChanged(
                             TunnelState.Connecting(
@@ -128,17 +188,43 @@ class PlayitTunnelClient(
                                 claimUrl = claimUrl
                             )
                         )
+                        continue
                     }
 
-                    // Check for Assigned Domain / Address
-                    val tunnelMatch = TUNNEL_ADDR_REGEX.find(line)
-                    if (tunnelMatch != null && (line.contains("tunnel", ignoreCase = true) || line.contains("server", ignoreCase = true) || line.contains("address", ignoreCase = true) || line.contains("connected", ignoreCase = true))) {
-                        val host = tunnelMatch.groupValues[1]
-                        val portStr = tunnelMatch.groupValues.getOrNull(2)
-                        val port = portStr?.toIntOrNull() ?: 25565
-                        assignedAddress = "$host:$port"
+                    // 2. Check for Claim Authorization / Setup Complete indicators
+                    if (!hasClaimed && (
+                        line.contains("Loaded secret", ignoreCase = true) ||
+                        line.contains("Registered agent", ignoreCase = true) ||
+                        line.contains("Agent registered", ignoreCase = true) ||
+                        line.contains("Authenticated with playit", ignoreCase = true) ||
+                        line.contains("starting up tunnel connection", ignoreCase = true) ||
+                        line.contains("tunnel running", ignoreCase = true) ||
+                        line.contains("TUNNELS", ignoreCase = true) ||
+                        line.contains("setup, secret written", ignoreCase = true)
+                    )) {
+                        hasClaimed = true
+                        if (assignedAddress == null) {
+                            onStateChanged(
+                                TunnelState.Connecting(
+                                    message = "Playit agent claimed! Loading tunnels...",
+                                    claimUrl = null
+                                )
+                            )
+                        }
+                    }
 
-                        Log.i(TAG, "Playit public tunnel connected: $assignedAddress")
+                    // 3. Check for Mapping Arrow (e.g. "abc.ply.gg:12345 => 127.0.0.1:25565")
+                    val arrowMatch = MAPPING_ARROW_REGEX.find(line)
+                    if (arrowMatch != null) {
+                        val fullHostPort = arrowMatch.groupValues[1]
+                        val host = if (fullHostPort.contains(':')) fullHostPort.substringBefore(':') else fullHostPort
+                        val port = if (fullHostPort.contains(':')) {
+                            fullHostPort.substringAfter(':').toIntOrNull() ?: 25565
+                        } else 25565
+
+                        assignedAddress = "$host:$port"
+                        hasClaimed = true
+                        Log.i(TAG, "Playit public tunnel connected via arrow mapping: $assignedAddress")
                         onStateChanged(
                             TunnelState.Connected(
                                 publicHost = host,
@@ -147,12 +233,73 @@ class PlayitTunnelClient(
                                 provider = TunnelProvider.PLAYIT
                             )
                         )
+                        continue
                     }
 
-                    if (line.contains("error", ignoreCase = true) && !line.contains("loading secret", ignoreCase = true) && assignedAddress == null) {
+                    // 4. Check for Domain Match (e.g. "subdomain.ply.gg:12345" or "foo.joinmc.link")
+                    val domainMatch = DOMAIN_ADDR_REGEX.find(line)
+                    if (domainMatch != null && assignedAddress == null) {
+                        val host = domainMatch.groupValues[1]
+                        val portStr = domainMatch.groupValues.getOrNull(2)
+                        val port = if (!portStr.isNullOrBlank()) portStr.toIntOrNull() ?: 25565 else 25565
+                        assignedAddress = "$host:$port"
+                        hasClaimed = true
+                        Log.i(TAG, "Playit public tunnel connected via domain match: $assignedAddress")
+                        onStateChanged(
+                            TunnelState.Connected(
+                                publicHost = host,
+                                publicPort = port,
+                                fullAddress = assignedAddress,
+                                provider = TunnelProvider.PLAYIT
+                            )
+                        )
+                        continue
+                    }
+
+                    // 5. Check for IP:Port before arrow match
+                    val ipMatch = IP_PORT_ARROW_REGEX.find(line)
+                    if (ipMatch != null && assignedAddress == null) {
+                        val host = ipMatch.groupValues[1]
+                        val port = ipMatch.groupValues[2].toIntOrNull() ?: 25565
+                        assignedAddress = "$host:$port"
+                        hasClaimed = true
+                        Log.i(TAG, "Playit public tunnel connected via IP mapping: $assignedAddress")
+                        onStateChanged(
+                            TunnelState.Connected(
+                                publicHost = host,
+                                publicPort = port,
+                                fullAddress = assignedAddress,
+                                provider = TunnelProvider.PLAYIT
+                            )
+                        )
+                        continue
+                    }
+
+                    // 6. Check for No Tunnels notice if claimed but 0 tunnels
+                    if (hasClaimed && assignedAddress == null && (
+                        line.contains("0 tunnels", ignoreCase = true) ||
+                        line.contains("No tunnels configured", ignoreCase = true)
+                    )) {
+                        onStateChanged(
+                            TunnelState.Connecting(
+                                message = "Playit online: No tunnel created on playit.gg",
+                                claimUrl = null
+                            )
+                        )
+                    }
+
+                    // 7. Check for general errors
+                    if (line.contains("error", ignoreCase = true) &&
+                        !line.contains("loading secret", ignoreCase = true) &&
+                        !line.contains("no secret", ignoreCase = true) &&
+                        !line.contains("TooManyRequests", ignoreCase = true) &&
+                        assignedAddress == null
+                    ) {
                         Log.w(TAG, "Playit error in output: $line")
                     }
                 }
+
+                apiPollJob.cancel()
 
                 val exitCode = proc.waitFor()
                 Log.i(TAG, "Playit process exited with code $exitCode")
@@ -231,4 +378,117 @@ class PlayitTunnelClient(
             throw Exception("Failed to download Playit agent binary")
         }
     }
+
+    private fun findSecretKey(): String? {
+        if (secret.isNotBlank()) return secret.trim()
+
+        val paths = listOf(
+            File(pRootEngine.rootfsDir, "root/.config/playit_gg/playit.toml"),
+            File(pRootEngine.rootfsDir, "root/.config/playit/playit.toml"),
+            File(pRootEngine.rootfsDir, "root/playit.toml"),
+            File(pRootEngine.rootfsDir, "etc/playit/playit.toml")
+        )
+
+        for (file in paths) {
+            if (file.exists() && file.isFile) {
+                try {
+                    val content = file.readText()
+                    val regex = Regex("""secret(?:_key)?\s*=\s*["']([^"']+)["']""")
+                    val match = regex.find(content)
+                    if (match != null) {
+                        return match.groupValues[1].trim()
+                    }
+                } catch (_: Exception) {}
+            }
+        }
+        return null
+    }
+
+    private suspend fun fetchPlayitTunnels(secretKey: String): PlayitRunData? = withContext(Dispatchers.IO) {
+        try {
+            val url = URL("https://api.playit.gg/agents/rundata")
+            val conn = url.openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.setRequestProperty("Authorization", "Agent-Key $secretKey")
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.setRequestProperty("User-Agent", "MineServe-Android")
+            conn.connectTimeout = 8000
+            conn.readTimeout = 8000
+            conn.doOutput = true
+
+            conn.outputStream.use { os ->
+                os.write("{}".toByteArray(Charsets.UTF_8))
+            }
+
+            if (conn.responseCode in 200..299) {
+                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
+                return@withContext parsePlayitRunData(responseText)
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Playit API query error: ${e.message}")
+        }
+        null
+    }
+
+    private fun parsePlayitRunData(jsonString: String): PlayitRunData? {
+        try {
+            val root = org.json.JSONObject(jsonString)
+            if (root.optString("status") != "success") return null
+            val data = root.optJSONObject("data") ?: return null
+            val agentId = data.optString("agent_id")
+            val accountStatus = data.optString("account_status")
+            val tunnelsArray = data.optJSONArray("tunnels") ?: org.json.JSONArray()
+            val tunnelsList = mutableListOf<PlayitTunnelInfo>()
+
+            for (i in 0 until tunnelsArray.length()) {
+                val item = tunnelsArray.getJSONObject(i)
+                val id = item.optString("id")
+                val name = item.optString("name")
+                val assignedDomain = item.optString("assigned_domain")
+                val customDomain = if (item.isNull("custom_domain")) null else item.optString("custom_domain")
+                val proto = item.optString("proto")
+                val localPort = item.optInt("local_port", 25565)
+
+                val portObj = item.optJSONObject("port")
+                val portFrom = portObj?.optInt("from", 25565) ?: 25565
+                val portTo = portObj?.optInt("to", portFrom) ?: portFrom
+
+                tunnelsList.add(
+                    PlayitTunnelInfo(
+                        id = id,
+                        name = name,
+                        assignedDomain = assignedDomain,
+                        customDomain = customDomain,
+                        portFrom = portFrom,
+                        portTo = portTo,
+                        proto = proto,
+                        localPort = localPort
+                    )
+                )
+            }
+
+            return PlayitRunData(agentId, accountStatus, tunnelsList)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error parsing Playit API response", e)
+            return null
+        }
+    }
 }
+
+private data class PlayitTunnelInfo(
+    val id: String,
+    val name: String,
+    val assignedDomain: String,
+    val customDomain: String?,
+    val portFrom: Int,
+    val portTo: Int,
+    val proto: String,
+    val localPort: Int
+)
+
+private data class PlayitRunData(
+    val agentId: String,
+    val accountStatus: String,
+    val tunnels: List<PlayitTunnelInfo>
+)
+

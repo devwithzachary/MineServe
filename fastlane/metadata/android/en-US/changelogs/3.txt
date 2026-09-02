@@ -1,6 +1,7 @@
-• In-App File Explorer: Browse server directory tree with file CRUD, upload & export
-• Syntax-Highlighted Editor: YAML, JSON, TOML & properties editor with line numbers & undo/redo
-• Crash Log Diagnostics: Auto-detect root causes for crashes with 1-tap quick fixes
-• Real-Time TPS & Health: Live engine TPS & MSPT telemetry with overload tracking
-• Local Timezone Sync: Console timestamps match your device timezone
-• System Back Navigation: Smooth back gesture support across all screens
+• In-App File Explorer: Full directory navigation, CRUD & export
+• Syntax-Highlighted Editor: YAML, JSON, TOML & properties editor
+• Crash Log Diagnostics: Auto-detect root causes with 1-tap fixes
+• Playit.gg Reliability: Instant claim dismissal & address sync
+• Real-Time TPS & Health: Live engine TPS & MSPT telemetry
+• Local Timezone Sync: Console timestamps match device timezone
+• System Back Navigation: Smooth back gesture support

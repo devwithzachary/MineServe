@@ -48,6 +48,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Local Timezone Console Synchronization: Synced container environment (/etc/timezone, /etc/localtime, TZ variable) and JVM system properties with the host device's local timezone for accurate console timestamps.",
             "Real-Time TPS & Engine Health Diagnostics: Replaced static TPS with live engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive overload detection.",
             "Performance Tab TPS Diagnostics Card: Added dedicated diagnostics card with live TPS gauge, MSPT processing time, tick budget headroom, and overload warning tracking.",
+            "Playit.gg Claim & Connection Reliability: Automatic claim banner dismissal upon account authorization, ANSI escape code filtering, and reliable public address resolution for all Playit domain and IP mappings.",
             "Tunneling Services Recognition: Added dedicated Tunneling category to the in-app Credits screen recognizing bore (bore.pub) and Playit.gg for zero-port-forwarding multiplayer."
         )
     ),
