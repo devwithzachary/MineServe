@@ -2,6 +2,17 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.3.0] - 2026-09-09
+
+### ⚡ Automation, Smart Schedules & Battery Optimization
+- **Smart Idle Auto-Shutdown**: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve phone battery and prevent thermal throttling.
+- **Auto-Wake on Ping**: Standby socket listener running directly on the server port (TCP for Java Edition, UDP RakNet for Bedrock). When a player queries or joins from their Minecraft multiplayer server list, MineServe automatically spins up the Java process.
+- **Dedicated Automation Tab**: New tab in Server Details providing 1-tap configuration for Smart Sleep, Auto-Wake on Ping, manual standby arming, and active scheduler management.
+- **Flexible Scheduled Tasks & Cron Engine**: Automated background timer engine for periodic world backups, full server backups, nightly server restarts, and in-game announcements. Supports arbitrary intervals (minutes or hours with quick chips), daily execution at specific times, execution every N days, weekly execution on selected days of the week (Sun through Sat) with N-week intervals, and advanced 5-field custom cron expressions (minute hour day month weekday) with real-time validation.
+- **Customizable Console Macro Bar**: Fully customizable quick-command hotbar chips above the live terminal with built-in macro editor to add, edit, delete, or reset 1-tap command shortcuts.
+- **Interactive Command Auto-Completion**: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).
+- **Command History Recall**: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.
+
 ## [1.2.0] - 2026-09-02
 
 ### 📁 Full In-App File Explorer & Advanced Config Editor

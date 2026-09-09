@@ -146,6 +146,10 @@ fun ServerDetailScreen(
     onDeletePlugin: (PluginModEntry) -> Unit,
     onInstallPluginOrMod: (fileName: String, downloadUrl: String, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     onImportJar: (android.net.Uri, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    isStandbyActive: Boolean = false,
+    onSaveAutomationConfig: (com.devwithzachary.mineserve.model.ServerAutomationConfig) -> Unit = {},
+    onEnterStandby: () -> Unit = {},
+    onExitStandby: () -> Unit = {},
     onDeleteServer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -164,6 +168,7 @@ fun ServerDetailScreen(
 
     val consoleStr = stringResource(R.string.tab_console)
     val perfStr = stringResource(R.string.tab_performance)
+    val automationStr = stringResource(R.string.tab_automation)
     val filesStr = stringResource(R.string.tab_files)
     val settingsStr = stringResource(R.string.tab_settings)
     val playersStr = stringResource(R.string.tab_players)
@@ -173,6 +178,7 @@ fun ServerDetailScreen(
         buildList {
             add(consoleStr)
             add(perfStr)
+            add(automationStr)
             add(filesStr)
             add(settingsStr)
             add(playersStr)
@@ -198,6 +204,7 @@ fun ServerDetailScreen(
         ServerStatus.STOPPING -> RedstoneLight
         ServerStatus.ERROR -> RedstoneRed
         ServerStatus.STOPPED -> Slate400
+        ServerStatus.STANDBY -> DiamondCyan
     }
 
     if (showDeleteDialog) {
@@ -381,7 +388,15 @@ fun ServerDetailScreen(
                         metrics = metrics,
                         storageBytes = storageBytes
                     )
-                    2 -> FilesTab(
+                    2 -> AutomationTab(
+                        server = server,
+                        status = status,
+                        isStandbyActive = isStandbyActive,
+                        onSaveAutomationConfig = onSaveAutomationConfig,
+                        onEnterStandby = onEnterStandby,
+                        onExitStandby = onExitStandby
+                    )
+                    3 -> FilesTab(
                         server = server,
                         onListDirectory = onListDirectory,
                         onCreateFile = onCreateFile,
@@ -397,24 +412,24 @@ fun ServerDetailScreen(
                         onAnalyzeCrash = onAnalyzeCrash,
                         onApplyQuickFix = onApplyQuickFix
                     )
-                    3 -> SettingsTab(
+                    4 -> SettingsTab(
                         server = server,
                         initialProperties = properties,
                         onSaveProperties = onSaveProperties,
                         onSaveServer = onSaveServer
                     )
-                    4 -> PlayersTab(
+                    5 -> PlayersTab(
                         metrics = metrics,
                         onSendCommand = onSendCommand
                     )
-                    5 -> BackupsTab(
+                    6 -> BackupsTab(
                         backups = backups,
                         onCreateBackup = onCreateBackup,
                         onRestoreBackup = onRestoreBackup,
                         onExportBackup = onExportBackup,
                         onGetShareIntent = onGetShareIntent
                     )
-                    6 -> {
+                    7 -> {
                         if (showPluginsOrModsTab) {
                             PluginsTab(
                                 server = server,

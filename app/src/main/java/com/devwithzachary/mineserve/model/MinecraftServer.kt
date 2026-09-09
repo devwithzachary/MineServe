@@ -36,7 +36,8 @@ data class MinecraftServer(
     val createdAt: Long = System.currentTimeMillis(),
     val lastStartedAt: Long? = null,
     val jarFileName: String = "server.jar",
-    val tunnelConfig: TunnelConfig = TunnelConfig()
+    val tunnelConfig: TunnelConfig = TunnelConfig(),
+    val automationConfig: ServerAutomationConfig = ServerAutomationConfig()
 ) {
     val isRunning: Boolean get() = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
 }

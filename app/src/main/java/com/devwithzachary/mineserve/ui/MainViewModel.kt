@@ -19,6 +19,7 @@ import com.devwithzachary.mineserve.engine.PRootEngine
 import com.devwithzachary.mineserve.engine.RootfsManager
 import com.devwithzachary.mineserve.engine.RootfsSetupState
 import com.devwithzachary.mineserve.engine.ServerProcessManager
+import com.devwithzachary.mineserve.engine.ServerSchedulerManager
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PluginModEntry
@@ -61,6 +62,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val tunnelManager = TunnelManager.getInstance(application)
     val updateChecker = GitHubUpdateChecker()
     val updatePreferences = UpdatePreferences(application)
+    val schedulerManager = ServerSchedulerManager.getInstance(application, serverRepository, backupRepository)
 
     val servers: StateFlow<List<MinecraftServer>> = serverRepository.servers
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = processManager.serverStatuses
@@ -114,6 +116,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         MineServeForegroundService.activeServerInfoProvider = {
             val count = processManager.getAnyRunningServerCount()
             if (count > 0) "$count Minecraft server(s) running" else "Server engine idle"
+        }
+
+        schedulerManager.processManagerProvider = { processManager }
+        schedulerManager.startServerCallback = { server: MinecraftServer -> startServer(server) }
+        schedulerManager.start()
+
+        processManager.onServerWakeRequested = { server: MinecraftServer ->
+            startServer(server)
         }
 
         refreshData()
@@ -195,10 +205,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startServer(server: MinecraftServer) {
-        Log.d(TAG, "startServer: requested start for server ${server.name} (${server.id})")
-        val serverDir = serverRepository.getServerDirectory(server.id)
+        val freshServer = servers.value.firstOrNull { it.id == server.id } ?: server
+        Log.d(TAG, "startServer: requested start for server ${freshServer.name} (${freshServer.id})")
+        val serverDir = serverRepository.getServerDirectory(freshServer.id)
         MineServeForegroundService.start(getApplication())
-        processManager.startServer(server, serverDir)
+        processManager.startServer(freshServer, serverDir)
     }
 
     fun stopServer(serverId: String) {
@@ -647,5 +658,30 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun disableGitHubUpdatePrompts() {
         toggleCheckGitHubUpdates(false)
         _availableUpdate.value = null
+    }
+
+    fun updateAutomationConfig(serverId: String, config: com.devwithzachary.mineserve.model.ServerAutomationConfig) {
+        viewModelScope.launch {
+            val currentServer = servers.value.firstOrNull { it.id == serverId } ?: return@launch
+            val updated = currentServer.copy(automationConfig = config)
+            serverRepository.updateServer(updated)
+            if (!config.autoWakeOnPing && processManager.isServerInStandby(serverId)) {
+                processManager.exitStandby(serverId)
+            }
+        }
+    }
+
+    fun enterStandby(server: MinecraftServer) {
+        processManager.enterStandby(server) { wokeServer ->
+            startServer(wokeServer)
+        }
+    }
+
+    fun exitStandby(serverId: String) {
+        processManager.exitStandby(serverId)
+    }
+
+    fun isServerInStandby(serverId: String): Boolean {
+        return processManager.isServerInStandby(serverId)
     }
 }

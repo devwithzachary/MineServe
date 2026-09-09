@@ -271,6 +271,10 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onImportJar = { uri, isMod, onResult ->
                             viewModel.importPluginOrMod(server.id, uri, isMod, onResult)
                         },
+                        isStandbyActive = viewModel.isServerInStandby(server.id),
+                        onSaveAutomationConfig = { config -> viewModel.updateAutomationConfig(server.id, config) },
+                        onEnterStandby = { viewModel.enterStandby(server) },
+                        onExitStandby = { viewModel.exitStandby(server.id) },
                         onDeleteServer = {
                             navigateTo(Screen.Dashboard)
                             viewModel.deleteServer(server.id)

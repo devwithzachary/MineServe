@@ -175,10 +175,12 @@ class MineServeForegroundService : Service() {
         monitorJob = serviceScope.launch {
             while (isActive) {
                 val runningCount = processManager.getAnyRunningServerCount()
-                if (runningCount == 0 && _isServiceRunning.value) {
+                val standbyCount = com.devwithzachary.mineserve.engine.StandbyPingManager.instance.getStandbyCount()
+                if (runningCount == 0 && standbyCount == 0 && _isServiceRunning.value) {
                     // Check once more in 5 seconds before stopping self
                     delay(5000)
-                    if (processManager.getAnyRunningServerCount() == 0) {
+                    if (processManager.getAnyRunningServerCount() == 0 &&
+                        com.devwithzachary.mineserve.engine.StandbyPingManager.instance.getStandbyCount() == 0) {
                         stopForegroundAndSelf()
                         break
                     }

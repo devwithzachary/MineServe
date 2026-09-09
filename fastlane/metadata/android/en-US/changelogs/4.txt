@@ -1,0 +1,7 @@
+• Idle Auto-Shutdown: Auto-stop idle servers to save battery
+• Auto-Wake on Ping: Standby listener boots server on ping
+• Automation Tab: Configure sleep, wake & flexible schedules
+• Flexible Scheduled Tasks: Backup & restart on intervals, days, weeks, or cron
+• Custom Console Macros: Customizable 1-tap command hotbar
+• Command Auto-Completion: Interactive syntax suggestions for /
+• Command History: Up/Down arrow recall for previous commands

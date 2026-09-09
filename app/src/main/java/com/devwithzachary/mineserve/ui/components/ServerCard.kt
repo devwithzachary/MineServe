@@ -82,6 +82,7 @@ fun ServerCard(
         ServerStatus.STOPPING -> RedstoneLight
         ServerStatus.ERROR -> RedstoneRed
         ServerStatus.STOPPED -> Slate400
+        ServerStatus.STANDBY -> com.devwithzachary.mineserve.ui.theme.DiamondCyan
     }
 
     val statusText = when (status) {
@@ -90,6 +91,7 @@ fun ServerCard(
         ServerStatus.STOPPING -> stringResource(R.string.status_stopping)
         ServerStatus.ERROR -> stringResource(R.string.status_error)
         ServerStatus.STOPPED -> stringResource(R.string.status_offline)
+        ServerStatus.STANDBY -> "Standby"
     }
 
     Card(

@@ -33,7 +33,9 @@ data class ActiveServerSession(
     var currentMspt: Double = 15.0,
     var totalLagWarnings: Int = 0,
     var lastLagWarningTime: Long = 0L,
-    var lastTpsLogTime: Long = 0L
+    var lastTpsLogTime: Long = 0L,
+    var idleStartTimeMillis: Long? = null,
+    var isAutoSleeping: Boolean = false
 )
 
 class ServerProcessManager private constructor(
@@ -75,6 +77,8 @@ class ServerProcessManager private constructor(
     private val _refreshTriggers = MutableStateFlow<Map<String, Long>>(emptyMap())
     val refreshTriggers: StateFlow<Map<String, Long>> = _refreshTriggers.asStateFlow()
 
+    var onServerWakeRequested: ((MinecraftServer) -> Unit)? = null
+
     init {
         startMetricsMonitor()
     }
@@ -90,23 +94,56 @@ class ServerProcessManager private constructor(
         return status == ServerStatus.RUNNING || status == ServerStatus.STARTING
     }
 
+    fun isServerInStandby(serverId: String): Boolean {
+        return _serverStatuses.value[serverId] == ServerStatus.STANDBY || StandbyPingManager.instance.isStandbyActive(serverId)
+    }
+
+    fun enterStandby(server: MinecraftServer, onWake: ((MinecraftServer) -> Unit)? = null) {
+        if (isServerRunning(server.id)) return
+        updateStatus(server.id, ServerStatus.STANDBY)
+        StandbyPingManager.instance.startStandby(server) { wokeServer ->
+            Log.i(TAG, "Standby wake detected for server ${wokeServer.name}")
+            val wakeMsg = "\r\n\u001B[32m[MineServe Standby] Player ping detected! Starting server...\u001B[0m\r\n"
+            val emu = getEmulator(wokeServer.id)
+            emu.appendBytes(wakeMsg.toByteArray(Charsets.UTF_8), wakeMsg.length)
+            triggerRefresh(wokeServer.id)
+            onWake?.invoke(wokeServer) ?: onServerWakeRequested?.invoke(wokeServer)
+        }
+    }
+
+    fun exitStandby(serverId: String) {
+        StandbyPingManager.instance.stopStandby(serverId)
+        if (_serverStatuses.value[serverId] == ServerStatus.STANDBY) {
+            updateStatus(serverId, ServerStatus.STOPPED)
+        }
+    }
+
     fun getAnyRunningServerCount(): Int {
         return _serverStatuses.value.count { it.value == ServerStatus.RUNNING || it.value == ServerStatus.STARTING }
     }
 
     fun getActiveSummaryText(): String {
         val runningList = sessions.filter { isServerRunning(it.key) }.values
-        if (runningList.isEmpty()) return "Server engine idle"
-        if (runningList.size == 1) {
-            val session = runningList.first()
-            val playerCount = session.onlinePlayers.size
-            val pText = if (playerCount == 0) "0 players" else "$playerCount player(s)"
-            return "${session.server.name} • $pText • Online"
+        if (runningList.isNotEmpty()) {
+            if (runningList.size == 1) {
+                val session = runningList.first()
+                val playerCount = session.onlinePlayers.size
+                val pText = if (playerCount == 0) "0 players" else "$playerCount player(s)"
+                return "${session.server.name} • $pText • Online"
+            }
+            return "${runningList.size} Minecraft servers active"
         }
-        return "${runningList.size} Minecraft servers active"
+        val standbyCount = StandbyPingManager.instance.getStandbyCount()
+        if (standbyCount > 0) {
+            val ports = StandbyPingManager.instance.getStandbyPorts()
+            val portText = if (ports.size == 1) "port ${ports.first()}" else "${ports.size} ports"
+            return "MineServe Standby: Auto-Wake listening on $portText"
+        }
+        return "Server engine idle"
     }
 
     fun stopAllServers() {
+        StandbyPingManager.instance.stopAll()
         TunnelManager.getInstance(context).stopAllTunnels()
         for ((id, status) in _serverStatuses.value) {
             if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
@@ -120,7 +157,8 @@ class ServerProcessManager private constructor(
         serverDir: File,
         onStatusChanged: ((ServerStatus) -> Unit)? = null
     ) {
-        if (isServerRunning(server.id)) return
+        StandbyPingManager.instance.stopStandby(server.id)
+        if (isServerRunning(server.id) && sessions[server.id]?.ptyProcess != null) return
 
         scope.launch {
             try {
@@ -322,6 +360,8 @@ class ServerProcessManager private constructor(
                     ?: Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\[/.*?\]\s+logged in""", RegexOption.IGNORE_CASE).find(line)
                 match?.groupValues?.get(1)?.let { player ->
                     session.onlinePlayers.add(player)
+                    session.idleStartTimeMillis = null
+                    session.isAutoSleeping = false
                 }
             }
 
@@ -330,6 +370,9 @@ class ServerProcessManager private constructor(
                 val match = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\s+(?:left the game|lost connection)""", RegexOption.IGNORE_CASE).find(line)
                 match?.groupValues?.get(1)?.let { player ->
                     session.onlinePlayers.remove(player)
+                    if (session.onlinePlayers.isEmpty()) {
+                        session.idleStartTimeMillis = System.currentTimeMillis()
+                    }
                 }
             }
 
@@ -547,11 +590,11 @@ class ServerProcessManager private constructor(
             TunnelManager.getInstance(context).stopTunnel(serverId)
         }
 
-        if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
+        if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING || status == ServerStatus.STANDBY) {
             MineServeForegroundService.start(context)
         } else if (status == ServerStatus.STOPPED || status == ServerStatus.ERROR) {
-            val remaining = current.count { it.value == ServerStatus.RUNNING || it.value == ServerStatus.STARTING }
-            if (remaining == 0) {
+            val remaining = current.count { it.value == ServerStatus.RUNNING || it.value == ServerStatus.STARTING || it.value == ServerStatus.STANDBY }
+            if (remaining == 0 && StandbyPingManager.instance.getStandbyCount() == 0) {
                 MineServeForegroundService.stop(context)
             }
         }
@@ -568,6 +611,29 @@ class ServerProcessManager private constructor(
                         val uptimeSec = (now - session.startTimeMillis) / 1000
                         val ramUsed = estimateMemoryMb(serverId, session)
                         val cpuPct = estimateCpuPercentage(serverId, session)
+
+                        // Check Idle Auto-Sleep
+                        if (session.server.automationConfig.idleSleepEnabled && session.onlinePlayers.isEmpty()) {
+                            val idleStart = session.idleStartTimeMillis ?: now.also { session.idleStartTimeMillis = it }
+                            val timeoutMs = session.server.automationConfig.idleSleepTimeoutMinutes * 60 * 1000L
+                            if (now - idleStart >= timeoutMs && !session.isAutoSleeping) {
+                                session.isAutoSleeping = true
+                                val timeoutMin = session.server.automationConfig.idleSleepTimeoutMinutes
+                                val notice = "\r\n\u001B[33m[MineServe Auto-Sleep] 0 players connected for ${timeoutMin}m. Entering sleep mode to save battery...\u001B[0m\r\n"
+                                session.emulator.appendBytes(notice.toByteArray(Charsets.UTF_8), notice.length)
+                                triggerRefresh(serverId)
+                                stopServer(serverId)
+                                if (session.server.automationConfig.autoWakeOnPing) {
+                                    scope.launch {
+                                        for (i in 0 until 30) {
+                                            if (!isServerRunning(serverId)) break
+                                            delay(500)
+                                        }
+                                        enterStandby(session.server)
+                                    }
+                                }
+                            }
+                        }
 
                         // Calculate dynamic TPS & MSPT
                         val isRecentLag = (now - session.lastLagWarningTime) < 30_000
