@@ -262,6 +262,7 @@ for ABI in "${ABIS[@]}"; do
         STRIP="$STRIP" \
         OBJCOPY="$OBJCOPY" \
         OBJDUMP="$OBJDUMP" \
+        CHECK_VERSION="true" \
         CPPFLAGS="-D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I./ -DPROOT_UNBUNDLE_LOADER='\"../libexec/proot\"' -DWITH_LIBANDROID_SHMEM -I$EXTERNAL_DIR/talloc -I$EXTERNAL_DIR/libandroid-shmem" \
         LDFLAGS="-L$ABI_WORK_DIR -ltalloc -landroid-shmem -Wl,-z,noexecstack" \
         PROOT_WITH_LIBANDROID_SHMEM=true \
