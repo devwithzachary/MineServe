@@ -37,9 +37,30 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.3.0",
+        date = "September 10, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "Smart Idle Auto-Shutdown: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve battery and prevent thermal throttling.",
+            "Auto-Wake on Ping: Standby socket listener on the server port (TCP for Java, UDP RakNet for Bedrock). When a player queries or joins from their Minecraft server list, the server spins up automatically.",
+            "Dedicated Automation Tab: New tab in Server Details providing 1-tap configuration for Smart Sleep, Auto-Wake on Ping, manual standby arming, and active scheduler management.",
+            "Flexible Scheduled Tasks & Cron Engine: Automated background timer engine supporting arbitrary intervals (minutes or hours), daily or every N days at specific times, weekly on selected days of the week with N-week intervals, and advanced 5-field cron syntax.",
+            "Customizable Console Macro Bar: Fully customizable quick-command hotbar chips above the live terminal with built-in macro editor to add, edit, delete, or reset 1-tap command shortcuts.",
+            "Interactive Command Auto-Completion: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).",
+            "Command History Recall: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.",
+            "Upstream Server Build Updates: 1-tap checking and updating for PaperMC and Purpur server builds to easily update server.jar while preserving existing worlds, player data, and configurations.",
+            "In-Place Minecraft Version Upgrades: Upgrade existing servers to newer Minecraft versions directly from Settings with automated safety backups, automatic Java runtime requirement alignment, and intact world data.",
+            "World Import & Export: Direct .zip and .mcworld importing from device storage or Google Drive, and full world archive exporting with Android share sheet support.",
+            "1-Tap Nether & End Dimension Reset: Wipe and regenerate world_nether or world_the_end without touching the Overworld to refresh resource harvesting.",
+            "Chunk Pruning & Storage Optimizer: Pure Kotlin Anvil (.mca) optimizer that deletes uninhabited chunks (InhabitedTime == 0) to shrink world storage footprint on mobile.",
+            "Embedded Live Web Map (Squaremap): Dedicated Live Map tab hosting an embedded Compose WebView with 1-tap Squaremap installation, uninstall support, and automatic gating for plugin/mod capable servers.",
+            "Dashboard & Settings UI Polish: Converted server RAM values over 1000MB to dynamic GB representations (e.g. 1327MB to 1.3GB) to prevent card text wrapping, resolved Container Runtime online badge wrapping, and added Squaremap to Software Credits."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.2.0",
         date = "September 2, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Full In-App File Explorer: Complete directory tree and list navigation for server folders with breadcrumb path bar, search, and operations for creating, deleting, renaming, duplicating, and importing/exporting files and folders.",
             "Syntax-Highlighted Code Editor: Built-in code editor with syntax highlighting for YAML, JSON, TOML, and properties files, accompanied by line numbering, search & replace, live line/column indicators, and auto-scrolling when tapping text or opening the keyboard. Server Settings is streamlined to visual properties and public tunneling.",

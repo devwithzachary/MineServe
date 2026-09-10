@@ -85,7 +85,8 @@ class ServerRepository(
         port: Int = 25565,
         ramMb: Int = 2048,
         motd: String = "A MineServe Minecraft Server",
-        jarFileName: String = "server.jar"
+        jarFileName: String = "server.jar",
+        serverBuild: String? = null
     ): MinecraftServer = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString().take(8)
         val serverDir = File(serversDir, id).apply { mkdirs() }
@@ -100,7 +101,8 @@ class ServerRepository(
             javaVersion = com.devwithzachary.mineserve.model.determineJavaVersion(version, type),
             status = ServerStatus.STOPPED,
             motd = motd,
-            jarFileName = jarFileName
+            jarFileName = jarFileName,
+            serverBuild = serverBuild
         )
 
         // Save server_config.json

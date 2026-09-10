@@ -2,6 +2,36 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.3.0] - 2026-09-10
+
+### ⚡ Automation, Smart Schedules & Battery Optimization
+- **Smart Idle Auto-Shutdown**: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve phone battery and prevent thermal throttling.
+- **Auto-Wake on Ping**: Standby socket listener running directly on the server port (TCP for Java Edition, UDP RakNet for Bedrock). When a player queries or joins from their Minecraft multiplayer server list, MineServe automatically spins up the Java process.
+- **Dedicated Automation Tab**: New tab in Server Details providing 1-tap configuration for Smart Sleep, Auto-Wake on Ping, manual standby arming, and active scheduler management.
+- **Flexible Scheduled Tasks & Cron Engine**: Automated background timer engine for periodic world backups, full server backups, nightly server restarts, and in-game announcements. Supports arbitrary intervals (minutes or hours with quick chips), daily execution at specific times, execution every N days, weekly execution on selected days of the week (Sun through Sat) with N-week intervals, and advanced 5-field custom cron expressions (minute hour day month weekday) with real-time validation.
+- **Customizable Console Macro Bar**: Fully customizable quick-command hotbar chips above the live terminal with built-in macro editor to add, edit, delete, or reset 1-tap command shortcuts.
+- **Interactive Command Auto-Completion**: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).
+- **Command History Recall**: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.
+
+### 🔄 Server Build Updates & Minecraft Version Upgrades
+- **Upstream Build Updates**: Added 1-tap upstream build checking and updating for PaperMC and Purpur servers. Easily re-download or update `server.jar` to the latest upstream build for bug fixes and patches while preserving all existing world files, player data, and configurations.
+- **In-Place Minecraft Version Upgrades**: Directly upgrade servers to newer Minecraft versions from the Settings tab without losing your existing world, Nether/The End dimensions, player inventories, or configs.
+- **Automated Safety Backups**: Both build updating and version upgrading feature an automatic pre-upgrade safety backup option (enabled by default) to protect your worlds before changes are applied.
+- **Automatic Java Runtime Alignment**: Upgrading to newer Minecraft versions automatically checks and aligns the server Java runtime requirement (e.g. automatically upgrading from Java 17 to Java 21).
+- **Server Software & Version Management Card**: Interactive management card in Server Settings displaying the current platform, version, build number, and Java runtime, complete with live download progress tracking and active server state protection.
+
+### 🌍 World & Map Management
+- **Direct .zip & .mcworld Importer**: Import existing singleplayer worlds directly from device storage or Google Drive with automatic level detection, Java Anvil verification, Bedrock format detection, and automated safety backup protection.
+- **World Archive Exporter**: Export complete server worlds (Overworld, Nether, and End dimensions) as portable `.zip` archives with integrated Save to Storage and Android Share Sheet support.
+- **1-Tap Nether & End Dimension Reset**: Wipe and regenerate `world_nether` or `world_the_end` (and Vanilla `DIM-1` / `DIM1`) without affecting the Overworld, complete with confirmation safeguards and automated pre-reset backups.
+- **Chunk Pruning & Storage Optimizer**: Pure Kotlin Anvil (`.mca`) region analyzer and optimizer that identifies and removes uninhabited chunks (`InhabitedTime == 0` or configurable thresholds) and purges empty region files to reclaim mobile storage space.
+- **Embedded Live Web Map (Squaremap)**: Dedicated Live Map tab hosting an embedded Compose `WebView` to view real-time 2D world maps on `http://127.0.0.1:8080` with 1-tap installation and uninstallation of Squaremap (optimized for mobile RAM and CPU efficiency). Automatically gated to plugin and mod capable servers (hidden on Vanilla servers where plugins cannot run).
+
+### 🎨 UI Refinements & Open Source Credits
+- **Responsive Dashboard RAM Formatting**: Converted server RAM usage values over 1000MB to dynamic GB representations (e.g. 1327MB displays as 1.3GB) and added text overflow protection to prevent two-line wrapping on active server cards.
+- **Container Runtime Card Layout**: Fixed layout constraints on the Settings Container Runtime card so the "Online" badge retains its single-line layout without wrapping.
+- **Squaremap Open Source Credits**: Added Squaremap to the in-app Credits directory and repository documentation in recognition of its lightweight live web map engine.
+
 ## [1.2.0] - 2026-09-02
 
 ### 📁 Full In-App File Explorer & Advanced Config Editor

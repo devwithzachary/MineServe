@@ -101,6 +101,10 @@ import com.devwithzachary.mineserve.ui.theme.Slate900
 import com.devwithzachary.mineserve.ui.theme.Slate950
 import java.net.NetworkInterface
 
+private enum class DetailTab {
+    CONSOLE, PERFORMANCE, AUTOMATION, FILES, WORLD, LIVE_MAP, SETTINGS, PLAYERS, BACKUPS, PLUGINS_MODS
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerDetailScreen(
@@ -146,6 +150,23 @@ fun ServerDetailScreen(
     onDeletePlugin: (PluginModEntry) -> Unit,
     onInstallPluginOrMod: (fileName: String, downloadUrl: String, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     onImportJar: (android.net.Uri, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    isStandbyActive: Boolean = false,
+    onSaveAutomationConfig: (com.devwithzachary.mineserve.model.ServerAutomationConfig) -> Unit = {},
+    onEnterStandby: () -> Unit = {},
+    onExitStandby: () -> Unit = {},
+    onCheckForUpdate: suspend (MinecraftServer) -> com.devwithzachary.mineserve.model.ServerBuildInfo? = { null },
+    onFetchVersions: suspend (ServerType) -> List<String> = { emptyList() },
+    onUpdateBuild: (createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
+    onGetWorldSummary: suspend () -> com.devwithzachary.mineserve.model.WorldSummary = { com.devwithzachary.mineserve.model.WorldSummary("world", 0L, emptyList()) },
+    onImportWorld: suspend (android.net.Uri, Boolean, (String, Int) -> Unit) -> Result<String> = { _, _, _ -> Result.success("") },
+    onExportWorld: suspend (java.io.OutputStream, (String, Int) -> Unit) -> Boolean = { _, _ -> true },
+    onResetDimension: suspend (com.devwithzachary.mineserve.model.DimensionType, Boolean) -> Boolean = { _, _ -> true },
+    onPruneChunks: suspend (com.devwithzachary.mineserve.model.ChunkPruneOptions, (String, Int) -> Unit) -> com.devwithzachary.mineserve.model.ChunkPruneResult = { _, _ -> com.devwithzachary.mineserve.model.ChunkPruneResult(0, 0, 0, 0, 0L, 0L) },
+    onGetWebMapState: () -> com.devwithzachary.mineserve.model.WebMapState = { com.devwithzachary.mineserve.model.WebMapState() },
+    onSetWebMapPort: (Int) -> Unit = {},
+    onInstallWebMapPlugin: (com.devwithzachary.mineserve.model.WebMapPluginType, (Boolean) -> Unit) -> Unit = { _, _ -> },
+    onUninstallWebMapPlugin: () -> Boolean = { false },
     onDeleteServer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -164,27 +185,37 @@ fun ServerDetailScreen(
 
     val consoleStr = stringResource(R.string.tab_console)
     val perfStr = stringResource(R.string.tab_performance)
+    val automationStr = stringResource(R.string.tab_automation)
     val filesStr = stringResource(R.string.tab_files)
+    val worldStr = stringResource(R.string.tab_world)
+    val liveMapStr = stringResource(R.string.tab_live_map)
     val settingsStr = stringResource(R.string.tab_settings)
     val playersStr = stringResource(R.string.tab_players)
     val backupsStr = stringResource(R.string.tab_backups)
 
-    val tabs = remember(server.type, pluginModTabName) {
+    val showLiveMapTab = server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
+
+    val tabList = remember(server.type, pluginModTabName, showLiveMapTab) {
         buildList {
-            add(consoleStr)
-            add(perfStr)
-            add(filesStr)
-            add(settingsStr)
-            add(playersStr)
-            add(backupsStr)
+            add(DetailTab.CONSOLE to consoleStr)
+            add(DetailTab.PERFORMANCE to perfStr)
+            add(DetailTab.AUTOMATION to automationStr)
+            add(DetailTab.FILES to filesStr)
+            add(DetailTab.WORLD to worldStr)
+            if (showLiveMapTab) {
+                add(DetailTab.LIVE_MAP to liveMapStr)
+            }
+            add(DetailTab.SETTINGS to settingsStr)
+            add(DetailTab.PLAYERS to playersStr)
+            add(DetailTab.BACKUPS to backupsStr)
             if (showPluginsOrModsTab) {
-                add(pluginModTabName)
+                add(DetailTab.PLUGINS_MODS to pluginModTabName)
             }
         }
     }
 
     // Safety: ensure selectedTab is within range if tabs list shrinks
-    if (selectedTab >= tabs.size) {
+    if (selectedTab >= tabList.size) {
         selectedTab = 0
     }
 
@@ -198,6 +229,7 @@ fun ServerDetailScreen(
         ServerStatus.STOPPING -> RedstoneLight
         ServerStatus.ERROR -> RedstoneRed
         ServerStatus.STOPPED -> Slate400
+        ServerStatus.STANDBY -> DiamondCyan
     }
 
     if (showDeleteDialog) {
@@ -347,13 +379,13 @@ fun ServerDetailScreen(
                 edgePadding = 16.dp,
                 indicator = {}
             ) {
-                tabs.forEachIndexed { index, title ->
+                tabList.forEachIndexed { index, pair ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
                         text = {
                             Text(
-                                text = title,
+                                text = pair.second,
                                 fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
                                 color = if (selectedTab == index) EmeraldLight else Slate400
                             )
@@ -368,20 +400,28 @@ fun ServerDetailScreen(
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                when (selectedTab) {
-                    0 -> ConsoleTab(
+                when (tabList.getOrNull(selectedTab)?.first) {
+                    DetailTab.CONSOLE -> ConsoleTab(
                         emulator = emulator,
                         refreshTrigger = refreshTrigger,
                         onSendCommand = onSendCommand,
                         onResizeTerminal = onResizeTerminal
                     )
-                    1 -> PerformanceTab(
+                    DetailTab.PERFORMANCE -> PerformanceTab(
                         server = server,
                         status = status,
                         metrics = metrics,
                         storageBytes = storageBytes
                     )
-                    2 -> FilesTab(
+                    DetailTab.AUTOMATION -> AutomationTab(
+                        server = server,
+                        status = status,
+                        isStandbyActive = isStandbyActive,
+                        onSaveAutomationConfig = onSaveAutomationConfig,
+                        onEnterStandby = onEnterStandby,
+                        onExitStandby = onExitStandby
+                    )
+                    DetailTab.FILES -> FilesTab(
                         server = server,
                         onListDirectory = onListDirectory,
                         onCreateFile = onCreateFile,
@@ -397,24 +437,51 @@ fun ServerDetailScreen(
                         onAnalyzeCrash = onAnalyzeCrash,
                         onApplyQuickFix = onApplyQuickFix
                     )
-                    3 -> SettingsTab(
+                    DetailTab.WORLD -> WorldTab(
                         server = server,
+                        status = status,
+                        onGetWorldSummary = onGetWorldSummary,
+                        onImportWorld = onImportWorld,
+                        onExportWorld = onExportWorld,
+                        onResetDimension = onResetDimension,
+                        onPruneChunks = onPruneChunks,
+                        onNavigateToLiveMap = {
+                            val mapIdx = tabList.indexOfFirst { it.first == DetailTab.LIVE_MAP }
+                            if (mapIdx >= 0) selectedTab = mapIdx
+                        }
+                    )
+                    DetailTab.LIVE_MAP -> LiveMapTab(
+                        server = server,
+                        status = status,
+                        onGetWebMapState = onGetWebMapState,
+                        onSetWebMapPort = onSetWebMapPort,
+                        onInstallWebMapPlugin = onInstallWebMapPlugin,
+                        onUninstallWebMapPlugin = onUninstallWebMapPlugin,
+                        onStartServer = onStartServer
+                    )
+                    DetailTab.SETTINGS -> SettingsTab(
+                        server = server,
+                        status = status,
                         initialProperties = properties,
                         onSaveProperties = onSaveProperties,
-                        onSaveServer = onSaveServer
+                        onSaveServer = onSaveServer,
+                        onCheckForUpdate = onCheckForUpdate,
+                        onFetchVersions = onFetchVersions,
+                        onUpdateBuild = onUpdateBuild,
+                        onUpgradeVersion = onUpgradeVersion
                     )
-                    4 -> PlayersTab(
+                    DetailTab.PLAYERS -> PlayersTab(
                         metrics = metrics,
                         onSendCommand = onSendCommand
                     )
-                    5 -> BackupsTab(
+                    DetailTab.BACKUPS -> BackupsTab(
                         backups = backups,
                         onCreateBackup = onCreateBackup,
                         onRestoreBackup = onRestoreBackup,
                         onExportBackup = onExportBackup,
                         onGetShareIntent = onGetShareIntent
                     )
-                    6 -> {
+                    DetailTab.PLUGINS_MODS -> {
                         if (showPluginsOrModsTab) {
                             PluginsTab(
                                 server = server,
@@ -426,6 +493,7 @@ fun ServerDetailScreen(
                             )
                         }
                     }
+                    null -> {}
                 }
             }
         }

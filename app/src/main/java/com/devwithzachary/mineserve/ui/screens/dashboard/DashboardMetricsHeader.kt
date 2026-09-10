@@ -107,8 +107,15 @@ fun DashboardMetricsHeader(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+                val formattedActiveRam = if (totalRamAllocatedMb > 1000) {
+                    val gb = totalRamAllocatedMb / 1024.0
+                    val formatted = String.format(java.util.Locale.US, "%.1f", gb)
+                    if (formatted.endsWith(".0")) "${formatted.substringBefore(".")} GB" else "$formatted GB"
+                } else {
+                    "$totalRamAllocatedMb MB"
+                }
                 Text(
-                    text = if (totalRamAllocatedMb >= 1024) "${totalRamAllocatedMb / 1024} GB" else "$totalRamAllocatedMb MB",
+                    text = formattedActiveRam,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )

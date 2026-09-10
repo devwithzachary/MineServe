@@ -75,13 +75,23 @@ import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import com.devwithzachary.mineserve.model.ServerBuildInfo
+import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.ui.components.ServerSoftwareCard
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsTab(
     server: MinecraftServer,
+    status: ServerStatus = ServerStatus.STOPPED,
     initialProperties: ServerProperties,
     onSaveProperties: (ServerProperties) -> Unit,
     onSaveServer: (MinecraftServer) -> Unit = {},
+    onCheckForUpdate: suspend (MinecraftServer) -> ServerBuildInfo? = { null },
+    onFetchVersions: suspend (ServerType) -> List<String> = { emptyList() },
+    onUpdateBuild: (createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -118,6 +128,16 @@ fun SettingsTab(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
+        // Section: Server Software & Version Management
+        ServerSoftwareCard(
+            server = server,
+            status = status,
+            onCheckForUpdate = onCheckForUpdate,
+            onFetchVersions = onFetchVersions,
+            onUpdateBuild = onUpdateBuild,
+            onUpgradeVersion = onUpgradeVersion
+        )
+
         // Section: Server Properties (Visual Editor)
         Row(
             modifier = Modifier.fillMaxWidth(),

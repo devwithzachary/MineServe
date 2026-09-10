@@ -11,6 +11,7 @@ import com.devwithzachary.mineserve.api.GitHubRelease
 import com.devwithzachary.mineserve.api.GitHubUpdateChecker
 import com.devwithzachary.mineserve.api.MojangApiClient
 import com.devwithzachary.mineserve.api.PaperApiClient
+import com.devwithzachary.mineserve.api.PurpurApiClient
 import com.devwithzachary.mineserve.api.UpdateCheckResult
 import com.devwithzachary.mineserve.repository.UpdatePreferences
 import com.devwithzachary.mineserve.engine.JavaInstallState
@@ -19,6 +20,7 @@ import com.devwithzachary.mineserve.engine.PRootEngine
 import com.devwithzachary.mineserve.engine.RootfsManager
 import com.devwithzachary.mineserve.engine.RootfsSetupState
 import com.devwithzachary.mineserve.engine.ServerProcessManager
+import com.devwithzachary.mineserve.engine.ServerSchedulerManager
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PluginModEntry
@@ -38,6 +40,10 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import com.devwithzachary.mineserve.model.ServerBuildInfo
+import com.devwithzachary.mineserve.model.determineJavaVersion
+import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -61,6 +67,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val tunnelManager = TunnelManager.getInstance(application)
     val updateChecker = GitHubUpdateChecker()
     val updatePreferences = UpdatePreferences(application)
+    val schedulerManager = ServerSchedulerManager.getInstance(application, serverRepository, backupRepository)
 
     val servers: StateFlow<List<MinecraftServer>> = serverRepository.servers
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = processManager.serverStatuses
@@ -114,6 +121,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         MineServeForegroundService.activeServerInfoProvider = {
             val count = processManager.getAnyRunningServerCount()
             if (count > 0) "$count Minecraft server(s) running" else "Server engine idle"
+        }
+
+        schedulerManager.processManagerProvider = { processManager }
+        schedulerManager.startServerCallback = { server: MinecraftServer -> startServer(server) }
+        schedulerManager.start()
+
+        processManager.onServerWakeRequested = { server: MinecraftServer ->
+            startServer(server)
         }
 
         refreshData()
@@ -195,10 +210,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startServer(server: MinecraftServer) {
-        Log.d(TAG, "startServer: requested start for server ${server.name} (${server.id})")
-        val serverDir = serverRepository.getServerDirectory(server.id)
+        val freshServer = servers.value.firstOrNull { it.id == server.id } ?: server
+        Log.d(TAG, "startServer: requested start for server ${freshServer.name} (${freshServer.id})")
+        val serverDir = serverRepository.getServerDirectory(freshServer.id)
         MineServeForegroundService.start(getApplication())
-        processManager.startServer(server, serverDir)
+        processManager.startServer(freshServer, serverDir)
     }
 
     fun stopServer(serverId: String) {
@@ -224,27 +240,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ): MinecraftServer? = withContext(Dispatchers.IO) {
         try {
             onProgress("Resolving download URL for ${type.displayName} $version...", 10)
-            val jarUrl = when (type) {
-                ServerType.PAPER, ServerType.BEDROCK_GEYSER -> {
-                    com.devwithzachary.mineserve.api.PaperApiClient().getLatestBuildDownloadUrl("paper", version)
-                }
-                ServerType.PURPUR -> {
-                    com.devwithzachary.mineserve.api.PurpurApiClient().getDownloadUrl(version)
-                }
-                ServerType.FOLIA -> {
-                    com.devwithzachary.mineserve.api.PaperApiClient().getLatestBuildDownloadUrl("folia", version)
-                }
-                ServerType.VANILLA -> {
-                    com.devwithzachary.mineserve.api.MojangApiClient().getServerJarDownloadUrl(version)
-                }
-                ServerType.FABRIC -> {
-                    com.devwithzachary.mineserve.api.FabricApiClient().getFabricServerJarUrl(version)
-                }
-                ServerType.NEOFORGE -> {
-                    com.devwithzachary.mineserve.api.NeoForgeApiClient().getDownloadUrl(version)
-                }
-                else -> null
-            }
+            val buildInfo = resolveLatestBuild(type, version)
+            val jarUrl = buildInfo?.second
 
             val server = serverRepository.createServer(
                 name = name,
@@ -253,7 +250,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 port = port,
                 ramMb = ramMb,
                 motd = motd,
-                jarFileName = "server.jar"
+                jarFileName = "server.jar",
+                serverBuild = buildInfo?.first
             )
 
             val serverDir = serverRepository.getServerDirectory(server.id)
@@ -286,6 +284,221 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e(TAG, "Error creating server", e)
             null
+        }
+    }
+
+    suspend fun resolveLatestBuild(type: ServerType, version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
+        when (type) {
+            ServerType.PAPER, ServerType.BEDROCK_GEYSER -> {
+                PaperApiClient().getLatestBuildInfo("paper", version)
+            }
+            ServerType.PURPUR -> {
+                PurpurApiClient().getLatestBuildInfo(version)
+            }
+            ServerType.FOLIA -> {
+                PaperApiClient().getLatestBuildInfo("folia", version)
+            }
+            ServerType.VANILLA -> {
+                MojangApiClient().getServerJarDownloadUrl(version)?.let { Pair("Release", it) }
+            }
+            ServerType.FABRIC -> {
+                val api = FabricApiClient()
+                val loader = api.getLatestLoaderVersion()
+                val url = api.getFabricServerJarUrl(version)
+                Pair("Loader $loader", url)
+            }
+            ServerType.NEOFORGE -> {
+                val url = com.devwithzachary.mineserve.api.NeoForgeApiClient().getDownloadUrl(version)
+                Pair("Installer", url)
+            }
+            ServerType.CUSTOM -> null
+        }
+    }
+
+    suspend fun fetchAvailableVersionsForServer(type: ServerType): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val list = when (type) {
+                ServerType.PAPER, ServerType.BEDROCK_GEYSER -> {
+                    PaperApiClient().getProjectVersions("paper")
+                }
+                ServerType.PURPUR -> {
+                    PurpurApiClient().getVersions()
+                }
+                ServerType.FOLIA -> {
+                    PaperApiClient().getProjectVersions("folia")
+                }
+                ServerType.VANILLA -> {
+                    MojangApiClient().getReleaseVersions()
+                }
+                ServerType.FABRIC -> {
+                    FabricApiClient().getGameVersions()
+                }
+                ServerType.NEOFORGE -> {
+                    com.devwithzachary.mineserve.api.NeoForgeApiClient().getVersions()
+                }
+                else -> {
+                    listOf("26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.1", "1.20.4", "1.20.1")
+                }
+            }
+            list.sortedMinecraftVersionsDescending()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch versions for ${type.displayName}", e)
+            listOf("26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.1", "1.20.4", "1.20.1")
+        }
+    }
+
+    suspend fun checkForServerBuildUpdate(server: MinecraftServer): ServerBuildInfo? = withContext(Dispatchers.IO) {
+        if (server.type == ServerType.CUSTOM) return@withContext null
+        val buildInfo = resolveLatestBuild(server.type, server.version) ?: return@withContext null
+        val latestBuild = buildInfo.first
+        val downloadUrl = buildInfo.second
+        val currentBuild = server.serverBuild
+        val isUpdateAvailable = currentBuild != null && currentBuild != latestBuild
+        ServerBuildInfo(
+            currentBuild = currentBuild,
+            latestBuild = latestBuild,
+            isUpdateAvailable = isUpdateAvailable,
+            downloadUrl = downloadUrl
+        )
+    }
+
+    suspend fun updateServerBuild(
+        serverId: String,
+        createBackup: Boolean,
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val server = servers.value.firstOrNull { it.id == serverId } ?: return@withContext false
+            val serverDir = serverRepository.getServerDirectory(serverId)
+
+            // Stop server if running
+            if (server.isRunning) {
+                onProgress("Stopping server...", 5)
+                processManager.forceStopAndCleanup(serverId)
+                delay(500)
+            }
+
+            // Create pre-update backup if requested
+            if (createBackup) {
+                onProgress("Creating safety backup...", 10)
+                backupRepository.createBackup(
+                    serverDir = serverDir,
+                    isWorldOnly = false,
+                    customName = "pre_build_update_${server.version}_${System.currentTimeMillis()}"
+                )
+            }
+
+            onProgress("Resolving latest build...", 20)
+            val buildInfo = resolveLatestBuild(server.type, server.version)
+                ?: return@withContext false
+
+            val destJar = File(serverDir, server.jarFileName.ifBlank { "server.jar" })
+            val tempJar = File(serverDir, "${destJar.name}.tmp")
+
+            onProgress("Downloading ${server.type.displayName} (Build ${buildInfo.first})...", 30)
+            downloadFileWithProgress(buildInfo.second, tempJar) { bytesRead, totalBytes ->
+                val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
+                val mb = bytesRead / (1024 * 1024)
+                onProgress("Downloading server.jar ($mb MB)...", percent)
+            }
+
+            if (tempJar.exists() && tempJar.length() > 0) {
+                if (destJar.exists()) destJar.delete()
+                tempJar.renameTo(destJar)
+            } else {
+                return@withContext false
+            }
+
+            // Update server build configuration
+            val updated = server.copy(serverBuild = buildInfo.first)
+            serverRepository.updateServer(updated)
+            loadServerDetails(serverId)
+            refreshData()
+
+            onProgress("Build updated to ${buildInfo.first} successfully!", 100)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating server build", e)
+            false
+        }
+    }
+
+    suspend fun upgradeServerVersion(
+        serverId: String,
+        newVersion: String,
+        createBackup: Boolean,
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val server = servers.value.firstOrNull { it.id == serverId } ?: return@withContext false
+            val serverDir = serverRepository.getServerDirectory(serverId)
+
+            // Stop server if running
+            if (server.isRunning) {
+                onProgress("Stopping server...", 5)
+                processManager.forceStopAndCleanup(serverId)
+                delay(500)
+            }
+
+            // Create pre-upgrade backup if requested
+            if (createBackup) {
+                onProgress("Creating pre-upgrade world backup...", 10)
+                backupRepository.createBackup(
+                    serverDir = serverDir,
+                    isWorldOnly = false,
+                    customName = "pre_upgrade_${server.version}_to_${newVersion}_${System.currentTimeMillis()}"
+                )
+            }
+
+            onProgress("Resolving download URL for $newVersion...", 20)
+            val buildInfo = resolveLatestBuild(server.type, newVersion)
+                ?: return@withContext false
+
+            val destJar = File(serverDir, server.jarFileName.ifBlank { "server.jar" })
+            val tempJar = File(serverDir, "${destJar.name}.tmp")
+
+            onProgress("Downloading ${server.type.displayName} $newVersion...", 30)
+            downloadFileWithProgress(buildInfo.second, tempJar) { bytesRead, totalBytes ->
+                val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
+                val mb = bytesRead / (1024 * 1024)
+                onProgress("Downloading server.jar ($mb MB)...", percent)
+            }
+
+            if (tempJar.exists() && tempJar.length() > 0) {
+                if (destJar.exists()) destJar.delete()
+                tempJar.renameTo(destJar)
+            } else {
+                return@withContext false
+            }
+
+            // Update Geyser plugin if Bedrock Cross-Play server
+            if (server.type == ServerType.BEDROCK_GEYSER) {
+                onProgress("Updating GeyserMC cross-play plugin...", 92)
+                try {
+                    val geyserUrl = "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot"
+                    val geyserDest = File(File(serverDir, "plugins"), "Geyser-Spigot.jar")
+                    downloadFileWithProgress(geyserUrl, geyserDest) { _, _ -> }
+                } catch (_: Exception) {}
+            }
+
+            // Determine required Java version and update config
+            val requiredJava = determineJavaVersion(newVersion, server.type)
+            val updatedJava = maxOf(server.javaVersion, requiredJava)
+            val updated = server.copy(
+                version = newVersion,
+                serverBuild = buildInfo.first,
+                javaVersion = updatedJava
+            )
+
+            serverRepository.updateServer(updated)
+            loadServerDetails(serverId)
+            refreshData()
+
+            onProgress("Successfully upgraded to Minecraft $newVersion!", 100)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error upgrading server version", e)
+            false
         }
     }
 
@@ -647,5 +860,237 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun disableGitHubUpdatePrompts() {
         toggleCheckGitHubUpdates(false)
         _availableUpdate.value = null
+    }
+
+    fun updateAutomationConfig(serverId: String, config: com.devwithzachary.mineserve.model.ServerAutomationConfig) {
+        viewModelScope.launch {
+            val currentServer = servers.value.firstOrNull { it.id == serverId } ?: return@launch
+            val updated = currentServer.copy(automationConfig = config)
+            serverRepository.updateServer(updated)
+            if (!config.autoWakeOnPing && processManager.isServerInStandby(serverId)) {
+                processManager.exitStandby(serverId)
+            }
+        }
+    }
+
+    fun enterStandby(server: MinecraftServer) {
+        processManager.enterStandby(server) { wokeServer ->
+            startServer(wokeServer)
+        }
+    }
+
+    fun exitStandby(serverId: String) {
+        processManager.exitStandby(serverId)
+    }
+
+    fun isServerInStandby(serverId: String): Boolean {
+        return processManager.isServerInStandby(serverId)
+    }
+
+    // World & Map Management
+
+    suspend fun getWorldSummary(serverId: String): com.devwithzachary.mineserve.model.WorldSummary = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+        com.devwithzachary.mineserve.engine.WorldManager.getWorldSummary(serverDir, levelName)
+    }
+
+    suspend fun importWorld(
+        serverId: String,
+        uri: android.net.Uri,
+        createBackup: Boolean,
+        onProgress: (String, Int) -> Unit
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+
+        // Stop server if running
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            onProgress("Stopping server to safely import world...", 5)
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+
+        // Safety backup
+        if (createBackup) {
+            onProgress("Creating safety backup of current world...", 10)
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "pre_import_world_${System.currentTimeMillis()}"
+            )
+        }
+
+        com.devwithzachary.mineserve.engine.WorldManager.importWorld(
+            serverDir = serverDir,
+            uri = uri,
+            context = getApplication(),
+            levelName = levelName,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun exportWorld(
+        serverId: String,
+        outputStream: java.io.OutputStream,
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+        com.devwithzachary.mineserve.engine.WorldManager.exportWorld(
+            serverDir = serverDir,
+            outputStream = outputStream,
+            levelName = levelName,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun resetDimension(
+        serverId: String,
+        dimension: com.devwithzachary.mineserve.model.DimensionType,
+        createBackup: Boolean
+    ): Boolean = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+
+        // Stop server if running
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+
+        // Safety backup
+        if (createBackup) {
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "pre_reset_${dimension.name.lowercase()}_${System.currentTimeMillis()}"
+            )
+        }
+
+        com.devwithzachary.mineserve.engine.WorldManager.resetDimension(
+            serverDir = serverDir,
+            dimension = dimension,
+            levelName = levelName
+        )
+    }
+
+    suspend fun pruneChunks(
+        serverId: String,
+        options: com.devwithzachary.mineserve.model.ChunkPruneOptions,
+        onProgress: (String, Int) -> Unit
+    ): com.devwithzachary.mineserve.model.ChunkPruneResult = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+
+        // Stop server if running
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            onProgress("Stopping server to safely prune chunks...", 2)
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+
+        // Safety backup
+        if (options.createBackup) {
+            onProgress("Creating safety backup before chunk pruning...", 5)
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "pre_prune_chunks_${System.currentTimeMillis()}"
+            )
+        }
+
+        com.devwithzachary.mineserve.engine.ChunkOptimizer.optimizeWorld(
+            serverDir = serverDir,
+            options = options,
+            levelName = levelName,
+            onProgress = onProgress
+        )
+    }
+
+    private val _webMapPorts = mutableMapOf<String, Int>()
+
+    fun getWebMapState(serverId: String): com.devwithzachary.mineserve.model.WebMapState {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val installed = com.devwithzachary.mineserve.model.WebMapPluginType.detectInstalled(serverDir)
+        val isRunning = serverStatuses.value[serverId] == ServerStatus.RUNNING
+        val defaultPort = installed?.defaultPort ?: 8080
+        val port = _webMapPorts[serverId] ?: defaultPort
+        return com.devwithzachary.mineserve.model.WebMapState(
+            installedPlugin = installed,
+            port = port,
+            isServerRunning = isRunning
+        )
+    }
+
+    fun setWebMapPort(serverId: String, port: Int) {
+        _webMapPorts[serverId] = port
+    }
+
+    fun installWebMapPlugin(
+        serverId: String,
+        pluginType: com.devwithzachary.mineserve.model.WebMapPluginType,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentServer = servers.value.firstOrNull { it.id == serverId }
+                val isModServer = currentServer?.type?.supportsMods == true && currentServer.type.supportsPlugins != true
+                val loader = when (currentServer?.type) {
+                    ServerType.FABRIC -> "fabric"
+                    ServerType.NEOFORGE -> "neoforge"
+                    else -> "paper"
+                }
+                val modrinth = com.devwithzachary.mineserve.api.ModrinthApiClient()
+                val resolved = modrinth.resolveDownloadUrl(
+                    projectIdOrSlug = pluginType.modrinthSlug,
+                    isMod = isModServer,
+                    loaderFilter = loader,
+                    gameVersion = currentServer?.version
+                ) ?: modrinth.resolveDownloadUrl(
+                    projectIdOrSlug = pluginType.modrinthSlug,
+                    isMod = isModServer,
+                    loaderFilter = null,
+                    gameVersion = null
+                )
+
+                if (resolved == null) {
+                    onResult(false)
+                    return@launch
+                }
+
+                installPluginOrMod(
+                    serverId = serverId,
+                    fileName = resolved.first,
+                    downloadUrl = resolved.second,
+                    isMod = isModServer,
+                    onResult = onResult
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed installing web map plugin", e)
+                onResult(false)
+            }
+        }
+    }
+
+    fun uninstallWebMapPlugin(serverId: String): Boolean {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val file = com.devwithzachary.mineserve.model.WebMapPluginType.findInstalledFile(serverDir)
+        val deleted = file != null && file.exists() && file.delete()
+        if (deleted) {
+            loadServerDetails(serverId)
+        }
+        return deleted
     }
 }

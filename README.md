@@ -129,6 +129,7 @@ MineServe is built on the shoulders of incredible open-source projects:
 | **FabricMC** | Modular, lightweight modding toolchain and server environment. | [FabricMC](https://fabricmc.net/) / Apache-2.0 |
 | **NeoForged** | Modern community-driven modding API and server platform. | [NeoForged](https://neoforged.net/) / LGPL-2.1 |
 | **GeyserMC & Floodgate** | Protocol translation proxy enabling Bedrock players to join Java servers. | [GeyserMC](https://geysermc.org/) / MIT |
+| **Squaremap** | Lightweight, ultra-fast 2D live web map with Leaflet player tracking. | [Squaremap](https://github.com/jpenilla/squaremap) / MIT |
 | **Ubuntu Base** | Official root filesystem tarball providing the Linux container environment. | [Canonical Ltd.](https://cdimage.ubuntu.com/ubuntu-base/) / Canonical |
 | **Modrinth API** | Public REST API for discovering and downloading Minecraft plugins and mods. | [Modrinth](https://modrinth.com/) / AGPL-3.0 |
 | **bore (`bore.pub`)** | Modern, zero-config TCP tunneling tool enabling instant public port forwarding. | [bore](https://github.com/ekzhang/bore) / MIT |

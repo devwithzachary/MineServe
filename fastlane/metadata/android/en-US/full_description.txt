@@ -1,0 +1,27 @@
+MineServe is a free and open-source Android application designed to download, configure, run, and manage full-featured dedicated Minecraft servers natively on Android devices without requiring root permissions.
+
+Powered by a native PRoot virtualization engine, a JNI-backed PTY pseudo-terminal, multi-version OpenJDK runtime isolation (Java 8, 17, 21, 25), live telemetry monitoring, and a modern Jetpack Compose Material 3 interface, MineServe turns your phone or tablet into a portable, high-performance dedicated Minecraft server.
+
+Key Features:
+
+• 100% Rootless Operation: Executes entirely in Android user-space using PRoot ptrace system call interception. No root access, Magisk, or bootloader unlocking required.
+
+• Comprehensive Server Engine Support:
+  - PaperMC: High-performance, stable Minecraft server software with plugin support.
+  - PurpurMC: Drop-in Paper replacement with extensive gameplay configurability.
+  - Folia: Cutting-edge multithreading server software for high player concurrency.
+  - FabricMC: Lightweight, modular modding framework and server platform.
+  - NeoForged: Modern community-driven modding API and server platform.
+  - Forge: Traditional modding API for classic mods.
+  - BungeeCord / Velocity: High-performance reverse proxies for linking multiple server worlds.
+  - Bedrock Dedicated Server: Official Mojang server for Minecraft Bedrock Edition cross-play.
+
+• Multi-Version Isolated Java Environments: Automatically downloads and manages isolated OpenJDK runtimes (Java 8, Java 17, Java 21, and Java 25) to run any Minecraft version.
+
+• Interactive Live PTY Console: Full-featured terminal console supporting interactive commands, ANSI color rendering, auto-scrolling, command history, and instant server management.
+
+• Zero-Port-Forwarding Public Tunneling: Share your server with friends across the Internet using built-in Playit.gg tunneling and QR code sharing without configuring router ports.
+
+• Automated World & Server Backups: One-click snapshots and full archive backups to safeguard world progress.
+
+• Built-in Mod & Plugin Management: Browse, search, download, and manage plugins and mods directly from Modrinth within the app.

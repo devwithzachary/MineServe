@@ -36,10 +36,20 @@ data class MinecraftServer(
     val createdAt: Long = System.currentTimeMillis(),
     val lastStartedAt: Long? = null,
     val jarFileName: String = "server.jar",
-    val tunnelConfig: TunnelConfig = TunnelConfig()
+    val tunnelConfig: TunnelConfig = TunnelConfig(),
+    val automationConfig: ServerAutomationConfig = ServerAutomationConfig(),
+    val serverBuild: String? = null
 ) {
     val isRunning: Boolean get() = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
 }
+
+@Serializable
+data class ServerBuildInfo(
+    val currentBuild: String?,
+    val latestBuild: String,
+    val isUpdateAvailable: Boolean,
+    val downloadUrl: String
+)
 
 fun determineJavaVersion(version: String, type: ServerType = ServerType.PAPER): Int {
     val clean = version.trim().lowercase()

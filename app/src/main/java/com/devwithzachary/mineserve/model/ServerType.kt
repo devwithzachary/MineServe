@@ -74,5 +74,6 @@ enum class ServerStatus {
     STARTING,
     RUNNING,
     STOPPING,
-    ERROR
+    ERROR,
+    STANDBY
 }

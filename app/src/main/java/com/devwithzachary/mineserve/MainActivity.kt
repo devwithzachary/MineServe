@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
@@ -80,6 +82,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MineServeApp(viewModel: MainViewModel) {
     val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val servers by viewModel.servers.collectAsStateWithLifecycle()
     val serverStatuses by viewModel.serverStatuses.collectAsStateWithLifecycle()
@@ -271,6 +274,43 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onImportJar = { uri, isMod, onResult ->
                             viewModel.importPluginOrMod(server.id, uri, isMod, onResult)
                         },
+                        isStandbyActive = viewModel.isServerInStandby(server.id),
+                        onSaveAutomationConfig = { config -> viewModel.updateAutomationConfig(server.id, config) },
+                        onEnterStandby = { viewModel.enterStandby(server) },
+                        onExitStandby = { viewModel.exitStandby(server.id) },
+                        onCheckForUpdate = { s -> viewModel.checkForServerBuildUpdate(s) },
+                        onFetchVersions = { t -> viewModel.fetchAvailableVersionsForServer(t) },
+                        onUpdateBuild = { createBackup, onProgress, onComplete ->
+                            scope.launch {
+                                val ok = viewModel.updateServerBuild(server.id, createBackup, onProgress)
+                                onComplete(ok)
+                            }
+                        },
+                        onUpgradeVersion = { newVer, createBackup, onProgress, onComplete ->
+                            scope.launch {
+                                val ok = viewModel.upgradeServerVersion(server.id, newVer, createBackup, onProgress)
+                                onComplete(ok)
+                            }
+                        },
+                        onGetWorldSummary = { viewModel.getWorldSummary(server.id) },
+                        onImportWorld = { uri, createBackup, onProgress ->
+                            viewModel.importWorld(server.id, uri, createBackup, onProgress)
+                        },
+                        onExportWorld = { outputStream, onProgress ->
+                            viewModel.exportWorld(server.id, outputStream, onProgress)
+                        },
+                        onResetDimension = { dimension, createBackup ->
+                            viewModel.resetDimension(server.id, dimension, createBackup)
+                        },
+                        onPruneChunks = { options, onProgress ->
+                            viewModel.pruneChunks(server.id, options, onProgress)
+                        },
+                        onGetWebMapState = { viewModel.getWebMapState(server.id) },
+                        onSetWebMapPort = { port -> viewModel.setWebMapPort(server.id, port) },
+                        onInstallWebMapPlugin = { pluginType, onResult ->
+                            viewModel.installWebMapPlugin(server.id, pluginType, onResult)
+                        },
+                        onUninstallWebMapPlugin = { viewModel.uninstallWebMapPlugin(server.id) },
                         onDeleteServer = {
                             navigateTo(Screen.Dashboard)
                             viewModel.deleteServer(server.id)

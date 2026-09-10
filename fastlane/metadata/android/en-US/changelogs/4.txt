@@ -1,0 +1,9 @@
+• Idle Auto-Shutdown & Auto-Wake on Ping
+• Scheduled Tasks & Cron Engine
+• Console Macros, Auto-Complete & History
+• In-Place Server Build & Version Upgrades
+• World Import (.zip/.mcworld) & Export
+• 1-Tap Nether & End Dimension Reset
+• Chunk Pruning & Storage Optimizer
+• Embedded Live Web Map (Squaremap)
+• Dashboard & Settings UI Polish

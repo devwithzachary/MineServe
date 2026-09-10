@@ -117,6 +117,7 @@
     <!-- Server Detail Screen & Tabs -->
     <string name="tab_console">Console</string>
     <string name="tab_performance">Performance</string>
+    <string name="tab_automation">Automation</string>
     <string name="tab_files">Files</string>
     <string name="tab_settings">Settings</string>
     <string name="tab_players">Players</string>
@@ -265,4 +266,90 @@
     <string name="tunnel_share_invite">Share Full Invite</string>
     <string name="tunnel_security_warning_title">Security Notice</string>
     <string name="tunnel_security_warning">Anyone with your public link can connect to your server. We recommend enabling Whitelisting in Server Properties to protect against griefers and unauthorized players.</string>
+
+    <!-- Server Software & Updates -->
+    <string name="software_card_title">Server Software &amp; Version</string>
+    <string name="software_card_desc">Manage the server executable, update to newer builds, or upgrade to a new Minecraft version while preserving your existing worlds and configurations.</string>
+    <string name="software_build_label">Installed Build</string>
+    <string name="software_build_unknown">Unknown / Default</string>
+    <string name="software_java_label">Java Runtime</string>
+    <string name="software_btn_update_build">Update Build</string>
+    <string name="software_btn_upgrade_version">Upgrade Version</string>
+    <string name="software_update_dialog_title">Update Server Build</string>
+    <string name="software_upgrade_dialog_title">Upgrade Minecraft Version</string>
+    <string name="software_checking_updates">Checking for build updates…</string>
+    <string name="software_update_available">New build available: #%s</string>
+    <string name="software_up_to_date">You are on the latest build (#%s)</string>
+    <string name="software_backup_checkbox">Create safety backup before proceeding (Recommended)</string>
+    <string name="software_safe_notice">Your worlds, Nether/The End dimensions, player inventories, plugins, mods, and configurations will all be preserved.</string>
+    <string name="software_running_warning">Server is currently running. Proceeding will automatically stop the server to safely update the software.</string>
+    <string name="software_select_version_label">Select Target Minecraft Version</string>
+    <string name="software_loading_versions">Loading available versions…</string>
+    <string name="software_btn_confirm_update">Update Server</string>
+    <string name="software_btn_confirm_upgrade">Upgrade Server</string>
+
+    <!-- World & Map Management -->
+    <string name="tab_world">World</string>
+    <string name="tab_live_map">Live Map</string>
+    <string name="world_card_title">World Storage &amp; Dimensions</string>
+    <string name="world_card_desc">Inspect dimension footprints, import singleplayer worlds, or prune uninhabited chunks to reclaim storage.</string>
+    <string name="world_total_size">Total World Footprint</string>
+    <string name="world_dim_overworld">Overworld</string>
+    <string name="world_dim_nether">The Nether</string>
+    <string name="world_dim_the_end">The End</string>
+    <string name="world_region_files">%d region files</string>
+    <string name="world_chunks_count">~%d chunks</string>
+    <string name="world_btn_reset_nether">Reset Nether</string>
+    <string name="world_btn_reset_end">Reset End</string>
+    <string name="world_reset_nether_title">Reset Nether Dimension</string>
+    <string name="world_reset_nether_desc">This will completely delete Nether terrain, fortresses, and blocks. When players next enter a Nether Portal, Minecraft will regenerate a fresh Nether using the world seed. Overworld and The End are unaffected.</string>
+    <string name="world_reset_end_title">Reset The End Dimension</string>
+    <string name="world_reset_end_desc">This will completely delete The End terrain and reset the Ender Dragon fight. When players enter the End portal, Minecraft will regenerate a brand new End dimension. Overworld and Nether are unaffected.</string>
+    <string name="world_reset_confirm_btn">Wipe &amp; Regenerate</string>
+    <string name="world_reset_backup_checkbox">Create safety backup before resetting (Recommended)</string>
+    <string name="world_reset_running_warning">Server is currently running. Proceeding will stop the server to safely wipe dimension files.</string>
+    <string name="world_reset_success">Dimension successfully reset. A fresh dimension will generate on next server start.</string>
+
+    <!-- World Import & Export -->
+    <string name="world_io_title">World Import &amp; Export</string>
+    <string name="world_io_desc">Import worlds directly from device storage or Google Drive, or export your current world as a portable archive.</string>
+    <string name="world_btn_import">Import World (.zip / .mcworld)</string>
+    <string name="world_btn_export">Export World (.zip)</string>
+    <string name="world_import_title">Import Minecraft World</string>
+    <string name="world_import_desc">Select a singleplayer or server world archive (.zip or .mcworld). The world will replace the current active world.</string>
+    <string name="world_import_backup_checkbox">Create safety backup of existing world first (Recommended)</string>
+    <string name="world_import_running_warning">Server is currently running. Proceeding will stop the server before replacing world files.</string>
+    <string name="world_import_success">World successfully imported!</string>
+
+    <!-- Chunk Pruning & Storage Optimizer -->
+    <string name="world_pruner_title">Chunk Pruner &amp; Storage Optimizer</string>
+    <string name="world_pruner_desc">Delete uninhabited or ungenerated chunks visited only briefly during exploration to shrink world size on mobile storage.</string>
+    <string name="world_pruner_threshold_label">Inhabited Time Threshold</string>
+    <string name="world_pruner_btn">Prune Uninhabited Chunks</string>
+    <string name="world_pruner_confirm_title">Prune &amp; Optimize World Chunks</string>
+    <string name="world_pruner_confirm_desc">This scans all region files (.mca) and deletes chunks where players spent less time than the threshold. Player builds with inhabited time are preserved.</string>
+    <string name="world_pruner_backup_checkbox">Create safety backup before optimizing (Recommended)</string>
+    <string name="world_pruner_running_warning">Server is currently running. Proceeding will stop the server to safely optimize region files.</string>
+    <string name="world_pruner_success_title">Chunk Optimization Complete</string>
+    <string name="world_pruner_success_desc">Scanned %1$d regions (%2$d chunks).\nPruned %3$d uninhabited chunks.\nDeleted %4$d empty region files.\nStorage freed: %5$s (%6$d%% reduction)!</string>
+
+    <!-- Live Web Map -->
+    <string name="map_tab_title">Live World Map</string>
+    <string name="map_offline_notice">Server is offline. Start your server to launch the live web map.</string>
+    <string name="map_btn_start_server">Start Server</string>
+    <string name="map_no_plugin_title">Install Squaremap Live Web Map</string>
+    <string name="map_no_plugin_desc">View your Minecraft world in real-time in 2D with live player markers and minimal CPU/RAM overhead.</string>
+    <string name="map_btn_install">Install %s</string>
+    <string name="map_btn_install_squaremap">1-Tap Install Squaremap</string>
+    <string name="map_port_label">Port: %d</string>
+    <string name="map_btn_reload">Reload Map</string>
+    <string name="map_btn_open_browser">Open in Browser</string>
+    <string name="map_btn_uninstall">Uninstall Map Plugin</string>
+    <string name="map_uninstall_dialog_title">Uninstall Squaremap</string>
+    <string name="map_uninstall_dialog_desc">This will remove the Squaremap plugin jar from your server. You can reinstall it anytime.</string>
+    <string name="map_change_port_title">Configure Web Map Port</string>
+    <string name="map_change_port_desc">Enter the HTTP port configured in your map plugin configuration.</string>
+    <string name="map_shortcut_banner_title">Live Web Map Available</string>
+    <string name="map_shortcut_banner_desc">View your world in real-time in the Live Map tab.</string>
+    <string name="map_shortcut_banner_btn">Open Live Map</string>
 </resources>
