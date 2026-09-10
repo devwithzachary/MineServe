@@ -1,7 +1,8 @@
-• Idle Auto-Shutdown: Auto-stop idle servers to save battery
-• Auto-Wake on Ping: Standby listener boots server on ping
-• Automation Tab: Configure sleep, wake & schedules
-• Scheduled Tasks: Backup & restart on timers, days, or cron
-• Console Macros & History: Custom hotbar & command recall
-• Server Build Updates: 1-tap PaperMC/Purpur build updates
-• Minecraft Version Upgrades: In-place upgrades keeping worlds
+• Idle Auto-Shutdown & Auto-Wake on Ping
+• Scheduled Tasks & Cron Engine
+• Console Macros, Auto-Complete & History
+• In-Place Server Build & Version Upgrades
+• World Import (.zip/.mcworld) & Export
+• 1-Tap Nether & End Dimension Reset
+• Chunk Pruning & Storage Optimizer
+• Embedded Live Web Map (Squaremap)

@@ -292,6 +292,25 @@ fun MineServeApp(viewModel: MainViewModel) {
                                 onComplete(ok)
                             }
                         },
+                        onGetWorldSummary = { viewModel.getWorldSummary(server.id) },
+                        onImportWorld = { uri, createBackup, onProgress ->
+                            viewModel.importWorld(server.id, uri, createBackup, onProgress)
+                        },
+                        onExportWorld = { outputStream, onProgress ->
+                            viewModel.exportWorld(server.id, outputStream, onProgress)
+                        },
+                        onResetDimension = { dimension, createBackup ->
+                            viewModel.resetDimension(server.id, dimension, createBackup)
+                        },
+                        onPruneChunks = { options, onProgress ->
+                            viewModel.pruneChunks(server.id, options, onProgress)
+                        },
+                        onGetWebMapState = { viewModel.getWebMapState(server.id) },
+                        onSetWebMapPort = { port -> viewModel.setWebMapPort(server.id, port) },
+                        onInstallWebMapPlugin = { pluginType, onResult ->
+                            viewModel.installWebMapPlugin(server.id, pluginType, onResult)
+                        },
+                        onUninstallWebMapPlugin = { viewModel.uninstallWebMapPlugin(server.id) },
                         onDeleteServer = {
                             navigateTo(Screen.Dashboard)
                             viewModel.deleteServer(server.id)

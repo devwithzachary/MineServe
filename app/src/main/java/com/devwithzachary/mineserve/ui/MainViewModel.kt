@@ -886,4 +886,211 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun isServerInStandby(serverId: String): Boolean {
         return processManager.isServerInStandby(serverId)
     }
+
+    // World & Map Management
+
+    suspend fun getWorldSummary(serverId: String): com.devwithzachary.mineserve.model.WorldSummary = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+        com.devwithzachary.mineserve.engine.WorldManager.getWorldSummary(serverDir, levelName)
+    }
+
+    suspend fun importWorld(
+        serverId: String,
+        uri: android.net.Uri,
+        createBackup: Boolean,
+        onProgress: (String, Int) -> Unit
+    ): Result<String> = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+
+        // Stop server if running
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            onProgress("Stopping server to safely import world...", 5)
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+
+        // Safety backup
+        if (createBackup) {
+            onProgress("Creating safety backup of current world...", 10)
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "pre_import_world_${System.currentTimeMillis()}"
+            )
+        }
+
+        com.devwithzachary.mineserve.engine.WorldManager.importWorld(
+            serverDir = serverDir,
+            uri = uri,
+            context = getApplication(),
+            levelName = levelName,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun exportWorld(
+        serverId: String,
+        outputStream: java.io.OutputStream,
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+        com.devwithzachary.mineserve.engine.WorldManager.exportWorld(
+            serverDir = serverDir,
+            outputStream = outputStream,
+            levelName = levelName,
+            onProgress = onProgress
+        )
+    }
+
+    suspend fun resetDimension(
+        serverId: String,
+        dimension: com.devwithzachary.mineserve.model.DimensionType,
+        createBackup: Boolean
+    ): Boolean = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+
+        // Stop server if running
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+
+        // Safety backup
+        if (createBackup) {
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "pre_reset_${dimension.name.lowercase()}_${System.currentTimeMillis()}"
+            )
+        }
+
+        com.devwithzachary.mineserve.engine.WorldManager.resetDimension(
+            serverDir = serverDir,
+            dimension = dimension,
+            levelName = levelName
+        )
+    }
+
+    suspend fun pruneChunks(
+        serverId: String,
+        options: com.devwithzachary.mineserve.model.ChunkPruneOptions,
+        onProgress: (String, Int) -> Unit
+    ): com.devwithzachary.mineserve.model.ChunkPruneResult = withContext(Dispatchers.IO) {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val levelName = _serverPropertiesMap.value[serverId]?.levelName
+            ?: serverRepository.loadServerProperties(serverId).levelName
+
+        // Stop server if running
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            onProgress("Stopping server to safely prune chunks...", 2)
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+
+        // Safety backup
+        if (options.createBackup) {
+            onProgress("Creating safety backup before chunk pruning...", 5)
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "pre_prune_chunks_${System.currentTimeMillis()}"
+            )
+        }
+
+        com.devwithzachary.mineserve.engine.ChunkOptimizer.optimizeWorld(
+            serverDir = serverDir,
+            options = options,
+            levelName = levelName,
+            onProgress = onProgress
+        )
+    }
+
+    private val _webMapPorts = mutableMapOf<String, Int>()
+
+    fun getWebMapState(serverId: String): com.devwithzachary.mineserve.model.WebMapState {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val installed = com.devwithzachary.mineserve.model.WebMapPluginType.detectInstalled(serverDir)
+        val isRunning = serverStatuses.value[serverId] == ServerStatus.RUNNING
+        val defaultPort = installed?.defaultPort ?: 8080
+        val port = _webMapPorts[serverId] ?: defaultPort
+        return com.devwithzachary.mineserve.model.WebMapState(
+            installedPlugin = installed,
+            port = port,
+            isServerRunning = isRunning
+        )
+    }
+
+    fun setWebMapPort(serverId: String, port: Int) {
+        _webMapPorts[serverId] = port
+    }
+
+    fun installWebMapPlugin(
+        serverId: String,
+        pluginType: com.devwithzachary.mineserve.model.WebMapPluginType,
+        onResult: (Boolean) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                val currentServer = servers.value.firstOrNull { it.id == serverId }
+                val isModServer = currentServer?.type?.supportsMods == true && currentServer.type.supportsPlugins != true
+                val loader = when (currentServer?.type) {
+                    ServerType.FABRIC -> "fabric"
+                    ServerType.NEOFORGE -> "neoforge"
+                    else -> "paper"
+                }
+                val modrinth = com.devwithzachary.mineserve.api.ModrinthApiClient()
+                val resolved = modrinth.resolveDownloadUrl(
+                    projectIdOrSlug = pluginType.modrinthSlug,
+                    isMod = isModServer,
+                    loaderFilter = loader,
+                    gameVersion = currentServer?.version
+                ) ?: modrinth.resolveDownloadUrl(
+                    projectIdOrSlug = pluginType.modrinthSlug,
+                    isMod = isModServer,
+                    loaderFilter = null,
+                    gameVersion = null
+                )
+
+                if (resolved == null) {
+                    onResult(false)
+                    return@launch
+                }
+
+                installPluginOrMod(
+                    serverId = serverId,
+                    fileName = resolved.first,
+                    downloadUrl = resolved.second,
+                    isMod = isModServer,
+                    onResult = onResult
+                )
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed installing web map plugin", e)
+                onResult(false)
+            }
+        }
+    }
+
+    fun uninstallWebMapPlugin(serverId: String): Boolean {
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val file = com.devwithzachary.mineserve.model.WebMapPluginType.findInstalledFile(serverDir)
+        val deleted = file != null && file.exists() && file.delete()
+        if (deleted) {
+            loadServerDetails(serverId)
+        }
+        return deleted
+    }
 }

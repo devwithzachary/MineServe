@@ -20,6 +20,13 @@ All notable changes to the MineServe project will be documented in this file.
 - **Automatic Java Runtime Alignment**: Upgrading to newer Minecraft versions automatically checks and aligns the server Java runtime requirement (e.g. automatically upgrading from Java 17 to Java 21).
 - **Server Software & Version Management Card**: Interactive management card in Server Settings displaying the current platform, version, build number, and Java runtime, complete with live download progress tracking and active server state protection.
 
+### 🌍 World & Map Management
+- **Direct .zip & .mcworld Importer**: Import existing singleplayer worlds directly from device storage or Google Drive with automatic level detection, Java Anvil verification, Bedrock format detection, and automated safety backup protection.
+- **World Archive Exporter**: Export complete server worlds (Overworld, Nether, and End dimensions) as portable `.zip` archives with integrated Save to Storage and Android Share Sheet support.
+- **1-Tap Nether & End Dimension Reset**: Wipe and regenerate `world_nether` or `world_the_end` (and Vanilla `DIM-1` / `DIM1`) without affecting the Overworld, complete with confirmation safeguards and automated pre-reset backups.
+- **Chunk Pruning & Storage Optimizer**: Pure Kotlin Anvil (`.mca`) region analyzer and optimizer that identifies and removes uninhabited chunks (`InhabitedTime == 0` or configurable thresholds) and purges empty region files to reclaim mobile storage space.
+- **Embedded Live Web Map (Squaremap)**: Dedicated Live Map tab hosting an embedded Compose `WebView` to view real-time 2D world maps on `http://127.0.0.1:8080` with 1-tap installation and uninstallation of Squaremap (optimized for mobile RAM and CPU efficiency). Automatically gated to plugin and mod capable servers (hidden on Vanilla servers where plugins cannot run).
+
 ## [1.2.0] - 2026-09-02
 
 ### 📁 Full In-App File Explorer & Advanced Config Editor

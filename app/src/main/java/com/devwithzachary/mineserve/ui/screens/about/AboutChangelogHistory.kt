@@ -49,7 +49,11 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Interactive Command Auto-Completion: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).",
             "Command History Recall: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.",
             "Upstream Server Build Updates: 1-tap checking and updating for PaperMC and Purpur server builds to easily update server.jar while preserving existing worlds, player data, and configurations.",
-            "In-Place Minecraft Version Upgrades: Upgrade existing servers to newer Minecraft versions directly from Settings with automated safety backups, automatic Java runtime requirement alignment, and intact world data."
+            "In-Place Minecraft Version Upgrades: Upgrade existing servers to newer Minecraft versions directly from Settings with automated safety backups, automatic Java runtime requirement alignment, and intact world data.",
+            "World Import & Export: Direct .zip and .mcworld importing from device storage or Google Drive, and full world archive exporting with Android share sheet support.",
+            "1-Tap Nether & End Dimension Reset: Wipe and regenerate world_nether or world_the_end without touching the Overworld to refresh resource harvesting.",
+            "Chunk Pruning & Storage Optimizer: Pure Kotlin Anvil (.mca) optimizer that deletes uninhabited chunks (InhabitedTime == 0) to shrink world storage footprint on mobile.",
+            "Embedded Live Web Map (Squaremap): Dedicated Live Map tab hosting an embedded Compose WebView with 1-tap Squaremap installation, uninstall support, and automatic gating for plugin/mod capable servers."
         )
     ),
     ReleaseChangelog(
