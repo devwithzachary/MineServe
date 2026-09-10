@@ -1,5 +1,5 @@
 Categories:
-  - Games
+  - Game Helper
   - System
 License: GPL-2.0-or-later
 AuthorName: Zachary Powell
@@ -17,7 +17,7 @@ Binaries:
 Builds:
   - versionName: 1.3.0
     versionCode: 4
-    commit: 1.3.0
+    commit: 76df94060e1450794e37a0511d068867c37f4288
     subdir: app
     sudo:
       - apt-get update
