@@ -31,6 +31,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
@@ -80,6 +82,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MineServeApp(viewModel: MainViewModel) {
     val context = LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
 
     val servers by viewModel.servers.collectAsStateWithLifecycle()
     val serverStatuses by viewModel.serverStatuses.collectAsStateWithLifecycle()
@@ -275,6 +278,20 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onSaveAutomationConfig = { config -> viewModel.updateAutomationConfig(server.id, config) },
                         onEnterStandby = { viewModel.enterStandby(server) },
                         onExitStandby = { viewModel.exitStandby(server.id) },
+                        onCheckForUpdate = { s -> viewModel.checkForServerBuildUpdate(s) },
+                        onFetchVersions = { t -> viewModel.fetchAvailableVersionsForServer(t) },
+                        onUpdateBuild = { createBackup, onProgress, onComplete ->
+                            scope.launch {
+                                val ok = viewModel.updateServerBuild(server.id, createBackup, onProgress)
+                                onComplete(ok)
+                            }
+                        },
+                        onUpgradeVersion = { newVer, createBackup, onProgress, onComplete ->
+                            scope.launch {
+                                val ok = viewModel.upgradeServerVersion(server.id, newVer, createBackup, onProgress)
+                                onComplete(ok)
+                            }
+                        },
                         onDeleteServer = {
                             navigateTo(Screen.Dashboard)
                             viewModel.deleteServer(server.id)

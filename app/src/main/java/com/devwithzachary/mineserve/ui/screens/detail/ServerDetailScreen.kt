@@ -150,6 +150,10 @@ fun ServerDetailScreen(
     onSaveAutomationConfig: (com.devwithzachary.mineserve.model.ServerAutomationConfig) -> Unit = {},
     onEnterStandby: () -> Unit = {},
     onExitStandby: () -> Unit = {},
+    onCheckForUpdate: suspend (MinecraftServer) -> com.devwithzachary.mineserve.model.ServerBuildInfo? = { null },
+    onFetchVersions: suspend (ServerType) -> List<String> = { emptyList() },
+    onUpdateBuild: (createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     onDeleteServer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -414,9 +418,14 @@ fun ServerDetailScreen(
                     )
                     4 -> SettingsTab(
                         server = server,
+                        status = status,
                         initialProperties = properties,
                         onSaveProperties = onSaveProperties,
-                        onSaveServer = onSaveServer
+                        onSaveServer = onSaveServer,
+                        onCheckForUpdate = onCheckForUpdate,
+                        onFetchVersions = onFetchVersions,
+                        onUpdateBuild = onUpdateBuild,
+                        onUpgradeVersion = onUpgradeVersion
                     )
                     5 -> PlayersTab(
                         metrics = metrics,

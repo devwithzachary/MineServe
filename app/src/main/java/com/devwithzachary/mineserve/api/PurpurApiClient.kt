@@ -50,6 +50,27 @@ class PurpurApiClient(
         return "$BASE_URL/$version/latest/download"
     }
 
+    suspend fun getLatestBuildInfo(version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
+        try {
+            val req = Request.Builder()
+                .url("$BASE_URL/$version")
+                .header("User-Agent", "MineServe-Android")
+                .build()
+            val resp = client.newCall(req).execute()
+            if (!resp.isSuccessful) return@withContext Pair("latest", getDownloadUrl(version))
+            val body = resp.body?.string() ?: return@withContext Pair("latest", getDownloadUrl(version))
+            val obj = json.parseToJsonElement(body).jsonObject
+            val latestBuild = obj["builds"]?.jsonObject?.get("latest")?.jsonPrimitive?.content
+            if (!latestBuild.isNullOrBlank()) {
+                return@withContext Pair(latestBuild, getDownloadUrl(version))
+            }
+            Pair("latest", getDownloadUrl(version))
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch Purpur latest build for $version", e)
+            Pair("latest", getDownloadUrl(version))
+        }
+    }
+
     private fun defaultFallbackVersions(): List<String> = listOf(
         "26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.18.2", "1.16.5"
     )

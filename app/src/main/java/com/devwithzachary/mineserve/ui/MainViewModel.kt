@@ -11,6 +11,7 @@ import com.devwithzachary.mineserve.api.GitHubRelease
 import com.devwithzachary.mineserve.api.GitHubUpdateChecker
 import com.devwithzachary.mineserve.api.MojangApiClient
 import com.devwithzachary.mineserve.api.PaperApiClient
+import com.devwithzachary.mineserve.api.PurpurApiClient
 import com.devwithzachary.mineserve.api.UpdateCheckResult
 import com.devwithzachary.mineserve.repository.UpdatePreferences
 import com.devwithzachary.mineserve.engine.JavaInstallState
@@ -39,6 +40,10 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import com.devwithzachary.mineserve.model.ServerBuildInfo
+import com.devwithzachary.mineserve.model.determineJavaVersion
+import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -235,27 +240,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     ): MinecraftServer? = withContext(Dispatchers.IO) {
         try {
             onProgress("Resolving download URL for ${type.displayName} $version...", 10)
-            val jarUrl = when (type) {
-                ServerType.PAPER, ServerType.BEDROCK_GEYSER -> {
-                    com.devwithzachary.mineserve.api.PaperApiClient().getLatestBuildDownloadUrl("paper", version)
-                }
-                ServerType.PURPUR -> {
-                    com.devwithzachary.mineserve.api.PurpurApiClient().getDownloadUrl(version)
-                }
-                ServerType.FOLIA -> {
-                    com.devwithzachary.mineserve.api.PaperApiClient().getLatestBuildDownloadUrl("folia", version)
-                }
-                ServerType.VANILLA -> {
-                    com.devwithzachary.mineserve.api.MojangApiClient().getServerJarDownloadUrl(version)
-                }
-                ServerType.FABRIC -> {
-                    com.devwithzachary.mineserve.api.FabricApiClient().getFabricServerJarUrl(version)
-                }
-                ServerType.NEOFORGE -> {
-                    com.devwithzachary.mineserve.api.NeoForgeApiClient().getDownloadUrl(version)
-                }
-                else -> null
-            }
+            val buildInfo = resolveLatestBuild(type, version)
+            val jarUrl = buildInfo?.second
 
             val server = serverRepository.createServer(
                 name = name,
@@ -264,7 +250,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 port = port,
                 ramMb = ramMb,
                 motd = motd,
-                jarFileName = "server.jar"
+                jarFileName = "server.jar",
+                serverBuild = buildInfo?.first
             )
 
             val serverDir = serverRepository.getServerDirectory(server.id)
@@ -297,6 +284,221 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (e: Exception) {
             Log.e(TAG, "Error creating server", e)
             null
+        }
+    }
+
+    suspend fun resolveLatestBuild(type: ServerType, version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
+        when (type) {
+            ServerType.PAPER, ServerType.BEDROCK_GEYSER -> {
+                PaperApiClient().getLatestBuildInfo("paper", version)
+            }
+            ServerType.PURPUR -> {
+                PurpurApiClient().getLatestBuildInfo(version)
+            }
+            ServerType.FOLIA -> {
+                PaperApiClient().getLatestBuildInfo("folia", version)
+            }
+            ServerType.VANILLA -> {
+                MojangApiClient().getServerJarDownloadUrl(version)?.let { Pair("Release", it) }
+            }
+            ServerType.FABRIC -> {
+                val api = FabricApiClient()
+                val loader = api.getLatestLoaderVersion()
+                val url = api.getFabricServerJarUrl(version)
+                Pair("Loader $loader", url)
+            }
+            ServerType.NEOFORGE -> {
+                val url = com.devwithzachary.mineserve.api.NeoForgeApiClient().getDownloadUrl(version)
+                Pair("Installer", url)
+            }
+            ServerType.CUSTOM -> null
+        }
+    }
+
+    suspend fun fetchAvailableVersionsForServer(type: ServerType): List<String> = withContext(Dispatchers.IO) {
+        try {
+            val list = when (type) {
+                ServerType.PAPER, ServerType.BEDROCK_GEYSER -> {
+                    PaperApiClient().getProjectVersions("paper")
+                }
+                ServerType.PURPUR -> {
+                    PurpurApiClient().getVersions()
+                }
+                ServerType.FOLIA -> {
+                    PaperApiClient().getProjectVersions("folia")
+                }
+                ServerType.VANILLA -> {
+                    MojangApiClient().getReleaseVersions()
+                }
+                ServerType.FABRIC -> {
+                    FabricApiClient().getGameVersions()
+                }
+                ServerType.NEOFORGE -> {
+                    com.devwithzachary.mineserve.api.NeoForgeApiClient().getVersions()
+                }
+                else -> {
+                    listOf("26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.1", "1.20.4", "1.20.1")
+                }
+            }
+            list.sortedMinecraftVersionsDescending()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch versions for ${type.displayName}", e)
+            listOf("26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.1", "1.20.4", "1.20.1")
+        }
+    }
+
+    suspend fun checkForServerBuildUpdate(server: MinecraftServer): ServerBuildInfo? = withContext(Dispatchers.IO) {
+        if (server.type == ServerType.CUSTOM) return@withContext null
+        val buildInfo = resolveLatestBuild(server.type, server.version) ?: return@withContext null
+        val latestBuild = buildInfo.first
+        val downloadUrl = buildInfo.second
+        val currentBuild = server.serverBuild
+        val isUpdateAvailable = currentBuild != null && currentBuild != latestBuild
+        ServerBuildInfo(
+            currentBuild = currentBuild,
+            latestBuild = latestBuild,
+            isUpdateAvailable = isUpdateAvailable,
+            downloadUrl = downloadUrl
+        )
+    }
+
+    suspend fun updateServerBuild(
+        serverId: String,
+        createBackup: Boolean,
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val server = servers.value.firstOrNull { it.id == serverId } ?: return@withContext false
+            val serverDir = serverRepository.getServerDirectory(serverId)
+
+            // Stop server if running
+            if (server.isRunning) {
+                onProgress("Stopping server...", 5)
+                processManager.forceStopAndCleanup(serverId)
+                delay(500)
+            }
+
+            // Create pre-update backup if requested
+            if (createBackup) {
+                onProgress("Creating safety backup...", 10)
+                backupRepository.createBackup(
+                    serverDir = serverDir,
+                    isWorldOnly = false,
+                    customName = "pre_build_update_${server.version}_${System.currentTimeMillis()}"
+                )
+            }
+
+            onProgress("Resolving latest build...", 20)
+            val buildInfo = resolveLatestBuild(server.type, server.version)
+                ?: return@withContext false
+
+            val destJar = File(serverDir, server.jarFileName.ifBlank { "server.jar" })
+            val tempJar = File(serverDir, "${destJar.name}.tmp")
+
+            onProgress("Downloading ${server.type.displayName} (Build ${buildInfo.first})...", 30)
+            downloadFileWithProgress(buildInfo.second, tempJar) { bytesRead, totalBytes ->
+                val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
+                val mb = bytesRead / (1024 * 1024)
+                onProgress("Downloading server.jar ($mb MB)...", percent)
+            }
+
+            if (tempJar.exists() && tempJar.length() > 0) {
+                if (destJar.exists()) destJar.delete()
+                tempJar.renameTo(destJar)
+            } else {
+                return@withContext false
+            }
+
+            // Update server build configuration
+            val updated = server.copy(serverBuild = buildInfo.first)
+            serverRepository.updateServer(updated)
+            loadServerDetails(serverId)
+            refreshData()
+
+            onProgress("Build updated to ${buildInfo.first} successfully!", 100)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error updating server build", e)
+            false
+        }
+    }
+
+    suspend fun upgradeServerVersion(
+        serverId: String,
+        newVersion: String,
+        createBackup: Boolean,
+        onProgress: (String, Int) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val server = servers.value.firstOrNull { it.id == serverId } ?: return@withContext false
+            val serverDir = serverRepository.getServerDirectory(serverId)
+
+            // Stop server if running
+            if (server.isRunning) {
+                onProgress("Stopping server...", 5)
+                processManager.forceStopAndCleanup(serverId)
+                delay(500)
+            }
+
+            // Create pre-upgrade backup if requested
+            if (createBackup) {
+                onProgress("Creating pre-upgrade world backup...", 10)
+                backupRepository.createBackup(
+                    serverDir = serverDir,
+                    isWorldOnly = false,
+                    customName = "pre_upgrade_${server.version}_to_${newVersion}_${System.currentTimeMillis()}"
+                )
+            }
+
+            onProgress("Resolving download URL for $newVersion...", 20)
+            val buildInfo = resolveLatestBuild(server.type, newVersion)
+                ?: return@withContext false
+
+            val destJar = File(serverDir, server.jarFileName.ifBlank { "server.jar" })
+            val tempJar = File(serverDir, "${destJar.name}.tmp")
+
+            onProgress("Downloading ${server.type.displayName} $newVersion...", 30)
+            downloadFileWithProgress(buildInfo.second, tempJar) { bytesRead, totalBytes ->
+                val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
+                val mb = bytesRead / (1024 * 1024)
+                onProgress("Downloading server.jar ($mb MB)...", percent)
+            }
+
+            if (tempJar.exists() && tempJar.length() > 0) {
+                if (destJar.exists()) destJar.delete()
+                tempJar.renameTo(destJar)
+            } else {
+                return@withContext false
+            }
+
+            // Update Geyser plugin if Bedrock Cross-Play server
+            if (server.type == ServerType.BEDROCK_GEYSER) {
+                onProgress("Updating GeyserMC cross-play plugin...", 92)
+                try {
+                    val geyserUrl = "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot"
+                    val geyserDest = File(File(serverDir, "plugins"), "Geyser-Spigot.jar")
+                    downloadFileWithProgress(geyserUrl, geyserDest) { _, _ -> }
+                } catch (_: Exception) {}
+            }
+
+            // Determine required Java version and update config
+            val requiredJava = determineJavaVersion(newVersion, server.type)
+            val updatedJava = maxOf(server.javaVersion, requiredJava)
+            val updated = server.copy(
+                version = newVersion,
+                serverBuild = buildInfo.first,
+                javaVersion = updatedJava
+            )
+
+            serverRepository.updateServer(updated)
+            loadServerDetails(serverId)
+            refreshData()
+
+            onProgress("Successfully upgraded to Minecraft $newVersion!", 100)
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error upgrading server version", e)
+            false
         }
     }
 

@@ -13,6 +13,13 @@ All notable changes to the MineServe project will be documented in this file.
 - **Interactive Command Auto-Completion**: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).
 - **Command History Recall**: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.
 
+### 🔄 Server Build Updates & Minecraft Version Upgrades
+- **Upstream Build Updates**: Added 1-tap upstream build checking and updating for PaperMC and Purpur servers. Easily re-download or update `server.jar` to the latest upstream build for bug fixes and patches while preserving all existing world files, player data, and configurations.
+- **In-Place Minecraft Version Upgrades**: Directly upgrade servers to newer Minecraft versions from the Settings tab without losing your existing world, Nether/The End dimensions, player inventories, or configs.
+- **Automated Safety Backups**: Both build updating and version upgrading feature an automatic pre-upgrade safety backup option (enabled by default) to protect your worlds before changes are applied.
+- **Automatic Java Runtime Alignment**: Upgrading to newer Minecraft versions automatically checks and aligns the server Java runtime requirement (e.g. automatically upgrading from Java 17 to Java 21).
+- **Server Software & Version Management Card**: Interactive management card in Server Settings displaying the current platform, version, build number, and Java runtime, complete with live download progress tracking and active server state protection.
+
 ## [1.2.0] - 2026-09-02
 
 ### 📁 Full In-App File Explorer & Advanced Config Editor

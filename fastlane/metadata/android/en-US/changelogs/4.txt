@@ -1,7 +1,7 @@
 • Idle Auto-Shutdown: Auto-stop idle servers to save battery
 • Auto-Wake on Ping: Standby listener boots server on ping
-• Automation Tab: Configure sleep, wake & flexible schedules
-• Flexible Scheduled Tasks: Backup & restart on intervals, days, weeks, or cron
-• Custom Console Macros: Customizable 1-tap command hotbar
-• Command Auto-Completion: Interactive syntax suggestions for /
-• Command History: Up/Down arrow recall for previous commands
+• Automation Tab: Configure sleep, wake & schedules
+• Scheduled Tasks: Backup & restart on timers, days, or cron
+• Console Macros & History: Custom hotbar & command recall
+• Server Build Updates: 1-tap PaperMC/Purpur build updates
+• Minecraft Version Upgrades: In-place upgrades keeping worlds

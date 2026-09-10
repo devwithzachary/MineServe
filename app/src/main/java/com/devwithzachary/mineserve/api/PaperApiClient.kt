@@ -68,9 +68,8 @@ class PaperApiClient(
         }
     }
 
-    suspend fun getLatestBuildDownloadUrl(project: String, version: String): String? = withContext(Dispatchers.IO) {
+    suspend fun getLatestBuildInfo(project: String = "paper", version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
         try {
-            // 1. Try v3 API
             val req = Request.Builder()
                 .url("$V3_BASE_URL/projects/$project/versions/$version")
                 .header("User-Agent", USER_AGENT)
@@ -96,13 +95,12 @@ class PaperApiClient(
                                 val buildObj = json.parseToJsonElement(buildBody).jsonObject
                                 val downloads = buildObj["downloads"]?.jsonObject
                                 if (downloads != null) {
-                                    // Check server:default, application, or any download entry
                                     for ((_, dlValue) in downloads) {
                                         val dlObj = dlValue.jsonObject
                                         val directUrl = dlObj["url"]?.jsonPrimitive?.content
                                         if (!directUrl.isNullOrEmpty()) {
-                                            Log.d(TAG, "Resolved PaperMC direct v3 URL: $directUrl")
-                                            return@withContext directUrl
+                                            Log.d(TAG, "Resolved PaperMC direct v3 URL for build $latestBuild: $directUrl")
+                                            return@withContext Pair(latestBuild.toString(), directUrl)
                                         }
                                     }
                                 }
@@ -112,8 +110,14 @@ class PaperApiClient(
                 }
             }
         } catch (e: Exception) {
-            Log.w(TAG, "Failed resolving v3 URL for $project $version: ${e.message}")
+            Log.w(TAG, "Failed resolving build info for $project $version: ${e.message}")
         }
+        null
+    }
+
+    suspend fun getLatestBuildDownloadUrl(project: String, version: String): String? = withContext(Dispatchers.IO) {
+        val info = getLatestBuildInfo(project, version)
+        if (info != null) return@withContext info.second
 
         // Fallback: Mojang Vanilla JAR if Paper fails
         try {

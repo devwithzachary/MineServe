@@ -47,7 +47,9 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Flexible Scheduled Tasks & Cron Engine: Automated background timer engine supporting arbitrary intervals (minutes or hours), daily or every N days at specific times, weekly on selected days of the week with N-week intervals, and advanced 5-field cron syntax.",
             "Customizable Console Macro Bar: Fully customizable quick-command hotbar chips above the live terminal with built-in macro editor to add, edit, delete, or reset 1-tap command shortcuts.",
             "Interactive Command Auto-Completion: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).",
-            "Command History Recall: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands."
+            "Command History Recall: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.",
+            "Upstream Server Build Updates: 1-tap checking and updating for PaperMC and Purpur server builds to easily update server.jar while preserving existing worlds, player data, and configurations.",
+            "In-Place Minecraft Version Upgrades: Upgrade existing servers to newer Minecraft versions directly from Settings with automated safety backups, automatic Java runtime requirement alignment, and intact world data."
         )
     ),
     ReleaseChangelog(

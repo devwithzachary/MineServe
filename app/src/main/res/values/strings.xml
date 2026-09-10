@@ -266,4 +266,25 @@
     <string name="tunnel_share_invite">Share Full Invite</string>
     <string name="tunnel_security_warning_title">Security Notice</string>
     <string name="tunnel_security_warning">Anyone with your public link can connect to your server. We recommend enabling Whitelisting in Server Properties to protect against griefers and unauthorized players.</string>
+
+    <!-- Server Software & Updates -->
+    <string name="software_card_title">Server Software &amp; Version</string>
+    <string name="software_card_desc">Manage the server executable, update to newer builds, or upgrade to a new Minecraft version while preserving your existing worlds and configurations.</string>
+    <string name="software_build_label">Installed Build</string>
+    <string name="software_build_unknown">Unknown / Default</string>
+    <string name="software_java_label">Java Runtime</string>
+    <string name="software_btn_update_build">Update Build</string>
+    <string name="software_btn_upgrade_version">Upgrade Version</string>
+    <string name="software_update_dialog_title">Update Server Build</string>
+    <string name="software_upgrade_dialog_title">Upgrade Minecraft Version</string>
+    <string name="software_checking_updates">Checking for build updates…</string>
+    <string name="software_update_available">New build available: #%s</string>
+    <string name="software_up_to_date">You are on the latest build (#%s)</string>
+    <string name="software_backup_checkbox">Create safety backup before proceeding (Recommended)</string>
+    <string name="software_safe_notice">Your worlds, Nether/The End dimensions, player inventories, plugins, mods, and configurations will all be preserved.</string>
+    <string name="software_running_warning">Server is currently running. Proceeding will automatically stop the server to safely update the software.</string>
+    <string name="software_select_version_label">Select Target Minecraft Version</string>
+    <string name="software_loading_versions">Loading available versions…</string>
+    <string name="software_btn_confirm_update">Update Server</string>
+    <string name="software_btn_confirm_upgrade">Upgrade Server</string>
 </resources>
