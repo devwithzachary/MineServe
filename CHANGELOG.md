@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.3.0] - 2026-09-09
+## [1.3.0] - 2026-09-10
 
 ### ⚡ Automation, Smart Schedules & Battery Optimization
 - **Smart Idle Auto-Shutdown**: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve phone battery and prevent thermal throttling.
