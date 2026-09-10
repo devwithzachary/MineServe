@@ -61,14 +61,18 @@ fun ContainerRuntimeCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 8.dp)
+                    ) {
                         Text(
                             text = "Ubuntu Linux Container",
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
                         val formattedStorage = if (storageUsedMb >= 1024) {
-                            String.format(java.util.Locale.US, "%.1f GB (%d MB)", storageUsedMb / 1024.0, storageUsedMb)
+                            String.format(java.util.Locale.US, "%.1f GB", storageUsedMb / 1024.0)
                         } else {
                             "$storageUsedMb MB"
                         }
@@ -83,7 +87,9 @@ fun ContainerRuntimeCard(
                             text = stringResource(R.string.status_online),
                             style = MaterialTheme.typography.labelSmall,
                             color = EmeraldLight,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }

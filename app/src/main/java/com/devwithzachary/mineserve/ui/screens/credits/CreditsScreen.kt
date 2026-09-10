@@ -164,6 +164,14 @@ val SOFTWARE_CREDITS: List<SoftwareCredit> = listOf(
         tag = "Cross-Play"
     ),
     SoftwareCredit(
+        name = "Squaremap",
+        category = CreditCategory.SERVERS,
+        description = "Lightweight, ultra-fast 2D live web map for Minecraft servers with real-time Leaflet player tracking and minimal resource overhead.",
+        url = "https://github.com/jpenilla/squaremap",
+        license = "MIT",
+        tag = "Live Web Map"
+    ),
+    SoftwareCredit(
         name = "Ubuntu Rootfs",
         category = CreditCategory.SYSTEM,
         description = "Official Ubuntu base root filesystem providing the isolated Linux user-space container and APT package ecosystem.",

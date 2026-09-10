@@ -27,6 +27,11 @@ All notable changes to the MineServe project will be documented in this file.
 - **Chunk Pruning & Storage Optimizer**: Pure Kotlin Anvil (`.mca`) region analyzer and optimizer that identifies and removes uninhabited chunks (`InhabitedTime == 0` or configurable thresholds) and purges empty region files to reclaim mobile storage space.
 - **Embedded Live Web Map (Squaremap)**: Dedicated Live Map tab hosting an embedded Compose `WebView` to view real-time 2D world maps on `http://127.0.0.1:8080` with 1-tap installation and uninstallation of Squaremap (optimized for mobile RAM and CPU efficiency). Automatically gated to plugin and mod capable servers (hidden on Vanilla servers where plugins cannot run).
 
+### 🎨 UI Refinements & Open Source Credits
+- **Responsive Dashboard RAM Formatting**: Converted server RAM usage values over 1000MB to dynamic GB representations (e.g. 1327MB displays as 1.3GB) and added text overflow protection to prevent two-line wrapping on active server cards.
+- **Container Runtime Card Layout**: Fixed layout constraints on the Settings Container Runtime card so the "Online" badge retains its single-line layout without wrapping.
+- **Squaremap Open Source Credits**: Added Squaremap to the in-app Credits directory and repository documentation in recognition of its lightweight live web map engine.
+
 ## [1.2.0] - 2026-09-02
 
 ### 📁 Full In-App File Explorer & Advanced Config Editor

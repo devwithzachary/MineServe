@@ -206,7 +206,7 @@ fun ServerCard(
                         val ramPct = if (metrics.ramMaxMb > 0) metrics.ramUsedMb.toFloat() / metrics.ramMaxMb else 0f
                         ResourceBar(
                             label = stringResource(R.string.card_ram_label),
-                            currentValue = "${metrics.ramUsedMb} MB / ${metrics.ramMaxMb} MB",
+                            currentValue = "${formatRam(metrics.ramUsedMb)} / ${formatRam(metrics.ramMaxMb)}",
                             percentage = ramPct
                         )
                     }
@@ -351,5 +351,19 @@ private fun formatStorage(bytes: Long): String {
         String.format(java.util.Locale.US, "%.1f GB", mb / 1024.0)
     } else {
         String.format(java.util.Locale.US, "%.1f MB", mb)
+    }
+}
+
+private fun formatRam(mb: Long): String {
+    return if (mb > 1000) {
+        val gb = mb / 1024.0
+        val formatted = String.format(java.util.Locale.US, "%.1f", gb)
+        if (formatted.endsWith(".0")) {
+            "${formatted.substringBefore(".")}GB"
+        } else {
+            "${formatted}GB"
+        }
+    } else {
+        "${mb}MB"
     }
 }

@@ -6,3 +6,4 @@
 • 1-Tap Nether & End Dimension Reset
 • Chunk Pruning & Storage Optimizer
 • Embedded Live Web Map (Squaremap)
+• Dashboard & Settings UI Polish

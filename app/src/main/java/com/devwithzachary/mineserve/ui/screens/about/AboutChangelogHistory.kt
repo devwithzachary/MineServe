@@ -53,7 +53,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "World Import & Export: Direct .zip and .mcworld importing from device storage or Google Drive, and full world archive exporting with Android share sheet support.",
             "1-Tap Nether & End Dimension Reset: Wipe and regenerate world_nether or world_the_end without touching the Overworld to refresh resource harvesting.",
             "Chunk Pruning & Storage Optimizer: Pure Kotlin Anvil (.mca) optimizer that deletes uninhabited chunks (InhabitedTime == 0) to shrink world storage footprint on mobile.",
-            "Embedded Live Web Map (Squaremap): Dedicated Live Map tab hosting an embedded Compose WebView with 1-tap Squaremap installation, uninstall support, and automatic gating for plugin/mod capable servers."
+            "Embedded Live Web Map (Squaremap): Dedicated Live Map tab hosting an embedded Compose WebView with 1-tap Squaremap installation, uninstall support, and automatic gating for plugin/mod capable servers.",
+            "Dashboard & Settings UI Polish: Converted server RAM values over 1000MB to dynamic GB representations (e.g. 1327MB to 1.3GB) to prevent card text wrapping, resolved Container Runtime online badge wrapping, and added Squaremap to Software Credits."
         )
     ),
     ReleaseChangelog(
