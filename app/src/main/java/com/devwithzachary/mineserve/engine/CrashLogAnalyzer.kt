@@ -9,6 +9,11 @@ import java.io.File
 
 object CrashLogAnalyzer {
 
+    private val JAVA_VER_REGEX = Regex(
+        "UnsupportedClassVersionError: .* has been compiled by a more recent version of the Java Runtime \\(class file version (\\d+\\.\\d+)\\), this version of the Java Runtime only recognizes class file versions up to (\\d+\\.\\d+)",
+        RegexOption.IGNORE_CASE
+    )
+
     fun analyzeServer(serverDir: File): CrashDiagnosticReport? {
         if (!serverDir.exists()) return null
 
@@ -58,8 +63,7 @@ object CrashLogAnalyzer {
         val fullSnippet = tailLines.joinToString("\n")
 
         // 1. Incompatible Java Version (UnsupportedClassVersionError)
-        val javaVerRegex = Regex("UnsupportedClassVersionError: .* has been compiled by a more recent version of the Java Runtime \\(class file version (\\d+\\.\\d+)\\), this version of the Java Runtime only recognizes class file versions up to (\\d+\\.\\d+)", RegexOption.IGNORE_CASE)
-        val javaMatch = javaVerRegex.find(content)
+        val javaMatch = JAVA_VER_REGEX.find(content)
         if (javaMatch != null || content.contains("UnsupportedClassVersionError", ignoreCase = true)) {
             val reqClassVer = javaMatch?.groupValues?.getOrNull(1)?.toDoubleOrNull() ?: 65.0
             val reqJava = when {

@@ -351,6 +351,10 @@ fun LiveMapTab(
                                     webView.loadUrl(mapState.webMapUrl)
                                 }
                             },
+                            onRelease = { webView ->
+                                webView.stopLoading()
+                                webView.destroy()
+                            },
                             modifier = Modifier.fillMaxSize()
                         )
 

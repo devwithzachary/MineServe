@@ -1,0 +1,5 @@
+• Unified network client with global connection pooling and socket leak prevention
+• Optimized terminal emulator buffer to O(1) ArrayDeque and reduced canvas draw allocations
+• Dynamic port binding for Bedrock standby ping listener
+• Scoped file descriptors and automated cleanup in chunk optimizer
+• Codebase and UI modularization for improved responsiveness and maintainability

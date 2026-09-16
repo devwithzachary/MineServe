@@ -96,6 +96,8 @@ fun TerminalCanvasView(
     var accumulatedScrollY by remember { mutableFloatStateOf(0f) }
     var localScrollTick by remember { mutableLongStateOf(0L) }
 
+    val charBuffer = remember { CharArray(1) }
+
     val paint = remember(fontSizePx) {
         Paint().apply {
             typeface = Typeface.MONOSPACE
@@ -249,8 +251,11 @@ fun TerminalCanvasView(
                         paint.isUnderlineText = cell.underline
 
                         if (cell.ch != ' ') {
+                            charBuffer[0] = cell.ch
                             nativeCanvas.drawText(
-                                cell.ch.toString(),
+                                charBuffer,
+                                0,
+                                1,
                                 cellX,
                                 rowY + baselineOffset,
                                 paint

@@ -2,6 +2,27 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.3.1] - Unreleased
+
+### ⚡ Performance & Core Engine Optimizations
+- **Unified Network Client**: Centralized all remote API calls (PaperMC, Purpur, Fabric, NeoForge, Mojang, Modrinth, and GitHub update checker) through a single shared HTTP client with global connection pooling and resilient timeout management.
+- **Socket Safety & Leaked Connection Prevention**: Wrapped all HTTP response bodies in scoped resource management blocks (`use { ... }`) to eliminate socket and connection pool exhaustion across all remote API operations.
+- **Dynamic Bedrock Standby Listener**: Fixed the Bedrock standby ping listener to dynamically bind to the server's configured port rather than a hardcoded port, with dynamic status response formatting.
+- **Terminal Emulator O(1) Scrollback Buffer**: Refactored `TerminalEmulator` scrollback storage from `ArrayList` to `ArrayDeque`, replacing O(N) array-copy operations with O(1) line pops when the scrollback limit is exceeded.
+- **Terminal Canvas Rendering Memory Optimization**: Added reusable character buffer in Compose `TerminalView` eliminating transient single-character String allocations during high-frequency console output rendering.
+- **Chunk Optimizer File Descriptor Safeguard**: Scoped read and write file handles in `ChunkOptimizer` to guarantee descriptors are safely closed and temporary `.opt` files are deleted upon cancellation or failure.
+- **Metrics Monitoring Loop Efficiency**: Precompiled static regex patterns and switched `/proc/[pid]/status` parsing to memory-efficient line sequence streaming (`useLines`).
+- **Live Web Map Memory Leak Fix**: Explicitly stops loading and destroys the Compose WebView instance in `LiveMapTab` upon disposal via `AndroidView`'s `onRelease`.
+
+### 🏗️ Architecture & Codebase Modularization
+- **Repository Decomposition**: Decomposed the monolithic `ServerRepositories.kt` file into clean, single-responsibility repositories: `ServerRepository.kt`, `BackupRepository.kt`, and `PluginRepository.kt`.
+- **UI Screen Decomposition**: Modularized multi-hundred-line composable screens into maintainable components:
+  - Extracted `ScheduledTaskCard` and `AddScheduledTaskDialog` from `AutomationTab.kt`.
+  - Extracted `FileListItem`, `CrashDiagnosticSheet`, and `FileActionDialogs` from `FilesTab.kt`.
+  - Extracted `DimensionRowCard` and `WorldTabDialogs` from `WorldTab.kt`.
+  - Extracted `UpdateBuildModal` and `UpgradeVersionModal` from `ServerSoftwareCard.kt`.
+
+
 ## [1.3.0] - 2026-09-10
 
 ### ⚡ Automation, Smart Schedules & Battery Optimization

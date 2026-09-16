@@ -132,7 +132,7 @@ class StandbyPingListener(
     }
 
     private fun startUdpListener() {
-        val bedrockPort = 19132
+        val bedrockPort = if (server.port in 1..65535) server.port else 19132
         try {
             val ds = DatagramSocket(null)
             ds.reuseAddress = true
@@ -185,6 +185,7 @@ class StandbyPingListener(
     }
 
     private fun buildStatusJson(serverName: String): String {
+        val cleanName = serverName.replace("\"", "\\\"")
         return """
         {
           "version": {
@@ -197,7 +198,7 @@ class StandbyPingListener(
             "sample": []
           },
           "description": {
-            "text": "§e⚡ MineServe Auto-Wake Standby\n§aPinging wakes the server! Booting up now..."
+            "text": "§e⚡ $cleanName (Standby)\n§aPinging wakes the server! Booting up now..."
           }
         }
         """.trimIndent().replace("\n", " ")

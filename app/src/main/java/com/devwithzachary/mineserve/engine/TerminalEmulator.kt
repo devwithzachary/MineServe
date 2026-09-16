@@ -72,7 +72,7 @@ class TerminalEmulator(
     var grid = primaryGrid
         private set
 
-    val scrollback = mutableListOf<Array<TerminalChar>>()
+    val scrollback = ArrayDeque<Array<TerminalChar>>()
     var scrollOffset = 0
         private set
 
@@ -263,9 +263,9 @@ class TerminalEmulator(
     private fun scrollUpGrid() {
         if (scrollTop == 0 && scrollBottom == rows - 1) {
             if (!inAltBuffer) {
-                scrollback.add(grid[0].copyOf())
+                scrollback.addLast(grid[0].copyOf())
                 if (scrollback.size > maxScrollback) {
-                    scrollback.removeAt(0)
+                    scrollback.removeFirst()
                 }
             }
         }

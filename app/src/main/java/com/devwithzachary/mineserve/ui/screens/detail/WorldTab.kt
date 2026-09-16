@@ -79,6 +79,12 @@ import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.WorldDimensionInfo
 import com.devwithzachary.mineserve.model.WorldSummary
+import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPruneDialog
+import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPruneResultDialog
+import com.devwithzachary.mineserve.ui.screens.detail.world.DimensionResetDialog
+import com.devwithzachary.mineserve.ui.screens.detail.world.DimensionRowCard
+import com.devwithzachary.mineserve.ui.screens.detail.world.WorldImportDialog
+import com.devwithzachary.mineserve.ui.screens.detail.world.formatWorldFileSize
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
@@ -337,7 +343,7 @@ fun WorldTab(
                             )
                             val totalSize = worldSummary?.totalSizeBytes ?: 0L
                             Text(
-                                text = formatFileSize(totalSize),
+                                text = formatWorldFileSize(totalSize),
                                 color = EmeraldLight,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold
@@ -594,474 +600,99 @@ fun WorldTab(
     // Modal: Dimension Reset Confirmation
     if (dimensionToReset != null) {
         val targetDim = dimensionToReset!!
-        AlertDialog(
-            onDismissRequest = { if (!isResettingDimension) dimensionToReset = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = RedstoneRed,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = if (targetDim == DimensionType.NETHER) {
-                        stringResource(R.string.world_reset_nether_title)
+        DimensionResetDialog(
+            targetDim = targetDim,
+            isRunning = isRunning,
+            isResetting = isResettingDimension,
+            resetBackupChecked = resetBackupChecked,
+            onResetBackupCheckedChange = { resetBackupChecked = it },
+            onDismiss = { dimensionToReset = null },
+            onConfirm = {
+                scope.launch {
+                    isResettingDimension = true
+                    val ok = onResetDimension(targetDim, resetBackupChecked)
+                    isResettingDimension = false
+                    dimensionToReset = null
+                    if (ok) {
+                        refreshSummary()
+                        Toast.makeText(context, context.getString(R.string.world_reset_success), Toast.LENGTH_LONG).show()
                     } else {
-                        stringResource(R.string.world_reset_end_title)
-                    },
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = if (targetDim == DimensionType.NETHER) {
-                            stringResource(R.string.world_reset_nether_desc)
-                        } else {
-                            stringResource(R.string.world_reset_end_desc)
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
-                    )
-
-                    if (isRunning) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = RedstoneRed.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                text = stringResource(R.string.world_reset_running_warning),
-                                color = RedstoneLight,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
-                    }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Checkbox(
-                            checked = resetBackupChecked,
-                            onCheckedChange = { resetBackupChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                        )
-                        Text(
-                            text = stringResource(R.string.world_reset_backup_checkbox),
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
+                        Toast.makeText(context, "Failed to reset dimension.", Toast.LENGTH_SHORT).show()
                     }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            isResettingDimension = true
-                            val ok = onResetDimension(targetDim, resetBackupChecked)
-                            isResettingDimension = false
-                            dimensionToReset = null
-                            if (ok) {
-                                refreshSummary()
-                                Toast.makeText(context, context.getString(R.string.world_reset_success), Toast.LENGTH_LONG).show()
-                            } else {
-                                Toast.makeText(context, "Failed to reset dimension.", Toast.LENGTH_SHORT).show()
-                            }
-                        }
-                    },
-                    enabled = !isResettingDimension,
-                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    if (isResettingDimension) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
-                    } else {
-                        Text(stringResource(R.string.world_reset_confirm_btn), color = Color.White, fontWeight = FontWeight.Bold)
-                    }
-                }
-            },
-            dismissButton = {
-                if (!isResettingDimension) {
-                    OutlinedButton(
-                        onClick = { dimensionToReset = null },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
-                    }
-                }
-            },
-            containerColor = Slate950
+            }
         )
     }
 
     // Modal: World Import Confirmation
     if (showImportConfirmDialog && selectedImportUri != null) {
-        AlertDialog(
-            onDismissRequest = { if (!isImportingWorld) showImportConfirmDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.CloudDownload,
-                    contentDescription = null,
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.world_import_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = stringResource(R.string.world_import_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
-                    )
-
-                    if (isRunning) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = RedstoneRed.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                text = stringResource(R.string.world_import_running_warning),
-                                color = RedstoneLight,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
+        WorldImportDialog(
+            isRunning = isRunning,
+            isImporting = isImportingWorld,
+            importBackupChecked = importBackupChecked,
+            onImportBackupCheckedChange = { importBackupChecked = it },
+            importProgressPercent = importProgressPercent,
+            importStatusText = importStatusText,
+            importErrorMessage = importErrorMessage,
+            onDismiss = { showImportConfirmDialog = false },
+            onConfirm = {
+                val uri = selectedImportUri ?: return@WorldImportDialog
+                scope.launch {
+                    isImportingWorld = true
+                    importErrorMessage = null
+                    val res = onImportWorld(uri, importBackupChecked) { statusStr, pct ->
+                        importStatusText = statusStr
+                        importProgressPercent = pct
                     }
-
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Checkbox(
-                            checked = importBackupChecked,
-                            onCheckedChange = { importBackupChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                        )
-                        Text(
-                            text = stringResource(R.string.world_import_backup_checkbox),
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
-
-                    if (isImportingWorld) {
-                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinearProgressIndicator(
-                                progress = { importProgressPercent / 100f },
-                                modifier = Modifier.fillMaxWidth(),
-                                color = EmeraldPrimary,
-                                trackColor = Slate800
-                            )
-                            Text(text = importStatusText, color = EmeraldLight, fontSize = 11.sp)
-                        }
-                    }
-
-                    if (importErrorMessage != null) {
-                        Text(
-                            text = importErrorMessage ?: "",
-                            color = RedstoneRed,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val uri = selectedImportUri ?: return@Button
-                        scope.launch {
-                            isImportingWorld = true
-                            importErrorMessage = null
-                            val res = onImportWorld(uri, importBackupChecked) { statusStr, pct ->
-                                importStatusText = statusStr
-                                importProgressPercent = pct
-                            }
-                            isImportingWorld = false
-                            if (res.isSuccess) {
-                                showImportConfirmDialog = false
-                                refreshSummary()
-                                Toast.makeText(context, context.getString(R.string.world_import_success), Toast.LENGTH_LONG).show()
-                            } else {
-                                importErrorMessage = res.exceptionOrNull()?.message ?: "Failed importing world"
-                            }
-                        }
-                    },
-                    enabled = !isImportingWorld,
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    if (isImportingWorld) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
+                    isImportingWorld = false
+                    if (res.isSuccess) {
+                        showImportConfirmDialog = false
+                        refreshSummary()
+                        Toast.makeText(context, context.getString(R.string.world_import_success), Toast.LENGTH_LONG).show()
                     } else {
-                        Text("Import World", color = Color.Black, fontWeight = FontWeight.Bold)
+                        importErrorMessage = res.exceptionOrNull()?.message ?: "Failed importing world"
                     }
                 }
-            },
-            dismissButton = {
-                if (!isImportingWorld) {
-                    OutlinedButton(
-                        onClick = { showImportConfirmDialog = false },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
-                    }
-                }
-            },
-            containerColor = Slate950
+            }
         )
     }
 
     // Modal: Chunk Pruning Confirmation & Progress
     if (showPruneConfirmDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isPruningChunks) showPruneConfirmDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.CleaningServices,
-                    contentDescription = null,
-                    tint = DiamondCyan,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.world_pruner_confirm_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = stringResource(R.string.world_pruner_confirm_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+        ChunkPruneDialog(
+            isRunning = isRunning,
+            isPruning = isPruningChunks,
+            pruneProgressPercent = pruneProgressPercent,
+            pruneStatusText = pruneStatusText,
+            onDismiss = { showPruneConfirmDialog = false },
+            onConfirm = {
+                scope.launch {
+                    isPruningChunks = true
+                    val options = ChunkPruneOptions(
+                        threshold = selectedThreshold,
+                        pruneNether = pruneNetherChecked,
+                        pruneEnd = pruneEndChecked,
+                        createBackup = pruneBackupChecked
                     )
-
-                    if (isRunning) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = RedstoneRed.copy(alpha = 0.2f),
-                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                text = stringResource(R.string.world_pruner_running_warning),
-                                color = RedstoneLight,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
+                    val result = onPruneChunks(options) { statusStr, pct ->
+                        pruneStatusText = statusStr
+                        pruneProgressPercent = pct
                     }
-
-                    if (isPruningChunks) {
-                        Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            LinearProgressIndicator(
-                                progress = { pruneProgressPercent / 100f },
-                                modifier = Modifier.fillMaxWidth(),
-                                color = DiamondCyan,
-                                trackColor = Slate800
-                            )
-                            Text(text = pruneStatusText, color = DiamondLight, fontSize = 11.sp)
-                        }
-                    }
+                    isPruningChunks = false
+                    showPruneConfirmDialog = false
+                    refreshSummary()
+                    pruneResultDialogData = result
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            isPruningChunks = true
-                            val options = ChunkPruneOptions(
-                                threshold = selectedThreshold,
-                                pruneNether = pruneNetherChecked,
-                                pruneEnd = pruneEndChecked,
-                                createBackup = pruneBackupChecked
-                            )
-                            val result = onPruneChunks(options) { statusStr, pct ->
-                                pruneStatusText = statusStr
-                                pruneProgressPercent = pct
-                            }
-                            isPruningChunks = false
-                            showPruneConfirmDialog = false
-                            refreshSummary()
-                            pruneResultDialogData = result
-                        }
-                    },
-                    enabled = !isPruningChunks,
-                    colors = ButtonDefaults.buttonColors(containerColor = DiamondCyan),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    if (isPruningChunks) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
-                    } else {
-                        Text("Start Optimization", color = Color.Black, fontWeight = FontWeight.Bold)
-                    }
-                }
-            },
-            dismissButton = {
-                if (!isPruningChunks) {
-                    OutlinedButton(
-                        onClick = { showPruneConfirmDialog = false },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
-                    }
-                }
-            },
-            containerColor = Slate950
+            }
         )
     }
 
     // Modal: Chunk Pruning Results Dialog
     if (pruneResultDialogData != null) {
-        val res = pruneResultDialogData!!
-        AlertDialog(
-            onDismissRequest = { pruneResultDialogData = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.world_pruner_success_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = stringResource(
-                            R.string.world_pruner_success_desc,
-                            res.scannedRegions,
-                            res.scannedChunks,
-                            res.prunedChunks,
-                            res.deletedRegions,
-                            formatFileSize(res.bytesFreed),
-                            res.percentFreed
-                        ),
-                        color = Color.White,
-                        fontSize = 13.sp
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = { pruneResultDialogData = null },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Done", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            },
-            containerColor = Slate950
+        ChunkPruneResultDialog(
+            result = pruneResultDialogData!!,
+            onDismiss = { pruneResultDialogData = null }
         )
     }
 }
 
-@Composable
-private fun DimensionRowCard(
-    dimInfo: WorldDimensionInfo,
-    isRunning: Boolean,
-    onResetRequested: () -> Unit
-) {
-    val (icon, tintColor) = when (dimInfo.dimension) {
-        DimensionType.OVERWORLD -> Icons.Default.Public to EmeraldLight
-        DimensionType.NETHER -> Icons.Default.LocalFireDepartment to RedstoneRed
-        DimensionType.THE_END -> Icons.Default.AutoAwesome to DiamondCyan
-    }
-
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Slate800,
-        border = BorderStroke(1.dp, ObsidianCardBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(imageVector = icon, contentDescription = null, tint = tintColor, modifier = Modifier.size(22.dp))
-                Column {
-                    Text(
-                        text = dimInfo.dimension.displayName,
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = if (dimInfo.exists) {
-                            "${formatFileSize(dimInfo.sizeBytes)} • ${dimInfo.regionFilesCount} region files (${dimInfo.totalChunksCount} chunks)"
-                        } else {
-                            "Not yet generated"
-                        },
-                        color = Slate400,
-                        fontSize = 11.sp
-                    )
-                }
-            }
-
-            if (dimInfo.dimension != DimensionType.OVERWORLD && dimInfo.exists) {
-                OutlinedButton(
-                    onClick = onResetRequested,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(6.dp),
-                    border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.6f))
-                ) {
-                    Text(
-                        text = if (dimInfo.dimension == DimensionType.NETHER) "Reset Nether" else "Reset End",
-                        color = RedstoneLight,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-            } else if (dimInfo.dimension == DimensionType.OVERWORLD) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = EmeraldDark.copy(alpha = 0.3f)
-                ) {
-                    Text(
-                        text = "Primary",
-                        color = EmeraldLight,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun formatFileSize(bytes: Long): String {
-    if (bytes <= 0) return "0 B"
-    val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.0)).toInt()
-    return DecimalFormat("#,##0.#").format(bytes / Math.pow(1024.0, digitGroups.toDouble())) + " " + units[digitGroups]
-}

@@ -45,6 +45,7 @@ class ServerProcessManager private constructor(
 ) {
     companion object {
         private const val TAG = "ServerProcessManager"
+        private val WHITESPACE_REGEX = Regex("\\s+")
 
         @Volatile
         private var INSTANCE: ServerProcessManager? = null
@@ -210,7 +211,6 @@ class ServerProcessManager private constructor(
                                 updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
                                 return@collect
                             }
-                            else -> {}
                         }
                     }
                 }
@@ -696,13 +696,15 @@ class ServerProcessManager private constructor(
             try {
                 val statusFile = File("/proc/$pid/status")
                 if (statusFile.exists()) {
-                    for (line in statusFile.readLines()) {
-                        if (line.startsWith("VmRSS:")) {
-                            val kb = line.replace("VmRSS:", "").replace("kB", "").trim().toLongOrNull()
-                            if (kb != null && kb > 0) {
-                                totalRssKb += kb
+                    statusFile.useLines { lines ->
+                        for (line in lines) {
+                            if (line.startsWith("VmRSS:")) {
+                                val kb = line.replace("VmRSS:", "").replace("kB", "").trim().toLongOrNull()
+                                if (kb != null && kb > 0) {
+                                    totalRssKb += kb
+                                }
+                                break
                             }
-                            break
                         }
                     }
                 }
@@ -725,7 +727,7 @@ class ServerProcessManager private constructor(
                     val content = statFile.readText()
                     val rparen = content.lastIndexOf(')')
                     if (rparen != -1 && rparen < content.length - 1) {
-                        val rest = content.substring(rparen + 2).trim().split("\\s+".toRegex())
+                        val rest = content.substring(rparen + 2).trim().split(WHITESPACE_REGEX)
                         if (rest.size >= 13) {
                             val utime = rest[11].toLongOrNull() ?: 0L
                             val stime = rest[12].toLongOrNull() ?: 0L

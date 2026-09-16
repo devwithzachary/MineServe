@@ -13,10 +13,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 class MojangApiClient(
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build(),
+    private val client: OkHttpClient = MineServeHttpClient.client,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     companion object {
@@ -28,23 +25,24 @@ class MojangApiClient(
         try {
             val req = Request.Builder()
                 .url(MANIFEST_URL)
-                .header("User-Agent", "MineServe-Android")
+                .header("User-Agent", MineServeHttpClient.USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext emptyList()
-            val body = resp.body?.string() ?: return@withContext emptyList()
-            val obj = json.parseToJsonElement(body).jsonObject
-            val versions = obj["versions"]?.jsonArray ?: return@withContext emptyList()
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext emptyList()
+                val body = resp.body?.string() ?: return@withContext emptyList()
+                val obj = json.parseToJsonElement(body).jsonObject
+                val versions = obj["versions"]?.jsonArray ?: return@withContext emptyList()
 
-            val list = versions.mapNotNull {
-                val vObj = it.jsonObject
-                val type = vObj["type"]?.jsonPrimitive?.content
-                if (type == "release") vObj["id"]?.jsonPrimitive?.content else null
+                val list = versions.mapNotNull {
+                    val vObj = it.jsonObject
+                    val type = vObj["type"]?.jsonPrimitive?.content
+                    if (type == "release") vObj["id"]?.jsonPrimitive?.content else null
+                }
+                return@withContext list.sortedMinecraftVersionsDescending()
             }
-            return@withContext list.sortedMinecraftVersionsDescending()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch Mojang release versions", e)
-            return@withContext listOf("26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.18.2", "1.16.5")
+            return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
         }
     }
 
@@ -52,26 +50,29 @@ class MojangApiClient(
         try {
             val req = Request.Builder()
                 .url(MANIFEST_URL)
-                .header("User-Agent", "MineServe-Android")
+                .header("User-Agent", MineServeHttpClient.USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext null
-            val body = resp.body?.string() ?: return@withContext null
-            val obj = json.parseToJsonElement(body).jsonObject
-            val versions = obj["versions"]?.jsonArray ?: return@withContext null
+            val versionUrl = client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val body = resp.body?.string() ?: return@withContext null
+                val obj = json.parseToJsonElement(body).jsonObject
+                val versions = obj["versions"]?.jsonArray ?: return@withContext null
 
-            val versionEntry = versions.firstOrNull {
-                it.jsonObject["id"]?.jsonPrimitive?.content == version
-            }?.jsonObject ?: return@withContext null
+                val versionEntry = versions.firstOrNull {
+                    it.jsonObject["id"]?.jsonPrimitive?.content == version
+                }?.jsonObject ?: return@withContext null
 
-            val versionUrl = versionEntry["url"]?.jsonPrimitive?.content ?: return@withContext null
-            val detailReq = Request.Builder().url(versionUrl).header("User-Agent", "MineServe-Android").build()
-            val detailResp = client.newCall(detailReq).execute()
-            if (!detailResp.isSuccessful) return@withContext null
-            val detailBody = detailResp.body?.string() ?: return@withContext null
-            val detailObj = json.parseToJsonElement(detailBody).jsonObject
+                versionEntry["url"]?.jsonPrimitive?.content
+            } ?: return@withContext null
 
-            return@withContext detailObj["downloads"]?.jsonObject?.get("server")?.jsonObject?.get("url")?.jsonPrimitive?.content
+            val detailReq = Request.Builder().url(versionUrl).header("User-Agent", MineServeHttpClient.USER_AGENT).build()
+            client.newCall(detailReq).execute().use { detailResp ->
+                if (!detailResp.isSuccessful) return@withContext null
+                val detailBody = detailResp.body?.string() ?: return@withContext null
+                val detailObj = json.parseToJsonElement(detailBody).jsonObject
+
+                return@withContext detailObj["downloads"]?.jsonObject?.get("server")?.jsonObject?.get("url")?.jsonPrimitive?.content
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get Mojang server URL for $version", e)
             return@withContext null
