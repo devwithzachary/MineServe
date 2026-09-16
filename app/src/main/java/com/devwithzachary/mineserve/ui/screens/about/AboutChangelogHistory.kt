@@ -44,7 +44,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Unified Network Client: Shared HTTP client with connection pooling, timeout resiliency, and socket leak prevention across all API callers.",
             "Terminal & UI Memory Optimizations: Converted terminal scrollback to O(1) ArrayDeque buffer and reduced transient character allocations in the terminal canvas.",
             "Chunk Optimizer & File Safeguards: Scoped file descriptors and automated cleanup for region optimization tasks.",
-            "Bedrock Dynamic Port Standby: Dynamic port binding for RakNet standby ping queries.",
+            "Standby & Auto-Wake Port Resiliency: Automated 30-attempt socket bind retries, decoupled TCP/UDP lifecycles, and reliable standby transitions on server shutdown.",
+            "Bedrock Dynamic Port Standby: Dynamic port binding and RakNet pong support for standby ping queries.",
             "Codebase Modularization: Decomposed monolithic repository and large composable screens into maintainable components."
         )
     ),

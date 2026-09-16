@@ -82,6 +82,10 @@ android {
             version = "3.22.1"
         }
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 kotlin {

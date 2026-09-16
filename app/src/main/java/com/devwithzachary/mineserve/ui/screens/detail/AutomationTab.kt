@@ -277,7 +277,7 @@ fun AutomationTab(
                             )
                         }
 
-                        if (status == ServerStatus.STOPPED) {
+                        if (status == ServerStatus.STOPPED || status == ServerStatus.STANDBY) {
                             if (isStandbyActive) {
                                 OutlinedButton(
                                     onClick = onExitStandby,

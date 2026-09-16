@@ -6,6 +6,8 @@ import com.devwithzachary.mineserve.model.ServerType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
@@ -17,22 +19,49 @@ import java.net.DatagramSocket
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 
 class StandbyPingListener(
     val server: MinecraftServer,
-    private val onWakeRequested: (MinecraftServer) -> Unit
+    private val onWakeRequested: (MinecraftServer) -> Unit,
+    private val onBindFailed: ((MinecraftServer, Exception) -> Unit)? = null
 ) {
     companion object {
         private const val TAG = "StandbyPingListener"
+        private const val MAX_BIND_ATTEMPTS = 30
+        private const val BIND_RETRY_DELAY_MS = 500L
+
+        // RakNet Unconnected Ping/Pong Magic (16 bytes)
+        private val RAKNET_MAGIC = byteArrayOf(
+            0x00.toByte(), 0xff.toByte(), 0xff.toByte(), 0x00.toByte(),
+            0xfe.toByte(), 0xfe.toByte(), 0xfe.toByte(), 0xfe.toByte(),
+            0xfd.toByte(), 0xfd.toByte(), 0xfd.toByte(), 0xfd.toByte(),
+            0x12.toByte(), 0x34.toByte(), 0x56.toByte(), 0x78.toByte()
+        )
     }
 
     private val isRunning = AtomicBoolean(false)
+    private val isTcpBound = AtomicBoolean(false)
+    private val isUdpBound = AtomicBoolean(false)
     private var tcpServerSocket: ServerSocket? = null
     private var udpSocket: DatagramSocket? = null
     private val job = Job()
     private val scope = CoroutineScope(Dispatchers.IO + job)
+
+    fun isRunning(): Boolean = isRunning.get()
+
+    fun isListening(): Boolean {
+        if (!isRunning.get()) return false
+        val tcpOk = tcpServerSocket?.isBound == true && tcpServerSocket?.isClosed == false
+        val udpOk = udpSocket?.isBound == true && udpSocket?.isClosed == false
+        return if (server.type == ServerType.BEDROCK_GEYSER) {
+            tcpOk || udpOk
+        } else {
+            tcpOk
+        }
+    }
 
     fun start() {
         if (!isRunning.compareAndSet(false, true)) return
@@ -48,14 +77,41 @@ class StandbyPingListener(
         }
     }
 
-    private fun startTcpListener() {
-        try {
-            val ss = ServerSocket()
-            ss.reuseAddress = true
-            ss.bind(InetSocketAddress(server.port))
-            tcpServerSocket = ss
-            Log.i(TAG, "Standby TCP listener active on port ${server.port} for server ${server.name} (${server.id})")
+    private suspend fun startTcpListener() {
+        var attempts = 0
+        var ss: ServerSocket? = null
 
+        while (isRunning.get() && attempts < MAX_BIND_ATTEMPTS) {
+            var candidate: ServerSocket? = null
+            try {
+                candidate = ServerSocket()
+                candidate.reuseAddress = true
+                candidate.bind(InetSocketAddress(server.port))
+                ss = candidate
+                tcpServerSocket = candidate
+                isTcpBound.set(true)
+                Log.i(TAG, "Standby TCP listener active on port ${server.port} for server ${server.name} (${server.id})")
+                break
+            } catch (e: java.net.SocketException) {
+                try { candidate?.close() } catch (_: Exception) {}
+                attempts++
+                Log.d(TAG, "Standby TCP port ${server.port} currently in use, retrying in ${BIND_RETRY_DELAY_MS}ms... (attempt $attempts/$MAX_BIND_ATTEMPTS)")
+                delay(BIND_RETRY_DELAY_MS)
+            } catch (e: Exception) {
+                try { candidate?.close() } catch (_: Exception) {}
+                Log.e(TAG, "Unexpected error binding Standby TCP listener on port ${server.port}", e)
+                onBindFailed?.invoke(server, e)
+                return
+            }
+        }
+
+        if (ss == null || ss.isClosed) {
+            Log.e(TAG, "Failed to bind Standby TCP port ${server.port} after $MAX_BIND_ATTEMPTS attempts")
+            onBindFailed?.invoke(server, java.net.BindException("Port ${server.port} in use after $MAX_BIND_ATTEMPTS retries"))
+            return
+        }
+
+        try {
             while (isRunning.get() && !ss.isClosed) {
                 val clientSocket = try {
                     ss.accept()
@@ -64,15 +120,18 @@ class StandbyPingListener(
                 }
                 handleTcpClient(clientSocket)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in Standby TCP listener on port ${server.port}", e)
         } finally {
-            closeSockets()
+            try { ss.close() } catch (_: Exception) {}
+            if (tcpServerSocket === ss) {
+                tcpServerSocket = null
+                isTcpBound.set(false)
+            }
         }
     }
 
     private fun handleTcpClient(socket: Socket) {
         scope.launch {
+            var isMinecraftHandshake = false
             try {
                 socket.soTimeout = 3000
                 val input = socket.getInputStream()
@@ -83,6 +142,7 @@ class StandbyPingListener(
                 if (packetLen > 0) {
                     val packetId = readVarInt(input)
                     if (packetId == 0x00) {
+                        isMinecraftHandshake = true
                         val protocolVersion = readVarInt(input)
                         val addressLen = readVarInt(input)
                         val addressBytes = ByteArray(addressLen.coerceIn(0, 255))
@@ -126,35 +186,104 @@ class StandbyPingListener(
                 Log.d(TAG, "Standby client exchange note: ${e.message}")
             } finally {
                 try { socket.close() } catch (_: Exception) {}
-                triggerWake()
+                if (isMinecraftHandshake) {
+                    triggerWake()
+                }
             }
         }
     }
 
-    private fun startUdpListener() {
+    private suspend fun startUdpListener() {
         val bedrockPort = if (server.port in 1..65535) server.port else 19132
-        try {
-            val ds = DatagramSocket(null)
-            ds.reuseAddress = true
-            ds.bind(InetSocketAddress(bedrockPort))
-            udpSocket = ds
-            Log.i(TAG, "Standby UDP listener active on port $bedrockPort for server ${server.name}")
+        var attempts = 0
+        var ds: DatagramSocket? = null
 
+        while (isRunning.get() && attempts < MAX_BIND_ATTEMPTS) {
+            var candidate: DatagramSocket? = null
+            try {
+                candidate = DatagramSocket(null)
+                candidate.reuseAddress = true
+                candidate.bind(InetSocketAddress(bedrockPort))
+                ds = candidate
+                udpSocket = candidate
+                isUdpBound.set(true)
+                Log.i(TAG, "Standby UDP listener active on port $bedrockPort for server ${server.name}")
+                break
+            } catch (e: java.net.SocketException) {
+                try { candidate?.close() } catch (_: Exception) {}
+                attempts++
+                Log.d(TAG, "Standby UDP port $bedrockPort currently in use, retrying in ${BIND_RETRY_DELAY_MS}ms... (attempt $attempts/$MAX_BIND_ATTEMPTS)")
+                delay(BIND_RETRY_DELAY_MS)
+            } catch (e: Exception) {
+                try { candidate?.close() } catch (_: Exception) {}
+                Log.d(TAG, "Standby UDP socket on port $bedrockPort: ${e.message}")
+                return
+            }
+        }
+
+        if (ds == null || ds.isClosed) {
+            Log.d(TAG, "Could not bind Standby UDP port $bedrockPort after $MAX_BIND_ATTEMPTS attempts")
+            return
+        }
+
+        try {
             val buf = ByteArray(1500)
             while (isRunning.get() && !ds.isClosed) {
                 val packet = DatagramPacket(buf, buf.size)
                 try {
                     ds.receive(packet)
-                    triggerWake()
-                    break
+                    handleUdpPacket(ds, packet, bedrockPort)
                 } catch (e: Exception) {
                     break
                 }
             }
-        } catch (e: Exception) {
-            Log.d(TAG, "Standby UDP socket on port $bedrockPort: ${e.message}")
         } finally {
-            closeSockets()
+            try { ds.close() } catch (_: Exception) {}
+            if (udpSocket === ds) {
+                udpSocket = null
+                isUdpBound.set(false)
+            }
+        }
+    }
+
+    private fun handleUdpPacket(ds: DatagramSocket, packet: DatagramPacket, bedrockPort: Int) {
+        val data = packet.data
+        val len = packet.length
+        if (len < 1) return
+
+        val packetId = data[0].toInt() and 0xFF
+        // RakNet Unconnected Ping (0x01) or Open Connection Request (0x05)
+        if (packetId == 0x01 || packetId == 0x02) {
+            try {
+                // Send RakNet Unconnected Pong (0x1c)
+                val clientTime = if (len >= 9) {
+                    ByteBuffer.wrap(data, 1, 8).long
+                } else {
+                    System.currentTimeMillis()
+                }
+
+                val cleanName = server.name.replace(";", "")
+                val motd = "MCPE;§e⚡ $cleanName (Standby);589;1.20.0;0;20;${server.id};MineServe;Survival;1;$bedrockPort;$bedrockPort;"
+                val motdBytes = motd.toByteArray(Charsets.UTF_8)
+
+                val pongBuffer = ByteBuffer.allocate(1 + 8 + 8 + 16 + 2 + motdBytes.size)
+                pongBuffer.put(0x1c.toByte()) // ID_UNCONNECTED_PONG
+                pongBuffer.putLong(clientTime)
+                pongBuffer.putLong(0x0000000012345678L) // Server GUID
+                pongBuffer.put(RAKNET_MAGIC)
+                pongBuffer.putShort(motdBytes.size.toShort())
+                pongBuffer.put(motdBytes)
+
+                val pongBytes = pongBuffer.array()
+                val responsePacket = DatagramPacket(pongBytes, pongBytes.size, packet.socketAddress)
+                ds.send(responsePacket)
+            } catch (e: Exception) {
+                Log.d(TAG, "Error sending Bedrock standby pong: ${e.message}")
+            }
+            triggerWake()
+        } else if (packetId == 0x05) {
+            // Open connection request
+            triggerWake()
         }
     }
 
@@ -162,14 +291,16 @@ class StandbyPingListener(
         if (isRunning.compareAndSet(true, false)) {
             Log.i(TAG, "Standby ping detected for server ${server.name}! Triggering auto-wake...")
             closeSockets()
+            scope.cancel()
             onWakeRequested(server)
         }
     }
 
     fun stop() {
-        isRunning.set(false)
-        closeSockets()
-        job.cancel()
+        if (isRunning.compareAndSet(true, false)) {
+            closeSockets()
+            scope.cancel()
+        }
     }
 
     private fun closeSockets() {
@@ -177,11 +308,13 @@ class StandbyPingListener(
             tcpServerSocket?.close()
         } catch (_: Exception) {}
         tcpServerSocket = null
+        isTcpBound.set(false)
 
         try {
             udpSocket?.close()
         } catch (_: Exception) {}
         udpSocket = null
+        isUdpBound.set(false)
     }
 
     private fun buildStatusJson(serverName: String): String {
@@ -256,12 +389,23 @@ class StandbyPingManager private constructor() {
 
     private val listeners = ConcurrentHashMap<String, StandbyPingListener>()
 
-    fun startStandby(server: MinecraftServer, onWake: (MinecraftServer) -> Unit) {
+    fun startStandby(
+        server: MinecraftServer,
+        onBindFailed: ((MinecraftServer, Exception) -> Unit)? = null,
+        onWake: (MinecraftServer) -> Unit
+    ) {
         stopStandby(server.id)
-        val listener = StandbyPingListener(server) { wokeServer ->
-            listeners.remove(wokeServer.id)
-            onWake(wokeServer)
-        }
+        val listener = StandbyPingListener(
+            server = server,
+            onWakeRequested = { wokeServer ->
+                listeners.remove(wokeServer.id)
+                onWake(wokeServer)
+            },
+            onBindFailed = { failedServer, e ->
+                listeners.remove(failedServer.id)
+                onBindFailed?.invoke(failedServer, e)
+            }
+        )
         listeners[server.id] = listener
         listener.start()
     }
@@ -278,10 +422,17 @@ class StandbyPingManager private constructor() {
     }
 
     fun isStandbyActive(serverId: String): Boolean {
-        return listeners.containsKey(serverId)
+        val listener = listeners[serverId] ?: return false
+        return listener.isRunning()
+    }
+
+    fun isStandbyListening(serverId: String): Boolean {
+        val listener = listeners[serverId] ?: return false
+        return listener.isListening()
     }
 
     fun getStandbyCount(): Int = listeners.size
 
     fun getStandbyPorts(): List<Int> = listeners.values.map { it.server.port }
 }
+

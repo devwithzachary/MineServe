@@ -14,6 +14,13 @@ All notable changes to the MineServe project will be documented in this file.
 - **Metrics Monitoring Loop Efficiency**: Precompiled static regex patterns and switched `/proc/[pid]/status` parsing to memory-efficient line sequence streaming (`useLines`).
 - **Live Web Map Memory Leak Fix**: Explicitly stops loading and destroys the Compose WebView instance in `LiveMapTab` upon disposal via `AndroidView`'s `onRelease`.
 
+### 💤 Standby & Auto-Wake Resiliency
+- **Automatic Port Binding Retries**: Added a 30-attempt socket bind retry loop with backoff so the standby listener seamlessly binds once the Minecraft server process finishes releasing the port during shutdown.
+- **Decoupled Socket Lifetimes**: Separated TCP and UDP listener teardown in `StandbyPingListener`, preventing UDP cleanup from prematurely closing active TCP sockets.
+- **Deterministic Shutdown Transitions**: Standby mode is now triggered when the server process actually terminates in PTY cleanup, eliminating race conditions with premature status polling during auto-sleep or manual stops.
+- **Bedrock RakNet Unconnected Pong**: Added RakNet Unconnected Pong response with server MOTD in the standby listener so Bedrock clients display standby status and trigger wake upon query.
+- **UI Standby Synchronization**: Toggling Auto-Wake on Ping on an offline server now immediately arms the standby listener, and the Exit Standby action remains accessible and responsive while in Standby status.
+
 ### 🏗️ Architecture & Codebase Modularization
 - **Repository Decomposition**: Decomposed the monolithic `ServerRepositories.kt` file into clean, single-responsibility repositories: `ServerRepository.kt`, `BackupRepository.kt`, and `PluginRepository.kt`.
 - **UI Screen Decomposition**: Modularized multi-hundred-line composable screens into maintainable components:

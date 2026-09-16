@@ -869,6 +869,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             serverRepository.updateServer(updated)
             if (!config.autoWakeOnPing && processManager.isServerInStandby(serverId)) {
                 processManager.exitStandby(serverId)
+            } else if (config.autoWakeOnPing && !processManager.isServerRunning(serverId) && !processManager.isServerInStandby(serverId)) {
+                enterStandby(updated)
             }
         }
     }

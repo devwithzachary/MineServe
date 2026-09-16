@@ -261,7 +261,7 @@ class ServerSchedulerManager private constructor(
                     delay(10_000)
                     processManager.stopServer(server.id)
                     for (i in 0 until 30) {
-                        if (!processManager.isServerRunning(server.id)) break
+                        if (processManager.isServerFullyStopped(server.id)) break
                         delay(1000)
                     }
                     startServerCallback?.invoke(server)
