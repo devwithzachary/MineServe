@@ -337,7 +337,6 @@ fun LiveMapTab(
                                     )
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
-                                    settings.databaseEnabled = true
                                     settings.loadWithOverviewMode = true
                                     settings.useWideViewPort = true
                                     settings.builtInZoomControls = true
@@ -695,11 +694,7 @@ fun LiveMapTab(
                             onClick = {
                                 val target = normalizeWorldIdentifier(worldInputText, selectedDimension)
                                 onSendCommand("squaremap cancelrender $target")
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.map_render_cancelled_toast),
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                Toast.makeText(context, R.string.map_render_cancelled_toast, Toast.LENGTH_SHORT).show()
                                 showRenderDialog = false
                             }
                         ) {
@@ -724,11 +719,7 @@ fun LiveMapTab(
                     onClick = {
                         val target = normalizeWorldIdentifier(worldInputText, selectedDimension)
                         onSendCommand("squaremap fullrender $target")
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.map_render_dispatched_toast),
-                            Toast.LENGTH_SHORT
-                        ).show()
+                        Toast.makeText(context, R.string.map_render_dispatched_toast, Toast.LENGTH_SHORT).show()
                         showRenderDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),

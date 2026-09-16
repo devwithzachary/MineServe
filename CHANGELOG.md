@@ -33,6 +33,11 @@ All notable changes to the MineServe project will be documented in this file.
 - **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
 - **Console Input Field Layout**: Shortened the command input placeholder hint text and applied single-line ellipsis truncation so the console command text box stays cleanly on a single line on mobile screens.
 
+### 🛠️ Compatibility, Lint & System Robustness
+- **Android Compatibility & NewApi Compliance**: Updated foreground service termination to `ServiceCompat.stopForeground`, safeguarded process destruction in Playit tunnels, guarded NIO filesystem traversal behind Android Oreo, and transitioned concurrent player tracking to `Collections.newSetFromMap` for robust backwards compatibility down to Android 6.0 (API 23).
+- **Security & Path Traversal Safeguard**: Sanitized ContentProvider display names during file imports in `ServerRepository` to prevent directory traversal.
+- **Compiler & Deprecation Cleanup**: Migrated to Compose Material 3 `PrimaryTabRow` and modern `menuAnchor`, resolved exhaustive `when` warnings in dimension reset, removed deprecated WebSettings, and fixed code block formatting in GitHub update checking.
+
 
 ## [1.3.0] - 2026-09-10
 

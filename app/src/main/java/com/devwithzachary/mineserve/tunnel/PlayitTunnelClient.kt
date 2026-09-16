@@ -61,13 +61,22 @@ class PlayitTunnelClient(
         }
     }
 
+    private fun destroyProcessSafely(proc: Process?) {
+        if (proc == null) return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                proc.destroyForcibly()
+            } else {
+                proc.destroy()
+            }
+        } catch (_: Exception) {}
+    }
+
     fun stop() {
         isExplicitlyStopped.set(true)
         tunnelJob?.cancel()
         tunnelJob = null
-        try {
-            process?.destroyForcibly()
-        } catch (_: Exception) {}
+        destroyProcessSafely(process)
         process = null
         onStateChanged(TunnelState.Disconnected)
     }
@@ -320,9 +329,7 @@ class PlayitTunnelClient(
                 Log.e(TAG, "Playit tunnel error: ${e.message}", e)
                 onStateChanged(TunnelState.Error(e.message ?: "Playit connection failed"))
             } finally {
-                try {
-                    process?.destroyForcibly()
-                } catch (_: Exception) {}
+                destroyProcessSafely(process)
                 process = null
             }
 

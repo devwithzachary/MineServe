@@ -615,7 +615,7 @@ fun WorldTab(
                     dimensionToReset = null
                     if (ok) {
                         refreshSummary()
-                        Toast.makeText(context, context.getString(R.string.world_reset_success), Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, R.string.world_reset_success, Toast.LENGTH_LONG).show()
                     } else {
                         Toast.makeText(context, "Failed to reset dimension.", Toast.LENGTH_SHORT).show()
                     }
@@ -648,7 +648,7 @@ fun WorldTab(
                     if (res.isSuccess) {
                         showImportConfirmDialog = false
                         refreshSummary()
-                        Toast.makeText(context, context.getString(R.string.world_import_success), Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, R.string.world_import_success, Toast.LENGTH_LONG).show()
                     } else {
                         importErrorMessage = res.exceptionOrNull()?.message ?: "Failed importing world"
                     }

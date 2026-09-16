@@ -41,35 +41,35 @@ class GitHubUpdateChecker(
                 val obj = json.parseToJsonElement(body).jsonObject
 
                 val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: ""
-            val name = obj["name"]?.jsonPrimitive?.content ?: tagName
-            val releaseNotes = obj["body"]?.jsonPrimitive?.content ?: ""
-            val htmlUrl = obj["html_url"]?.jsonPrimitive?.content ?: "https://github.com/devwithzachary/mineserve/releases"
-            val publishedAt = obj["published_at"]?.jsonPrimitive?.content ?: ""
+                val name = obj["name"]?.jsonPrimitive?.content ?: tagName
+                val releaseNotes = obj["body"]?.jsonPrimitive?.content ?: ""
+                val htmlUrl = obj["html_url"]?.jsonPrimitive?.content ?: "https://github.com/devwithzachary/mineserve/releases"
+                val publishedAt = obj["published_at"]?.jsonPrimitive?.content ?: ""
 
-            // Find direct APK download asset if present
-            var apkUrl: String? = null
-            val assetsArr = obj["assets"]?.jsonArray
-            if (assetsArr != null) {
-                for (assetElement in assetsArr) {
-                    val assetObj = assetElement.jsonObject
-                    val assetName = assetObj["name"]?.jsonPrimitive?.content ?: ""
-                    if (assetName.endsWith(".apk", ignoreCase = true)) {
-                        apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content
-                        break
+                // Find direct APK download asset if present
+                var apkUrl: String? = null
+                val assetsArr = obj["assets"]?.jsonArray
+                if (assetsArr != null) {
+                    for (assetElement in assetsArr) {
+                        val assetObj = assetElement.jsonObject
+                        val assetName = assetObj["name"]?.jsonPrimitive?.content ?: ""
+                        if (assetName.endsWith(".apk", ignoreCase = true)) {
+                            apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content
+                            break
+                        }
                     }
                 }
-            }
 
-            val isNewer = isVersionNewer(remoteTag = tagName, currentVersion = currentVersionName)
-            val release = GitHubRelease(
-                tagName = tagName,
-                name = name,
-                body = releaseNotes,
-                htmlUrl = htmlUrl,
-                publishedAt = publishedAt,
-                apkDownloadUrl = apkUrl,
-                isNewer = isNewer
-            )
+                val isNewer = isVersionNewer(remoteTag = tagName, currentVersion = currentVersionName)
+                val release = GitHubRelease(
+                    tagName = tagName,
+                    name = name,
+                    body = releaseNotes,
+                    htmlUrl = htmlUrl,
+                    publishedAt = publishedAt,
+                    apkDownloadUrl = apkUrl,
+                    isNewer = isNewer
+                )
 
                 Log.d(TAG, "Fetched latest release: $tagName (isNewer=$isNewer vs current=$currentVersionName)")
 

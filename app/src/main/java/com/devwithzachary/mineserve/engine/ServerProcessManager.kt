@@ -10,6 +10,7 @@ import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import java.io.File
 import java.io.IOException
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,7 @@ data class ActiveServerSession(
     val emulator: TerminalEmulator,
     var ptyProcess: PtyProcess?,
     var pid: Int = -1,
-    val onlinePlayers: MutableSet<String> = ConcurrentHashMap.newKeySet(),
+    val onlinePlayers: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap()),
     var startTimeMillis: Long = System.currentTimeMillis(),
     var currentTps: Double = 20.0,
     var currentMspt: Double = 15.0,

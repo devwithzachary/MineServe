@@ -48,7 +48,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Bedrock Dynamic Port Standby: Dynamic port binding and RakNet pong support for standby ping queries.",
             "Codebase Modularization: Decomposed monolithic repository and large composable screens into maintainable components.",
             "Console Input Layout Fix: Shortened command placeholder hint text and added single-line ellipsis truncation to prevent two-line expansion on mobile screens.",
-            "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps."
+            "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps.",
+            "Compatibility & System Robustness: Android API 23+ compatibility safeguards, ContentProvider filename path traversal sanitization, and compiler warning cleanup."
         )
     ),
     ReleaseChangelog(

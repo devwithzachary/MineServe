@@ -343,7 +343,8 @@ class ServerRepository(
                 if (cursor.moveToFirst()) {
                     val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                     if (nameIndex >= 0) {
-                        fileName = cursor.getString(nameIndex)
+                        val rawName = cursor.getString(nameIndex)
+                        fileName = File(rawName).name.ifBlank { "imported_file" }
                     }
                 }
             }

@@ -3,6 +3,7 @@ package com.devwithzachary.mineserve.engine
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -55,34 +56,45 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun walkFileTreeSize(target: File): Long {
+        var bytes = 0L
+        java.nio.file.Files.walkFileTree(
+            target.toPath(),
+            object : java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
+                override fun visitFile(file: java.nio.file.Path, attrs: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
+                    try {
+                        bytes += attrs.size()
+                    } catch (_: Exception) {}
+                    return java.nio.file.FileVisitResult.CONTINUE
+                }
+
+                override fun visitFileFailed(file: java.nio.file.Path, exc: java.io.IOException?): java.nio.file.FileVisitResult {
+                    return java.nio.file.FileVisitResult.CONTINUE
+                }
+
+                override fun preVisitDirectory(dir: java.nio.file.Path, attrs: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
+                    return java.nio.file.FileVisitResult.CONTINUE
+                }
+            }
+        )
+        return bytes
+    }
+
     suspend fun getStorageUsedMb(): Long = withContext(Dispatchers.IO) {
         val targets = listOf(rootfsDir, File(context.filesDir, "servers"))
         var totalBytes = 0L
 
         for (target in targets) {
             if (!target.exists()) continue
-            try {
-                java.nio.file.Files.walkFileTree(
-                    target.toPath(),
-                    object : java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
-                        override fun visitFile(file: java.nio.file.Path, attrs: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
-                            try {
-                                totalBytes += attrs.size()
-                            } catch (_: Exception) {}
-                            return java.nio.file.FileVisitResult.CONTINUE
-                        }
-
-                        override fun visitFileFailed(file: java.nio.file.Path, exc: java.io.IOException?): java.nio.file.FileVisitResult {
-                            // Safely ignore unreadable files / broken symlinks
-                            return java.nio.file.FileVisitResult.CONTINUE
-                        }
-
-                        override fun preVisitDirectory(dir: java.nio.file.Path, attrs: java.nio.file.attribute.BasicFileAttributes): java.nio.file.FileVisitResult {
-                            return java.nio.file.FileVisitResult.CONTINUE
-                        }
-                    }
-                )
-            } catch (_: Exception) {
+            var calculated = false
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    totalBytes += walkFileTreeSize(target)
+                    calculated = true
+                } catch (_: Exception) {}
+            }
+            if (!calculated) {
                 // Fallback: iterative folder traversal
                 val queue = ArrayDeque<File>()
                 queue.add(target)
