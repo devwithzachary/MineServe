@@ -130,7 +130,7 @@
     <string name="detail_delete_confirm_btn">Delete Permanently</string>
 
     <!-- Console Tab -->
-    <string name="console_input_placeholder">Enter command (e.g. /op steve, /save-all)…</string>
+    <string name="console_input_placeholder">Enter command…</string>
     <string name="console_send">Send</string>
     <string name="console_quick_actions">Quick Commands</string>
 

@@ -29,6 +29,9 @@ All notable changes to the MineServe project will be documented in this file.
   - Extracted `DimensionRowCard` and `WorldTabDialogs` from `WorldTab.kt`.
   - Extracted `UpdateBuildModal` and `UpgradeVersionModal` from `ServerSoftwareCard.kt`.
 
+### 🎨 UI & UX Improvements
+- **Console Input Field Layout**: Shortened the command input placeholder hint text and applied single-line ellipsis truncation so the console command text box stays cleanly on a single line on mobile screens.
+
 
 ## [1.3.0] - 2026-09-10
 
