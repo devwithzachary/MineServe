@@ -47,7 +47,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Standby & Auto-Wake Port Resiliency: Automated 30-attempt socket bind retries, decoupled TCP/UDP lifecycles, and reliable standby transitions on server shutdown.",
             "Bedrock Dynamic Port Standby: Dynamic port binding and RakNet pong support for standby ping queries.",
             "Codebase Modularization: Decomposed monolithic repository and large composable screens into maintainable components.",
-            "Console Input Layout Fix: Shortened command placeholder hint text and added single-line ellipsis truncation to prevent two-line expansion on mobile screens."
+            "Console Input Layout Fix: Shortened command placeholder hint text and added single-line ellipsis truncation to prevent two-line expansion on mobile screens.",
+            "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps."
         )
     ),
     ReleaseChangelog(

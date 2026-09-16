@@ -352,4 +352,15 @@
     <string name="map_shortcut_banner_title">Live Web Map Available</string>
     <string name="map_shortcut_banner_desc">View your world in real-time in the Live Map tab.</string>
     <string name="map_shortcut_banner_btn">Open Live Map</string>
+
+    <!-- Live Map Full Render -->
+    <string name="map_full_render_btn">Full World Render</string>
+    <string name="map_render_dialog_title">Full World Render</string>
+    <string name="map_render_warning">Rendering every generated chunk into web map tiles requires significant CPU and memory resources. On mobile devices, this may cause temporary server lag, battery consumption, and device heat while in progress.</string>
+    <string name="map_render_dimension_label">Target Dimension</string>
+    <string name="map_render_world_name_label">World Identifier</string>
+    <string name="map_render_start_btn">Start Render</string>
+    <string name="map_render_cancel_btn">Cancel Active Render</string>
+    <string name="map_render_dispatched_toast">Dispatched render command to server console.</string>
+    <string name="map_render_cancelled_toast">Dispatched cancel render command to server console.</string>
 </resources>

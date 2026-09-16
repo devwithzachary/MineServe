@@ -453,6 +453,8 @@ fun ServerDetailScreen(
                     DetailTab.LIVE_MAP -> LiveMapTab(
                         server = server,
                         status = status,
+                        levelName = properties.levelName,
+                        onSendCommand = onSendCommand,
                         onGetWebMapState = onGetWebMapState,
                         onSetWebMapPort = onSetWebMapPort,
                         onInstallWebMapPlugin = onInstallWebMapPlugin,
