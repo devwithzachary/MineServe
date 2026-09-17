@@ -13,11 +13,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 class PurpurApiClient(
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build(),
+    private val client: OkHttpClient = MineServeHttpClient.client,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     companion object {
@@ -29,20 +25,21 @@ class PurpurApiClient(
         try {
             val req = Request.Builder()
                 .url(BASE_URL)
-                .header("User-Agent", "MineServe-Android")
+                .header("User-Agent", MineServeHttpClient.USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext defaultFallbackVersions()
-            val body = resp.body?.string() ?: return@withContext defaultFallbackVersions()
-            val obj = json.parseToJsonElement(body).jsonObject
-            val versionsArray = obj["versions"]?.jsonArray
-            if (versionsArray != null) {
-                return@withContext versionsArray.map { it.jsonPrimitive.content }.sortedMinecraftVersionsDescending()
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                val body = resp.body?.string() ?: return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                val obj = json.parseToJsonElement(body).jsonObject
+                val versionsArray = obj["versions"]?.jsonArray
+                if (versionsArray != null) {
+                    return@withContext versionsArray.map { it.jsonPrimitive.content }.sortedMinecraftVersionsDescending()
+                }
+                MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
             }
-            defaultFallbackVersions()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch Purpur versions", e)
-            defaultFallbackVersions()
+            MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
         }
     }
 
@@ -54,24 +51,21 @@ class PurpurApiClient(
         try {
             val req = Request.Builder()
                 .url("$BASE_URL/$version")
-                .header("User-Agent", "MineServe-Android")
+                .header("User-Agent", MineServeHttpClient.USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext Pair("latest", getDownloadUrl(version))
-            val body = resp.body?.string() ?: return@withContext Pair("latest", getDownloadUrl(version))
-            val obj = json.parseToJsonElement(body).jsonObject
-            val latestBuild = obj["builds"]?.jsonObject?.get("latest")?.jsonPrimitive?.content
-            if (!latestBuild.isNullOrBlank()) {
-                return@withContext Pair(latestBuild, getDownloadUrl(version))
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext Pair("latest", getDownloadUrl(version))
+                val body = resp.body?.string() ?: return@withContext Pair("latest", getDownloadUrl(version))
+                val obj = json.parseToJsonElement(body).jsonObject
+                val latestBuild = obj["builds"]?.jsonObject?.get("latest")?.jsonPrimitive?.content
+                if (!latestBuild.isNullOrBlank()) {
+                    return@withContext Pair(latestBuild, getDownloadUrl(version))
+                }
+                Pair("latest", getDownloadUrl(version))
             }
-            Pair("latest", getDownloadUrl(version))
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch Purpur latest build for $version", e)
             Pair("latest", getDownloadUrl(version))
         }
     }
-
-    private fun defaultFallbackVersions(): List<String> = listOf(
-        "26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.18.2", "1.16.5"
-    )
 }

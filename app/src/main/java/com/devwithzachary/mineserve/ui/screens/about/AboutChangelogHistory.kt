@@ -37,9 +37,22 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.3.1",
+        date = "In Development",
+        initialExpanded = true,
+        highlights = listOf(
+            "Standby Auto-Wake on Ping: Servers now automatically start up on player ping across both Java Edition (TCP) and Bedrock Edition (RakNet) with dynamic port binding and reliable reconnection.",
+            "World Backup Deletion & Retention: Delete individual backups directly in the app and set automatic retention limits on scheduled backup tasks to automatically prune older backups.",
+            "Live Web Map Full World Render: Render complete world map tiles across all dimensions (Overworld, Nether, and The End) with hardware performance safeguards and cancel controls.",
+            "Server Setup Wizard Enhancements: Added safe numeric input handling and port stabilization to prevent flickering on the review step when creating servers on custom ports.",
+            "Performance & Reliability: Centralized network clients, O(1) terminal scrollback memory buffers, scoped file descriptors, and Android backwards compatibility safeguards down to API 23.",
+            "UI & Layout Polish: Added bottom dashboard scroll clearance for server cards, full-width console macro bar, unified telemetry card heights with live device storage progress, and compact popup dialog margins."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.3.0",
         date = "September 10, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Smart Idle Auto-Shutdown: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve battery and prevent thermal throttling.",
             "Auto-Wake on Ping: Standby socket listener on the server port (TCP for Java, UDP RakNet for Bedrock). When a player queries or joins from their Minecraft server list, the server spins up automatically.",

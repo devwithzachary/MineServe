@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
@@ -87,7 +88,9 @@ fun ConsoleTab(
             onResetDefaults = {
                 macros = consolePrefs.resetMacrosToDefaults()
             },
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
         )
 
         // Terminal Canvas
@@ -177,7 +180,9 @@ fun ConsoleTab(
                         Text(
                             text = stringResource(R.string.console_input_placeholder),
                             color = Slate400,
-                            fontSize = 13.sp
+                            fontSize = 13.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     },
                     singleLine = true,

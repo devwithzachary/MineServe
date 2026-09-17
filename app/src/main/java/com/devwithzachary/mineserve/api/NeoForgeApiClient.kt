@@ -13,10 +13,7 @@ import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
 class NeoForgeApiClient(
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .build(),
+    private val client: OkHttpClient = MineServeHttpClient.client,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     companion object {
@@ -28,27 +25,28 @@ class NeoForgeApiClient(
         try {
             val req = Request.Builder()
                 .url(BASE_URL)
-                .header("User-Agent", "MineServe-Android")
+                .header("User-Agent", MineServeHttpClient.USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext defaultFallbackVersions()
-            val body = resp.body?.string() ?: return@withContext defaultFallbackVersions()
-            val obj = json.parseToJsonElement(body).jsonObject
-            val array = obj["versions"]?.jsonArray
-            if (array != null) {
-                val rawList = array.map { it.jsonPrimitive.content }.filter { !it.contains("craftmine") }
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext defaultFallbackVersions()
+                val body = resp.body?.string() ?: return@withContext defaultFallbackVersions()
+                val obj = json.parseToJsonElement(body).jsonObject
+                val array = obj["versions"]?.jsonArray
+                if (array != null) {
+                    val rawList = array.map { it.jsonPrimitive.content }.filter { !it.contains("craftmine") }
 
-                // Group by Minecraft version key to only keep the single latest build per MC version
-                val latestByKey = mutableMapOf<String, String>()
-                for (v in rawList) {
-                    val key = getGameVersionKey(v)
-                    latestByKey[key] = v
+                    // Group by Minecraft version key to only keep the single latest build per MC version
+                    val latestByKey = mutableMapOf<String, String>()
+                    for (v in rawList) {
+                        val key = getGameVersionKey(v)
+                        latestByKey[key] = v
+                    }
+
+                    val list = latestByKey.values.toList().sortedMinecraftVersionsDescending()
+                    if (list.isNotEmpty()) return@withContext list
                 }
-
-                val list = latestByKey.values.toList().sortedMinecraftVersionsDescending()
-                if (list.isNotEmpty()) return@withContext list
+                defaultFallbackVersions()
             }
-            defaultFallbackVersions()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch NeoForge versions", e)
             defaultFallbackVersions()

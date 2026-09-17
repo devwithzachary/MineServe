@@ -130,7 +130,7 @@
     <string name="detail_delete_confirm_btn">Delete Permanently</string>
 
     <!-- Console Tab -->
-    <string name="console_input_placeholder">Enter command (e.g. /op steve, /save-all)…</string>
+    <string name="console_input_placeholder">Enter command…</string>
     <string name="console_send">Send</string>
     <string name="console_quick_actions">Quick Commands</string>
 
@@ -171,6 +171,11 @@
     <string name="backups_export">Export</string>
     <string name="backups_restored_toast">Backup restored successfully</string>
     <string name="backups_exported_toast">Exported backup to Downloads folder</string>
+    <string name="backups_delete">Delete</string>
+    <string name="backups_delete_dialog_title">Delete World Backup?</string>
+    <string name="backups_delete_dialog_desc">Are you sure you want to permanently delete \'%1$s\'? This action cannot be undone and will free up %2$s.</string>
+    <string name="backups_deleted_toast">Backup deleted successfully</string>
+    <string name="backups_delete_failed_toast">Failed to delete backup</string>
 
     <string name="tab_mods">Mods</string>
     <string name="tab_plugins_mods">Plugins &amp; Mods</string>
@@ -352,4 +357,15 @@
     <string name="map_shortcut_banner_title">Live Web Map Available</string>
     <string name="map_shortcut_banner_desc">View your world in real-time in the Live Map tab.</string>
     <string name="map_shortcut_banner_btn">Open Live Map</string>
+
+    <!-- Live Map Full Render -->
+    <string name="map_full_render_btn">Full World Render</string>
+    <string name="map_render_dialog_title">Full World Render</string>
+    <string name="map_render_warning">Rendering every generated chunk into web map tiles requires significant CPU and memory resources. On mobile devices, this may cause temporary server lag, battery consumption, and device heat while in progress.</string>
+    <string name="map_render_dimension_label">Target Dimension</string>
+    <string name="map_render_world_name_label">World Identifier</string>
+    <string name="map_render_start_btn">Start Render</string>
+    <string name="map_render_cancel_btn">Cancel Active Render</string>
+    <string name="map_render_dispatched_toast">Dispatched render command to server console.</string>
+    <string name="map_render_cancelled_toast">Dispatched cancel render command to server console.</string>
 </resources>

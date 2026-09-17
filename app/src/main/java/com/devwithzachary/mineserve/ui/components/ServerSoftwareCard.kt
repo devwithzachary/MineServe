@@ -81,6 +81,8 @@ import com.devwithzachary.mineserve.ui.theme.Slate700
 import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate900
 import com.devwithzachary.mineserve.ui.theme.Slate950
+import com.devwithzachary.mineserve.ui.components.software.UpdateBuildModal
+import com.devwithzachary.mineserve.ui.components.software.UpgradeVersionModal
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -313,477 +315,76 @@ fun ServerSoftwareCard(
 
     // Modal 1: Update Server Build Dialog
     if (showUpdateModal) {
-        AlertDialog(
-            onDismissRequest = {
-                if (!isUpdatingBuild) showUpdateModal = false
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.CloudDownload,
-                    contentDescription = null,
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.software_update_dialog_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "${server.type.displayName} ${server.version}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-
-                    if (isCheckingBuild) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = EmeraldPrimary)
-                            Text(stringResource(R.string.software_checking_updates), color = Slate400, fontSize = 13.sp)
-                        }
-                    } else if (buildInfo != null) {
-                        val info = buildInfo!!
-                        val isSame = info.currentBuild != null && info.currentBuild == info.latestBuild
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isSame) Slate800 else EmeraldDark.copy(alpha = 0.35f),
-                            border = BorderStroke(1.dp, if (isSame) Slate700 else EmeraldPrimary),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isSame) Icons.Default.CheckCircle else Icons.Default.CloudDownload,
-                                    contentDescription = null,
-                                    tint = if (isSame) Slate400 else EmeraldLight,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Column {
-                                    Text(
-                                        text = if (isSame) {
-                                            stringResource(R.string.software_up_to_date, info.latestBuild)
-                                        } else {
-                                            stringResource(R.string.software_update_available, info.latestBuild)
-                                        },
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        fontSize = 13.sp
-                                    )
-                                    if (info.currentBuild != null) {
-                                        Text(
-                                            text = "Installed build: #${info.currentBuild}",
-                                            color = Slate400,
-                                            fontSize = 11.sp
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // World preservation guarantee
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Slate900,
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.Shield, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(18.dp))
-                            Text(
-                                text = stringResource(R.string.software_safe_notice),
-                                color = Slate400,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
-                    // Running warning
-                    if (isRunning) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = RedstoneRed.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.6f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(Icons.Default.Warning, contentDescription = null, tint = RedstoneRed, modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = stringResource(R.string.software_running_warning),
-                                    color = RedstoneRed,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    // Backup checkbox
-                    if (!isUpdatingBuild) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Checkbox(
-                                checked = updateBackupChecked,
-                                onCheckedChange = { updateBackupChecked = it },
-                                colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                            )
-                            Text(
-                                text = stringResource(R.string.software_backup_checkbox),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    // Progress bar while updating
-                    if (isUpdatingBuild) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LinearProgressIndicator(
-                                progress = { updateProgressPercent / 100f },
-                                modifier = Modifier.fillMaxWidth().height(6.dp),
-                                color = EmeraldPrimary,
-                                trackColor = Slate800
-                            )
-                            Text(
-                                text = updateStatusText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = EmeraldLight,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    if (updateErrorText != null) {
-                        Text(
-                            text = updateErrorText ?: "",
-                            color = RedstoneRed,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        isUpdatingBuild = true
-                        updateErrorText = null
-                        onUpdateBuild(
-                            updateBackupChecked,
-                            { statusStr, percent ->
-                                updateStatusText = statusStr
-                                updateProgressPercent = percent
-                            },
-                            { success ->
-                                isUpdatingBuild = false
-                                if (success) {
-                                    showUpdateModal = false
-                                } else {
-                                    updateErrorText = "Failed to update build. Please check your connection."
-                                }
-                            }
-                        )
+        UpdateBuildModal(
+            server = server,
+            isRunning = isRunning,
+            isCheckingBuild = isCheckingBuild,
+            buildInfo = buildInfo,
+            isUpdatingBuild = isUpdatingBuild,
+            updateProgressPercent = updateProgressPercent,
+            updateStatusText = updateStatusText,
+            updateErrorText = updateErrorText,
+            updateBackupChecked = updateBackupChecked,
+            onUpdateBackupCheckedChange = { updateBackupChecked = it },
+            onDismiss = { showUpdateModal = false },
+            onConfirmUpdate = {
+                isUpdatingBuild = true
+                updateErrorText = null
+                onUpdateBuild(
+                    updateBackupChecked,
+                    { statusStr, percent ->
+                        updateStatusText = statusStr
+                        updateProgressPercent = percent
                     },
-                    enabled = !isCheckingBuild && !isUpdatingBuild,
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.software_btn_confirm_update),
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                }
-            },
-            dismissButton = {
-                if (!isUpdatingBuild) {
-                    OutlinedButton(
-                        onClick = { showUpdateModal = false },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
+                    { success ->
+                        isUpdatingBuild = false
+                        if (success) {
+                            showUpdateModal = false
+                        } else {
+                            updateErrorText = "Failed to update build. Please check your connection."
+                        }
                     }
-                }
-            },
-            containerColor = Slate950
+                )
+            }
         )
     }
 
     // Modal 2: Upgrade Minecraft Version Dialog
     if (showUpgradeModal) {
-        val targetJava = remember(selectedTargetVersion) {
-            determineJavaVersion(selectedTargetVersion, server.type)
-        }
-
-        AlertDialog(
-            onDismissRequest = {
-                if (!isUpgradingVersion) showUpgradeModal = false
-            },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Upgrade,
-                    contentDescription = null,
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.software_upgrade_dialog_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Current: ${server.type.displayName} ${server.version}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
-                    )
-
-                    if (isLoadingVersions) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(vertical = 8.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = EmeraldPrimary)
-                            Text(stringResource(R.string.software_loading_versions), color = Slate400, fontSize = 13.sp)
-                        }
-                    } else if (availableVersions.isNotEmpty()) {
-                        // Dropdown selection for Minecraft Version
-                        ExposedDropdownMenuBox(
-                            expanded = versionDropdownExpanded,
-                            onExpandedChange = { if (!isUpgradingVersion) versionDropdownExpanded = it }
-                        ) {
-                            OutlinedTextField(
-                                value = selectedTargetVersion,
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text(stringResource(R.string.software_select_version_label)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = versionDropdownExpanded) },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = ObsidianCardBorder,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
-                                modifier = Modifier.menuAnchor().fillMaxWidth()
-                            )
-
-                            ExposedDropdownMenu(
-                                expanded = versionDropdownExpanded,
-                                onDismissRequest = { versionDropdownExpanded = false },
-                                modifier = Modifier.background(Slate900)
-                            ) {
-                                availableVersions.forEach { ver ->
-                                    DropdownMenuItem(
-                                        text = {
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                horizontalArrangement = Arrangement.SpaceBetween
-                                            ) {
-                                                Text(ver, color = if (ver == selectedTargetVersion) EmeraldPrimary else Color.White)
-                                                if (ver == server.version) {
-                                                    Text("(Current)", color = Slate400, fontSize = 11.sp)
-                                                }
-                                            }
-                                        },
-                                        onClick = {
-                                            selectedTargetVersion = ver
-                                            versionDropdownExpanded = false
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        // Java version requirement chip
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Slate800,
-                            border = BorderStroke(1.dp, ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = "Target requires Java $targetJava (Configured automatically)",
-                                    color = DiamondLight,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    // World preservation guarantee
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Slate900,
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(Icons.Default.Shield, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(18.dp))
-                            Text(
-                                text = stringResource(R.string.software_safe_notice),
-                                color = Slate400,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-
-                    // Running warning
-                    if (isRunning) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = RedstoneRed.copy(alpha = 0.15f),
-                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.6f)),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Icon(Icons.Default.Warning, contentDescription = null, tint = RedstoneRed, modifier = Modifier.size(16.dp))
-                                Text(
-                                    text = stringResource(R.string.software_running_warning),
-                                    color = RedstoneRed,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-                    }
-
-                    // Backup checkbox
-                    if (!isUpgradingVersion) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Checkbox(
-                                checked = upgradeBackupChecked,
-                                onCheckedChange = { upgradeBackupChecked = it },
-                                colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                            )
-                            Text(
-                                text = stringResource(R.string.software_backup_checkbox),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    // Progress bar while upgrading
-                    if (isUpgradingVersion) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            LinearProgressIndicator(
-                                progress = { upgradeProgressPercent / 100f },
-                                modifier = Modifier.fillMaxWidth().height(6.dp),
-                                color = EmeraldPrimary,
-                                trackColor = Slate800
-                            )
-                            Text(
-                                text = upgradeStatusText,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = EmeraldLight,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-
-                    if (upgradeErrorText != null) {
-                        Text(
-                            text = upgradeErrorText ?: "",
-                            color = RedstoneRed,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        isUpgradingVersion = true
-                        upgradeErrorText = null
-                        onUpgradeVersion(
-                            selectedTargetVersion,
-                            upgradeBackupChecked,
-                            { statusStr, percent ->
-                                upgradeStatusText = statusStr
-                                upgradeProgressPercent = percent
-                            },
-                            { success ->
-                                isUpgradingVersion = false
-                                if (success) {
-                                    showUpgradeModal = false
-                                } else {
-                                    upgradeErrorText = "Failed to upgrade server version. Please check connection."
-                                }
-                            }
-                        )
+        UpgradeVersionModal(
+            server = server,
+            isRunning = isRunning,
+            isLoadingVersions = isLoadingVersions,
+            availableVersions = availableVersions,
+            selectedTargetVersion = selectedTargetVersion,
+            onSelectTargetVersion = { selectedTargetVersion = it },
+            isUpgradingVersion = isUpgradingVersion,
+            upgradeProgressPercent = upgradeProgressPercent,
+            upgradeStatusText = upgradeStatusText,
+            upgradeErrorText = upgradeErrorText,
+            upgradeBackupChecked = upgradeBackupChecked,
+            onUpgradeBackupCheckedChange = { upgradeBackupChecked = it },
+            onDismiss = { showUpgradeModal = false },
+            onConfirmUpgrade = {
+                isUpgradingVersion = true
+                upgradeErrorText = null
+                onUpgradeVersion(
+                    selectedTargetVersion,
+                    upgradeBackupChecked,
+                    { statusStr, percent ->
+                        upgradeStatusText = statusStr
+                        upgradeProgressPercent = percent
                     },
-                    enabled = !isLoadingVersions && !isUpgradingVersion && selectedTargetVersion.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.software_btn_confirm_upgrade),
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Black
-                    )
-                }
-            },
-            dismissButton = {
-                if (!isUpgradingVersion) {
-                    OutlinedButton(
-                        onClick = { showUpgradeModal = false },
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text(stringResource(R.string.cancel), color = Color.White)
+                    { success ->
+                        isUpgradingVersion = false
+                        if (success) {
+                            showUpgradeModal = false
+                        } else {
+                            upgradeErrorText = "Failed to upgrade server version. Please check connection."
+                        }
                     }
-                }
-            },
-            containerColor = Slate950
+                )
+            }
         )
     }
 }

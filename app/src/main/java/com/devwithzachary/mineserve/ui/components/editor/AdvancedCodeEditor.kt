@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -302,7 +302,7 @@ fun AdvancedCodeEditor(
     }
 
     if (showUnsavedDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showUnsavedDialog = false },
             title = { Text("Unsaved Changes", fontWeight = FontWeight.Bold, color = Color.White) },
             text = {
@@ -327,9 +327,7 @@ fun AdvancedCodeEditor(
                 TextButton(onClick = { showUnsavedDialog = false }) {
                     Text("Cancel", color = Slate400)
                 }
-            },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
+            }
         )
     }
 

@@ -265,6 +265,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onCreateBackup = { onResult -> viewModel.createBackup(server.id, true, onResult) },
                         onRestoreBackup = { b, onResult -> viewModel.restoreBackup(server.id, b, onResult) },
                         onExportBackup = { b, onResult -> viewModel.exportBackup(b, onResult) },
+                        onDeleteBackup = { b, onResult -> viewModel.deleteBackup(server.id, b, onResult) },
                         onGetShareIntent = { b -> viewModel.getBackupShareIntent(b) },
                         onTogglePlugin = { p -> viewModel.togglePlugin(server.id, p) },
                         onDeletePlugin = { p -> viewModel.deletePlugin(server.id, p) },

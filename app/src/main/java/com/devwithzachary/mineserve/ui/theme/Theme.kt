@@ -82,9 +82,11 @@ fun MineServeTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = MineServeTypography,
-        content = content
-    )
+    androidx.compose.runtime.CompositionLocalProvider(LocalLayoutManager provides LayoutManager) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = MineServeTypography,
+            content = content
+        )
+    }
 }

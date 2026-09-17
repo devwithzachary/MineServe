@@ -56,6 +56,7 @@ import com.devwithzachary.mineserve.api.PaperApiClient
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate950
@@ -105,8 +106,16 @@ fun CreateServerWizardScreen(
     var selectedType by remember { mutableStateOf(ServerType.PAPER) }
     var selectedVersion by remember { mutableStateOf("26.2") }
     var allocatedRamMb by remember { mutableIntStateOf(2048) }
-    var port by remember(defaultUnusedPort) { mutableIntStateOf(defaultUnusedPort) }
+    var userModifiedPort by remember { mutableStateOf(false) }
+    var port by remember { mutableIntStateOf(defaultUnusedPort) }
     var eulaAccepted by remember { mutableStateOf(true) }
+
+    // Sync calculated unused port if servers load asynchronously, provided user hasn't explicitly set a port
+    LaunchedEffect(defaultUnusedPort) {
+        if (!userModifiedPort) {
+            port = defaultUnusedPort
+        }
+    }
 
     // Check if the currently chosen port is in use by an existing server
     val conflictingServerName = remember(port, existingServers) {
@@ -286,7 +295,7 @@ fun CreateServerWizardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = LayoutManager.screenHorizontalPadding)
                 .verticalScroll(rememberScrollState())
         ) {
             // Step Progress Indicator
@@ -329,11 +338,14 @@ fun CreateServerWizardScreen(
                         allocatedRamMb = allocatedRamMb,
                         onAllocatedRamMbChange = { allocatedRamMb = it },
                         port = port,
-                        onPortChange = { port = it },
+                        onPortChange = { newPort ->
+                            userModifiedPort = true
+                            port = newPort
+                        },
                         conflictingServerName = conflictingServerName
                     )
                     4 -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)) {
                             WizardStep4Review(
                                 serverName = serverName,
                                 selectedType = selectedType,

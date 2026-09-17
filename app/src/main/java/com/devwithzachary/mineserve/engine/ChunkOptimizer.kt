@@ -140,13 +140,12 @@ object ChunkOptimizer {
         }
 
         val headerBuffer = ByteArray(8192)
+        val chunksToKeep = mutableListOf<ChunkData>()
+        var scannedCount = 0
+        var prunedCount = 0
+
         RandomAccessFile(mcaFile, "r").use { raf ->
             raf.readFully(headerBuffer)
-
-            // Parse 1024 location table entries
-            val chunksToKeep = mutableListOf<ChunkData>()
-            var scannedCount = 0
-            var prunedCount = 0
 
             for (i in 0 until 1024) {
                 val locOffset = i * 4
@@ -197,22 +196,23 @@ object ChunkOptimizer {
                     )
                 }
             }
+        }
 
-            // Decision:
-            if (chunksToKeep.isEmpty()) {
-                // Delete the entire file
-                raf.close()
-                mcaFile.delete()
-                return RegionOptimizeResult(scannedCount, prunedCount, true)
-            }
+        // Decision:
+        if (chunksToKeep.isEmpty()) {
+            // Delete the entire file
+            mcaFile.delete()
+            return RegionOptimizeResult(scannedCount, prunedCount, true)
+        }
 
-            if (chunksToKeep.size == scannedCount) {
-                // No chunks were pruned
-                return RegionOptimizeResult(scannedCount, 0, false)
-            }
+        if (chunksToKeep.size == scannedCount) {
+            // No chunks were pruned
+            return RegionOptimizeResult(scannedCount, 0, false)
+        }
 
-            // Rewrite compacted MCA file
-            val tempFile = File(mcaFile.parentFile, "${mcaFile.name}.opt")
+        // Rewrite compacted MCA file
+        val tempFile = File(mcaFile.parentFile, "${mcaFile.name}.opt")
+        try {
             RandomAccessFile(tempFile, "rw").use { outRaf ->
                 val newHeader = ByteArray(8192)
                 var currentSector = 2
@@ -259,13 +259,17 @@ object ChunkOptimizer {
             }
 
             // Replace original file atomically
-            raf.close()
             if (tempFile.exists()) {
                 mcaFile.delete()
                 tempFile.renameTo(mcaFile)
             }
 
             return RegionOptimizeResult(scannedCount, prunedCount, false)
+        } catch (e: Exception) {
+            if (tempFile.exists()) {
+                tempFile.delete()
+            }
+            throw e
         }
     }
 

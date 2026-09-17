@@ -332,7 +332,7 @@ object WorldManager {
                         deletedAny = true
                     }
                 }
-                else -> {}
+                DimensionType.OVERWORLD -> {}
             }
 
             deletedAny

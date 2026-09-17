@@ -128,6 +128,7 @@ fun CustomMacroBar(
                 )
             )
         }
+        Spacer(modifier = Modifier.width(4.dp))
     }
 
     if (showCustomizeDialog) {
@@ -155,7 +156,7 @@ fun CustomizeMacrosDialog(
     var newAutoExecute by remember { mutableStateOf(true) }
     var showAddForm by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(
@@ -362,8 +363,6 @@ fun CustomizeMacrosDialog(
             ) {
                 Text(text = "Done", color = Color.Black, fontWeight = FontWeight.Bold)
             }
-        },
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(16.dp)
+        }
     )
 }

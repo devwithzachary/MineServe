@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -55,9 +56,9 @@ fun PlayersTab(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
         Text(
             text = "${stringResource(R.string.players_title)} (${onlineList.size})",
@@ -129,7 +130,7 @@ fun PlayersTab(
             }
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         // Quick Player Action Bar
         Text(

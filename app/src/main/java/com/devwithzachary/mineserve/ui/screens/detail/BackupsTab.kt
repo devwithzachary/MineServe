@@ -24,12 +24,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -61,6 +62,7 @@ import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -79,6 +81,7 @@ fun BackupsTab(
     onCreateBackup: ((Boolean) -> Unit) -> Unit = {},
     onRestoreBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
+    onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
     modifier: Modifier = Modifier
 ) {
@@ -88,7 +91,9 @@ fun BackupsTab(
     var isCreatingBackup by remember { mutableStateOf(false) }
     var restoringBackupId by remember { mutableStateOf<String?>(null) }
     var exportingBackupId by remember { mutableStateOf<String?>(null) }
+    var deletingBackupId by remember { mutableStateOf<String?>(null) }
     var backupToRestore by remember { mutableStateOf<BackupEntry?>(null) }
+    var backupToDelete by remember { mutableStateOf<BackupEntry?>(null) }
 
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isStatusError by remember { mutableStateOf(false) }
@@ -108,7 +113,7 @@ fun BackupsTab(
     // Restore Confirmation Dialog
     if (backupToRestore != null) {
         val target = backupToRestore!!
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { backupToRestore = null },
             icon = {
                 Icon(
@@ -166,12 +171,73 @@ fun BackupsTab(
         )
     }
 
+    // Delete Confirmation Dialog
+    if (backupToDelete != null) {
+        val target = backupToDelete!!
+        AppAlertDialog(
+            onDismissRequest = { backupToDelete = null },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = RedstoneRed,
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.backups_delete_dialog_title),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.backups_delete_dialog_desc, target.name, target.formattedSize),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Slate400
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val backup = target
+                        backupToDelete = null
+                        deletingBackupId = backup.id
+                        onDeleteBackup(backup) { success ->
+                            deletingBackupId = null
+                            if (success) {
+                                showFeedback(context.getString(R.string.backups_deleted_toast))
+                            } else {
+                                showFeedback(context.getString(R.string.backups_delete_failed_toast), isError = true)
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.backups_delete), color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { backupToDelete = null },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.cancel), color = Color.White)
+                }
+            },
+            containerColor = ObsidianCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
         // Header
         Column(
@@ -420,9 +486,33 @@ fun BackupsTab(
                                     }
                                 },
                                 shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(15.dp), tint = Color.White)
+                            }
+
+                            // Delete Button
+                            val isDeletingThis = deletingBackupId == b.id
+                            OutlinedButton(
+                                onClick = { backupToDelete = b },
+                                enabled = !isRestoringThis && !isExportingThis && !isDeletingThis,
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                            ) {
+                                if (isDeletingThis) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(15.dp),
+                                        color = RedstoneRed,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = stringResource(R.string.backups_delete),
+                                        modifier = Modifier.size(15.dp),
+                                        tint = RedstoneRed
+                                    )
+                                }
                             }
                         }
                     }

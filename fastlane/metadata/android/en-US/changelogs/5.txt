@@ -1,0 +1,5 @@
+• Standby Auto-Wake: Automatically start servers on player ping (Java & Bedrock)
+• Backup Management: Manual deletion and automated backup retention limits
+• Live Map: Full world tile renders across all dimensions
+• Server Wizard: Stable custom port setup and numeric input validation
+• Performance & UI Polish: Optimized memory usage, dashboard scroll clearance, and unified telemetry cards
