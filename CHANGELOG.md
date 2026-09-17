@@ -34,6 +34,7 @@ All notable changes to the MineServe project will be documented in this file.
 - **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
 - **Compact Card Layout Spacing**: Halved horizontal side margins and vertical spacing around cards from 16dp to 8dp across the dashboard, server detail tabs, wizard, settings, and about screens to maximize screen real estate and card width.
 - **Telemetry CPU Subtitle Clarity**: Clarified CPU telemetry tile subtitle to "Single-Core Load" in the Performance tab, eliminating ambiguity around multi-core capacity and single-threaded server tick load.
+- **Console Full-Width Macro Bar**: Removed side margins from the macro bar above the live console, allowing quick-command chips to span the full width of the screen in alignment with the terminal output canvas.
 - **Console Input Field Layout**: Shortened the command input placeholder hint text and applied single-line ellipsis truncation so the console command text box stays cleanly on a single line on mobile screens.
 
 ### 🛠️ Compatibility, Lint & System Robustness

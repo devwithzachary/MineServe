@@ -3,4 +3,4 @@
 • Optimized terminal emulator buffer to O(1) ArrayDeque and draw allocations
 • Dynamic port binding and RakNet pong for Bedrock standby listener
 • Scoped file descriptors and automated cleanup in chunk optimizer
-• Live map full render, compact card spacing, and telemetry UI clarity
+• Live map full render, full-width macros, and UI spacing polish

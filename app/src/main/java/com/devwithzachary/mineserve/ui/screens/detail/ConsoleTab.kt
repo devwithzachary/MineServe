@@ -88,7 +88,9 @@ fun ConsoleTab(
             onResetDefaults = {
                 macros = consolePrefs.resetMacrosToDefaults()
             },
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 4.dp)
         )
 
         // Terminal Canvas

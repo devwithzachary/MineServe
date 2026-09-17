@@ -128,6 +128,7 @@ fun CustomMacroBar(
                 )
             )
         }
+        Spacer(modifier = Modifier.width(4.dp))
     }
 
     if (showCustomizeDialog) {
