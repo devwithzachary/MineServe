@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -91,6 +91,7 @@ import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -145,6 +146,7 @@ fun ServerDetailScreen(
     onCreateBackup: ((Boolean) -> Unit) -> Unit = {},
     onRestoreBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
+    onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
     onTogglePlugin: (PluginModEntry) -> Unit,
     onDeletePlugin: (PluginModEntry) -> Unit,
@@ -233,7 +235,7 @@ fun ServerDetailScreen(
     }
 
     if (showDeleteDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = {
                 Icon(
@@ -376,7 +378,7 @@ fun ServerDetailScreen(
                 selectedTabIndex = selectedTab,
                 containerColor = Slate900,
                 contentColor = EmeraldPrimary,
-                edgePadding = 16.dp,
+                edgePadding = LayoutManager.tabEdgePadding,
                 indicator = {}
             ) {
                 tabList.forEachIndexed { index, pair ->
@@ -453,6 +455,8 @@ fun ServerDetailScreen(
                     DetailTab.LIVE_MAP -> LiveMapTab(
                         server = server,
                         status = status,
+                        levelName = properties.levelName,
+                        onSendCommand = onSendCommand,
                         onGetWebMapState = onGetWebMapState,
                         onSetWebMapPort = onSetWebMapPort,
                         onInstallWebMapPlugin = onInstallWebMapPlugin,
@@ -479,6 +483,7 @@ fun ServerDetailScreen(
                         onCreateBackup = onCreateBackup,
                         onRestoreBackup = onRestoreBackup,
                         onExportBackup = onExportBackup,
+                        onDeleteBackup = onDeleteBackup,
                         onGetShareIntent = onGetShareIntent
                     )
                     DetailTab.PLUGINS_MODS -> {
@@ -519,7 +524,7 @@ fun NetworkAddressCard(
         border = BorderStroke(1.dp, ObsidianCardBorder),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = 6.dp)
     ) {
         Column(
             modifier = Modifier

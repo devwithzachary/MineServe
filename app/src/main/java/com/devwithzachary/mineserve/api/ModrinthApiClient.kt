@@ -52,17 +52,13 @@ data class ModrinthVersionInfo(
 )
 
 class ModrinthApiClient(
-    private val client: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build(),
+    private val client: OkHttpClient = MineServeHttpClient.client,
     private val json: Json = Json { ignoreUnknownKeys = true }
 ) {
     companion object {
         private const val TAG = "ModrinthApiClient"
         private const val BASE_URL = "https://api.modrinth.com/v2"
-        private const val USER_AGENT = "MineServe-Android/1.0.0 (https://github.com/devwithzachary/mineserve)"
+        private const val USER_AGENT = MineServeHttpClient.USER_AGENT
     }
 
     suspend fun search(
@@ -97,40 +93,41 @@ class ModrinthApiClient(
                 .url(url)
                 .header("User-Agent", USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) {
-                Log.w(TAG, "Search HTTP error: ${resp.code}")
-                return@withContext emptyList()
-            }
-            val body = resp.body?.string() ?: return@withContext emptyList()
-            val obj = json.parseToJsonElement(body).jsonObject
-            val hits = obj["hits"]?.jsonArray ?: return@withContext emptyList()
+            client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    Log.w(TAG, "Search HTTP error: ${resp.code}")
+                    return@withContext emptyList()
+                }
+                val body = resp.body?.string() ?: return@withContext emptyList()
+                val obj = json.parseToJsonElement(body).jsonObject
+                val hits = obj["hits"]?.jsonArray ?: return@withContext emptyList()
 
-            return@withContext hits.map {
-                val hit = it.jsonObject
-                val categories = hit["categories"]?.jsonArray?.map { c -> c.jsonPrimitive.content } ?: emptyList()
-                val slug = hit["slug"]?.jsonPrimitive?.content ?: "item"
-                val downloads = hit["downloads"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-                val iconUrl = hit["icon_url"]?.jsonPrimitive?.content?.takeIf { u -> u.isNotBlank() && u != "null" }
-                val title = hit["title"]?.jsonPrimitive?.content ?: slug
-                val desc = hit["description"]?.jsonPrimitive?.content ?: ""
-                val author = hit["author"]?.jsonPrimitive?.content ?: ""
-                val latestVer = hit["latest_version"]?.jsonPrimitive?.content ?: ""
+                hits.map {
+                    val hit = it.jsonObject
+                    val categories = hit["categories"]?.jsonArray?.map { c -> c.jsonPrimitive.content } ?: emptyList()
+                    val slug = hit["slug"]?.jsonPrimitive?.content ?: "item"
+                    val downloads = hit["downloads"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                    val iconUrl = hit["icon_url"]?.jsonPrimitive?.content?.takeIf { u -> u.isNotBlank() && u != "null" }
+                    val title = hit["title"]?.jsonPrimitive?.content ?: slug
+                    val desc = hit["description"]?.jsonPrimitive?.content ?: ""
+                    val author = hit["author"]?.jsonPrimitive?.content ?: ""
+                    val latestVer = hit["latest_version"]?.jsonPrimitive?.content ?: ""
 
-                PluginModEntry(
-                    id = hit["project_id"]?.jsonPrimitive?.content ?: slug,
-                    fileName = "$slug.jar",
-                    name = title,
-                    version = latestVer,
-                    description = desc,
-                    author = author,
-                    enabled = true,
-                    isMod = isMod,
-                    iconUrl = iconUrl,
-                    downloads = downloads,
-                    categories = categories,
-                    slug = slug
-                )
+                    PluginModEntry(
+                        id = hit["project_id"]?.jsonPrimitive?.content ?: slug,
+                        fileName = "$slug.jar",
+                        name = title,
+                        version = latestVer,
+                        description = desc,
+                        author = author,
+                        enabled = true,
+                        isMod = isMod,
+                        iconUrl = iconUrl,
+                        downloads = downloads,
+                        categories = categories,
+                        slug = slug
+                    )
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to search Modrinth", e)
@@ -145,42 +142,44 @@ class ModrinthApiClient(
                 .url(url)
                 .header("User-Agent", USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext null
-            val body = resp.body?.string() ?: return@withContext null
-            val obj = json.parseToJsonElement(body).jsonObject
+            val details = client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val body = resp.body?.string() ?: return@withContext null
+                val obj = json.parseToJsonElement(body).jsonObject
 
-            val id = obj["id"]?.jsonPrimitive?.content ?: projectIdOrSlug
-            val slug = obj["slug"]?.jsonPrimitive?.content ?: projectIdOrSlug
-            val title = obj["title"]?.jsonPrimitive?.content ?: slug
-            val desc = obj["description"]?.jsonPrimitive?.content ?: ""
-            val fullBody = obj["body"]?.jsonPrimitive?.content ?: ""
-            val iconUrl = obj["icon_url"]?.jsonPrimitive?.content?.takeIf { u -> u.isNotBlank() && u != "null" }
-            val downloads = obj["downloads"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-            val followers = obj["followers"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-            val categories = obj["categories"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-            val loaders = obj["loaders"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-            val gameVersions = obj["game_versions"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-            val sourceUrl = obj["source_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-            val wikiUrl = obj["wiki_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-            val issuesUrl = obj["issues_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                val id = obj["id"]?.jsonPrimitive?.content ?: projectIdOrSlug
+                val slug = obj["slug"]?.jsonPrimitive?.content ?: projectIdOrSlug
+                val title = obj["title"]?.jsonPrimitive?.content ?: slug
+                val desc = obj["description"]?.jsonPrimitive?.content ?: ""
+                val fullBody = obj["body"]?.jsonPrimitive?.content ?: ""
+                val iconUrl = obj["icon_url"]?.jsonPrimitive?.content?.takeIf { u -> u.isNotBlank() && u != "null" }
+                val downloads = obj["downloads"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                val followers = obj["followers"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
+                val categories = obj["categories"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+                val loaders = obj["loaders"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+                val gameVersions = obj["game_versions"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
+                val sourceUrl = obj["source_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                val wikiUrl = obj["wiki_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                val issuesUrl = obj["issues_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
 
-            ModrinthProjectDetails(
-                id = id,
-                slug = slug,
-                title = title,
-                description = desc,
-                body = fullBody,
-                iconUrl = iconUrl,
-                downloads = downloads,
-                followers = followers,
-                categories = categories,
-                loaders = loaders,
-                gameVersions = gameVersions,
-                sourceUrl = sourceUrl,
-                wikiUrl = wikiUrl,
-                issuesUrl = issuesUrl
-            )
+                ModrinthProjectDetails(
+                    id = id,
+                    slug = slug,
+                    title = title,
+                    description = desc,
+                    body = fullBody,
+                    iconUrl = iconUrl,
+                    downloads = downloads,
+                    followers = followers,
+                    categories = categories,
+                    loaders = loaders,
+                    gameVersions = gameVersions,
+                    sourceUrl = sourceUrl,
+                    wikiUrl = wikiUrl,
+                    issuesUrl = issuesUrl
+                )
+            }
+            return@withContext details
         } catch (e: Exception) {
             Log.e(TAG, "Failed getting details for $projectIdOrSlug", e)
             null
@@ -200,10 +199,11 @@ class ModrinthApiClient(
                 .url(url)
                 .header("User-Agent", USER_AGENT)
                 .build()
-            val resp = client.newCall(req).execute()
-            if (!resp.isSuccessful) return@withContext null
-            val body = resp.body?.string() ?: return@withContext null
-            val versionsArray = json.parseToJsonElement(body).jsonArray
+            val versionsArray = client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext null
+                val body = resp.body?.string() ?: return@withContext null
+                json.parseToJsonElement(body).jsonArray
+            }
 
             val versionList = versionsArray.mapNotNull { vItem ->
                 val vObj = vItem.jsonObject

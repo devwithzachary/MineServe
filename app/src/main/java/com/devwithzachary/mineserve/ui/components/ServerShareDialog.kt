@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -34,8 +33,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -80,10 +79,8 @@ fun ServerShareDialog(
     val clipboardManager = LocalClipboardManager.current
     var selectedTab by remember { mutableIntStateOf(if (tunnelState is TunnelState.Connected) 0 else 1) }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(20.dp),
         title = {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -125,7 +122,7 @@ fun ServerShareDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                TabRow(
+                PrimaryTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Slate900,
                     contentColor = EmeraldPrimary,
@@ -137,10 +134,16 @@ fun ServerShareDialog(
                         text = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Text("Public Online", fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "Public Online",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         },
                         selectedContentColor = EmeraldLight,
@@ -152,10 +155,16 @@ fun ServerShareDialog(
                         text = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 Icon(Icons.Default.Wifi, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Text("Local Wi-Fi", fontWeight = FontWeight.Bold)
+                                Text(
+                                    text = "Local Wi-Fi",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
                             }
                         },
                         selectedContentColor = EmeraldLight,

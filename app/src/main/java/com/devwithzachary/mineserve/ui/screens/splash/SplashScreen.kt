@@ -47,6 +47,7 @@ import com.devwithzachary.mineserve.engine.RootfsSetupState
 import com.devwithzachary.mineserve.ui.components.NotificationPermissionCard
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
@@ -115,7 +116,7 @@ fun SplashScreen(
 
             if (!isRootfsInstalled && setupState is RootfsSetupState.Idle) {
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing),
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     // Notification permission banner with explanation

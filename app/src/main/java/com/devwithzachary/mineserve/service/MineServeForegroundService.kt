@@ -253,7 +253,7 @@ class MineServeForegroundService : Service() {
         monitorJob?.cancel()
         serviceJob.cancel()
         releaseLocks()
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 

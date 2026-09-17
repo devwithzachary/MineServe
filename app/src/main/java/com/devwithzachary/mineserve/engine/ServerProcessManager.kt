@@ -10,6 +10,7 @@ import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import java.io.File
 import java.io.IOException
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,7 @@ data class ActiveServerSession(
     val emulator: TerminalEmulator,
     var ptyProcess: PtyProcess?,
     var pid: Int = -1,
-    val onlinePlayers: MutableSet<String> = ConcurrentHashMap.newKeySet(),
+    val onlinePlayers: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap()),
     var startTimeMillis: Long = System.currentTimeMillis(),
     var currentTps: Double = 20.0,
     var currentMspt: Double = 15.0,
@@ -45,6 +46,7 @@ class ServerProcessManager private constructor(
 ) {
     companion object {
         private const val TAG = "ServerProcessManager"
+        private val WHITESPACE_REGEX = Regex("\\s+")
 
         @Volatile
         private var INSTANCE: ServerProcessManager? = null
@@ -94,6 +96,23 @@ class ServerProcessManager private constructor(
         return status == ServerStatus.RUNNING || status == ServerStatus.STARTING
     }
 
+    fun isProcessActive(serverId: String): Boolean {
+        val session = sessions[serverId] ?: return false
+        val pid = session.pid
+        if (pid <= 0) return false
+        return try {
+            java.io.File("/proc/$pid").exists()
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun isServerFullyStopped(serverId: String): Boolean {
+        val status = _serverStatuses.value[serverId] ?: ServerStatus.STOPPED
+        val procAlive = isProcessActive(serverId)
+        return (status == ServerStatus.STOPPED || status == ServerStatus.STANDBY || status == ServerStatus.ERROR) && !procAlive
+    }
+
     fun isServerInStandby(serverId: String): Boolean {
         return _serverStatuses.value[serverId] == ServerStatus.STANDBY || StandbyPingManager.instance.isStandbyActive(serverId)
     }
@@ -101,14 +120,21 @@ class ServerProcessManager private constructor(
     fun enterStandby(server: MinecraftServer, onWake: ((MinecraftServer) -> Unit)? = null) {
         if (isServerRunning(server.id)) return
         updateStatus(server.id, ServerStatus.STANDBY)
-        StandbyPingManager.instance.startStandby(server) { wokeServer ->
-            Log.i(TAG, "Standby wake detected for server ${wokeServer.name}")
-            val wakeMsg = "\r\n\u001B[32m[MineServe Standby] Player ping detected! Starting server...\u001B[0m\r\n"
-            val emu = getEmulator(wokeServer.id)
-            emu.appendBytes(wakeMsg.toByteArray(Charsets.UTF_8), wakeMsg.length)
-            triggerRefresh(wokeServer.id)
-            onWake?.invoke(wokeServer) ?: onServerWakeRequested?.invoke(wokeServer)
-        }
+        StandbyPingManager.instance.startStandby(
+            server = server,
+            onBindFailed = { failedServer, e ->
+                Log.e(TAG, "Standby listener failed to bind for ${failedServer.name}: ${e.message}")
+                updateStatus(failedServer.id, ServerStatus.ERROR)
+            },
+            onWake = { wokeServer ->
+                Log.i(TAG, "Standby wake detected for server ${wokeServer.name}")
+                val wakeMsg = "\r\n\u001B[32m[MineServe Standby] Player ping detected! Starting server...\u001B[0m\r\n"
+                val emu = getEmulator(wokeServer.id)
+                emu.appendBytes(wakeMsg.toByteArray(Charsets.UTF_8), wakeMsg.length)
+                triggerRefresh(wokeServer.id)
+                onWake?.invoke(wokeServer) ?: onServerWakeRequested?.invoke(wokeServer)
+            }
+        )
     }
 
     fun exitStandby(serverId: String) {
@@ -210,7 +236,6 @@ class ServerProcessManager private constructor(
                                 updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
                                 return@collect
                             }
-                            else -> {}
                         }
                     }
                 }
@@ -322,10 +347,20 @@ class ServerProcessManager private constructor(
                 } catch (e: Exception) {
                     Log.d(TAG, "PTY stream closed for server ${server.id}: ${e.message}")
                 } finally {
-                    updateStatus(server.id, ServerStatus.STOPPED, onStatusChanged)
+                    val wasAutoSleeping = session.isAutoSleeping
+                    session.isAutoSleeping = false
+                    val autoWakeEnabled = session.server.automationConfig.autoWakeOnPing
+                    sessions.remove(server.id)
+
                     val stopMsg = "\r\n\u001B[33m[MineServe] Server process terminated.\u001B[0m\r\n"
                     session.emulator.appendBytes(stopMsg.toByteArray(Charsets.UTF_8), stopMsg.length)
                     triggerRefresh(server.id)
+
+                    if (autoWakeEnabled || wasAutoSleeping) {
+                        enterStandby(session.server)
+                    } else if (_serverStatuses.value[server.id] != ServerStatus.STANDBY) {
+                        updateStatus(server.id, ServerStatus.STOPPED, onStatusChanged)
+                    }
                 }
             }
 
@@ -422,13 +457,18 @@ class ServerProcessManager private constructor(
         scope.launch {
             updateStatus(serverId, ServerStatus.STOPPING)
             for (i in 0 until 30) {
-                if (!isServerRunning(serverId)) break
+                if (isServerFullyStopped(serverId)) break
                 delay(500)
             }
-            if (isServerRunning(serverId)) {
+            if (isProcessActive(serverId)) {
                 try { session.ptyProcess?.destroy() } catch (_: Exception) {}
                 killProcessesForServer(serverId, session.pid)
-                updateStatus(serverId, ServerStatus.STOPPED)
+                sessions.remove(serverId)
+                if (session.server.automationConfig.autoWakeOnPing) {
+                    enterStandby(session.server)
+                } else {
+                    updateStatus(serverId, ServerStatus.STOPPED)
+                }
             }
         }
     }
@@ -456,8 +496,9 @@ class ServerProcessManager private constructor(
             }
         }
 
-        // Stop tunnel if active
+        // Stop tunnel and standby if active
         TunnelManager.getInstance(context).stopTunnel(serverId)
+        StandbyPingManager.instance.stopStandby(serverId)
 
         // 4. Force-kill all processes in process tree (libproot, java, bash, etc.)
         killProcessesForServer(serverId, pid)
@@ -623,15 +664,6 @@ class ServerProcessManager private constructor(
                                 session.emulator.appendBytes(notice.toByteArray(Charsets.UTF_8), notice.length)
                                 triggerRefresh(serverId)
                                 stopServer(serverId)
-                                if (session.server.automationConfig.autoWakeOnPing) {
-                                    scope.launch {
-                                        for (i in 0 until 30) {
-                                            if (!isServerRunning(serverId)) break
-                                            delay(500)
-                                        }
-                                        enterStandby(session.server)
-                                    }
-                                }
                             }
                         }
 
@@ -696,13 +728,15 @@ class ServerProcessManager private constructor(
             try {
                 val statusFile = File("/proc/$pid/status")
                 if (statusFile.exists()) {
-                    for (line in statusFile.readLines()) {
-                        if (line.startsWith("VmRSS:")) {
-                            val kb = line.replace("VmRSS:", "").replace("kB", "").trim().toLongOrNull()
-                            if (kb != null && kb > 0) {
-                                totalRssKb += kb
+                    statusFile.useLines { lines ->
+                        for (line in lines) {
+                            if (line.startsWith("VmRSS:")) {
+                                val kb = line.replace("VmRSS:", "").replace("kB", "").trim().toLongOrNull()
+                                if (kb != null && kb > 0) {
+                                    totalRssKb += kb
+                                }
+                                break
                             }
-                            break
                         }
                     }
                 }
@@ -725,7 +759,7 @@ class ServerProcessManager private constructor(
                     val content = statFile.readText()
                     val rparen = content.lastIndexOf(')')
                     if (rparen != -1 && rparen < content.length - 1) {
-                        val rest = content.substring(rparen + 2).trim().split("\\s+".toRegex())
+                        val rest = content.substring(rparen + 2).trim().split(WHITESPACE_REGEX)
                         if (rest.size >= 13) {
                             val utime = rest[11].toLongOrNull() ?: 0L
                             val stime = rest[12].toLongOrNull() ?: 0L

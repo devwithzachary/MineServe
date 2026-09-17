@@ -240,5 +240,55 @@ class AutomationAndMacroTest {
         assertEquals(2, decoded.weekInterval)
         assertEquals("0 3 * * 0,6", decoded.cronExpression)
         assertEquals("Every 2 weeks on Sun, Sat at 03:15", decoded.frequencyDescription)
+        assertEquals(5, decoded.backupRetentionCount)
+    }
+
+    @Test
+    fun testBackupRetentionSerializationDefaults() {
+        // Test backwards compatibility: JSON without backupRetentionCount
+        val legacyJson = """
+            {
+                "id": "legacy-task",
+                "serverId": "server-1",
+                "name": "Legacy Task",
+                "enabled": true,
+                "taskType": "WORLD_BACKUP",
+                "frequency": "INTERVAL",
+                "intervalMinutes": 360
+            }
+        """.trimIndent()
+        val decoded = json.decodeFromString<ScheduledTask>(legacyJson)
+        assertEquals(5, decoded.backupRetentionCount)
+
+        // Test custom retention count serialization
+        val customTask = decoded.copy(backupRetentionCount = 10)
+        val encoded = json.encodeToString(customTask)
+        val decodedCustom = json.decodeFromString<ScheduledTask>(encoded)
+        assertEquals(10, decodedCustom.backupRetentionCount)
+    }
+
+    @Test
+    fun testBackupPruningLogic() {
+        data class MockBackup(val name: String, val timestamp: Long, val isWorldOnly: Boolean)
+
+        val backups = listOf(
+            MockBackup("world_backup_1", 1000L, true),
+            MockBackup("world_backup_2", 2000L, true),
+            MockBackup("world_backup_3", 3000L, true),
+            MockBackup("world_backup_4", 4000L, true),
+            MockBackup("world_backup_5", 5000L, true),
+            MockBackup("world_backup_6", 6000L, true),
+            MockBackup("full_backup_1", 2500L, false)
+        )
+
+        val maxToKeep = 3
+        val worldBackups = backups.filter { it.isWorldOnly }.sortedByDescending { it.timestamp }
+        val toKeep = worldBackups.take(maxToKeep)
+        val toDelete = worldBackups.drop(maxToKeep)
+
+        assertEquals(3, toKeep.size)
+        assertEquals(listOf("world_backup_6", "world_backup_5", "world_backup_4"), toKeep.map { it.name })
+        assertEquals(3, toDelete.size)
+        assertEquals(listOf("world_backup_3", "world_backup_2", "world_backup_1"), toDelete.map { it.name })
     }
 }

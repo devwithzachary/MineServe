@@ -39,6 +39,7 @@ data class ScheduledTask(
     val weekInterval: Int = 1,      // Repeat every N weeks (1 = every week, 2 = every 2 weeks...)
     val cronExpression: String = "",
     val command: String = "",
+    val backupRetentionCount: Int = 5,
     val lastRunTimestamp: Long = 0L,
     val nextRunTimestamp: Long = 0L
 ) {

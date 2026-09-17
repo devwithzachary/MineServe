@@ -52,7 +52,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.3.0",
         date = "September 10, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Smart Idle Auto-Shutdown: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve battery and prevent thermal throttling.",
             "Auto-Wake on Ping: Standby socket listener on the server port (TCP for Java, UDP RakNet for Bedrock). When a player queries or joins from their Minecraft server list, the server spins up automatically.",

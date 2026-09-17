@@ -60,10 +60,8 @@ fun GitHubUpdateDialog(
     onDownload: (String) -> Unit,
     onDisableFuturePrompts: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(18.dp),
-        containerColor = ObsidianCard,
         tonalElevation = 8.dp,
         title = {
             Row(

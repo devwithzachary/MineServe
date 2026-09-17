@@ -28,15 +28,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInBrowser
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -51,6 +53,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -65,12 +68,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.model.DimensionType
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.WebMapPluginType
 import com.devwithzachary.mineserve.model.WebMapState
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
@@ -79,6 +85,7 @@ import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -94,6 +101,8 @@ import com.devwithzachary.mineserve.ui.theme.Slate950
 fun LiveMapTab(
     server: MinecraftServer,
     status: ServerStatus,
+    levelName: String = "world",
+    onSendCommand: (String) -> Unit = {},
     onGetWebMapState: () -> WebMapState,
     onSetWebMapPort: (Int) -> Unit,
     onInstallWebMapPlugin: (WebMapPluginType, (Boolean) -> Unit) -> Unit,
@@ -111,6 +120,7 @@ fun LiveMapTab(
     var isInstallingSquaremap by remember { mutableStateOf(false) }
     var showPortDialog by remember { mutableStateOf(false) }
     var showUninstallDialog by remember { mutableStateOf(false) }
+    var showRenderDialog by remember { mutableStateOf(false) }
     var portInputText by remember { mutableStateOf(mapState.port.toString()) }
 
     fun refreshState() {
@@ -246,6 +256,18 @@ fun LiveMapTab(
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
+
+                            IconButton(
+                                onClick = { showRenderDialog = true },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Layers,
+                                    contentDescription = stringResource(R.string.map_full_render_btn),
+                                    tint = EmeraldPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
                         }
 
                         // Uninstall button
@@ -316,7 +338,6 @@ fun LiveMapTab(
                                     )
                                     settings.javaScriptEnabled = true
                                     settings.domStorageEnabled = true
-                                    settings.databaseEnabled = true
                                     settings.loadWithOverviewMode = true
                                     settings.useWideViewPort = true
                                     settings.builtInZoomControls = true
@@ -350,6 +371,10 @@ fun LiveMapTab(
                                     webViewError = null
                                     webView.loadUrl(mapState.webMapUrl)
                                 }
+                            },
+                            onRelease = { webView ->
+                                webView.stopLoading()
+                                webView.destroy()
                             },
                             modifier = Modifier.fillMaxSize()
                         )
@@ -422,7 +447,7 @@ fun LiveMapTab(
 
     // Modal: Port Configuration Dialog
     if (showPortDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showPortDialog = false },
             icon = {
                 Icon(
@@ -492,7 +517,7 @@ fun LiveMapTab(
 
     // Modal: Uninstall Confirmation Dialog
     if (showUninstallDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showUninstallDialog = false },
             icon = {
                 Icon(
@@ -546,6 +571,187 @@ fun LiveMapTab(
         )
     }
 
+    // Modal: Full World Render Dialog
+    if (showRenderDialog) {
+        var selectedDimension by remember { mutableStateOf(DimensionType.OVERWORLD) }
+        var worldInputText by remember(selectedDimension) {
+            mutableStateOf(getRenderWorldIdentifier(selectedDimension))
+        }
+
+        AppAlertDialog(
+            onDismissRequest = { showRenderDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Layers,
+                    contentDescription = null,
+                    tint = EmeraldPrimary,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.map_render_dialog_title),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Performance Warning Card
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = GoldYellow.copy(alpha = 0.12f),
+                        border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.4f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(10.dp),
+                            verticalAlignment = Alignment.Top,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = GoldYellow,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = stringResource(R.string.map_render_warning),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate400,
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp
+                            )
+                        }
+                    }
+
+                    // Dimension Selector Chips
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = stringResource(R.string.map_render_dimension_label),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = Slate400
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            listOf(
+                                DimensionType.OVERWORLD to "Overworld",
+                                DimensionType.NETHER to "Nether",
+                                DimensionType.THE_END to "The End"
+                            ).forEach { (dim, label) ->
+                                val isSelected = selectedDimension == dim
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = if (isSelected) EmeraldPrimary.copy(alpha = 0.2f) else Slate900,
+                                    border = BorderStroke(
+                                        1.dp,
+                                        if (isSelected) EmeraldPrimary else Slate800
+                                    ),
+                                    onClick = {
+                                        selectedDimension = dim
+                                        worldInputText = getRenderWorldIdentifier(dim)
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text(
+                                        text = label,
+                                        color = if (isSelected) EmeraldLight else Color.White,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.padding(vertical = 8.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // World Name TextField
+                    OutlinedTextField(
+                        value = worldInputText,
+                        onValueChange = { worldInputText = it },
+                        label = { Text(stringResource(R.string.map_render_world_name_label)) },
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedTextColor = Color.White,
+                            unfocusedTextColor = Color.White,
+                            focusedBorderColor = EmeraldPrimary,
+                            unfocusedBorderColor = Slate700
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    // Cancel Active Render Option
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(
+                            onClick = {
+                                val target = normalizeWorldIdentifier(worldInputText, selectedDimension)
+                                onSendCommand("squaremap cancelrender $target")
+                                Toast.makeText(context, R.string.map_render_cancelled_toast, Toast.LENGTH_SHORT).show()
+                                showRenderDialog = false
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = RedstoneLight,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = stringResource(R.string.map_render_cancel_btn),
+                                color = RedstoneLight,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val target = normalizeWorldIdentifier(worldInputText, selectedDimension)
+                        onSendCommand("squaremap fullrender $target")
+                        Toast.makeText(context, R.string.map_render_dispatched_toast, Toast.LENGTH_SHORT).show()
+                        showRenderDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(R.string.map_render_start_btn),
+                        color = Color.Black,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showRenderDialog = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.cancel), color = Color.White)
+                }
+            },
+            containerColor = Slate950
+        )
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             webViewRef?.destroy()
@@ -563,7 +769,7 @@ private fun SquaremapInstallView(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
@@ -754,5 +960,26 @@ private fun ServerStoppedMapView(
                 }
             }
         }
+    }
+}
+
+private fun getRenderWorldIdentifier(dimension: DimensionType): String {
+    return when (dimension) {
+        DimensionType.OVERWORLD -> "overworld"
+        DimensionType.NETHER -> "the_nether"
+        DimensionType.THE_END -> "the_end"
+    }
+}
+
+private fun normalizeWorldIdentifier(input: String, dimension: DimensionType): String {
+    val trimmed = input.trim()
+    if (trimmed.isBlank()) {
+        return getRenderWorldIdentifier(dimension)
+    }
+    return when (trimmed.lowercase()) {
+        "world" -> "overworld"
+        "world_nether", "nether" -> "the_nether"
+        "world_the_end", "end" -> "the_end"
+        else -> trimmed
     }
 }
