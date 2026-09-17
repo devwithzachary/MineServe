@@ -51,6 +51,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps.",
             "Centralized LayoutManager: Abstracted card margins and layout dimensions into a unified LayoutManager, halving card margins across the UI to maximize screen space.",
             "Performance Telemetry Clarification: Clarified CPU metric tile subtitle to Single-Core Load to accurately reflect single-threaded server game loop capacity.",
+            "Scheduled Task Creation Access: Added persistent button below active tasks and fixed header button clipping so users can continuously create multiple automated tasks.",
             "Compatibility & System Robustness: Android API 23+ compatibility safeguards, ContentProvider filename path traversal sanitization, and compiler warning cleanup."
         )
     ),

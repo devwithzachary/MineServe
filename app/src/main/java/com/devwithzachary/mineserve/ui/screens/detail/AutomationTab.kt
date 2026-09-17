@@ -50,6 +50,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.model.MinecraftServer
@@ -318,6 +319,7 @@ fun AutomationTab(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
@@ -335,7 +337,7 @@ fun AutomationTab(
                                 )
                             }
                         }
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = "Scheduled Tasks",
                                 style = MaterialTheme.typography.titleMedium,
@@ -345,12 +347,19 @@ fun AutomationTab(
                             Text(
                                 text = "Automated backups, restarts, and timed announcements",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                color = Slate400,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
-                    IconButton(onClick = { showAddTaskDialog = true }) {
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    IconButton(
+                        onClick = { showAddTaskDialog = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Add Task",
@@ -407,6 +416,18 @@ fun AutomationTab(
                                     onSaveAutomationConfig(automation.copy(scheduledTasks = updatedList))
                                 }
                             )
+                        }
+
+                        OutlinedButton(
+                            onClick = { showAddTaskDialog = true },
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldPrimary),
+                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add Another Scheduled Task", fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
