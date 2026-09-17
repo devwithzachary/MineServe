@@ -61,6 +61,7 @@ import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
@@ -86,9 +87,9 @@ fun AutomationTab(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
         // 1. Smart Idle Sleep & Auto-Wake on Ping Card
         Card(

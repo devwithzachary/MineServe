@@ -28,9 +28,11 @@ All notable changes to the MineServe project will be documented in this file.
   - Extracted `FileListItem`, `CrashDiagnosticSheet`, and `FileActionDialogs` from `FilesTab.kt`.
   - Extracted `DimensionRowCard` and `WorldTabDialogs` from `WorldTab.kt`.
   - Extracted `UpdateBuildModal` and `UpgradeVersionModal` from `ServerSoftwareCard.kt`.
+- **Centralized LayoutManager**: Introduced a central `LayoutManager` design tokens system and `MaterialTheme.layout` provider defining unified card spacing, screen horizontal padding, and layout dimensions across all screens.
 
 ### 🎨 UI & UX Improvements
 - **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
+- **Compact Card Layout Spacing**: Halved horizontal side margins and vertical spacing around cards from 16dp to 8dp across the dashboard, server detail tabs, wizard, settings, and about screens to maximize screen real estate and card width.
 - **Console Input Field Layout**: Shortened the command input placeholder hint text and applied single-line ellipsis truncation so the console command text box stays cleanly on a single line on mobile screens.
 
 ### 🛠️ Compatibility, Lint & System Robustness

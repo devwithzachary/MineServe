@@ -91,6 +91,7 @@ import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -376,7 +377,7 @@ fun ServerDetailScreen(
                 selectedTabIndex = selectedTab,
                 containerColor = Slate900,
                 contentColor = EmeraldPrimary,
-                edgePadding = 16.dp,
+                edgePadding = LayoutManager.tabEdgePadding,
                 indicator = {}
             ) {
                 tabList.forEachIndexed { index, pair ->
@@ -521,7 +522,7 @@ fun NetworkAddressCard(
         border = BorderStroke(1.dp, ObsidianCardBorder),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = 6.dp)
     ) {
         Column(
             modifier = Modifier

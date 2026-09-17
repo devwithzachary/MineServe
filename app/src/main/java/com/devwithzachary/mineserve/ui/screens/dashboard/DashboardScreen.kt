@@ -45,6 +45,7 @@ import com.devwithzachary.mineserve.ui.components.NotificationPermissionCard
 import com.devwithzachary.mineserve.ui.components.ServerCard
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate950
 
@@ -147,8 +148,8 @@ fun DashboardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = LayoutManager.screenHorizontalPadding),
+            verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
         ) {
             item {
                 Spacer(modifier = Modifier.height(4.dp))

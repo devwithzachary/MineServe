@@ -56,6 +56,7 @@ import com.devwithzachary.mineserve.api.PaperApiClient
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate950
@@ -286,7 +287,7 @@ fun CreateServerWizardScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp)
+                .padding(horizontal = LayoutManager.screenHorizontalPadding)
                 .verticalScroll(rememberScrollState())
         ) {
             // Step Progress Indicator
@@ -333,7 +334,7 @@ fun CreateServerWizardScreen(
                         conflictingServerName = conflictingServerName
                     )
                     4 -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)) {
                             WizardStep4Review(
                                 serverName = serverName,
                                 selectedType = selectedType,

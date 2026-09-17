@@ -30,6 +30,7 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.ui.components.RamSlider
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 
@@ -44,7 +45,7 @@ fun WizardStep3Configuration(
 ) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
         Text(
             text = stringResource(R.string.wizard_step3_ram_label),

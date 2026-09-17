@@ -58,6 +58,7 @@ import com.devwithzachary.mineserve.model.ScheduledTaskType
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
@@ -261,9 +262,9 @@ fun AddScheduledTaskDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
             ) {
                 // Card 1: Task Details & Command
                 Card(

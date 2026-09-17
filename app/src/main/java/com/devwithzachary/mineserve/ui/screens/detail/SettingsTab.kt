@@ -66,6 +66,7 @@ import com.devwithzachary.mineserve.ui.components.TunnelSecurityWarningCard
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.Slate400
@@ -124,9 +125,9 @@ fun SettingsTab(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
         // Section: Server Software & Version Management
         ServerSoftwareCard(

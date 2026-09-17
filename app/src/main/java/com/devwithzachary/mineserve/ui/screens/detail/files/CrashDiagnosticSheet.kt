@@ -44,6 +44,7 @@ import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
@@ -67,7 +68,7 @@ fun CrashDiagnosticSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
         ) {
             // Header
             Row(

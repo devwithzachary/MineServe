@@ -91,6 +91,7 @@ import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -210,8 +211,8 @@ fun WorldTab(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding),
+        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
         // Top Shortcut Banner to Live Map (Only for plugin/mod capable servers, not Vanilla)
         val supportsLiveMap = server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
