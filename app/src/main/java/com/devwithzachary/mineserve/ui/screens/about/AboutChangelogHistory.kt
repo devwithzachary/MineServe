@@ -50,6 +50,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Console Input Layout Fix: Shortened command placeholder hint text and added single-line ellipsis truncation to prevent two-line expansion on mobile screens.",
             "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps.",
             "Centralized LayoutManager: Abstracted card margins and layout dimensions into a unified LayoutManager, halving card margins across the UI to maximize screen space.",
+            "Performance Telemetry Clarification: Clarified CPU metric tile subtitle to Single-Core Load to accurately reflect single-threaded server game loop capacity.",
             "Compatibility & System Robustness: Android API 23+ compatibility safeguards, ContentProvider filename path traversal sanitization, and compiler warning cleanup."
         )
     ),

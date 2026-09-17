@@ -171,7 +171,7 @@ fun PerformanceTab(
                 iconColor = cpuColor,
                 title = "CPU Usage",
                 value = if (isOnline) String.format(Locale.US, "%.1f%%", cpuPct) else "0.0%",
-                subtitle = if (isOnline) "Load on Android Cores" else "Engine Idle",
+                subtitle = if (isOnline) "Single-Core Load" else "Engine Idle",
                 progress = animatedCpuProgress,
                 progressColor = cpuColor,
                 modifier = Modifier.weight(1f)
