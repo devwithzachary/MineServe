@@ -30,6 +30,10 @@ All notable changes to the MineServe project will be documented in this file.
   - Extracted `UpdateBuildModal` and `UpgradeVersionModal` from `ServerSoftwareCard.kt`.
 - **Centralized LayoutManager**: Introduced a central `LayoutManager` design tokens system and `MaterialTheme.layout` provider defining unified card spacing, screen horizontal padding, and layout dimensions across all screens.
 
+### 💾 World & Backup Management
+- **Manual Backup Deletion**: Added individual backup deletion with a confirmation dialog detailing file size and backup target in the Backups tab, allowing users to reclaim storage without external file managers.
+- **Automated Backup Retention & Pruning**: Added retention limits to scheduled backup tasks with preset chips (Keep 3, 5, 10, 20, or All) and automatic pruning of older automated world or server backups upon new backup completion.
+
 ### 🎨 UI & UX Improvements
 - **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
 - **Compact Card Layout Spacing**: Halved horizontal side margins and vertical spacing around cards from 16dp to 8dp across the dashboard, server detail tabs, wizard, settings, and about screens to maximize screen real estate and card width.

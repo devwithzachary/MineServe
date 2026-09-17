@@ -49,6 +49,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Codebase Modularization: Decomposed monolithic repository and large composable screens into maintainable components.",
             "Console Layout & Macro Bar Fix: Full-width macro bar alignment matching terminal output, shortened placeholder hint, and single-line ellipsis truncation.",
             "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps.",
+            "Backup Management & Automated Pruning: Added manual backup deletion with confirmation dialog, plus configurable retention limits for scheduled backup tasks to automatically prune old backups.",
             "Centralized LayoutManager: Abstracted card margins and layout dimensions into a unified LayoutManager, halving card margins across the UI to maximize screen space.",
             "Performance Telemetry Clarification: Clarified CPU metric tile subtitle to Single-Core Load to accurately reflect single-threaded server game loop capacity.",
             "Scheduled Task Creation Access: Added persistent button below active tasks and fixed header button clipping so users can continuously create multiple automated tasks.",

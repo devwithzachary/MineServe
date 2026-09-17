@@ -171,6 +171,11 @@
     <string name="backups_export">Export</string>
     <string name="backups_restored_toast">Backup restored successfully</string>
     <string name="backups_exported_toast">Exported backup to Downloads folder</string>
+    <string name="backups_delete">Delete</string>
+    <string name="backups_delete_dialog_title">Delete World Backup?</string>
+    <string name="backups_delete_dialog_desc">Are you sure you want to permanently delete \'%1$s\'? This action cannot be undone and will free up %2$s.</string>
+    <string name="backups_deleted_toast">Backup deleted successfully</string>
+    <string name="backups_delete_failed_toast">Failed to delete backup</string>
 
     <string name="tab_mods">Mods</string>
     <string name="tab_plugins_mods">Plugins &amp; Mods</string>

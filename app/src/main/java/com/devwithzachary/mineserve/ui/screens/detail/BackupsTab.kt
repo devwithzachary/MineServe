@@ -24,6 +24,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backup
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Restore
@@ -80,6 +81,7 @@ fun BackupsTab(
     onCreateBackup: ((Boolean) -> Unit) -> Unit = {},
     onRestoreBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
+    onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
     modifier: Modifier = Modifier
 ) {
@@ -89,7 +91,9 @@ fun BackupsTab(
     var isCreatingBackup by remember { mutableStateOf(false) }
     var restoringBackupId by remember { mutableStateOf<String?>(null) }
     var exportingBackupId by remember { mutableStateOf<String?>(null) }
+    var deletingBackupId by remember { mutableStateOf<String?>(null) }
     var backupToRestore by remember { mutableStateOf<BackupEntry?>(null) }
+    var backupToDelete by remember { mutableStateOf<BackupEntry?>(null) }
 
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isStatusError by remember { mutableStateOf(false) }
@@ -157,6 +161,67 @@ fun BackupsTab(
             dismissButton = {
                 OutlinedButton(
                     onClick = { backupToRestore = null },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.cancel), color = Color.White)
+                }
+            },
+            containerColor = ObsidianCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Delete Confirmation Dialog
+    if (backupToDelete != null) {
+        val target = backupToDelete!!
+        AlertDialog(
+            onDismissRequest = { backupToDelete = null },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = RedstoneRed,
+                    modifier = Modifier.size(36.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = stringResource(R.string.backups_delete_dialog_title),
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.backups_delete_dialog_desc, target.name, target.formattedSize),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Slate400
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val backup = target
+                        backupToDelete = null
+                        deletingBackupId = backup.id
+                        onDeleteBackup(backup) { success ->
+                            deletingBackupId = null
+                            if (success) {
+                                showFeedback(context.getString(R.string.backups_deleted_toast))
+                            } else {
+                                showFeedback(context.getString(R.string.backups_delete_failed_toast), isError = true)
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(stringResource(R.string.backups_delete), color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { backupToDelete = null },
                     shape = RoundedCornerShape(8.dp)
                 ) {
                     Text(stringResource(R.string.cancel), color = Color.White)
@@ -421,9 +486,33 @@ fun BackupsTab(
                                     }
                                 },
                                 shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
                             ) {
                                 Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(15.dp), tint = Color.White)
+                            }
+
+                            // Delete Button
+                            val isDeletingThis = deletingBackupId == b.id
+                            OutlinedButton(
+                                onClick = { backupToDelete = b },
+                                enabled = !isRestoringThis && !isExportingThis && !isDeletingThis,
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
+                            ) {
+                                if (isDeletingThis) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(15.dp),
+                                        color = RedstoneRed,
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Default.Delete,
+                                        contentDescription = stringResource(R.string.backups_delete),
+                                        modifier = Modifier.size(15.dp),
+                                        tint = RedstoneRed
+                                    )
+                                }
                             }
                         }
                     }

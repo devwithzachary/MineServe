@@ -1,6 +1,7 @@
 • Unified network client with connection pooling and socket leak prevention
 • Robust standby auto-wake with port bind retries and decoupled sockets
-• Optimized terminal emulator buffer to O(1) ArrayDeque and draw allocations
-• Dynamic port binding and RakNet pong for Bedrock standby listener
-• Scoped file descriptors and automated cleanup in chunk optimizer
-• Live map full render, full-width macros, and scheduled task UX polish
+• Optimized terminal emulator buffer to O(1) ArrayDeque
+• Dynamic port binding and RakNet pong for Bedrock standby
+• Scoped file descriptors and cleanup in chunk optimizer
+• Delete backups, auto-prune retention, and full map renders
+• UI and layout polish across macros, console, and schedules

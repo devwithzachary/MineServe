@@ -94,8 +94,11 @@ fun ScheduledTaskCard(
                     color = Color.White,
                     fontSize = 14.sp
                 )
+                val retentionInfo = if (task.taskType == ScheduledTaskType.WORLD_BACKUP || task.taskType == ScheduledTaskType.FULL_BACKUP) {
+                    if (task.backupRetentionCount > 0) " • Keep latest ${task.backupRetentionCount}" else " • Keep all"
+                } else ""
                 Text(
-                    text = "${task.taskType.displayName} • ${task.frequencyDescription}",
+                    text = "${task.taskType.displayName} • ${task.frequencyDescription}$retentionInfo",
                     color = Slate400,
                     fontSize = 12.sp
                 )

@@ -229,11 +229,19 @@ class ServerSchedulerManager private constructor(
                 val result = backupRepository.createBackup(
                     serverDir = serverDir,
                     isWorldOnly = true,
-                    customName = "auto_world_${System.currentTimeMillis()}"
+                    customName = "world_backup_auto_${System.currentTimeMillis()}"
                 )
+                val prunedCount = if (result != null && task.backupRetentionCount > 0) {
+                    backupRepository.pruneBackups(
+                        serverDir = serverDir,
+                        isWorldOnly = true,
+                        maxToKeep = task.backupRetentionCount
+                    )
+                } else 0
                 if (isRunning) {
                     processManager.sendCommand(server.id, "save-on")
-                    val notice = "\r\n\u001B[32m[MineServe Scheduler] Automated world backup completed: ${result?.fileName ?: "done"}\u001B[0m\r\n"
+                    val pruneNotice = if (prunedCount > 0) " (pruned $prunedCount older backup${if (prunedCount > 1) "s" else ""})" else ""
+                    val notice = "\r\n\u001B[32m[MineServe Scheduler] Automated world backup completed: ${result?.fileName ?: "done"}$pruneNotice\u001B[0m\r\n"
                     processManager.getEmulator(server.id).appendBytes(notice.toByteArray(Charsets.UTF_8), notice.length)
                 }
             }
@@ -246,11 +254,19 @@ class ServerSchedulerManager private constructor(
                 val result = backupRepository.createBackup(
                     serverDir = serverDir,
                     isWorldOnly = false,
-                    customName = "auto_full_${System.currentTimeMillis()}"
+                    customName = "full_server_backup_auto_${System.currentTimeMillis()}"
                 )
+                val prunedCount = if (result != null && task.backupRetentionCount > 0) {
+                    backupRepository.pruneBackups(
+                        serverDir = serverDir,
+                        isWorldOnly = false,
+                        maxToKeep = task.backupRetentionCount
+                    )
+                } else 0
                 if (isRunning) {
                     processManager.sendCommand(server.id, "save-on")
-                    val notice = "\r\n\u001B[32m[MineServe Scheduler] Automated full backup completed: ${result?.fileName ?: "done"}\u001B[0m\r\n"
+                    val pruneNotice = if (prunedCount > 0) " (pruned $prunedCount older backup${if (prunedCount > 1) "s" else ""})" else ""
+                    val notice = "\r\n\u001B[32m[MineServe Scheduler] Automated full backup completed: ${result?.fileName ?: "done"}$pruneNotice\u001B[0m\r\n"
                     processManager.getEmulator(server.id).appendBytes(notice.toByteArray(Charsets.UTF_8), notice.length)
                 }
             }

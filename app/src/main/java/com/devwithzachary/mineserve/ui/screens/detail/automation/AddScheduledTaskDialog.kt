@@ -99,6 +99,7 @@ fun AddScheduledTaskDialog(
     var cronExpressionText by remember { mutableStateOf("0 4 * * *") }
 
     var commandText by remember { mutableStateOf("/say Don't forget to join our Discord!") }
+    var retentionCountText by remember { mutableStateOf("5") }
 
     val isCronValid = remember(cronExpressionText) {
         CronExpression.isValid(cronExpressionText)
@@ -152,6 +153,7 @@ fun AddScheduledTaskDialog(
             val computedDayInterval = (dayIntervalText.toIntOrNull() ?: 1).coerceAtLeast(1)
             val computedWeekInterval = (weekIntervalText.toIntOrNull() ?: 1).coerceAtLeast(1)
             val computedDaysOfWeek = selectedDays.toList().sorted()
+            val computedRetentionCount = retentionCountText.toIntOrNull() ?: 5
 
             val created = ScheduledTask(
                 id = UUID.randomUUID().toString().take(8),
@@ -167,7 +169,8 @@ fun AddScheduledTaskDialog(
                 daysOfWeek = computedDaysOfWeek,
                 weekInterval = computedWeekInterval,
                 cronExpression = cronExpressionText.trim(),
-                command = commandText.trim()
+                command = commandText.trim(),
+                backupRetentionCount = if (taskType == ScheduledTaskType.WORLD_BACKUP || taskType == ScheduledTaskType.FULL_BACKUP) computedRetentionCount else 0
             )
             onAddTask(created)
         }
@@ -349,6 +352,57 @@ fun AddScheduledTaskDialog(
                                 ),
                                 modifier = Modifier.fillMaxWidth()
                             )
+                        }
+
+                        // Backup Retention Setting (for World Backup and Full Backup)
+                        if (taskType == ScheduledTaskType.WORLD_BACKUP || taskType == ScheduledTaskType.FULL_BACKUP) {
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = "Backup Retention Policy",
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White,
+                                            fontSize = 13.sp
+                                        )
+                                        Text(
+                                            text = if ((retentionCountText.toIntOrNull() ?: 0) > 0) {
+                                                "Keep newest ${retentionCountText.toIntOrNull()} backups, automatically delete older ones"
+                                            } else {
+                                                "Keep all backups indefinitely without auto-deletion"
+                                            },
+                                            color = Slate400,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                // Quick preset chips
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    val presets = listOf(3 to "3 Backups", 5 to "5 Backups", 10 to "10 Backups", 20 to "20 Backups", 0 to "Keep All")
+                                    presets.forEach { (count, label) ->
+                                        val isSelected = retentionCountText == count.toString()
+                                        FilterChip(
+                                            selected = isSelected,
+                                            onClick = { retentionCountText = count.toString() },
+                                            label = { Text(label, fontSize = 11.sp) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = EmeraldPrimary,
+                                                selectedLabelColor = Color.Black,
+                                                containerColor = Slate900,
+                                                labelColor = Color.White
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }

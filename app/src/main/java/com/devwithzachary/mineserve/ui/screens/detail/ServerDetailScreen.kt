@@ -146,6 +146,7 @@ fun ServerDetailScreen(
     onCreateBackup: ((Boolean) -> Unit) -> Unit = {},
     onRestoreBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
+    onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
     onTogglePlugin: (PluginModEntry) -> Unit,
     onDeletePlugin: (PluginModEntry) -> Unit,
@@ -482,6 +483,7 @@ fun ServerDetailScreen(
                         onCreateBackup = onCreateBackup,
                         onRestoreBackup = onRestoreBackup,
                         onExportBackup = onExportBackup,
+                        onDeleteBackup = onDeleteBackup,
                         onGetShareIntent = onGetShareIntent
                     )
                     DetailTab.PLUGINS_MODS -> {

@@ -29,7 +29,7 @@ class BackupRepository(private val context: Context) {
 
         backupsDir.listFiles()?.forEach { file ->
             if (file.isFile && (file.name.endsWith(".zip") || file.name.endsWith(".tar.gz"))) {
-                val isWorld = file.name.contains("world_backup")
+                val isWorld = file.name.contains("world_backup") || file.name.startsWith("auto_world")
                 list.add(
                     BackupEntry(
                         id = file.nameWithoutExtension,
@@ -83,7 +83,7 @@ class BackupRepository(private val context: Context) {
     suspend fun restoreBackup(serverDir: File, backupFile: File): Boolean = withContext(Dispatchers.IO) {
         try {
             if (!backupFile.exists()) return@withContext false
-            val isWorld = backupFile.name.contains("world_backup")
+            val isWorld = backupFile.name.contains("world_backup") || backupFile.name.startsWith("auto_world")
             val targetDir = if (isWorld) File(serverDir, "world") else serverDir
             if (isWorld && targetDir.exists()) {
                 targetDir.deleteRecursively()
@@ -118,6 +118,57 @@ class BackupRepository(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Failed restoring backup", e)
             false
+        }
+    }
+
+    suspend fun deleteBackup(backupFile: File): Boolean = withContext(Dispatchers.IO) {
+        try {
+            if (backupFile.exists()) {
+                val deleted = backupFile.delete()
+                if (deleted) {
+                    Log.i(TAG, "Deleted backup file: ${backupFile.name}")
+                }
+                deleted
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed deleting backup ${backupFile.name}", e)
+            false
+        }
+    }
+
+    suspend fun pruneBackups(
+        serverDir: File,
+        isWorldOnly: Boolean? = null,
+        maxToKeep: Int
+    ): Int = withContext(Dispatchers.IO) {
+        if (maxToKeep <= 0) return@withContext 0
+        try {
+            val allBackups = listBackups(serverDir)
+            val matchingBackups = if (isWorldOnly != null) {
+                allBackups.filter { it.isWorldOnly == isWorldOnly }
+            } else {
+                allBackups
+            }
+            if (matchingBackups.size > maxToKeep) {
+                val toDelete = matchingBackups.drop(maxToKeep)
+                val backupsDir = File(serverDir, "backups")
+                var deletedCount = 0
+                for (backup in toDelete) {
+                    val file = File(backupsDir, backup.fileName)
+                    if (file.exists() && file.delete()) {
+                        deletedCount++
+                    }
+                }
+                Log.i(TAG, "Pruned $deletedCount older backup(s), retained latest $maxToKeep")
+                deletedCount
+            } else {
+                0
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed pruning backups in ${serverDir.name}", e)
+            0
         }
     }
 

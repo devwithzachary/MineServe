@@ -732,6 +732,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return backupRepository.getShareIntent(backupFile)
     }
 
+    fun deleteBackup(serverId: String, backup: BackupEntry, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val serverDir = serverRepository.getServerDirectory(serverId)
+            val backupFile = File(File(serverDir, "backups"), backup.fileName)
+            val success = backupRepository.deleteBackup(backupFile)
+            loadServerDetails(serverId)
+            withContext(Dispatchers.Main) {
+                onResult(success)
+            }
+        }
+    }
+
     fun togglePlugin(serverId: String, entry: PluginModEntry) {
         viewModelScope.launch {
             val serverDir = serverRepository.getServerDirectory(serverId)
