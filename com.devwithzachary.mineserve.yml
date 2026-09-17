@@ -31,7 +31,7 @@ Builds:
 
   - versionName: 1.3.1
     versionCode: 5
-    commit: 58c5920624864b3f2c31733ecb185110c219497d
+    commit: 96d8392025ed191c3031fb670018939ae6afb8fd
     subdir: app
     sudo:
       - apt-get update
