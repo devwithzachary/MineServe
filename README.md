@@ -52,7 +52,8 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
 * **💾 World & Server Snapshot Backups**:
   * **World Save Backup**: Rapid snapshot archiving of only the world save directory.
   * **Full Server Backup**: Complete backup of server configuration, plugins/mods, logs, and worlds.
-  * **1-Tap Restore & Export**: Instant rollback restoration and export to Android public Downloads or system Share sheet.
+  * **1-Tap Restore, Export & Deletion**: Instant rollback restoration, direct deletion to reclaim device storage, and export to Android public Downloads or system Share sheet.
+  * **Automated Retention Limits**: Configure scheduled backup tasks to keep the last 3, 5, 10, 20, or all backups, automatically pruning older archives.
 * **🌐 Smart Port Allocation & Persistent LAN Card**:
   * Automatically suggests the first available port (starting at `25565`) when creating new servers and displays warnings for port conflicts.
   * Persistent LAN address card above server tabs (`<ip>:<port>`) with a 1-tap copy button for fast multiplayer connection sharing.
@@ -185,7 +186,16 @@ On initial launch, tap **Initialize Server Runtime**. MineServe will download an
 5. Tap **Download & Build Server**.
 
 ### 3. Managing the Server
-* **Console Tab**: View live colored logs and send commands (e.g., `op username` or `whitelist add friend`).
+The Server Details screen provides dedicated tabs to manage every aspect of your server:
+* **Console Tab**: View live colored terminal logs, use customizable macro hotbar buttons, and execute Minecraft commands with auto-completion.
+* **Performance Tab**: Monitor real-time TPS gauges, MSPT processing time, tick budget headroom, and live CPU/RAM utilization.
+* **Automation Tab**: Configure idle auto-shutdown, arm auto-wake on ping standby listeners, and set up cron-scheduled backups and restarts.
+* **Files Tab**: Browse server files, edit configs in the monospace code editor, or inspect crash reports with the 1-tap Diagnostic Sheet.
+* **World Tab**: Import singleplayer `.zip` or `.mcworld` saves, export world archives, reset Nether or End dimensions, and optimize chunk storage.
+* **Live Map Tab**: Explore your world with an embedded 2D Squaremap web view and trigger full world renders.
+* **Settings Tab**: Adjust server rules (PVP, difficulty, max players), manage Java runtime versions, update builds, and configure public tunneling (bore.pub or Playit.gg).
+* **Players Tab**: View connected players, manage operator permissions, and kick or ban players directly from the UI.
+* **Backups Tab**: Create full server or world-only snapshot zip archives, restore snapshots, delete older archives, and export them to your Downloads folder or external apps.
 * **Plugins / Mods Tab**: Search Modrinth for plugins (Paper/Purpur) or mods (Fabric/NeoForge) and install them with 1 tap, or upload custom `.jar` files.
 * **Backups Tab**: Create full server or world-only snapshot zip archives and export them to your Downloads folder.
 * **Properties Tab**: Toggle server rules or switch to the raw configuration file editor.

@@ -2,6 +2,55 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.3.1] - 2026-09-17
+
+### ⚡ Performance & Core Engine Optimizations
+- **Unified Network Client**: Centralized all remote API calls (PaperMC, Purpur, Fabric, NeoForge, Mojang, Modrinth, and GitHub update checker) through a single shared HTTP client with global connection pooling and resilient timeout management.
+- **Socket Safety & Leaked Connection Prevention**: Wrapped all HTTP response bodies in scoped resource management blocks (`use { ... }`) to eliminate socket and connection pool exhaustion across all remote API operations.
+- **Terminal Emulator O(1) Scrollback Buffer**: Refactored `TerminalEmulator` scrollback storage from `ArrayList` to `ArrayDeque`, replacing O(N) array-copy operations with O(1) line pops when the scrollback limit is exceeded.
+- **Terminal Canvas Rendering Memory Optimization**: Added reusable character buffer in Compose `TerminalView` eliminating transient single-character String allocations during high-frequency console output rendering.
+- **Chunk Optimizer File Descriptor Safeguard**: Scoped read and write file handles in `ChunkOptimizer` to guarantee descriptors are safely closed and temporary `.opt` files are deleted upon cancellation or failure.
+- **Metrics Monitoring Loop Efficiency**: Precompiled static regex patterns and switched `/proc/[pid]/status` parsing to memory-efficient line sequence streaming (`useLines`).
+- **Live Web Map Memory Leak Fix**: Explicitly stops loading and destroys the Compose WebView instance in `LiveMapTab` upon disposal via `AndroidView`'s `onRelease`.
+
+### 💤 Standby & Auto-Wake Resiliency
+- **Automatic Port Binding Retries**: Added a 30-attempt socket bind retry loop with backoff so the standby listener seamlessly binds once the Minecraft server process finishes releasing the port during shutdown.
+- **Decoupled Socket Lifetimes**: Separated TCP and UDP listener teardown in `StandbyPingListener`, preventing UDP cleanup from prematurely closing active TCP sockets.
+- **Deterministic Shutdown Transitions**: Standby mode is now triggered when the server process actually terminates in PTY cleanup, eliminating race conditions with premature status polling during auto-sleep or manual stops.
+- **Bedrock RakNet Unconnected Pong**: Added RakNet Unconnected Pong response with server MOTD in the standby listener so Bedrock clients display standby status and trigger wake upon query.
+- **UI Standby Synchronization**: Toggling Auto-Wake on Ping on an offline server now immediately arms the standby listener, and the Exit Standby action remains accessible and responsive while in Standby status.
+
+### 🏗️ Architecture & Codebase Modularization
+- **Repository Decomposition**: Decomposed the monolithic `ServerRepositories.kt` file into clean, single-responsibility repositories: `ServerRepository.kt`, `BackupRepository.kt`, and `PluginRepository.kt`.
+- **UI Screen Decomposition**: Modularized multi-hundred-line composable screens into maintainable components:
+  - Extracted `ScheduledTaskCard` and `AddScheduledTaskDialog` from `AutomationTab.kt`.
+  - Extracted `FileListItem`, `CrashDiagnosticSheet`, and `FileActionDialogs` from `FilesTab.kt`.
+  - Extracted `DimensionRowCard` and `WorldTabDialogs` from `WorldTab.kt`.
+  - Extracted `UpdateBuildModal` and `UpgradeVersionModal` from `ServerSoftwareCard.kt`.
+- **Centralized LayoutManager**: Introduced a central `LayoutManager` design tokens system and `MaterialTheme.layout` provider defining unified card spacing, screen horizontal padding, and layout dimensions across all screens.
+
+### 💾 World & Backup Management
+- **Manual Backup Deletion**: Added individual backup deletion with a confirmation dialog detailing file size and backup target in the Backups tab, allowing users to reclaim storage without external file managers.
+- **Automated Backup Retention & Pruning**: Added retention limits to scheduled backup tasks with preset chips (Keep 3, 5, 10, 20, or All) and automatic pruning of older automated world or server backups upon new backup completion.
+
+### 🎨 UI & UX Improvements
+- **Server Creation Port Stability**: Fixed an issue where creating a new server on a non-default port showed the default port briefly on the review step before changing to the configured port. Decoupled port state from re-creation and added safe numeric validation in the configuration wizard.
+- **Dashboard FAB Scroll Clearance**: Added bottom scroll clearance padding (`fabBottomClearance`) to the dashboard server list so the bottom card and its Console button are never obscured by the create server floating action button.
+- **Performance Disk Storage Progress & Unified Tile Heights**: Added device storage progress tracking (showing used vs available space) to the Disk Storage tile and unified progress bar visibility across all four telemetry tiles in the Performance tab, ensuring consistent card heights.
+- **Popup Dialog Layout & Margin Control**: Standardized all modal dialogs through `AppAlertDialog` and `LayoutManager`, eliminating wide platform default dialog margins with compact 8dp screen margins. Fixed the Share Server QR code dialog so tab titles ("Public Online" and "Local Wi-Fi") fit cleanly on a single line without wrapping.
+- **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
+- **Compact Card Layout Spacing**: Halved horizontal side margins and vertical spacing around cards from 16dp to 8dp across the dashboard, server detail tabs, wizard, settings, and about screens to maximize screen real estate and card width.
+- **Telemetry CPU Subtitle Clarity**: Clarified CPU telemetry tile subtitle to "Single-Core Load" in the Performance tab, eliminating ambiguity around multi-core capacity and single-threaded server tick load.
+- **Console Full-Width Macro Bar**: Removed side margins from the macro bar above the live console, allowing quick-command chips to span the full width of the screen in alignment with the terminal output canvas.
+- **Scheduled Task Creation Accessibility**: Added a persistent "Add Another Scheduled Task" button below active tasks and weighted the card header to prevent the add action from being pushed off-screen or hidden once tasks exist.
+- **Console Input Field Layout**: Shortened the command input placeholder hint text and applied single-line ellipsis truncation so the console command text box stays cleanly on a single line on mobile screens.
+
+### 🛠️ Compatibility, Lint & System Robustness
+- **Android Compatibility & NewApi Compliance**: Updated foreground service termination to `ServiceCompat.stopForeground`, safeguarded process destruction in Playit tunnels, guarded NIO filesystem traversal behind Android Oreo, and transitioned concurrent player tracking to `Collections.newSetFromMap` for robust backwards compatibility down to Android 6.0 (API 23).
+- **Security & Path Traversal Safeguard**: Sanitized ContentProvider display names during file imports in `ServerRepository` to prevent directory traversal.
+- **Compiler & Deprecation Cleanup**: Migrated to Compose Material 3 `PrimaryTabRow` and modern `menuAnchor`, resolved exhaustive `when` warnings in dimension reset, removed deprecated WebSettings, and fixed code block formatting in GitHub update checking.
+
+
 ## [1.3.0] - 2026-09-10
 
 ### ⚡ Automation, Smart Schedules & Battery Optimization
