@@ -1,7 +1,5 @@
-• Unified network client with connection pooling and socket leak prevention
-• Robust standby auto-wake with port bind retries and decoupled sockets
-• Optimized terminal emulator buffer to O(1) ArrayDeque
-• Dynamic port binding and RakNet pong for Bedrock standby
-• Scoped file descriptors and cleanup in chunk optimizer
-• Delete backups, auto-prune retention, and full map renders
-• UI and layout polish across dialogs, macros, and schedules
+• Standby Auto-Wake: Automatically start servers on player ping (Java & Bedrock)
+• Backup Management: Manual deletion and automated backup retention limits
+• Live Map: Full world tile renders across all dimensions
+• Server Wizard: Stable custom port setup and numeric input validation
+• Performance & UI Polish: Optimized memory usage, dashboard scroll clearance, and unified telemetry cards

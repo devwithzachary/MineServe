@@ -106,8 +106,16 @@ fun CreateServerWizardScreen(
     var selectedType by remember { mutableStateOf(ServerType.PAPER) }
     var selectedVersion by remember { mutableStateOf("26.2") }
     var allocatedRamMb by remember { mutableIntStateOf(2048) }
-    var port by remember(defaultUnusedPort) { mutableIntStateOf(defaultUnusedPort) }
+    var userModifiedPort by remember { mutableStateOf(false) }
+    var port by remember { mutableIntStateOf(defaultUnusedPort) }
     var eulaAccepted by remember { mutableStateOf(true) }
+
+    // Sync calculated unused port if servers load asynchronously, provided user hasn't explicitly set a port
+    LaunchedEffect(defaultUnusedPort) {
+        if (!userModifiedPort) {
+            port = defaultUnusedPort
+        }
+    }
 
     // Check if the currently chosen port is in use by an existing server
     val conflictingServerName = remember(port, existingServers) {
@@ -330,7 +338,10 @@ fun CreateServerWizardScreen(
                         allocatedRamMb = allocatedRamMb,
                         onAllocatedRamMbChange = { allocatedRamMb = it },
                         port = port,
-                        onPortChange = { port = it },
+                        onPortChange = { newPort ->
+                            userModifiedPort = true
+                            port = newPort
+                        },
                         conflictingServerName = conflictingServerName
                     )
                     4 -> {

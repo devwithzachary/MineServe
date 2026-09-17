@@ -41,19 +41,12 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         date = "In Development",
         initialExpanded = true,
         highlights = listOf(
-            "Unified Network Client: Shared HTTP client with connection pooling, timeout resiliency, and socket leak prevention across all API callers.",
-            "Terminal & UI Memory Optimizations: Converted terminal scrollback to O(1) ArrayDeque buffer and reduced transient character allocations in the terminal canvas.",
-            "Chunk Optimizer & File Safeguards: Scoped file descriptors and automated cleanup for region optimization tasks.",
-            "Standby & Auto-Wake Port Resiliency: Automated 30-attempt socket bind retries, decoupled TCP/UDP lifecycles, and reliable standby transitions on server shutdown.",
-            "Bedrock Dynamic Port Standby: Dynamic port binding and RakNet pong support for standby ping queries.",
-            "Codebase Modularization: Decomposed monolithic repository and large composable screens into maintainable components.",
-            "Console Layout & Macro Bar Fix: Full-width macro bar alignment matching terminal output, shortened placeholder hint, and single-line ellipsis truncation.",
-            "Live Map Full World Render: Trigger complete world tile rendering with performance safeguards, dimension selection, and cancellation controls to resolve patchy maps.",
-            "Backup Management & Automated Pruning: Added manual backup deletion with confirmation dialog, plus configurable retention limits for scheduled backup tasks to automatically prune old backups.",
-            "Centralized LayoutManager & Dialog Margins: Abstracted card and dialog margins into LayoutManager, standardizing all popup dialogs through AppAlertDialog with compact 8dp margins and single-line tabs.",
-            "Performance Telemetry Clarification: Clarified CPU metric tile subtitle to Single-Core Load to accurately reflect single-threaded server game loop capacity.",
-            "Scheduled Task Creation Access: Added persistent button below active tasks and fixed header button clipping so users can continuously create multiple automated tasks.",
-            "Compatibility & System Robustness: Android API 23+ compatibility safeguards, ContentProvider filename path traversal sanitization, and compiler warning cleanup."
+            "Standby Auto-Wake on Ping: Servers now automatically start up on player ping across both Java Edition (TCP) and Bedrock Edition (RakNet) with dynamic port binding and reliable reconnection.",
+            "World Backup Deletion & Retention: Delete individual backups directly in the app and set automatic retention limits on scheduled backup tasks to automatically prune older backups.",
+            "Live Web Map Full World Render: Render complete world map tiles across all dimensions (Overworld, Nether, and The End) with hardware performance safeguards and cancel controls.",
+            "Server Setup Wizard Enhancements: Added safe numeric input handling and port stabilization to prevent flickering on the review step when creating servers on custom ports.",
+            "Performance & Reliability: Centralized network clients, O(1) terminal scrollback memory buffers, scoped file descriptors, and Android backwards compatibility safeguards down to API 23.",
+            "UI & Layout Polish: Added bottom dashboard scroll clearance for server cards, full-width console macro bar, unified telemetry card heights with live device storage progress, and compact popup dialog margins."
         )
     ),
     ReleaseChangelog(

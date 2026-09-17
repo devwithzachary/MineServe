@@ -106,6 +106,11 @@ object LayoutManager {
         get() = Modifier
             .fillMaxWidth()
             .padding(horizontal = dialogHorizontalMargin)
+
+    /**
+     * Bottom clearance padding for scrollable lists with floating action buttons (FAB).
+     */
+    val fabBottomClearance: Dp = 96.dp
 }
 
 typealias AppLayout = LayoutManager

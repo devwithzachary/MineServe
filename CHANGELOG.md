@@ -35,6 +35,9 @@ All notable changes to the MineServe project will be documented in this file.
 - **Automated Backup Retention & Pruning**: Added retention limits to scheduled backup tasks with preset chips (Keep 3, 5, 10, 20, or All) and automatic pruning of older automated world or server backups upon new backup completion.
 
 ### 🎨 UI & UX Improvements
+- **Server Creation Port Stability**: Fixed an issue where creating a new server on a non-default port showed the default port briefly on the review step before changing to the configured port. Decoupled port state from re-creation and added safe numeric validation in the configuration wizard.
+- **Dashboard FAB Scroll Clearance**: Added bottom scroll clearance padding (`fabBottomClearance`) to the dashboard server list so the bottom card and its Console button are never obscured by the create server floating action button.
+- **Performance Disk Storage Progress & Unified Tile Heights**: Added device storage progress tracking (showing used vs available space) to the Disk Storage tile and unified progress bar visibility across all four telemetry tiles in the Performance tab, ensuring consistent card heights.
 - **Popup Dialog Layout & Margin Control**: Standardized all modal dialogs through `AppAlertDialog` and `LayoutManager`, eliminating wide platform default dialog margins with compact 8dp screen margins. Fixed the Share Server QR code dialog so tab titles ("Public Online" and "Local Wi-Fi") fit cleanly on a single line without wrapping.
 - **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
 - **Compact Card Layout Spacing**: Halved horizontal side margins and vertical spacing around cards from 16dp to 8dp across the dashboard, server detail tabs, wizard, settings, and about screens to maximize screen real estate and card width.

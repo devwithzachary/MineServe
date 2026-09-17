@@ -40,8 +40,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -92,6 +94,23 @@ fun PerformanceTab(
     val tpsRatio = (tps / 20.0).coerceIn(0.0, 1.0).toFloat()
     val formattedDisk = formatStorageSize(storageBytes)
     val formattedUptime = formatUptime(uptimeSeconds)
+
+    val context = LocalContext.current
+    val totalDiskBytes = remember { context.filesDir.totalSpace }
+    val freeDiskBytes = remember { context.filesDir.usableSpace }
+    val usedDiskBytes = (totalDiskBytes - freeDiskBytes).coerceAtLeast(0L)
+    val diskRatio = if (totalDiskBytes > 0L) {
+        (usedDiskBytes.toFloat() / totalDiskBytes.toFloat()).coerceIn(0f, 1f)
+    } else 0f
+    val animatedDiskProgress by animateFloatAsState(targetValue = diskRatio, label = "diskProgress")
+    val diskColor by animateColorAsState(
+        targetValue = when {
+            diskRatio >= 0.90f -> RedstoneRed
+            diskRatio >= 0.75f -> GoldYellow
+            else -> EmeraldLight
+        },
+        label = "diskColor"
+    )
 
     val cpuColor by animateColorAsState(
         targetValue = when {
@@ -200,10 +219,10 @@ fun PerformanceTab(
                 iconColor = EmeraldLight,
                 title = "Disk Storage",
                 value = formattedDisk,
-                subtitle = "World, Logs & Files",
-                progress = 0f,
-                progressColor = EmeraldLight,
-                showProgress = false,
+                subtitle = "${formatStorageSize(freeDiskBytes)} Available",
+                progress = animatedDiskProgress,
+                progressColor = diskColor,
+                showProgress = true,
                 modifier = Modifier.weight(1f)
             )
 
@@ -214,9 +233,9 @@ fun PerformanceTab(
                 title = "Health & TPS",
                 value = if (isOnline) String.format(Locale.US, "%.1f TPS", tps) else "Offline",
                 subtitle = if (isOnline) "${String.format(Locale.US, "%.1f", mspt)}ms / 50ms tick" else "Process Stopped",
-                progress = animatedTpsProgress,
+                progress = if (isOnline) animatedTpsProgress else 0f,
                 progressColor = tpsColor,
-                showProgress = isOnline,
+                showProgress = true,
                 modifier = Modifier.weight(1f)
             )
         }

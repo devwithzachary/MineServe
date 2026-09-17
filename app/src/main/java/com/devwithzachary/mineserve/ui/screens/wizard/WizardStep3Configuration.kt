@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -20,11 +21,18 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.ui.components.RamSlider
@@ -43,6 +51,16 @@ fun WizardStep3Configuration(
     conflictingServerName: String? = null,
     modifier: Modifier = Modifier
 ) {
+    var portText by remember { mutableStateOf(port.toString()) }
+
+    LaunchedEffect(port) {
+        if (portText.toIntOrNull() != port) {
+            portText = port.toString()
+        }
+    }
+
+    val isPortValid = portText.toIntOrNull()?.let { it in 1..65535 } == true
+
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
@@ -69,10 +87,23 @@ fun WizardStep3Configuration(
         }
 
         OutlinedTextField(
-            value = port.toString(),
-            onValueChange = { onPortChange(it.toIntOrNull() ?: 25565) },
+            value = portText,
+            onValueChange = { input ->
+                val digitsOnly = input.filter { it.isDigit() }.take(5)
+                portText = digitsOnly
+                digitsOnly.toIntOrNull()?.let { parsed ->
+                    if (parsed in 1..65535) {
+                        onPortChange(parsed)
+                    }
+                }
+            },
             label = { Text(stringResource(R.string.wizard_step3_port_label)) },
             singleLine = true,
+            isError = portText.isNotEmpty() && !isPortValid,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = if (conflictingServerName != null) GoldYellow else EmeraldPrimary,
                 unfocusedBorderColor = if (conflictingServerName != null) GoldYellow else ObsidianCardBorder,
