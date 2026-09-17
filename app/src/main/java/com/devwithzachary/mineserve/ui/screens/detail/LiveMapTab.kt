@@ -38,7 +38,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -447,7 +447,7 @@ fun LiveMapTab(
 
     // Modal: Port Configuration Dialog
     if (showPortDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showPortDialog = false },
             icon = {
                 Icon(
@@ -517,7 +517,7 @@ fun LiveMapTab(
 
     // Modal: Uninstall Confirmation Dialog
     if (showUninstallDialog) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showUninstallDialog = false },
             icon = {
                 Icon(
@@ -578,7 +578,7 @@ fun LiveMapTab(
             mutableStateOf(getRenderWorldIdentifier(selectedDimension))
         }
 
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showRenderDialog = false },
             icon = {
                 Icon(

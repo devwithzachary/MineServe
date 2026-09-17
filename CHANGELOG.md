@@ -35,6 +35,7 @@ All notable changes to the MineServe project will be documented in this file.
 - **Automated Backup Retention & Pruning**: Added retention limits to scheduled backup tasks with preset chips (Keep 3, 5, 10, 20, or All) and automatic pruning of older automated world or server backups upon new backup completion.
 
 ### 🎨 UI & UX Improvements
+- **Popup Dialog Layout & Margin Control**: Standardized all modal dialogs through `AppAlertDialog` and `LayoutManager`, eliminating wide platform default dialog margins with compact 8dp screen margins. Fixed the Share Server QR code dialog so tab titles ("Public Online" and "Local Wi-Fi") fit cleanly on a single line without wrapping.
 - **Live Web Map Full World Render**: Added full world map rendering tool with hardware performance warning, dimension selection (Overworld, Nether, The End), and cancel active render controls to eliminate patchy world maps.
 - **Compact Card Layout Spacing**: Halved horizontal side margins and vertical spacing around cards from 16dp to 8dp across the dashboard, server detail tabs, wizard, settings, and about screens to maximize screen real estate and card width.
 - **Telemetry CPU Subtitle Clarity**: Clarified CPU telemetry tile subtitle to "Single-Core Load" in the Performance tab, eliminating ambiguity around multi-core capacity and single-threaded server tick load.

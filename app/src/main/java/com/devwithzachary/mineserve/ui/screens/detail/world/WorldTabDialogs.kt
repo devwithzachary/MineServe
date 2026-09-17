@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -56,7 +56,7 @@ fun DimensionResetDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = { if (!isResetting) onDismiss() },
         icon = {
             Icon(
@@ -161,7 +161,7 @@ fun WorldImportDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = { if (!isImporting) onDismiss() },
         icon = {
             Icon(
@@ -275,7 +275,7 @@ fun ChunkPruneDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = { if (!isPruning) onDismiss() },
         icon = {
             Icon(
@@ -361,7 +361,7 @@ fun ChunkPruneResultDialog(
     result: ChunkPruneResult,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(

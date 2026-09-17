@@ -30,7 +30,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -113,7 +113,7 @@ fun BackupsTab(
     // Restore Confirmation Dialog
     if (backupToRestore != null) {
         val target = backupToRestore!!
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { backupToRestore = null },
             icon = {
                 Icon(
@@ -174,7 +174,7 @@ fun BackupsTab(
     // Delete Confirmation Dialog
     if (backupToDelete != null) {
         val target = backupToDelete!!
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { backupToDelete = null },
             icon = {
                 Icon(

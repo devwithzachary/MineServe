@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -38,7 +38,7 @@ fun CreateFileDialog(
     onConfirm: (String) -> Unit
 ) {
     var newFileName by remember { mutableStateOf("") }
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create New File", fontWeight = FontWeight.Bold, color = Color.White) },
         text = {
@@ -87,7 +87,7 @@ fun CreateFolderDialog(
     onConfirm: (String) -> Unit
 ) {
     var newFolderName by remember { mutableStateOf("") }
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create New Folder", fontWeight = FontWeight.Bold, color = Color.White) },
         text = {
@@ -137,7 +137,7 @@ fun RenameFileDialog(
     onConfirm: (String) -> Unit
 ) {
     var renameTargetName by remember { mutableStateOf(target.name) }
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Rename ${if (target.isDirectory) "Folder" else "File"}", fontWeight = FontWeight.Bold, color = Color.White) },
         text = {
@@ -184,7 +184,7 @@ fun DeleteFileDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(Icons.Default.Delete, contentDescription = null, tint = RedstoneRed, modifier = Modifier.size(32.dp))

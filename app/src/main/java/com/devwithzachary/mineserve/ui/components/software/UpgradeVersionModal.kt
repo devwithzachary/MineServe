@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Upgrade
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
@@ -83,7 +83,7 @@ fun UpgradeVersionModal(
         determineJavaVersion(selectedTargetVersion, server.type)
     }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = {
             if (!isUpgradingVersion) onDismiss()
         },

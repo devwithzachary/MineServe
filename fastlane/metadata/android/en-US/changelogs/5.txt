@@ -4,4 +4,4 @@
 • Dynamic port binding and RakNet pong for Bedrock standby
 • Scoped file descriptors and cleanup in chunk optimizer
 • Delete backups, auto-prune retention, and full map renders
-• UI and layout polish across macros, console, and schedules
+• UI and layout polish across dialogs, macros, and schedules

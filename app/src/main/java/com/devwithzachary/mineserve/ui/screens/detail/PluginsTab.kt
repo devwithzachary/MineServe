@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Widgets
-import androidx.compose.material3.AlertDialog
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -167,7 +167,7 @@ fun PluginsTab(
     // Detail Dialog
     if (selectedProjectForDetails != null) {
         val proj = selectedProjectForDetails!!
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = {
                 selectedProjectForDetails = null
                 projectDetails = null

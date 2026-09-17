@@ -1,10 +1,14 @@
 package com.devwithzachary.mineserve.ui.theme
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 
 /**
  * Central layout manager and design tokens controlling spacing, margins,
@@ -75,6 +79,33 @@ object LayoutManager {
      * Standard card outline stroke width.
      */
     val cardBorderWidth: Dp = 1.dp
+
+    /**
+     * Screen-level horizontal margin on the left and right of popup dialogs.
+     */
+    val dialogHorizontalMargin: Dp = 8.dp
+
+    /**
+     * Corner radius for popup dialog containers.
+     */
+    val dialogCornerRadius: Dp = 16.dp
+
+    /**
+     * Standard dialog properties ensuring dialogs span the intended width
+     * without platform default outer margin restrictions.
+     */
+    val dialogProperties: DialogProperties = DialogProperties(
+        usePlatformDefaultWidth = false
+    )
+
+    /**
+     * Modifier applied to popup dialogs ensuring consistent screen margins
+     * controlled centrally by the LayoutManager.
+     */
+    val dialogModifier: Modifier
+        get() = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = dialogHorizontalMargin)
 }
 
 typealias AppLayout = LayoutManager
