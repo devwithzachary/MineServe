@@ -2,6 +2,15 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.4.0] - 2026-09-30
+
+### 📁 File Manager & Archive Extraction
+- **In-App Zip Extraction**: Added ability to extract zip archives directly inside the file manager. Users can tap any `.zip` archive or select "Unzip / Extract" from the file options menu to unpack plugins, mods, configurations, or world files without needing external file managers.
+- **Flexible Extraction Targets & Subfolder Routing**: Supports extracting archives directly into the active directory (ideal for quickly unpacking collections of plugin or mod jars) or extracting into a customizable dedicated subfolder.
+- **Automated Archive Cleanup**: Added an optional "Delete archive after unzip" checkbox to automatically remove source zip archives upon successful extraction, saving phone storage.
+- **Security & Zip-Slip Protection**: Implemented strict canonical path verification to prevent zip directory traversal vulnerabilities, alongside automatic filtering of macOS metadata artifacts (`__MACOSX` resource forks and `.DS_Store`).
+- **Batch File Import**: Upgraded the file manager Import action to support multi-file selection, enabling users to import multiple plugins, mods, or configs in a single operation.
+
 ## [1.3.1] - 2026-09-17
 
 ### ⚡ Performance & Core Engine Optimizations

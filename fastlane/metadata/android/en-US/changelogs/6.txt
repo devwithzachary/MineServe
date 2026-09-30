@@ -1,0 +1,4 @@
+• File Manager Unzip: Extract zip archives directly in the app to quickly add bundles of plugins, mods, or world data
+• Flexible Extraction: Extract files into current folders or dedicated subfolders with optional post-unzip archive deletion
+• Multi-File Import: Select and import multiple plugins, mods, and config files at once
+• Security & Reliability: Built-in Zip-Slip directory traversal safeguards and automatic macOS metadata filtering

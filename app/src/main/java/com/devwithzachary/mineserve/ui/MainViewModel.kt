@@ -643,6 +643,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return serverRepository.exportFileToDownloads(serverId, relativePath)
     }
 
+    suspend fun unzipFile(
+        serverId: String,
+        relativePath: String,
+        destinationPath: String = "",
+        deleteZipAfter: Boolean = false
+    ): Result<Int> {
+        val result = serverRepository.unzipFile(serverId, relativePath, destinationPath, deleteZipAfter)
+        if (result.isSuccess) {
+            loadServerDetails(serverId)
+        }
+        return result
+    }
+
     suspend fun searchFiles(serverId: String, query: String): List<com.devwithzachary.mineserve.model.FileEntry> {
         return serverRepository.searchFiles(serverId, query)
     }

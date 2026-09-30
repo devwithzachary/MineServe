@@ -259,6 +259,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onWriteFile = { relPath, content -> viewModel.writeFile(server.id, relPath, content) },
                         onImportFile = { relPath, uri -> viewModel.importFile(server.id, relPath, uri) },
                         onExportFile = { relPath -> viewModel.exportFile(server.id, relPath) },
+                        onUnzipFile = { relPath, destPath, deleteZip -> viewModel.unzipFile(server.id, relPath, destPath, deleteZip) },
                         onSearchFiles = { query -> viewModel.searchFiles(server.id, query) },
                         onAnalyzeCrash = { viewModel.analyzeCrash(server.id) },
                         onApplyQuickFix = { action -> viewModel.applyQuickFix(server.id, action) },

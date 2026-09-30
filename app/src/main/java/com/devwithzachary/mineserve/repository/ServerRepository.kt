@@ -22,10 +22,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileInputStream
+import java.io.FileNotFoundException
 import java.io.FileOutputStream
 import java.util.UUID
+import java.util.zip.ZipInputStream
 
 class ServerRepository(
     private val context: Context,
@@ -34,6 +37,70 @@ class ServerRepository(
 ) {
     companion object {
         private const val TAG = "ServerRepository"
+
+        fun extractZip(
+            zipFile: File,
+            targetDir: File,
+            deleteZipAfter: Boolean = false
+        ): Result<Int> {
+            try {
+                if (!zipFile.exists() || !zipFile.isFile) {
+                    return Result.failure(FileNotFoundException("Archive file not found: ${zipFile.absolutePath}"))
+                }
+
+                if (!targetDir.exists()) {
+                    targetDir.mkdirs()
+                }
+
+                val targetCanonicalPath = targetDir.canonicalPath
+                var extractedCount = 0
+
+                ZipInputStream(BufferedInputStream(FileInputStream(zipFile), 65536)).use { zipIn ->
+                    var entry = zipIn.nextEntry
+                    while (entry != null) {
+                        val entryName = entry.name.replace('\\', '/')
+                        if (entryName.isNotBlank() &&
+                            !entryName.startsWith("__MACOSX/") &&
+                            !entryName.contains("/__MACOSX/") &&
+                            !entryName.endsWith(".DS_Store")
+                        ) {
+                            val outputFile = File(targetDir, entryName)
+                            val outputCanonicalPath = outputFile.canonicalPath
+                            if (!outputCanonicalPath.startsWith(targetCanonicalPath + File.separator) &&
+                                outputCanonicalPath != targetCanonicalPath
+                            ) {
+                                throw SecurityException("Zip entry attempted directory traversal: ${entry.name}")
+                            }
+
+                            val isDirectoryEntry = entry.isDirectory || entryName.endsWith('/')
+                            if (isDirectoryEntry) {
+                                outputFile.mkdirs()
+                            } else {
+                                outputFile.parentFile?.mkdirs()
+                                if (outputFile.exists() && outputFile.isDirectory) {
+                                    outputFile.deleteRecursively()
+                                }
+                                FileOutputStream(outputFile).use { out ->
+                                    zipIn.copyTo(out)
+                                }
+                                extractedCount++
+                            }
+                        }
+                        zipIn.closeEntry()
+                        entry = zipIn.nextEntry
+                    }
+                }
+
+                if (deleteZipAfter) {
+                    zipFile.delete()
+                }
+
+                return Result.success(extractedCount)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed extracting zip ${zipFile.name}", e)
+                return Result.failure(e)
+            }
+        }
     }
 
     val serversDir: File get() = pRootEngine.serversDir
@@ -394,6 +461,29 @@ class ServerRepository(
             Log.e(TAG, "Failed exporting $relativePath to downloads", e)
             false
         }
+    }
+
+    suspend fun unzipFile(
+        serverId: String,
+        relativePath: String,
+        destinationRelativePath: String = "",
+        deleteZipAfter: Boolean = false
+    ): Result<Int> = withContext(Dispatchers.IO) {
+        val serverDir = File(serversDir, serverId)
+        val zipFile = File(serverDir, relativePath)
+        val targetDir = if (destinationRelativePath.isBlank()) {
+            zipFile.parentFile ?: serverDir
+        } else {
+            File(serverDir, destinationRelativePath)
+        }
+
+        val serverCanonicalPath = serverDir.canonicalPath
+        val targetCanonicalPath = targetDir.canonicalPath
+        if (!targetCanonicalPath.startsWith(serverCanonicalPath)) {
+            return@withContext Result.failure(SecurityException("Destination directory is outside server root"))
+        }
+
+        extractZip(zipFile, targetDir, deleteZipAfter)
     }
 
     suspend fun searchFiles(serverId: String, query: String): List<FileEntry> = withContext(Dispatchers.IO) {

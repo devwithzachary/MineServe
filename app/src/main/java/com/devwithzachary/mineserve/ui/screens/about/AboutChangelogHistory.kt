@@ -37,9 +37,20 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.4.0",
+        date = "September 30, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "In-App Zip Extraction: Extract zip archives directly in the file manager with a single tap or via file options to quickly deploy plugins, mods, configurations, and world saves.",
+            "Subfolder & Cleanup Controls: Choose between extracting into the active directory or a custom subfolder, with an option to automatically delete archives after extraction.",
+            "Multi-File Batch Import: Select and import multiple plugin jars, mod files, or server configurations simultaneously using the enhanced Import tool in the file manager.",
+            "Security & File System Protection: Built-in Zip-Slip path traversal prevention and automatic filtering of macOS system metadata files."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.3.1",
         date = "September 17, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Standby Auto-Wake on Ping: Servers now automatically start up on player ping across both Java Edition (TCP) and Bedrock Edition (RakNet) with dynamic port binding and reliable reconnection.",
             "World Backup Deletion & Retention: Delete individual backups directly in the app and set automatic retention limits on scheduled backup tasks to automatically prune older backups.",

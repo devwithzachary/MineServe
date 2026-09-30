@@ -140,6 +140,7 @@ fun ServerDetailScreen(
     onWriteFile: suspend (String, String) -> Boolean = { _, _ -> false },
     onImportFile: suspend (String, android.net.Uri) -> Boolean = { _, _ -> false },
     onExportFile: suspend (String) -> Boolean = { false },
+    onUnzipFile: suspend (String, String, Boolean) -> Result<Int> = { _, _, _ -> Result.success(0) },
     onSearchFiles: suspend (String) -> List<FileEntry> = { emptyList() },
     onAnalyzeCrash: suspend () -> CrashDiagnosticReport? = { null },
     onApplyQuickFix: suspend (QuickFixAction) -> Boolean = { false },
@@ -435,6 +436,7 @@ fun ServerDetailScreen(
                         onWriteFile = onWriteFile,
                         onImportFile = onImportFile,
                         onExportFile = onExportFile,
+                        onUnzipFile = onUnzipFile,
                         onSearchFiles = onSearchFiles,
                         onAnalyzeCrash = onAnalyzeCrash,
                         onApplyQuickFix = onApplyQuickFix
