@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Upgrade
@@ -42,23 +43,27 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.WebMapPluginType
 import com.devwithzachary.mineserve.model.determineJavaVersion
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate900
 import com.devwithzachary.mineserve.ui.theme.Slate950
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,7 +83,12 @@ fun UpgradeVersionModal(
     onDismiss: () -> Unit,
     onConfirmUpgrade: () -> Unit
 ) {
+    val context = LocalContext.current
     var versionDropdownExpanded by remember { mutableStateOf(false) }
+    val hasLiveMap = remember(server.id) {
+        val serverDir = File(context.filesDir, "servers/${server.id}")
+        WebMapPluginType.detectInstalled(serverDir) != null
+    }
     val targetJava = remember(selectedTargetVersion) {
         determineJavaVersion(selectedTargetVersion, server.type)
     }
@@ -207,6 +217,31 @@ fun UpgradeVersionModal(
                         Icon(Icons.Default.Shield, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(18.dp))
                         Text(
                             text = stringResource(R.string.software_safe_notice),
+                            color = Slate400,
+                            fontSize = 11.sp
+                        )
+                    }
+                }
+
+                // Plugins & Mods manual upgrade advisory notice
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = Slate900,
+                    border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.5f)),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(18.dp))
+                        Text(
+                            text = if (hasLiveMap) {
+                                stringResource(R.string.software_upgrade_plugins_mods_live_map_notice, selectedTargetVersion)
+                            } else {
+                                stringResource(R.string.software_upgrade_plugins_mods_notice, selectedTargetVersion)
+                            },
                             color = Slate400,
                             fontSize = 11.sp
                         )

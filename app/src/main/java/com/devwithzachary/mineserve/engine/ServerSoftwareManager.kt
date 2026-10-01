@@ -4,6 +4,7 @@ import android.util.Log
 import com.devwithzachary.mineserve.api.FabricApiClient
 import com.devwithzachary.mineserve.api.ForgeApiClient
 import com.devwithzachary.mineserve.api.MineServeHttpClient
+import com.devwithzachary.mineserve.api.ModrinthApiClient
 import com.devwithzachary.mineserve.api.MojangApiClient
 import com.devwithzachary.mineserve.api.NeoForgeApiClient
 import com.devwithzachary.mineserve.api.PaperApiClient
@@ -11,6 +12,7 @@ import com.devwithzachary.mineserve.api.PurpurApiClient
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerBuildInfo
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.WebMapPluginType
 import com.devwithzachary.mineserve.model.determineJavaVersion
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import com.devwithzachary.mineserve.repository.BackupRepository
@@ -337,6 +339,9 @@ class ServerSoftwareManager(
                 } catch (_: Exception) {}
             }
 
+            // Auto-upgrade Live Map plugin (e.g. Squaremap) if installed on this server
+            upgradeLiveMapPluginIfInstalled(server, serverDir, newVersion, onProgress)
+
             // Determine required Java version and update config
             val requiredJava = determineJavaVersion(newVersion, server.type)
             val updatedJava = maxOf(server.javaVersion, requiredJava)
@@ -365,5 +370,71 @@ class ServerSoftwareManager(
     ): Boolean {
         val server = serverRepository.loadServers().firstOrNull { it.id == serverId } ?: return false
         return upgradeServerVersion(server, newVersion, createBackup, onProgress)
+    }
+
+    /**
+     * If a live web map plugin (e.g. Squaremap) is currently installed on the server,
+     * attempts to resolve and download an updated compatible version for the target Minecraft version.
+     */
+    internal suspend fun upgradeLiveMapPluginIfInstalled(
+        server: MinecraftServer,
+        serverDir: File,
+        newVersion: String,
+        onProgress: (String, Int) -> Unit
+    ) {
+        val installedMapPlugin = WebMapPluginType.detectInstalled(serverDir) ?: return
+        onProgress("Upgrading ${installedMapPlugin.displayName} live map plugin...", 94)
+        try {
+            val isModServer = server.type.supportsMods && !server.type.supportsPlugins
+            val loader = when (server.type) {
+                ServerType.FABRIC -> "fabric"
+                ServerType.FORGE -> "forge"
+                ServerType.NEOFORGE -> "neoforge"
+                else -> "paper"
+            }
+            val modrinth = ModrinthApiClient()
+            val resolved = modrinth.resolveDownloadUrl(
+                projectIdOrSlug = installedMapPlugin.modrinthSlug,
+                isMod = isModServer,
+                loaderFilter = loader,
+                gameVersion = newVersion
+            ) ?: modrinth.resolveDownloadUrl(
+                projectIdOrSlug = installedMapPlugin.modrinthSlug,
+                isMod = isModServer,
+                loaderFilter = loader,
+                gameVersion = null
+            ) ?: modrinth.resolveDownloadUrl(
+                projectIdOrSlug = installedMapPlugin.modrinthSlug,
+                isMod = isModServer,
+                loaderFilter = null,
+                gameVersion = null
+            )
+
+            if (resolved != null) {
+                val targetFolder = if (isModServer) File(serverDir, "mods") else File(serverDir, "plugins")
+                if (!targetFolder.exists()) targetFolder.mkdirs()
+
+                val newFile = File(targetFolder, resolved.first)
+                val tempFile = File(targetFolder, "${resolved.first}.tmp")
+
+                downloadFileWithProgress(resolved.second, tempFile) { _, _ -> }
+                if (tempFile.exists() && tempFile.length() > 0) {
+                    // Delete existing old map plugin files across plugins and mods to prevent duplicate plugin collisions
+                    val oldFiles = listOf(File(serverDir, "plugins"), File(serverDir, "mods"))
+                        .flatMap { it.listFiles()?.toList() ?: emptyList() }
+                        .filter { it.isFile && it.name.lowercase().contains("squaremap") && it.absolutePath != tempFile.absolutePath }
+                    for (old in oldFiles) {
+                        old.delete()
+                    }
+                    if (newFile.exists()) newFile.delete()
+                    tempFile.renameTo(newFile)
+                    Log.i(TAG, "Successfully upgraded ${installedMapPlugin.displayName} to ${resolved.first} for Minecraft $newVersion")
+                }
+            } else {
+                Log.w(TAG, "No compatible ${installedMapPlugin.displayName} release found on Modrinth for $newVersion")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to auto-upgrade live map plugin: ${e.message}")
+        }
     }
 }

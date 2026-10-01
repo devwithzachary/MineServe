@@ -24,6 +24,8 @@ All notable changes to the MineServe project will be documented in this file.
 - **NeoForge Upgrade Jar Cleanup**: Fixed server version upgrade logic to delete previous `neoforge-*.jar` files alongside Forge jars, preventing obsolete binaries from executing when upgrading NeoForge servers.
 - **Resilient Property Boolean Parsing**: Enhanced `ServerProperties` parsing to safely handle case variations (`True`, `TRUE`) and numeric flags (`1`/`0`) without reverting to defaults.
 - **Native Subprocess Memory Safety**: Fixed native memory and JNI string reference cleanup in `pty.cpp` if `fork()` fails during process creation.
+- **Live Map Auto-Upgrade on Server Upgrade**: Automatically detects and upgrades the installed web map plugin (e.g. Squaremap) when upgrading a server's Minecraft version, ensuring web map compatibility without manual reinstallation.
+- **Plugin & Mod Manual Upgrade Advisory**: Added clear user notices in the server upgrade dialog advising that third-party plugins and mods must be manually upgraded to match the target Minecraft version to avoid launch failures.
 
 ### 🏗️ Architecture & ViewModel Modularization
 - **MainViewModel Decomposition**: Decoupled monolithic server management by extracting version manifest resolution, build verification, download streaming, and server upgrade workflows into a dedicated `ServerSoftwareManager`.

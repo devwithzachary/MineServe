@@ -329,6 +329,8 @@
     <string name="software_current_version">Current: %1$s %2$s</string>
     <string name="software_version_current_tag">(Current)</string>
     <string name="software_target_java_notice">Target requires Java %d (Configured automatically)</string>
+    <string name="software_upgrade_plugins_mods_notice">Installed plugins and mods must be manually updated to match Minecraft %s. Incompatible versions may cause the server to fail to start.</string>
+    <string name="software_upgrade_plugins_mods_live_map_notice">Installed plugins and mods must be manually updated to match Minecraft %s. Your live map plugin will be upgraded automatically.</string>
 
     <!-- World & Map Management -->
     <string name="tab_world">World</string>

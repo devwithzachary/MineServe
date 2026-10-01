@@ -86,6 +86,35 @@ class WorldManagementTest {
     }
 
     @Test
+    fun testWebMapPluginReplacementOnUpgrade() {
+        val serverDir = tempFolder.newFolder("upgrade_server")
+        val pluginsDir = File(serverDir, "plugins").apply { mkdirs() }
+
+        // Start with older version of squaremap
+        val oldSquaremap = File(pluginsDir, "squaremap-paper-1.20.1.jar").apply { createNewFile() }
+        assertEquals(WebMapPluginType.SQUAREMAP, WebMapPluginType.detectInstalled(serverDir))
+        assertEquals(oldSquaremap.absolutePath, WebMapPluginType.findInstalledFile(serverDir)?.absolutePath)
+
+        // Simulate replacement cleanup during upgrade
+        val newSquaremapName = "squaremap-paper-1.21.4.jar"
+        val newFile = File(pluginsDir, newSquaremapName)
+        val tempFile = File(pluginsDir, "$newSquaremapName.tmp").apply { createNewFile() }
+
+        val oldFiles = listOf(File(serverDir, "plugins"), File(serverDir, "mods"))
+            .flatMap { it.listFiles()?.toList() ?: emptyList() }
+            .filter { it.isFile && it.name.lowercase().contains("squaremap") && it.absolutePath != tempFile.absolutePath }
+        for (old in oldFiles) {
+            old.delete()
+        }
+        tempFile.renameTo(newFile)
+
+        assertFalse(oldSquaremap.exists())
+        assertTrue(newFile.exists())
+        assertEquals(WebMapPluginType.SQUAREMAP, WebMapPluginType.detectInstalled(serverDir))
+        assertEquals(newFile.absolutePath, WebMapPluginType.findInstalledFile(serverDir)?.absolutePath)
+    }
+
+    @Test
     fun testExtractInhabitedTimeFromNbt() {
         // Build synthetic NBT compound: TAG_Compound ("") -> TAG_Long ("InhabitedTime", 12500L) -> TAG_End
         val nbtBytes = ByteArrayOutputStream().use { baos ->
