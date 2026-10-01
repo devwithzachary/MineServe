@@ -134,7 +134,7 @@ fun PlayersTab(
 
         // Quick Player Action Bar
         Text(
-            text = "Manage Player Commands",
+            text = stringResource(R.string.players_manage_commands),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -149,7 +149,7 @@ fun PlayersTab(
                 OutlinedTextField(
                     value = newPlayerName,
                     onValueChange = { newPlayerName = it },
-                    label = { Text("Player Username") },
+                    label = { Text(stringResource(R.string.players_username_label)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -200,7 +200,7 @@ fun PlayersTab(
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = "Whitelist",
+                            text = stringResource(R.string.players_whitelist),
                             color = Color.Black,
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.5.sp,

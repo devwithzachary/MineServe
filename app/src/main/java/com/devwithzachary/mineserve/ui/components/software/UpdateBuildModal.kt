@@ -137,7 +137,7 @@ fun UpdateBuildModal(
                                 )
                                 if (buildInfo.currentBuild != null) {
                                     Text(
-                                        text = "Installed build: #${buildInfo.currentBuild}",
+                                        text = stringResource(R.string.software_installed_build, buildInfo.currentBuild),
                                         color = Slate400,
                                         fontSize = 11.sp
                                     )

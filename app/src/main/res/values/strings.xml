@@ -152,10 +152,38 @@
     <string name="settings_level_name">World Name</string>
     <string name="settings_level_seed">World Seed</string>
     <string name="settings_saved_toast">Server properties saved successfully</string>
+    <string name="settings_saved_visual">Saved properties!</string>
+    <string name="settings_motd_label">Message of the Day (MOTD)</string>
+    <string name="settings_motd_placeholder">A Minecraft Server</string>
+    <string name="settings_section_gameplay">Gameplay &amp; Difficulty</string>
+    <string name="settings_hardcore">Hardcore Mode (One Life)</string>
+    <string name="settings_allow_nether">Allow Nether Dimension</string>
+    <string name="settings_section_security">Security &amp; Networking</string>
+    <string name="settings_whitelist_only">Whitelist Only (Private Server)</string>
+    <string name="settings_section_world">World &amp; Capacity</string>
+    <string name="settings_sim_distance">Sim Distance</string>
+    <string name="settings_level_seed_label">Level Seed</string>
+    <string name="settings_level_seed_placeholder">Random</string>
+    <string name="settings_tunnel_section_title">Public Multiplayer Tunneling</string>
+    <string name="settings_tunnel_section_desc">Configure zero-port-forwarding public access so players can join your server from outside your local network.</string>
+    <string name="settings_tunnel_autostart">Auto-Start Tunnel on Server Boot</string>
+    <string name="settings_tunnel_provider_label">Tunnel Service Provider</string>
+    <string name="settings_tunnel_provider_bore">bore.pub (Free)</string>
+    <string name="settings_tunnel_provider_playit">Playit.gg</string>
+    <string name="settings_tunnel_provider_custom">Custom Bore</string>
+    <string name="settings_tunnel_playit_key_label">Playit Secret Key (Optional)</string>
+    <string name="settings_tunnel_playit_key_placeholder">Auto-generated if empty</string>
+    <string name="settings_tunnel_playit_hint">Leave blank to claim in browser upon first start, or paste your account agent secret key.</string>
+    <string name="settings_tunnel_relay_host">Relay Host</string>
+    <string name="settings_tunnel_relay_host_placeholder">bore.pub</string>
+    <string name="settings_tunnel_port">Port</string>
 
     <!-- Players Tab -->
     <string name="players_title">Connected Players</string>
     <string name="players_empty">No players currently connected to this server.</string>
+    <string name="players_manage_commands">Manage Player Commands</string>
+    <string name="players_username_label">Player Username</string>
+    <string name="players_whitelist">Whitelist</string>
     <string name="players_op">Make OP</string>
     <string name="players_deop">Remove OP</string>
     <string name="players_kick">Kick</string>
@@ -292,6 +320,15 @@
     <string name="software_loading_versions">Loading available versions…</string>
     <string name="software_btn_confirm_update">Update Server</string>
     <string name="software_btn_confirm_upgrade">Upgrade Server</string>
+    <string name="software_mc_version">MC %s</string>
+    <string name="software_build_chip">Build #%s</string>
+    <string name="software_java_chip">Java %d</string>
+    <string name="software_update_error">Failed to update build. Please check your connection.</string>
+    <string name="software_upgrade_error">Failed to upgrade server version. Please check connection.</string>
+    <string name="software_installed_build">Installed build: #%s</string>
+    <string name="software_current_version">Current: %1$s %2$s</string>
+    <string name="software_version_current_tag">(Current)</string>
+    <string name="software_target_java_notice">Target requires Java %d (Configured automatically)</string>
 
     <!-- World & Map Management -->
     <string name="tab_world">World</string>

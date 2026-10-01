@@ -108,7 +108,7 @@ fun UpgradeVersionModal(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = "Current: ${server.type.displayName} ${server.version}",
+                    text = stringResource(R.string.software_current_version, server.type.displayName, server.version),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Slate400
                 )
@@ -157,7 +157,7 @@ fun UpgradeVersionModal(
                                         ) {
                                             Text(ver, color = if (ver == selectedTargetVersion) EmeraldPrimary else Color.White)
                                             if (ver == server.version) {
-                                                Text("(Current)", color = Slate400, fontSize = 11.sp)
+                                                Text(stringResource(R.string.software_version_current_tag), color = Slate400, fontSize = 11.sp)
                                             }
                                         }
                                     },
@@ -184,7 +184,7 @@ fun UpgradeVersionModal(
                         ) {
                             Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(16.dp))
                             Text(
-                                text = "Target requires Java $targetJava (Configured automatically)",
+                                text = stringResource(R.string.software_target_java_notice, targetJava),
                                 color = DiamondLight,
                                 fontSize = 11.sp
                             )

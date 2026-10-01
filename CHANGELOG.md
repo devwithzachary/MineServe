@@ -29,6 +29,9 @@ All notable changes to the MineServe project will be documented in this file.
 - **MainViewModel Decomposition**: Decoupled monolithic server management by extracting version manifest resolution, build verification, download streaming, and server upgrade workflows into a dedicated `ServerSoftwareManager`.
 - **Encapsulated Rootfs Bootstrap Lifecycle**: Encapsulated the complete PRoot Ubuntu bootstrap state, download pipeline, extraction, and Java installation sequence directly inside `RootfsManager`, simplifying `MainViewModel` into a clean UI state coordinator.
 
+### 🌐 Localization & String Extraction
+- **Resource Extraction**: Extracted hardcoded user-visible text strings across `PlayersTab`, `SettingsTab`, `ServerSoftwareCard`, `UpdateBuildModal`, and `UpgradeVersionModal` into `res/values/strings.xml`, ensuring clean separation of presentation text and establishing full localization readiness for upcoming releases.
+
 ## [1.3.1] - 2026-09-17
 
 ### ⚡ Performance & Core Engine Optimizations

@@ -177,7 +177,7 @@ fun SettingsTab(
                     )
                     props = updated
                     onSaveProperties(updated)
-                    visualSavedMessage = "Saved properties!"
+                    visualSavedMessage = context.getString(R.string.settings_saved_visual)
                     scope.launch {
                         delay(2000)
                         visualSavedMessage = null
@@ -226,14 +226,14 @@ fun SettingsTab(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Message of the Day (MOTD)",
+                    text = stringResource(R.string.settings_motd_label),
                     style = MaterialTheme.typography.labelMedium,
                     color = Slate400
                 )
                 OutlinedTextField(
                     value = motd,
                     onValueChange = { motd = it },
-                    placeholder = { Text("A Minecraft Server", color = Slate400) },
+                    placeholder = { Text(stringResource(R.string.settings_motd_placeholder), color = Slate400) },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = EmeraldPrimary,
                         unfocusedBorderColor = ObsidianCardBorder,
@@ -256,7 +256,7 @@ fun SettingsTab(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Gameplay & Difficulty", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_section_gameplay), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
 
                 // Gamemode
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -311,7 +311,7 @@ fun SettingsTab(
                     onCheckedChange = { pvp = it }
                 )
                 SettingSwitchRow(
-                    title = "Hardcore Mode (One Life)",
+                    title = stringResource(R.string.settings_hardcore),
                     checked = hardcore,
                     onCheckedChange = { hardcore = it }
                 )
@@ -321,7 +321,7 @@ fun SettingsTab(
                     onCheckedChange = { allowFlight = it }
                 )
                 SettingSwitchRow(
-                    title = "Allow Nether Dimension",
+                    title = stringResource(R.string.settings_allow_nether),
                     checked = allowNether,
                     onCheckedChange = { allowNether = it }
                 )
@@ -339,7 +339,7 @@ fun SettingsTab(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Text("Security & Networking", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_section_security), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
 
                 SettingSwitchRow(
                     title = stringResource(R.string.settings_online_mode),
@@ -347,7 +347,7 @@ fun SettingsTab(
                     onCheckedChange = { onlineMode = it }
                 )
                 SettingSwitchRow(
-                    title = "Whitelist Only (Private Server)",
+                    title = stringResource(R.string.settings_whitelist_only),
                     checked = whitelist,
                     onCheckedChange = { whitelist = it }
                 )
@@ -365,7 +365,7 @@ fun SettingsTab(
                 modifier = Modifier.padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("World & Capacity", style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_section_world), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
@@ -398,7 +398,7 @@ fun SettingsTab(
                     OutlinedTextField(
                         value = simulationDistance.toString(),
                         onValueChange = { simulationDistance = it.toIntOrNull() ?: simulationDistance },
-                        label = { Text("Sim Distance") },
+                        label = { Text(stringResource(R.string.settings_sim_distance)) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = EmeraldPrimary,
                             unfocusedBorderColor = ObsidianCardBorder,
@@ -410,8 +410,8 @@ fun SettingsTab(
                     OutlinedTextField(
                         value = levelSeed,
                         onValueChange = { levelSeed = it },
-                        label = { Text("Level Seed") },
-                        placeholder = { Text("Random", color = Slate400) },
+                        label = { Text(stringResource(R.string.settings_level_seed_label)) },
+                        placeholder = { Text(stringResource(R.string.settings_level_seed_placeholder), color = Slate400) },
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = EmeraldPrimary,
                             unfocusedBorderColor = ObsidianCardBorder,
@@ -451,7 +451,7 @@ fun SettingsTab(
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
-                            text = "Public Multiplayer Tunneling",
+                            text = stringResource(R.string.settings_tunnel_section_title),
                             style = MaterialTheme.typography.titleSmall,
                             color = Color.White,
                             fontWeight = FontWeight.Bold
@@ -460,14 +460,14 @@ fun SettingsTab(
                 }
 
                 Text(
-                    text = "Configure zero-port-forwarding public access so players can join your server from outside your local network.",
+                    text = stringResource(R.string.settings_tunnel_section_desc),
                     style = MaterialTheme.typography.bodySmall,
                     color = Slate400,
                     fontSize = 12.sp
                 )
 
                 SettingSwitchRow(
-                    title = "Auto-Start Tunnel on Server Boot",
+                    title = stringResource(R.string.settings_tunnel_autostart),
                     checked = tunnelAutoStart,
                     onCheckedChange = {
                         tunnelAutoStart = it
@@ -478,7 +478,7 @@ fun SettingsTab(
 
                 // Provider Selection
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Tunnel Service Provider", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                    Text(stringResource(R.string.settings_tunnel_provider_label), style = MaterialTheme.typography.labelSmall, color = Slate400)
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -490,7 +490,7 @@ fun SettingsTab(
                                 val updated = server.tunnelConfig.copy(provider = TunnelProvider.BORE)
                                 onSaveServer(server.copy(tunnelConfig = updated))
                             },
-                            label = { Text("bore.pub (Free)") },
+                            label = { Text(stringResource(R.string.settings_tunnel_provider_bore)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = EmeraldPrimary,
                                 selectedLabelColor = Color.Black,
@@ -506,7 +506,7 @@ fun SettingsTab(
                                 val updated = server.tunnelConfig.copy(provider = TunnelProvider.PLAYIT)
                                 onSaveServer(server.copy(tunnelConfig = updated))
                             },
-                            label = { Text("Playit.gg") },
+                            label = { Text(stringResource(R.string.settings_tunnel_provider_playit)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = EmeraldPrimary,
                                 selectedLabelColor = Color.Black,
@@ -522,7 +522,7 @@ fun SettingsTab(
                                 val updated = server.tunnelConfig.copy(provider = TunnelProvider.CUSTOM_BORE)
                                 onSaveServer(server.copy(tunnelConfig = updated))
                             },
-                            label = { Text("Custom Bore") },
+                            label = { Text(stringResource(R.string.settings_tunnel_provider_custom)) },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = EmeraldPrimary,
                                 selectedLabelColor = Color.Black,
@@ -543,8 +543,8 @@ fun SettingsTab(
                                 val updated = server.tunnelConfig.copy(playitSecret = it.trim())
                                 onSaveServer(server.copy(tunnelConfig = updated))
                             },
-                            label = { Text("Playit Secret Key (Optional)") },
-                            placeholder = { Text("Auto-generated if empty", color = Slate400) },
+                            label = { Text(stringResource(R.string.settings_tunnel_playit_key_label)) },
+                            placeholder = { Text(stringResource(R.string.settings_tunnel_playit_key_placeholder), color = Slate400) },
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = EmeraldPrimary,
@@ -555,7 +555,7 @@ fun SettingsTab(
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
-                            text = "Leave blank to claim in browser upon first start, or paste your account agent secret key.",
+                            text = stringResource(R.string.settings_tunnel_playit_hint),
                             style = MaterialTheme.typography.bodySmall,
                             color = Slate400,
                             fontSize = 11.sp
@@ -579,8 +579,8 @@ fun SettingsTab(
                                     )
                                     onSaveServer(server.copy(tunnelConfig = updated))
                                 },
-                                label = { Text("Relay Host") },
-                                placeholder = { Text("bore.pub", color = Slate400) },
+                                label = { Text(stringResource(R.string.settings_tunnel_relay_host)) },
+                                placeholder = { Text(stringResource(R.string.settings_tunnel_relay_host_placeholder), color = Slate400) },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = EmeraldPrimary,
                                     unfocusedBorderColor = ObsidianCardBorder,
@@ -603,7 +603,7 @@ fun SettingsTab(
                                     )
                                     onSaveServer(server.copy(tunnelConfig = updated))
                                 },
-                                label = { Text("Port") },
+                                label = { Text(stringResource(R.string.settings_tunnel_port)) },
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = EmeraldPrimary,
                                     unfocusedBorderColor = ObsidianCardBorder,
