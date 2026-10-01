@@ -31,8 +31,14 @@ All notable changes to the MineServe project will be documented in this file.
 - **MainViewModel Decomposition**: Decoupled monolithic server management by extracting version manifest resolution, build verification, download streaming, and server upgrade workflows into a dedicated `ServerSoftwareManager`.
 - **Encapsulated Rootfs Bootstrap Lifecycle**: Encapsulated the complete PRoot Ubuntu bootstrap state, download pipeline, extraction, and Java installation sequence directly inside `RootfsManager`, simplifying `MainViewModel` into a clean UI state coordinator.
 
+### 🧙 Server Setup Wizard & Port Conflict Detection
+- **First Available Port Pre-population**: The creation wizard automatically scans existing configured servers and suggests the next available network port starting from 25565 (e.g. 25566, 25567), avoiding accidental port collisions out of the box.
+- **Inline Port Conflict Warning**: Displays real-time inline warnings in both Step 3 (Configuration) and Step 4 (Review) when an entered port is already configured on another server, informing users which server shares the port.
+- **Port Input Validation Safeguards**: Validates port bounds (1-65535) with inline error messages and disables the Next button when the port field is empty or out of range.
+- **Settings Port Synchronization**: Synchronizes server configuration files and in-memory server state whenever a server's port is modified via `server.properties` in Settings.
+
 ### 🌐 Localization & String Extraction
-- **Resource Extraction**: Extracted hardcoded user-visible text strings across `PlayersTab`, `SettingsTab`, `ServerSoftwareCard`, `UpdateBuildModal`, and `UpgradeVersionModal` into `res/values/strings.xml`, ensuring clean separation of presentation text and establishing full localization readiness for upcoming releases.
+- **Resource Extraction**: Extracted hardcoded user-visible text strings across `PlayersTab`, `SettingsTab`, `ServerSoftwareCard`, `UpdateBuildModal`, `UpgradeVersionModal`, and wizard configuration steps into `res/values/strings.xml`, ensuring clean separation of presentation text and establishing full localization readiness for upcoming releases.
 
 ## [1.3.1] - 2026-09-17
 

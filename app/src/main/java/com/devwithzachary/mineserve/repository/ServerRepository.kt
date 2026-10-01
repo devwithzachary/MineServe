@@ -249,6 +249,12 @@ class ServerRepository(
         val server = getServer(serverId)
         val propFile = File(serverDir, "server.properties")
         propFile.writeText(properties.toPropertiesFileContent(server?.version))
+        if (server != null && properties.serverPort in 1..65535 && server.port != properties.serverPort) {
+            val updated = server.copy(port = properties.serverPort)
+            val configFile = File(serverDir, "server_config.json")
+            configFile.writeText(json.encodeToString(updated))
+        }
+        loadServers()
     }
 
     suspend fun readRawConfigFile(serverId: String, fileName: String): String = withContext(Dispatchers.IO) {

@@ -129,12 +129,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun refreshData() {
         viewModelScope.launch {
-            rootfsManager.refreshInstalledState()
-            _storageUsedMb.value = rootfsManager.getStorageUsedMb()
             val loaded = serverRepository.loadServers()
             for (s in loaded) {
                 loadServerDetails(s.id)
             }
+            rootfsManager.refreshInstalledState()
+            _storageUsedMb.value = rootfsManager.getStorageUsedMb()
         }
     }
 
@@ -422,9 +422,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 true
             }
             com.devwithzachary.mineserve.model.QuickFixType.CHANGE_PORT -> {
-                val usedPorts = servers.value.map { it.port }.toSet()
-                var candidate = 25565
-                while (usedPorts.contains(candidate)) candidate++
+                val candidate = com.devwithzachary.mineserve.model.findNextAvailablePort(servers.value)
                 updateServer(currentServer.copy(port = candidate))
                 true
             }

@@ -181,5 +181,51 @@ class ServerModelAndPropertiesTest {
         val sorted = versions.sortedMinecraftVersionsDescending()
         assertEquals("1.21.4", sorted.first())
     }
+
+    @Test
+    fun testFindNextAvailablePortWithEmptyList() {
+        val port = com.devwithzachary.mineserve.model.findNextAvailablePort(emptyList())
+        assertEquals(25565, port)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithDefaultPortTaken() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Server 1", type = ServerType.PAPER, version = "1.21.4", port = 25565)
+        )
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers)
+        assertEquals(25566, nextPort)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithSequentialPortsTaken() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Server 1", type = ServerType.PAPER, version = "1.21.4", port = 25565),
+            MinecraftServer(id = "s2", name = "Server 2", type = ServerType.PAPER, version = "1.21.4", port = 25566),
+            MinecraftServer(id = "s3", name = "Server 3", type = ServerType.PAPER, version = "1.21.4", port = 25567)
+        )
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers)
+        assertEquals(25568, nextPort)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithGaps() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Server 1", type = ServerType.PAPER, version = "1.21.4", port = 25566),
+            MinecraftServer(id = "s2", name = "Server 2", type = ServerType.PAPER, version = "1.21.4", port = 25568)
+        )
+        // 25565 is available and should be selected first
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers)
+        assertEquals(25565, nextPort)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithCustomStartingPort() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Bedrock 1", type = ServerType.BEDROCK_GEYSER, version = "1.21.4", port = 19132)
+        )
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers, startingPort = 19132)
+        assertEquals(19133, nextPort)
+    }
 }
 

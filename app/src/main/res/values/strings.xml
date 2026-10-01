@@ -96,6 +96,12 @@
     <string name="wizard_step3_ram_desc">Amount of device RAM dedicated to this server instance when running.</string>
     <string name="wizard_step3_port_label">Server Port</string>
     <string name="wizard_step3_port_desc">Default Minecraft Java Edition port is 25565.</string>
+    <string name="wizard_step3_port_empty_error">Port cannot be empty</string>
+    <string name="wizard_step3_port_range_error">Port must be between 1 and 65535</string>
+    <string name="wizard_port_conflict_title">Port in use by \'%1$s\'</string>
+    <string name="wizard_port_conflict_desc">Port %1$d is currently configured on \'%2$s\'. Only one server can be live and running on this port at one time.</string>
+    <string name="wizard_port_shared_title">Port Shared with \'%1$s\'</string>
+    <string name="wizard_port_shared_desc">Port %1$d is currently in use by \'%2$s\'. You can still create this server, but only one can run at a time.</string>
     <string name="wizard_step4_summary_title">Server Configuration Summary</string>
     <string name="wizard_step4_name">Name</string>
     <string name="wizard_step4_platform">Platform</string>

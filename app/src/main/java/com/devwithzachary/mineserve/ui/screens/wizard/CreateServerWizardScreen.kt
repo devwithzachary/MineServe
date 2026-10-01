@@ -55,6 +55,7 @@ import com.devwithzachary.mineserve.api.MojangApiClient
 import com.devwithzachary.mineserve.api.PaperApiClient
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.findNextAvailablePort
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.Slate400
@@ -92,12 +93,7 @@ fun CreateServerWizardScreen(
 
     // Calculate next available default port starting from 25565
     val defaultUnusedPort = remember(existingServers) {
-        val usedPorts = existingServers.map { it.port }.toSet()
-        var candidate = 25565
-        while (usedPorts.contains(candidate)) {
-            candidate++
-        }
-        candidate
+        findNextAvailablePort(existingServers)
     }
 
     // Form State
@@ -119,7 +115,11 @@ fun CreateServerWizardScreen(
 
     // Check if the currently chosen port is in use by an existing server
     val conflictingServerName = remember(port, existingServers) {
-        existingServers.firstOrNull { it.port == port }?.name
+        if (port in 1..65535) {
+            existingServers.firstOrNull { it.port == port }?.name
+        } else {
+            null
+        }
     }
 
     // Version lists (Newest first)
@@ -261,7 +261,11 @@ fun CreateServerWizardScreen(
                                 }
                             }
                         },
-                        enabled = !isCreating && (step != 4 || eulaAccepted),
+                        enabled = !isCreating && when (step) {
+                            3 -> port in 1..65535
+                            4 -> eulaAccepted
+                            else -> true
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
