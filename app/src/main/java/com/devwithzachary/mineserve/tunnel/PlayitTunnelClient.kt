@@ -6,13 +6,16 @@ import android.util.Log
 import com.devwithzachary.mineserve.engine.PRootConfig
 import com.devwithzachary.mineserve.engine.PRootEngine
 import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.api.MineServeHttpClient
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStreamReader
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.concurrent.atomic.AtomicBoolean
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -352,30 +355,23 @@ class PlayitTunnelClient(
         val downloadUrl = "https://github.com/playit-cloud/playit-agent/releases/download/$PLAYIT_VERSION/playit-linux-$arch"
         Log.i(TAG, "Downloading Playit binary from $downloadUrl to ${targetFile.absolutePath}")
 
-        val url = URL(downloadUrl)
-        val conn = url.openConnection() as HttpURLConnection
-        conn.instanceFollowRedirects = true
-        conn.connectTimeout = 15000
-        conn.readTimeout = 30000
-
-        var currentConn = conn
-        var redirects = 0
-        while (currentConn.responseCode in 300..399 && redirects < 5) {
-            val newUrl = currentConn.getHeaderField("Location") ?: break
-            currentConn.disconnect()
-            currentConn = URL(newUrl).openConnection() as HttpURLConnection
-            currentConn.connectTimeout = 15000
-            currentConn.readTimeout = 30000
-            redirects++
-        }
+        val request = Request.Builder()
+            .url(downloadUrl)
+            .header("User-Agent", MineServeHttpClient.USER_AGENT)
+            .build()
 
         val tempFile = File(targetFile.parentFile, "playit.tmp")
-        currentConn.inputStream.use { input ->
-            FileOutputStream(tempFile).use { output ->
-                input.copyTo(output)
+        MineServeHttpClient.client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Failed to download Playit binary: HTTP ${response.code}")
+            }
+            val body = response.body ?: throw IOException("Empty response downloading Playit")
+            body.byteStream().use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output)
+                }
             }
         }
-        currentConn.disconnect()
 
         if (tempFile.exists() && tempFile.length() > 0L) {
             tempFile.renameTo(targetFile)
@@ -413,23 +409,18 @@ class PlayitTunnelClient(
 
     private suspend fun fetchPlayitTunnels(secretKey: String): PlayitRunData? = withContext(Dispatchers.IO) {
         try {
-            val url = URL("https://api.playit.gg/agents/rundata")
-            val conn = url.openConnection() as HttpURLConnection
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Authorization", "Agent-Key $secretKey")
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.setRequestProperty("User-Agent", "MineServe-Android")
-            conn.connectTimeout = 8000
-            conn.readTimeout = 8000
-            conn.doOutput = true
+            val request = Request.Builder()
+                .url("https://api.playit.gg/agents/rundata")
+                .post("{}".toRequestBody("application/json".toMediaType()))
+                .header("Authorization", "Agent-Key $secretKey")
+                .header("User-Agent", MineServeHttpClient.USER_AGENT)
+                .build()
 
-            conn.outputStream.use { os ->
-                os.write("{}".toByteArray(Charsets.UTF_8))
-            }
-
-            if (conn.responseCode in 200..299) {
-                val responseText = conn.inputStream.bufferedReader().use { it.readText() }
-                return@withContext parsePlayitRunData(responseText)
+            MineServeHttpClient.client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val responseText = response.body?.string() ?: return@withContext null
+                    return@withContext parsePlayitRunData(responseText)
+                }
             }
         } catch (e: Exception) {
             Log.d(TAG, "Playit API query error: ${e.message}")

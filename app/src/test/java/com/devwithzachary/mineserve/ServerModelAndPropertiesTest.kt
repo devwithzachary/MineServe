@@ -147,4 +147,28 @@ class ServerModelAndPropertiesTest {
         assertEquals("normal", parsedFromNumeric.difficulty)
         assertEquals("DEFAULT", parsedFromNumeric.levelType)
     }
+
+    @Test
+    fun testBooleanPropertiesParsingResilience() {
+        val rawConfig = """
+            online-mode=TRUE
+            pvp=False
+            hardcore=1
+            white-list=0
+            allow-flight=True
+            allow-nether=false
+            spawn-monsters=1
+            spawn-animals=0
+        """.trimIndent()
+
+        val parsed = ServerProperties.parse(rawConfig)
+        assertTrue(parsed.onlineMode)
+        assertFalse(parsed.pvp)
+        assertTrue(parsed.hardcore)
+        assertFalse(parsed.whiteList)
+        assertTrue(parsed.allowFlight)
+        assertFalse(parsed.allowNether)
+        assertTrue(parsed.spawnMonsters)
+        assertFalse(parsed.spawnAnimals)
+    }
 }

@@ -156,30 +156,40 @@ data class ServerProperties(
                 maxPlayers = props["max-players"]?.toIntOrNull() ?: 20,
                 gamemode = parsedGamemode,
                 difficulty = parsedDifficulty,
-                pvp = props["pvp"]?.toBooleanStrictOrNull() ?: true,
-                hardcore = props["hardcore"]?.toBooleanStrictOrNull() ?: false,
-                onlineMode = props["online-mode"]?.toBooleanStrictOrNull() ?: true,
-                whiteList = props["white-list"]?.toBooleanStrictOrNull() ?: false,
-                enforceWhitelist = props["enforce-whitelist"]?.toBooleanStrictOrNull() ?: false,
-                enableCommandBlock = props["enable-command-block"]?.toBooleanStrictOrNull() ?: true,
-                spawnMonsters = props["spawn-monsters"]?.toBooleanStrictOrNull() ?: true,
-                spawnAnimals = props["spawn-animals"]?.toBooleanStrictOrNull() ?: true,
-                spawnNpcs = props["spawn-npcs"]?.toBooleanStrictOrNull() ?: true,
-                allowFlight = props["allow-flight"]?.toBooleanStrictOrNull() ?: false,
-                allowNether = props["allow-nether"]?.toBooleanStrictOrNull() ?: true,
+                pvp = parseBoolean(props["pvp"], true),
+                hardcore = parseBoolean(props["hardcore"], false),
+                onlineMode = parseBoolean(props["online-mode"], true),
+                whiteList = parseBoolean(props["white-list"], false),
+                enforceWhitelist = parseBoolean(props["enforce-whitelist"], false),
+                enableCommandBlock = parseBoolean(props["enable-command-block"], true),
+                spawnMonsters = parseBoolean(props["spawn-monsters"], true),
+                spawnAnimals = parseBoolean(props["spawn-animals"], true),
+                spawnNpcs = parseBoolean(props["spawn-npcs"], true),
+                allowFlight = parseBoolean(props["allow-flight"], false),
+                allowNether = parseBoolean(props["allow-nether"], true),
                 viewDistance = props["view-distance"]?.toIntOrNull() ?: 10,
                 simulationDistance = props["simulation-distance"]?.toIntOrNull() ?: 8,
                 levelName = props["level-name"] ?: "world",
                 levelSeed = props["level-seed"] ?: "",
                 levelType = props["level-type"]?.takeIf { it.isNotBlank() } ?: "DEFAULT",
-                forceGamemode = props["force-gamemode"]?.toBooleanStrictOrNull() ?: false,
-                enableRcon = props["enable-rcon"]?.toBooleanStrictOrNull() ?: false,
+                forceGamemode = parseBoolean(props["force-gamemode"], false),
+                enableRcon = parseBoolean(props["enable-rcon"], false),
                 rconPassword = props["rcon.password"] ?: "",
                 rconPort = props["rcon.port"]?.toIntOrNull() ?: 25575,
                 maxWorldSize = props["max-world-size"]?.toIntOrNull() ?: 29999984,
-                syncChunkWrites = props["sync-chunk-writes"]?.toBooleanStrictOrNull() ?: true,
+                syncChunkWrites = parseBoolean(props["sync-chunk-writes"], true),
                 customProperties = customs
             )
+        }
+
+        private fun parseBoolean(value: String?, default: Boolean): Boolean {
+            if (value == null) return default
+            val trimmed = value.trim()
+            return when {
+                trimmed.equals("true", ignoreCase = true) || trimmed == "1" -> true
+                trimmed.equals("false", ignoreCase = true) || trimmed == "0" -> false
+                else -> default
+            }
         }
     }
 }

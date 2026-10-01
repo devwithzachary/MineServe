@@ -33,13 +33,13 @@ import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.service.MineServeForegroundService
+import com.devwithzachary.mineserve.api.MineServeHttpClient
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import com.devwithzachary.mineserve.tunnel.TunnelState
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
+import okhttp3.Request
 import com.devwithzachary.mineserve.model.ServerBuildInfo
 import com.devwithzachary.mineserve.model.determineJavaVersion
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
@@ -499,7 +499,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     tempJar.renameTo(destJar)
                     if (isInstaller) {
                         File(serverDir, "run.sh").delete()
-                        serverDir.listFiles { f -> f.name.startsWith("forge-") && f.name.endsWith(".jar") && !f.name.contains("installer") }?.forEach { it.delete() }
+                        serverDir.listFiles { f -> (f.name.startsWith("forge-") || f.name.startsWith("neoforge-")) && f.name.endsWith(".jar") && !f.name.contains("installer") }?.forEach { it.delete() }
                     }
                 } else {
                     return@withContext false
@@ -543,49 +543,32 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         destFile: File,
         onProgress: (Long, Long) -> Unit
     ) = withContext(Dispatchers.IO) {
-        var currentUrl = fileUrl
-        var redirects = 0
-        while (redirects < 5) {
-            val url = URL(currentUrl)
-            val conn = url.openConnection() as HttpURLConnection
-            conn.instanceFollowRedirects = true
-            conn.connectTimeout = 15000
-            conn.readTimeout = 60000
-            conn.setRequestProperty("User-Agent", "MineServe-Android (https://github.com/devwithzachary/mineserve)")
-            conn.connect()
+        val request = Request.Builder()
+            .url(fileUrl)
+            .header("User-Agent", MineServeHttpClient.USER_AGENT)
+            .build()
 
-            val responseCode = conn.responseCode
-            if (responseCode in 300..399) {
-                val newUrl = conn.getHeaderField("Location")
-                if (!newUrl.isNullOrEmpty()) {
-                    currentUrl = newUrl
-                    redirects++
-                    continue
+        MineServeHttpClient.client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Server returned HTTP ${response.code} for $fileUrl")
+            }
+            val body = response.body ?: throw IOException("Empty response body from $fileUrl")
+            val contentLength = body.contentLength()
+
+            body.byteStream().use { inputStream ->
+                FileOutputStream(destFile).use { outputStream ->
+                    val buffer = ByteArray(65536)
+                    var totalRead = 0L
+                    var read: Int
+
+                    while (inputStream.read(buffer).also { read = it } != -1) {
+                        totalRead += read
+                        outputStream.write(buffer, 0, read)
+                        onProgress(totalRead, contentLength)
+                    }
+                    outputStream.flush()
                 }
             }
-
-            if (responseCode !in 200..299) {
-                throw IOException("Server returned HTTP $responseCode for $currentUrl")
-            }
-
-            val contentLength = conn.contentLength.toLong()
-            val inputStream = conn.inputStream
-            val outputStream = FileOutputStream(destFile)
-
-            val buffer = ByteArray(65536)
-            var totalRead = 0L
-            var read: Int
-
-            while (inputStream.read(buffer).also { read = it } != -1) {
-                totalRead += read
-                outputStream.write(buffer, 0, read)
-                onProgress(totalRead, contentLength)
-            }
-
-            outputStream.flush()
-            outputStream.close()
-            inputStream.close()
-            break
         }
     }
 
