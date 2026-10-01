@@ -42,9 +42,10 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         initialExpanded = true,
         highlights = listOf(
             "In-App Zip Extraction: Extract zip archives directly in the file manager with a single tap or via file options to quickly deploy plugins, mods, configurations, and world saves.",
+            "Minecraft Forge Support: Run Forge servers across classic and modern versions with automatic installer handling and Modrinth mod browser integration.",
+            "Legacy Minecraft Releases Down to 1.0: Full support for historical Minecraft versions from 1.0 to 1.16.5 with automated Java 8 environment setup.",
             "Subfolder & Cleanup Controls: Choose between extracting into the active directory or a custom subfolder, with an option to automatically delete archives after extraction.",
-            "Multi-File Batch Import: Select and import multiple plugin jars, mod files, or server configurations simultaneously using the enhanced Import tool in the file manager.",
-            "Security & File System Protection: Built-in Zip-Slip path traversal prevention and automatic filtering of macOS system metadata files."
+            "Multi-File Batch Import & Security: Select and import multiple files simultaneously with built-in Zip-Slip path traversal protection."
         )
     ),
     ReleaseChangelog(

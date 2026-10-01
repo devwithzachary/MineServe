@@ -66,6 +66,7 @@ fun WizardStep2Software(
         ServerType.BEDROCK_GEYSER,
         ServerType.VANILLA,
         ServerType.FABRIC,
+        ServerType.FORGE,
         ServerType.NEOFORGE,
         ServerType.FOLIA
     )

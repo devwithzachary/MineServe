@@ -4,8 +4,10 @@ import android.content.Context
 import android.util.Log
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
+import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.compareMinecraftVersions
 import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import java.io.File
@@ -200,6 +202,9 @@ class ServerProcessManager private constructor(
                 File(serverDir, "mods").mkdirs()
                 File(serverDir, "world").mkdirs()
 
+                // 3. Ensure legacy files and properties are sanitized for early Minecraft versions
+                sanitizeLegacyFilesAndProperties(server, serverDir)
+
                 val emulator = sessions[server.id]?.emulator ?: TerminalEmulator(cols = 80, rows = 24)
                 emulator.scrollToBottom()
 
@@ -249,6 +254,72 @@ class ServerProcessManager private constructor(
         }
     }
 
+    private fun sanitizeLegacyFilesAndProperties(server: MinecraftServer, serverDir: File) {
+        val isLegacy = compareMinecraftVersions(server.version, "1.13") < 0
+        if (isLegacy) {
+            val legacyFiles = listOf("banned-players.txt", "banned-ips.txt", "ops.txt", "white-list.txt")
+            for (name in legacyFiles) {
+                val f = File(serverDir, name)
+                if (!f.exists()) {
+                    try {
+                        f.createNewFile()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed creating legacy file $name for server ${server.id}", e)
+                    }
+                }
+            }
+        }
+
+        val propFile = File(serverDir, "server.properties")
+        if (propFile.exists()) {
+            try {
+                var content = propFile.readText()
+                var modified = false
+
+                if (isLegacy) {
+                    if (content.contains("level-type=minecraft:normal", ignoreCase = true) ||
+                        content.contains(Regex("(?m)^level-type=\\s*$"))
+                    ) {
+                        content = content.replace(Regex("(?im)^level-type=.*$"), "level-type=DEFAULT")
+                        modified = true
+                    }
+
+                    val gmMap = mapOf("survival" to "0", "creative" to "1", "adventure" to "2", "spectator" to "3")
+                    for ((name, code) in gmMap) {
+                        val regex = Regex("(?im)^gamemode\\s*=\\s*$name\\s*$")
+                        if (regex.containsMatchIn(content)) {
+                            content = content.replace(regex, "gamemode=$code")
+                            modified = true
+                        }
+                    }
+
+                    val diffMap = mapOf("peaceful" to "0", "easy" to "1", "normal" to "2", "hard" to "3")
+                    for ((name, code) in diffMap) {
+                        val regex = Regex("(?im)^difficulty\\s*=\\s*$name\\s*$")
+                        if (regex.containsMatchIn(content)) {
+                            content = content.replace(regex, "difficulty=$code")
+                            modified = true
+                        }
+                    }
+                }
+
+                if (modified) {
+                    propFile.writeText(content)
+                    Log.i(TAG, "Sanitized server.properties for server ${server.id} (${server.version})")
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to sanitize server.properties for server ${server.id}", e)
+            }
+        } else {
+            try {
+                val defaultProps = ServerProperties(motd = server.name, serverPort = server.port)
+                propFile.writeText(defaultProps.toPropertiesFileContent(server.version))
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed creating default server.properties for server ${server.id}", e)
+            }
+        }
+    }
+
     private fun launchMinecraftProcess(
         server: MinecraftServer,
         serverDir: File,
@@ -260,26 +331,42 @@ class ServerProcessManager private constructor(
 
         val javaBin = javaRuntimeManager.getJavaExecutablePath(server.javaVersion)
         val memArg = "-Xms512M -Xmx${server.allocatedRamMb}M"
+        val installerMemArg = "-Xms512M -Xmx${server.allocatedRamMb.coerceAtLeast(1536)}M"
         val deviceTz = try { java.util.TimeZone.getDefault().id.takeIf { it.isNotBlank() } ?: "UTC" } catch (_: Exception) { "UTC" }
         val flags = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -Dmineserve.server_id=${server.id} -Dfile.encoding=UTF-8 -Duser.timezone=$deviceTz -Dterminal.jline=false -Dterminal.ansi=true -Duser.name=mineserve -Duser.home=/home/mineserve"
 
         val launchCommand = buildString {
             append("export TZ='$deviceTz'; ")
             append("export PATH=\"$(dirname $javaBin):\$PATH\"; ")
-            if (server.type == ServerType.NEOFORGE || jarName.contains("installer")) {
-                append("if [ ! -f run.sh ]; then ")
-                append("  echo -e '\\033[33m[MineServe] Running initial NeoForge server installation & library download...\\033[0m'; ")
-                append("  $javaBin -jar $jarName --installServer; ")
+            if (server.type == ServerType.NEOFORGE || server.type == ServerType.FORGE || jarName.contains("installer")) {
+                append("if [ ! -f run.sh ] && [ -z \"\$(ls forge-*.jar 2>/dev/null | grep -v installer)\" ]; then ")
+                append("  echo -e '\\033[33m[MineServe] Running initial ${server.type.displayName} server installation & library download...\\033[0m'; ")
+                append("  echo -e '\\033[36m[MineServe] Unpacking libraries and applying binary patches. This can take 2 to 4 minutes on Android devices. Please wait...\\033[0m'; ")
+                append("  touch installer.jar.log \"${jarName}.log\"; ")
+                append("  tail -n 0 -q -F installer.jar.log \"${jarName}.log\" 2>/dev/null & ")
+                append("  INSTALL_TAIL_PID=\$!; ")
+                append("  $javaBin $installerMemArg -jar $jarName --installServer; ")
+                append("  INSTALL_EXIT=\$?; ")
+                append("  kill \$INSTALL_TAIL_PID 2>/dev/null || true; ")
+                append("  if [ \$INSTALL_EXIT -ne 0 ]; then ")
+                append("    echo -e '\\033[31m[MineServe] ${server.type.displayName} installation failed with exit code '\$INSTALL_EXIT'!\\033[0m'; ")
+                append("    exit \$INSTALL_EXIT; ")
+                append("  fi; ")
+                append("  echo -e '\\033[32m[MineServe] ${server.type.displayName} installation completed successfully!\\033[0m'; ")
                 append("fi; ")
                 append("if [ -f run.sh ]; then ")
                 append("  chmod +x run.sh; ")
-                append("  if [ -f user_jvm_args.txt ]; then ")
-                append("    echo '$memArg $flags' > user_jvm_args.txt; ")
-                append("  fi; ")
-                append("  echo -e '\\033[32m[MineServe] Starting NeoForge Server...\\033[0m'; ")
+                append("  echo '$memArg $flags' > user_jvm_args.txt; ")
+                append("  echo -e '\\033[32m[MineServe] Starting ${server.type.displayName} Server...\\033[0m'; ")
                 append("  exec bash run.sh nogui; ")
                 append("else ")
-                append("  exec $javaBin $memArg $flags -jar $jarName nogui; ")
+                append("  FORGE_JAR=\$(ls -t forge-*.jar 2>/dev/null | grep -v installer | head -n 1); ")
+                append("  if [ -n \"\$FORGE_JAR\" ] && [ -f \"\$FORGE_JAR\" ]; then ")
+                append("    echo -e '\\033[32m[MineServe] Starting Forge Server via '\$FORGE_JAR'...\\033[0m'; ")
+                append("    exec $javaBin $memArg $flags -jar \"\$FORGE_JAR\" nogui; ")
+                append("  else ")
+                append("    exec $javaBin $memArg $flags -jar $jarName nogui; ")
+                append("  fi; ")
                 append("fi")
             } else {
                 append("if [ -f run.sh ]; then ")

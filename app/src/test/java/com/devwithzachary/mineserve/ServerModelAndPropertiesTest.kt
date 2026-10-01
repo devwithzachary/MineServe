@@ -116,4 +116,35 @@ class ServerModelAndPropertiesTest {
         val sorted = versions.sortedMinecraftVersionsDescending()
         assertEquals(listOf("26.2", "1.21.4", "1.21.1", "1.20.1"), sorted)
     }
+
+    @Test
+    fun testLegacyPropertiesFormattingAndNumericParsing() {
+        val modernProps = ServerProperties(
+            gamemode = "survival",
+            difficulty = "normal",
+            levelType = "DEFAULT"
+        )
+
+        // Pre-1.13 (e.g. 1.0, 1.12.2) should format gamemode and difficulty as numbers
+        val legacy10Content = modernProps.toPropertiesFileContent("1.0")
+        assertTrue(legacy10Content.contains("gamemode=0"))
+        assertTrue(legacy10Content.contains("difficulty=2"))
+        assertTrue(legacy10Content.contains("level-type=DEFAULT"))
+        assertFalse(legacy10Content.contains("level-type=minecraft:normal"))
+
+        val legacy112Content = modernProps.toPropertiesFileContent("1.12.2")
+        assertTrue(legacy112Content.contains("gamemode=0"))
+        assertTrue(legacy112Content.contains("difficulty=2"))
+
+        // Modern versions (>= 1.13) should retain named values
+        val modernContent = modernProps.toPropertiesFileContent("1.20.1")
+        assertTrue(modernContent.contains("gamemode=survival"))
+        assertTrue(modernContent.contains("difficulty=normal"))
+
+        // Parsing legacy numeric file content should convert back to canonical names
+        val parsedFromNumeric = ServerProperties.parse(legacy10Content)
+        assertEquals("survival", parsedFromNumeric.gamemode)
+        assertEquals("normal", parsedFromNumeric.difficulty)
+        assertEquals("DEFAULT", parsedFromNumeric.levelType)
+    }
 }

@@ -243,6 +243,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val buildInfo = resolveLatestBuild(type, version)
             val jarUrl = buildInfo?.second
 
+            val isInstaller = type == ServerType.NEOFORGE || type == ServerType.FORGE
             val server = serverRepository.createServer(
                 name = name,
                 type = type,
@@ -250,18 +251,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 port = port,
                 ramMb = ramMb,
                 motd = motd,
-                jarFileName = "server.jar",
+                jarFileName = if (isInstaller) "installer.jar" else "server.jar",
                 serverBuild = buildInfo?.first
             )
 
             val serverDir = serverRepository.getServerDirectory(server.id)
-            val destJar = File(serverDir, "server.jar")
+            val destJar = File(serverDir, server.jarFileName)
 
             if (!jarUrl.isNullOrEmpty()) {
-                onProgress("Downloading server.jar...", 30)
-                downloadFileWithProgress(jarUrl, destJar) { bytesRead, totalBytes ->
+                val isZip = jarUrl.endsWith(".zip", ignoreCase = true)
+                val targetFile = if (isZip) File(serverDir, "server_archive.zip") else destJar
+                onProgress("Downloading ${if (isZip) "archive" else "server.jar"}...", 30)
+                downloadFileWithProgress(jarUrl, targetFile) { bytesRead, totalBytes ->
                     val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 50
-                    onProgress("Downloading server.jar (${bytesRead / (1024 * 1024)} MB)...", percent)
+                    onProgress("Downloading (${bytesRead / (1024 * 1024)} MB)...", percent)
+                }
+                if (isZip) {
+                    onProgress("Unpacking server archive...", 90)
+                    ServerRepository.extractZip(targetFile, serverDir, deleteZipAfter = true)
                 }
             } else {
                 // Create dummy/placeholder jar if URL couldn't be resolved
@@ -307,6 +314,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val url = api.getFabricServerJarUrl(version)
                 Pair("Loader $loader", url)
             }
+            ServerType.FORGE -> {
+                val forgeApi = com.devwithzachary.mineserve.api.ForgeApiClient()
+                val url = forgeApi.getDownloadUrl(version)
+                val build = forgeApi.getPromoVersion(version) ?: "Latest"
+                if (url != null) Pair("Forge $build", url) else null
+            }
             ServerType.NEOFORGE -> {
                 val url = com.devwithzachary.mineserve.api.NeoForgeApiClient().getDownloadUrl(version)
                 Pair("Installer", url)
@@ -332,6 +345,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 ServerType.FABRIC -> {
                     FabricApiClient().getGameVersions()
+                }
+                ServerType.FORGE -> {
+                    com.devwithzachary.mineserve.api.ForgeApiClient().getVersions()
                 }
                 ServerType.NEOFORGE -> {
                     com.devwithzachary.mineserve.api.NeoForgeApiClient().getVersions()
@@ -454,21 +470,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val buildInfo = resolveLatestBuild(server.type, newVersion)
                 ?: return@withContext false
 
-            val destJar = File(serverDir, server.jarFileName.ifBlank { "server.jar" })
-            val tempJar = File(serverDir, "${destJar.name}.tmp")
+            val isInstaller = server.type == ServerType.NEOFORGE || server.type == ServerType.FORGE
+            val isZip = buildInfo.second.endsWith(".zip", ignoreCase = true)
+            val targetJarName = if (isInstaller) "installer.jar" else server.jarFileName.ifBlank { "server.jar" }
+            val destJar = File(serverDir, targetJarName)
+            val tempJar = File(serverDir, "${targetJarName}.tmp")
 
-            onProgress("Downloading ${server.type.displayName} $newVersion...", 30)
-            downloadFileWithProgress(buildInfo.second, tempJar) { bytesRead, totalBytes ->
-                val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
-                val mb = bytesRead / (1024 * 1024)
-                onProgress("Downloading server.jar ($mb MB)...", percent)
-            }
-
-            if (tempJar.exists() && tempJar.length() > 0) {
-                if (destJar.exists()) destJar.delete()
-                tempJar.renameTo(destJar)
+            if (isZip) {
+                val archiveFile = File(serverDir, "server_archive.zip")
+                onProgress("Downloading ${server.type.displayName} $newVersion archive...", 30)
+                downloadFileWithProgress(buildInfo.second, archiveFile) { bytesRead, totalBytes ->
+                    val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
+                    val mb = bytesRead / (1024 * 1024)
+                    onProgress("Downloading archive ($mb MB)...", percent)
+                }
+                onProgress("Unpacking server archive...", 85)
+                ServerRepository.extractZip(archiveFile, serverDir, deleteZipAfter = true)
             } else {
-                return@withContext false
+                onProgress("Downloading ${server.type.displayName} $newVersion...", 30)
+                downloadFileWithProgress(buildInfo.second, tempJar) { bytesRead, totalBytes ->
+                    val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 60
+                    val mb = bytesRead / (1024 * 1024)
+                    onProgress("Downloading server jar ($mb MB)...", percent)
+                }
+
+                if (tempJar.exists() && tempJar.length() > 0) {
+                    if (destJar.exists()) destJar.delete()
+                    tempJar.renameTo(destJar)
+                    if (isInstaller) {
+                        File(serverDir, "run.sh").delete()
+                        serverDir.listFiles { f -> f.name.startsWith("forge-") && f.name.endsWith(".jar") && !f.name.contains("installer") }?.forEach { it.delete() }
+                    }
+                } else {
+                    return@withContext false
+                }
             }
 
             // Update Geyser plugin if Bedrock Cross-Play server
@@ -487,6 +522,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val updated = server.copy(
                 version = newVersion,
                 serverBuild = buildInfo.first,
+                jarFileName = targetJarName,
                 javaVersion = updatedJava
             )
 
@@ -1076,6 +1112,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val isModServer = currentServer?.type?.supportsMods == true && currentServer.type.supportsPlugins != true
                 val loader = when (currentServer?.type) {
                     ServerType.FABRIC -> "fabric"
+                    ServerType.FORGE -> "forge"
                     ServerType.NEOFORGE -> "neoforge"
                     else -> "paper"
                 }

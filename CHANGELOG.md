@@ -4,6 +4,14 @@ All notable changes to the MineServe project will be documented in this file.
 
 ## [1.4.0] - 2026-09-30
 
+### ⚙️ Minecraft Forge & Historical Version Support
+- **Minecraft Forge Server Support**: Added full support for Minecraft Forge across modern and historical releases (from 1.1 up to 1.20+). Automatic installer execution (`--installServer`), dynamic `run.sh` script execution with configured memory arguments (`user_jvm_args.txt`), and classic `forge-*.jar` execution for legacy versions (1.5.2 to 1.16.5).
+- **Forge Installer Heap Allocation & Live Log Streaming**: Allocated dedicated JVM heap memory for the Forge installer binary patcher to prevent garbage collector thrashing under PRoot, and added live log streaming in the console so users can observe real-time download and class patching progress without perceived freezing.
+- **Legacy Minecraft Version Support Down to 1.0**: Added official support for very old Minecraft releases down to version 1.0 (including 1.0.0, 1.1, 1.2.1-1.2.4). Seamless fallback downloads from verified archive mirrors for early versions where Mojang's modern manifest omits server binaries.
+- **Legacy File & Property Compatibility Sanitization**: Automatically creates required legacy authentication and operator files (`banned-players.txt`, `banned-ips.txt`, `ops.txt`, `white-list.txt`) to eliminate startup file-not-found warnings on Minecraft versions before 1.7.5. Automatically sanitizes `server.properties` for legacy servers (`< 1.13`) by converting numeric gamemode/difficulty and enforcing standard `DEFAULT` level types to prevent spawn biome crashes.
+- **Modrinth Mod Search Integration**: Added Forge filter to the Plugins & Mods browser, allowing direct search and installation of Forge-compatible mods from Modrinth.
+- **Legacy Java 8 Environment Mapping**: Configured automated Java 8 runtime selection for all legacy Minecraft versions (1.16.5 down to 1.0), ensuring smooth startup on Android via the built-in OpenJDK 8 environment.
+
 ### 📁 File Manager & Archive Extraction
 - **In-App Zip Extraction**: Added ability to extract zip archives directly inside the file manager. Users can tap any `.zip` archive or select "Unzip / Extract" from the file options menu to unpack plugins, mods, configurations, or world files without needing external file managers.
 - **Flexible Extraction Targets & Subfolder Routing**: Supports extracting archives directly into the active directory (ideal for quickly unpacking collections of plugin or mod jars) or extracting into a customizable dedicated subfolder.

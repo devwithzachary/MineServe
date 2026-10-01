@@ -153,6 +153,9 @@ fun CreateServerWizardScreen(
                 ServerType.FABRIC -> {
                     FabricApiClient().getGameVersions()
                 }
+                ServerType.FORGE -> {
+                    com.devwithzachary.mineserve.api.ForgeApiClient().getVersions()
+                }
                 ServerType.NEOFORGE -> {
                     com.devwithzachary.mineserve.api.NeoForgeApiClient().getVersions()
                 }

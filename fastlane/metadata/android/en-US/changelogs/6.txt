@@ -1,4 +1,5 @@
-• File Manager Unzip: Extract zip archives directly in the app to quickly add bundles of plugins, mods, or world data
-• Flexible Extraction: Extract files into current folders or dedicated subfolders with optional post-unzip archive deletion
-• Multi-File Import: Select and import multiple plugins, mods, and config files at once
-• Security & Reliability: Built-in Zip-Slip directory traversal safeguards and automatic macOS metadata filtering
+• File Manager Unzip: Extract zip files directly in the app to quickly deploy plugins, mods, and worlds
+• Minecraft Forge Support: Create and run Forge modded servers with automatic installer execution
+• Legacy Minecraft Down to 1.0: Full support for classic Minecraft releases down to 1.0 with Java 8
+• Multi-File Batch Import: Select and import multiple plugin and mod jars simultaneously
+• Security & Reliability: Built-in Zip-Slip directory traversal safeguards and cleanup options

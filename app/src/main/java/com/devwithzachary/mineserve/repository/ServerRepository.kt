@@ -175,7 +175,15 @@ class ServerRepository(
         // Save initial server.properties
         val properties = ServerProperties(motd = motd, serverPort = port)
         val propFile = File(serverDir, "server.properties")
-        propFile.writeText(properties.toPropertiesFileContent())
+        propFile.writeText(properties.toPropertiesFileContent(version))
+
+        // Pre-create legacy auth and operator list files for Minecraft releases pre-1.7.5
+        listOf("banned-players.txt", "banned-ips.txt", "ops.txt", "white-list.txt").forEach { name ->
+            val f = File(serverDir, name)
+            if (!f.exists()) {
+                try { f.createNewFile() } catch (_: Exception) {}
+            }
+        }
 
         // Save eula.txt
         val eulaFile = File(serverDir, "eula.txt")
@@ -188,6 +196,20 @@ class ServerRepository(
 
         loadServers()
         server
+    }
+
+    fun getServer(serverId: String): MinecraftServer? {
+        _servers.value.find { it.id == serverId }?.let { return it }
+        val serverDir = File(serversDir, serverId)
+        val configFile = File(serverDir, "server_config.json")
+        if (configFile.exists()) {
+            return try {
+                json.decodeFromString<MinecraftServer>(configFile.readText())
+            } catch (_: Exception) {
+                null
+            }
+        }
+        return null
     }
 
     suspend fun updateServer(server: MinecraftServer) = withContext(Dispatchers.IO) {
@@ -224,8 +246,9 @@ class ServerRepository(
 
     suspend fun saveServerProperties(serverId: String, properties: ServerProperties) = withContext(Dispatchers.IO) {
         val serverDir = File(serversDir, serverId)
+        val server = getServer(serverId)
         val propFile = File(serverDir, "server.properties")
-        propFile.writeText(properties.toPropertiesFileContent())
+        propFile.writeText(properties.toPropertiesFileContent(server?.version))
     }
 
     suspend fun readRawConfigFile(serverId: String, fileName: String): String = withContext(Dispatchers.IO) {
