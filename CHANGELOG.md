@@ -25,6 +25,10 @@ All notable changes to the MineServe project will be documented in this file.
 - **Resilient Property Boolean Parsing**: Enhanced `ServerProperties` parsing to safely handle case variations (`True`, `TRUE`) and numeric flags (`1`/`0`) without reverting to defaults.
 - **Native Subprocess Memory Safety**: Fixed native memory and JNI string reference cleanup in `pty.cpp` if `fork()` fails during process creation.
 
+### 🏗️ Architecture & ViewModel Modularization
+- **MainViewModel Decomposition**: Decoupled monolithic server management by extracting version manifest resolution, build verification, download streaming, and server upgrade workflows into a dedicated `ServerSoftwareManager`.
+- **Encapsulated Rootfs Bootstrap Lifecycle**: Encapsulated the complete PRoot Ubuntu bootstrap state, download pipeline, extraction, and Java installation sequence directly inside `RootfsManager`, simplifying `MainViewModel` into a clean UI state coordinator.
+
 ## [1.3.1] - 2026-09-17
 
 ### ⚡ Performance & Core Engine Optimizations

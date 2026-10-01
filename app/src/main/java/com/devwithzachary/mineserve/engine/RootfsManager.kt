@@ -14,6 +14,9 @@ import java.util.zip.GZIPInputStream
 import okhttp3.Request
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
@@ -45,7 +48,44 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
     private val prefs = context.getSharedPreferences("mineserve_rootfs_prefs", Context.MODE_PRIVATE)
     val rootfsDir: File get() = pRootEngine.rootfsDir
 
+    private val _setupState = MutableStateFlow<RootfsSetupState>(RootfsSetupState.Idle)
+    val setupState: StateFlow<RootfsSetupState> = _setupState.asStateFlow()
+
+    private val _isInstalled = MutableStateFlow(isInstalled())
+    val isInstalledState: StateFlow<Boolean> = _isInstalled.asStateFlow()
+
     fun isInstalled(): Boolean = pRootEngine.isRootfsInstalled()
+
+    fun refreshInstalledState() {
+        _isInstalled.value = isInstalled()
+    }
+
+    suspend fun performRootfsSetup(
+        javaRuntimeManager: JavaRuntimeManager,
+        onSuccess: suspend () -> Unit = {}
+    ) {
+        _isInstalled.value = false
+        setupRootfs().collect { state ->
+            _setupState.value = state
+            if (state is RootfsSetupState.Success) {
+                _isInstalled.value = true
+                javaRuntimeManager.installJava(21).collect { javaState ->
+                    when (javaState) {
+                        is JavaInstallState.Success -> {
+                            Log.d(TAG, "Default Java 21 installed successfully")
+                        }
+                        is JavaInstallState.Error -> {
+                            Log.e(TAG, "Java 21 install failed: ${javaState.errorMessage}")
+                        }
+                        else -> {}
+                    }
+                }
+                onSuccess()
+            } else if (state is RootfsSetupState.Error) {
+                _isInstalled.value = false
+            }
+        }
+    }
 
     private fun getArchRootfsUrls(): List<String> {
         val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"

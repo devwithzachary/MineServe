@@ -45,7 +45,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Minecraft Forge Support: Run Forge servers across classic and modern versions with automatic installer handling and Modrinth mod browser integration.",
             "Legacy Minecraft Releases Down to 1.0: Full support for historical Minecraft versions from 1.0 to 1.16.5 with automated Java 8 environment setup.",
             "Subfolder & Cleanup Controls: Choose between extracting into the active directory or a custom subfolder, with an option to automatically delete archives after extraction.",
-            "Multi-File Batch Import & Security: Select and import multiple files simultaneously with built-in Zip-Slip protection, unified OkHttp networking, and engine safeguards."
+            "Multi-File Batch Import & Reliability: Select and import multiple files simultaneously with built-in Zip-Slip protection, unified OkHttp networking, modularized engine managers, and safeguards."
         )
     ),
     ReleaseChangelog(

@@ -171,4 +171,15 @@ class ServerModelAndPropertiesTest {
         assertTrue(parsed.spawnMonsters)
         assertFalse(parsed.spawnAnimals)
     }
+
+    @Test
+    fun testDefaultMinecraftFallbackVersions() {
+        val versions = com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+        assertTrue(versions.isNotEmpty())
+        assertTrue(versions.contains("1.21.4"))
+        assertTrue(versions.contains("1.16.5"))
+        val sorted = versions.sortedMinecraftVersionsDescending()
+        assertEquals("1.21.4", sorted.first())
+    }
 }
+
