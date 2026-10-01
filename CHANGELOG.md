@@ -20,7 +20,7 @@ All notable changes to the MineServe project will be documented in this file.
 - **Batch File Import**: Upgraded the file manager Import action to support multi-file selection, enabling users to import multiple plugins, mods, or configs in a single operation.
 
 ### 🛡️ Reliability & Engine Safeguards
-- **OkHttp Migration & Safe Resource Streams**: Migrated server jar downloads in `MainViewModel`, Ubuntu filesystem downloads in `RootfsManager`, and binary downloads in `PlayitTunnelClient` to use OkHttp (`MineServeHttpClient`) with scoped `.use { ... }` blocks, eliminating socket and file descriptor leaks on network interruptions.
+- **Unified OkHttp Networking & Leaked Stream Elimination**: Standardized all HTTP requests throughout the entire app onto `MineServeHttpClient.client` and unified request construction helpers. Completely eliminated legacy `HttpURLConnection` and manual redirect loops across `MainViewModel`, `RootfsManager`, and `PlayitTunnelClient`. Centralized all external requests with HTTP/2 connection pooling, automatic redirect handling, and scoped `.use { ... }` blocks to prevent socket exhaustion and file descriptor leaks on interrupted transfers.
 - **NeoForge Upgrade Jar Cleanup**: Fixed server version upgrade logic to delete previous `neoforge-*.jar` files alongside Forge jars, preventing obsolete binaries from executing when upgrading NeoForge servers.
 - **Resilient Property Boolean Parsing**: Enhanced `ServerProperties` parsing to safely handle case variations (`True`, `TRUE`) and numeric flags (`1`/`0`) without reverting to defaults.
 - **Native Subprocess Memory Safety**: Fixed native memory and JNI string reference cleanup in `pty.cpp` if `fork()` fails during process creation.

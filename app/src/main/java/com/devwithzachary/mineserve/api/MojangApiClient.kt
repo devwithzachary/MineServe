@@ -1,6 +1,7 @@
 package com.devwithzachary.mineserve.api
 
 import android.util.Log
+import com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,8 +10,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 class MojangApiClient(
     private val client: OkHttpClient = MineServeHttpClient.client,
@@ -23,10 +22,7 @@ class MojangApiClient(
 
     suspend fun getReleaseVersions(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url(MANIFEST_URL)
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(MANIFEST_URL)
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext emptyList()
                 val body = resp.body?.string() ?: return@withContext emptyList()
@@ -42,16 +38,13 @@ class MojangApiClient(
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch Mojang release versions", e)
-            return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+            return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
         }
     }
 
     suspend fun getServerJarDownloadUrl(version: String): String? = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url(MANIFEST_URL)
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(MANIFEST_URL)
             val versionUrl = client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@use null
                 val body = resp.body?.string() ?: return@use null
@@ -67,7 +60,7 @@ class MojangApiClient(
             }
 
             if (!versionUrl.isNullOrBlank()) {
-                val detailReq = Request.Builder().url(versionUrl).header("User-Agent", MineServeHttpClient.USER_AGENT).build()
+                val detailReq = MineServeHttpClient.newGetRequest(versionUrl)
                 val officialUrl = client.newCall(detailReq).execute().use { detailResp ->
                     if (!detailResp.isSuccessful) return@use null
                     val detailBody = detailResp.body?.string() ?: return@use null

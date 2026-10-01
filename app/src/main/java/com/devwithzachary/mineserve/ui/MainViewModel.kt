@@ -543,12 +543,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         destFile: File,
         onProgress: (Long, Long) -> Unit
     ) = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url(fileUrl)
-            .header("User-Agent", MineServeHttpClient.USER_AGENT)
-            .build()
+        val request = MineServeHttpClient.newGetRequest(fileUrl)
 
-        MineServeHttpClient.client.newCall(request).execute().use { response ->
+        MineServeHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("Server returned HTTP ${response.code} for $fileUrl")
             }

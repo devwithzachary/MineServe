@@ -91,10 +91,8 @@ class ForgeApiClient(
             // Test candidate URLs with HEAD request to guarantee a reachable artifact
             for (url in candidates) {
                 try {
-                    val req = Request.Builder()
-                        .url(url)
+                    val req = MineServeHttpClient.newRequestBuilder(url)
                         .head()
-                        .header("User-Agent", MineServeHttpClient.USER_AGENT)
                         .build()
                     client.newCall(req).execute().use { res ->
                         if (res.isSuccessful) {
@@ -115,10 +113,7 @@ class ForgeApiClient(
     private suspend fun fetchPromotions(): Map<String, String> = withContext(Dispatchers.IO) {
         cachedPromotions?.let { return@withContext it }
         try {
-            val req = Request.Builder()
-                .url(PROMOTIONS_URL)
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(PROMOTIONS_URL)
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext emptyMap()
                 val body = resp.body?.string() ?: return@withContext emptyMap()

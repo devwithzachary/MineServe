@@ -140,12 +140,9 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             for (downloadUrl in urlsToTry) {
                 try {
                     emitLog("Connecting to Ubuntu mirror: $downloadUrl...")
-                    val request = Request.Builder()
-                        .url(downloadUrl)
-                        .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                        .build()
+                    val request = MineServeHttpClient.newGetRequest(downloadUrl)
 
-                    MineServeHttpClient.client.newCall(request).execute().use { response ->
+                    MineServeHttpClient.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             val body = response.body ?: throw IOException("Empty response body from $downloadUrl")
                             val fileLength = body.contentLength()

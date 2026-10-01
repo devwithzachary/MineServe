@@ -18,14 +18,11 @@ class GitHubUpdateChecker(
     companion object {
         private const val TAG = "GitHubUpdateChecker"
         private const val RELEASES_API_URL = "https://api.github.com/repos/devwithzachary/mineserve/releases/latest"
-        private const val USER_AGENT = MineServeHttpClient.USER_AGENT
     }
 
     suspend fun checkLatestRelease(currentVersionName: String): UpdateCheckResult = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url(RELEASES_API_URL)
-                .header("User-Agent", USER_AGENT)
+            val req = MineServeHttpClient.newRequestBuilder(RELEASES_API_URL)
                 .header("Accept", "application/vnd.github.v3+json")
                 .build()
 

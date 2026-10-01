@@ -85,3 +85,8 @@ fun List<String>.sortedMinecraftVersionsDescending(): List<String> {
     return this.distinct().sortedWith { a, b -> compareMinecraftVersions(b, a) }
 }
 
+val DEFAULT_MINECRAFT_FALLBACK_VERSIONS: List<String> = listOf(
+    "1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.18.2", "1.16.5"
+)
+
+

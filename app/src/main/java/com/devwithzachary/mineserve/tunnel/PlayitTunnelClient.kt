@@ -355,13 +355,10 @@ class PlayitTunnelClient(
         val downloadUrl = "https://github.com/playit-cloud/playit-agent/releases/download/$PLAYIT_VERSION/playit-linux-$arch"
         Log.i(TAG, "Downloading Playit binary from $downloadUrl to ${targetFile.absolutePath}")
 
-        val request = Request.Builder()
-            .url(downloadUrl)
-            .header("User-Agent", MineServeHttpClient.USER_AGENT)
-            .build()
+        val request = MineServeHttpClient.newGetRequest(downloadUrl)
 
         val tempFile = File(targetFile.parentFile, "playit.tmp")
-        MineServeHttpClient.client.newCall(request).execute().use { response ->
+        MineServeHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
                 throw IOException("Failed to download Playit binary: HTTP ${response.code}")
             }
@@ -409,14 +406,12 @@ class PlayitTunnelClient(
 
     private suspend fun fetchPlayitTunnels(secretKey: String): PlayitRunData? = withContext(Dispatchers.IO) {
         try {
-            val request = Request.Builder()
-                .url("https://api.playit.gg/agents/rundata")
+            val request = MineServeHttpClient.newRequestBuilder("https://api.playit.gg/agents/rundata")
                 .post("{}".toRequestBody("application/json".toMediaType()))
                 .header("Authorization", "Agent-Key $secretKey")
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
                 .build()
 
-            MineServeHttpClient.client.newCall(request).execute().use { response ->
+            MineServeHttpClient.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val responseText = response.body?.string() ?: return@withContext null
                     return@withContext parsePlayitRunData(responseText)
