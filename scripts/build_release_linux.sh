@@ -103,9 +103,16 @@ docker run --rm \
     "$DOCKER_IMAGE" \
     bash -c '
         set -e
-        echo "🔧 Installing build prerequisites (make, gawk)..."
+        echo "🔧 Installing build prerequisites (make, gawk, curl, git)..."
         apt-get update -qq
-        apt-get install -y -qq make gawk >/dev/null
+        apt-get install -y -qq make gawk curl git >/dev/null
+
+        if ! command -v cargo >/dev/null 2>&1; then
+            echo "🦀 Installing Rust & Cargo via rustup..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal >/dev/null
+            export PATH="$HOME/.cargo/bin:$PATH"
+            rustup target add aarch64-linux-android x86_64-linux-android >/dev/null
+        fi
 
         if [ ! -d "/opt/android-sdk/ndk/28.2.13676358" ]; then
             echo "⬇️  Installing Android NDK 28.2.13676358 (cached on host)..."

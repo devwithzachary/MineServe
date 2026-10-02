@@ -1,5 +1,5 @@
-• File Manager Unzip: Extract zip files directly in the app to quickly deploy plugins, mods, and worlds
-• Minecraft Forge Support: Create and run Forge modded servers with automatic installer execution
-• Legacy Minecraft Down to 1.0: Full support for classic Minecraft releases down to 1.0 with Java 8
-• Multi-File Batch Import: Select and import multiple plugin and mod jars simultaneously
-• Security & Reliability: Built-in Zip-Slip directory traversal safeguards and cleanup options
+• Fast Playit Tunneling: Run Playit natively outside PRoot to cut 30+ ms of tunnel latency
+• File Manager Unzip: Extract zip files directly in the app for plugins, mods, and worlds
+• Minecraft Forge Support: Run Forge modded servers with automatic installer execution
+• Legacy Minecraft Down to 1.0: Support classic Minecraft releases with Java 8
+• Visual Player Management: Full player controls, whitelist, bans, and 3D skin avatars

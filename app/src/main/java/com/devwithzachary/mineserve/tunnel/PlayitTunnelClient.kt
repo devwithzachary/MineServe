@@ -51,7 +51,6 @@ class PlayitTunnelClient(
         }
     }
 
-    private val pRootEngine = PRootEngine(context)
     private var tunnelJob: Job? = null
     private var process: Process? = null
     private val isExplicitlyStopped = AtomicBoolean(false)
@@ -86,51 +85,106 @@ class PlayitTunnelClient(
 
     private suspend fun runPlayitLoop(parentScope: CoroutineScope) {
         val effectiveLocalPort = if (localPort in 1..65535) localPort else 25565
-        val usrLocalBin = File(pRootEngine.rootfsDir, "usr/local/bin").apply { mkdirs() }
-        val playitBin = File(usrLocalBin, "playit")
+        val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
+        val bundledPlayit = File(nativeLibDir, "libplayit.so")
+        val isNativeExecutableAvailable = bundledPlayit.exists() && bundledPlayit.canExecute()
+
+        val pRootEngine = if (!isNativeExecutableAvailable) PRootEngine(context) else null
+        val rootfsUsrLocalBin = if (!isNativeExecutableAvailable) File(pRootEngine!!.rootfsDir, "usr/local/bin").apply { mkdirs() } else null
+        val rootfsPlayitBin = if (!isNativeExecutableAvailable) File(rootfsUsrLocalBin!!, "playit") else null
+
+        val configDir = File(context.filesDir, ".config/playit_gg").apply { mkdirs() }
+        val configFile = File(configDir, "playit.toml")
+
+        // Auto-migrate secret config from old rootfs if native config does not exist
+        if (!configFile.exists() || configFile.length() == 0L) {
+            val candidateOldConfigs = listOf(
+                File(context.filesDir, "ubuntu_rootfs/root/.config/playit_gg/playit.toml"),
+                File(context.filesDir, "ubuntu_rootfs/root/.config/playit/playit.toml"),
+                File(context.filesDir, "ubuntu_rootfs/root/playit.toml"),
+                File(context.filesDir, "ubuntu_rootfs/etc/playit/playit.toml")
+            )
+            for (candidate in candidateOldConfigs) {
+                if (candidate.exists() && candidate.isFile && candidate.length() > 0L) {
+                    try {
+                        candidate.copyTo(configFile, overwrite = true)
+                        Log.i(TAG, "Migrated Playit configuration from ${candidate.absolutePath} to ${configFile.absolutePath}")
+                        break
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Could not migrate Playit config from rootfs: ${e.message}")
+                    }
+                }
+            }
+        }
 
         while (parentScope.isActive && !isExplicitlyStopped.get()) {
             try {
                 if (isExplicitlyStopped.get()) break
                 onStateChanged(TunnelState.Connecting("Initializing Playit.gg agent..."))
 
-                // 1. Ensure binary exists inside rootfs
-                if (!playitBin.exists() || playitBin.length() == 0L || !playitBin.canExecute()) {
-                    onStateChanged(TunnelState.Connecting("Downloading Playit.gg agent..."))
-                    downloadBinary(playitBin)
-                }
-                playitBin.setExecutable(true, false)
+                val pb: ProcessBuilder
+                if (isNativeExecutableAvailable) {
+                    // Prepare native process command from nativeLibraryDir outside PRoot
+                    val cmd = mutableListOf(bundledPlayit.absolutePath, "--stdout")
+                    if (secret.isNotBlank()) {
+                        cmd.add("--secret")
+                        cmd.add(secret.trim())
+                    } else {
+                        cmd.add("--secret_path")
+                        cmd.add(configFile.absolutePath)
+                    }
+                    cmd.add("start")
 
-                // 2. Prepare PRoot command
-                val innerCmd = mutableListOf("/usr/local/bin/playit", "--stdout")
-                if (secret.isNotBlank()) {
-                    innerCmd.add("--secret")
-                    innerCmd.add(secret.trim())
-                }
-                innerCmd.add("start")
+                    Log.i(TAG, "Starting native Playit process: ${cmd.joinToString(" ")}")
+                    onStateChanged(TunnelState.Connecting("Connecting to Playit.gg network..."))
 
-                val prootCmd = pRootEngine.buildPRootCommand(
-                    command = innerCmd,
-                    config = PRootConfig(
-                        rootfsDir = pRootEngine.rootfsDir,
-                        tmpDir = pRootEngine.tmpDir,
-                        workingDir = "/root"
-                    ),
-                    loginUser = "root"
-                )
+                    pb = ProcessBuilder(cmd)
+                    pb.directory(context.filesDir)
+                    pb.environment()["HOME"] = context.filesDir.absolutePath
+                    pb.environment()["TMPDIR"] = context.cacheDir.absolutePath
+                    if (secret.isNotBlank()) {
+                        pb.environment()["PLAYIT_SECRET"] = secret.trim()
+                    }
+                } else {
+                    // Fallback to PRoot when bundled native library is not available
+                    val playitBin = rootfsPlayitBin!!
+                    if (!playitBin.exists() || playitBin.length() == 0L || !playitBin.canExecute()) {
+                        onStateChanged(TunnelState.Connecting("Downloading Playit.gg agent..."))
+                        downloadBinary(playitBin)
+                    }
+                    playitBin.setExecutable(true, false)
 
-                Log.i(TAG, "Starting Playit PRoot process: ${prootCmd.joinToString(" ")}")
-                onStateChanged(TunnelState.Connecting("Connecting to Playit.gg network..."))
+                    val innerCmd = mutableListOf("/usr/local/bin/playit", "--stdout")
+                    if (secret.isNotBlank()) {
+                        innerCmd.add("--secret")
+                        innerCmd.add(secret.trim())
+                    }
+                    innerCmd.add("start")
 
-                val pb = ProcessBuilder(prootCmd)
-                pb.directory(pRootEngine.tmpDir)
-                val envMap = pRootEngine.getEnvironmentVariables("root")
-                for ((k, v) in envMap) {
-                    pb.environment()[k] = v
+                    val prootCmd = pRootEngine!!.buildPRootCommand(
+                        command = innerCmd,
+                        config = PRootConfig(
+                            rootfsDir = pRootEngine.rootfsDir,
+                            tmpDir = pRootEngine.tmpDir,
+                            workingDir = "/root"
+                        ),
+                        loginUser = "root"
+                    )
+
+                    Log.i(TAG, "Starting fallback PRoot Playit process: ${prootCmd.joinToString(" ")}")
+                    onStateChanged(TunnelState.Connecting("Connecting to Playit.gg network..."))
+
+                    pb = ProcessBuilder(prootCmd)
+                    pb.directory(pRootEngine.tmpDir)
+                    val envMap = pRootEngine.getEnvironmentVariables("root")
+                    for ((k, v) in envMap) {
+                        pb.environment()[k] = v
+                    }
+                    if (secret.isNotBlank()) {
+                        pb.environment()["PLAYIT_SECRET"] = secret.trim()
+                    }
                 }
-                if (secret.isNotBlank()) {
-                    pb.environment()["PLAYIT_SECRET"] = secret.trim()
-                }
+
                 pb.redirectErrorStream(true)
 
                 val proc = pb.start()
@@ -371,7 +425,11 @@ class PlayitTunnelClient(
         }
 
         if (tempFile.exists() && tempFile.length() > 0L) {
-            tempFile.renameTo(targetFile)
+            targetFile.delete()
+            if (!tempFile.renameTo(targetFile)) {
+                tempFile.copyTo(targetFile, overwrite = true)
+                tempFile.delete()
+            }
             targetFile.setExecutable(true, false)
             Log.i(TAG, "Playit binary downloaded successfully (${targetFile.length()} bytes)")
         } else {
@@ -383,10 +441,13 @@ class PlayitTunnelClient(
         if (secret.isNotBlank()) return secret.trim()
 
         val paths = listOf(
-            File(pRootEngine.rootfsDir, "root/.config/playit_gg/playit.toml"),
-            File(pRootEngine.rootfsDir, "root/.config/playit/playit.toml"),
-            File(pRootEngine.rootfsDir, "root/playit.toml"),
-            File(pRootEngine.rootfsDir, "etc/playit/playit.toml")
+            File(context.filesDir, ".config/playit_gg/playit.toml"),
+            File(context.filesDir, "playit.toml"),
+            File(context.filesDir, "../.config/playit_gg/playit.toml"),
+            File(context.filesDir, "ubuntu_rootfs/root/.config/playit_gg/playit.toml"),
+            File(context.filesDir, "ubuntu_rootfs/root/.config/playit/playit.toml"),
+            File(context.filesDir, "ubuntu_rootfs/root/playit.toml"),
+            File(context.filesDir, "ubuntu_rootfs/etc/playit/playit.toml")
         )
 
         for (file in paths) {
