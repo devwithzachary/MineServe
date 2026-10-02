@@ -19,9 +19,10 @@ All notable changes to the MineServe project will be documented in this file.
 - **Security & Zip-Slip Protection**: Implemented strict canonical path verification to prevent zip directory traversal vulnerabilities, alongside automatic filtering of macOS metadata artifacts (`__MACOSX` resource forks and `.DS_Store`).
 - **Batch File Import**: Upgraded the file manager Import action to support multi-file selection, enabling users to import multiple plugins, mods, or configs in a single operation.
 
-### ⚡ High-Performance Native Playit.gg Tunneling
-- **Native Android Process Execution**: Migrated the Playit.gg tunneling agent from running inside the PRoot Ubuntu emulation container to running directly as a native Android process (`ProcessBuilder`). Eliminates `ptrace(PTRACE_SYSCALL)` overhead on every network socket call (`epoll_wait`, `recvmsg`, `sendto`), reducing public tunnel latency by 30+ ms and eliminating packet jitter for smoother multiplayer gameplay.
-- **Zero-Isolation Loopback Routing**: The native Playit agent and PRoot Ubuntu container communicate directly over the Android Linux kernel loopback interface (`127.0.0.1:<port>`), achieving sub-millisecond local proxy transfer with zero network isolation overhead.
+### ⚡ High-Performance Native Tunneling (Playit.gg & Bore)
+- **Native Android Process Execution**: Migrated both Playit.gg and Bore tunneling agents to run directly as native Android processes (`ProcessBuilder`). Eliminates `ptrace(PTRACE_SYSCALL)` and user-space emulation overhead on every network socket call (`epoll_wait`, `recvmsg`, `sendto`), reducing public tunnel latency by 30+ ms and eliminating packet jitter for smoother multiplayer gameplay.
+- **Native Bore Rust Engine**: Bundles and compiles `bore` natively for 64-bit Android (`aarch64-linux-android` and `x86_64-linux-android`) using Tokio async I/O. Automatically executes `libbore.so` from native library storage with automatic connection parsing, while retaining seamless fallback to pure Kotlin sockets if the native binary is unavailable or when custom control ports are configured.
+- **Zero-Isolation Loopback Routing**: The native tunnel agents and PRoot Ubuntu container communicate directly over the Android Linux kernel loopback interface (`127.0.0.1:<port>`), achieving sub-millisecond local proxy transfer with zero network isolation overhead.
 - **Seamless Tunnel & Secret Migration**: Automatically detects and migrates existing Playit binaries and secret configurations (`playit.toml`) from legacy PRoot rootfs directories to native app storage, preserving claimed public domains and credentials without requiring re-claim.
 
 ### 🛡️ Reliability & Engine Safeguards

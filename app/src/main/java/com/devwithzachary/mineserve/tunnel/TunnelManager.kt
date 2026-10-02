@@ -80,6 +80,7 @@ class TunnelManager private constructor(
 
                 lateinit var client: BoreTunnelClient
                 client = BoreTunnelClient(
+                    context = context,
                     relayHost = relayHost,
                     relayPort = relayPort,
                     localPort = server.port,

@@ -297,7 +297,34 @@ for ABI in "${ABIS[@]}"; do
         fi
     fi
 
-    # 7. Strip and copy to app/src/main/jniLibs/<abi>/
+    # 7. Build libbore.so from source (arm64-v8a and x86_64 only)
+    if [ "$ABI" = "arm64-v8a" ] || [ "$ABI" = "x86_64" ]; then
+        if command -v cargo >/dev/null 2>&1; then
+            echo " -> Building libbore.so with Cargo ($TARGET_TRIPLE)..."
+            BORE_SRC="$BUILD_WORK_DIR/bore_src"
+            if [ ! -d "$BORE_SRC" ]; then
+                git clone --depth 1 --branch v0.6.0 https://github.com/ekzhang/bore.git "$BORE_SRC"
+            fi
+
+            ENV_TRIPLE_NAME=$(echo "$TARGET_TRIPLE" | tr '-' '_')
+            export CC_${ENV_TRIPLE_NAME}="$CC"
+            export AR_${ENV_TRIPLE_NAME}="$TOOLCHAIN_BIN/llvm-ar"
+            ENV_CARGO_TARGET=$(echo "$TARGET_TRIPLE" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
+            export CARGO_TARGET_${ENV_CARGO_TARGET}_LINKER="$CC"
+
+            (
+                cd "$BORE_SRC"
+                cargo build --release --target "$TARGET_TRIPLE"
+            )
+            if [ -f "$BORE_SRC/target/$TARGET_TRIPLE/release/bore" ]; then
+                cp "$BORE_SRC/target/$TARGET_TRIPLE/release/bore" "$ABI_WORK_DIR/libbore.so"
+            fi
+        else
+            echo " ⚠️  Cargo not found in PATH; skipping libbore.so build (pure Kotlin socket fallback will be used)."
+        fi
+    fi
+
+    # 8. Strip and copy to app/src/main/jniLibs/<abi>/
     echo " -> Stripping and installing binaries to $DEST_DIR..."
     TARGET_FILES=(
         "libandroid-shmem.so"
@@ -313,6 +340,9 @@ for ABI in "${ABIS[@]}"; do
     fi
     if [ -f "$ABI_WORK_DIR/libplayit.so" ]; then
         TARGET_FILES+=("libplayit.so")
+    fi
+    if [ -f "$ABI_WORK_DIR/libbore.so" ]; then
+        TARGET_FILES+=("libbore.so")
     fi
 
     for f in "${TARGET_FILES[@]}"; do
