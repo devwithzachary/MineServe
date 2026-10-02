@@ -493,4 +493,16 @@
     <string name="map_render_cancel_btn">Cancel Active Render</string>
     <string name="map_render_dispatched_toast">Dispatched render command to server console.</string>
     <string name="map_render_cancelled_toast">Dispatched cancel render command to server console.</string>
+
+    <!-- Server RAM & Memory Settings -->
+    <string name="settings_ram_section_title">Memory &amp; RAM Allocation</string>
+    <string name="settings_ram_save_button">Save RAM</string>
+    <string name="settings_ram_saved">Saved RAM allocation!</string>
+    <string name="settings_ram_running_restart_notice">Server is currently running. RAM changes will take effect after restarting the server.</string>
+    <string name="ram_allocation_label">RAM Allocation</string>
+    <string name="ram_current_allocation">Allocated Memory</string>
+    <string name="ram_device_info_format">Device Total: %d GB • Recommended: 2 GB to 4 GB for standard play</string>
+    <string name="ram_manual_label">Manual RAM Allocation (MB)</string>
+    <string name="ram_manual_placeholder">e.g. 2048</string>
+    <string name="ram_unit_mb">MB</string>
 </resources>

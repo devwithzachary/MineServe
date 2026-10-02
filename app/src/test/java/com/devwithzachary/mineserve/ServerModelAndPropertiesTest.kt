@@ -227,5 +227,26 @@ class ServerModelAndPropertiesTest {
         val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers, startingPort = 19132)
         assertEquals(19133, nextPort)
     }
+
+    @Test
+    fun testServerAllocatedRamUpdateAndSerialization() {
+        val server = MinecraftServer(
+            id = "test-server",
+            name = "Survival SMP",
+            type = ServerType.PAPER,
+            version = "1.21.4",
+            allocatedRamMb = 2048
+        )
+        assertEquals(2048, server.allocatedRamMb)
+
+        val updatedServer = server.copy(allocatedRamMb = 4096)
+        assertEquals(4096, updatedServer.allocatedRamMb)
+
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val serialized = json.encodeToString(MinecraftServer.serializer(), updatedServer)
+        val deserialized = json.decodeFromString(MinecraftServer.serializer(), serialized)
+
+        assertEquals(4096, deserialized.allocatedRamMb)
+    }
 }
 

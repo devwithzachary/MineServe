@@ -45,7 +45,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Minecraft Forge Support: Run Forge servers across classic and modern versions with automatic installer handling and Modrinth mod browser integration.",
             "Legacy Minecraft Releases Down to 1.0: Full support for historical Minecraft versions from 1.0 to 1.16.5 with automated Java 8 environment setup.",
             "Subfolder & Cleanup Controls: Choose between extracting into the active directory or a custom subfolder, with an option to automatically delete archives after extraction.",
-            "Wizard Port Assignment & Conflict Detection: Creation wizard automatically pre-populates the next available port (e.g. 25566, 25567) and displays real-time inline warnings if a chosen port conflicts with an existing server.",
+            "Server RAM & Setup Controls: Reconfigure allocated server RAM directly in the Settings tab with live device memory guidance, alongside automatic port collision detection in the setup wizard.",
             "Visual Player & Whitelist Tables: Full player management for Whitelists, Operators, Banned Players, and Banned IPs with 3D skin avatars and an interactive player action dialog (kick, ban, teleport, gamemode, give items).",
             "Multi-File Batch Import & Reliability: Select and import multiple files simultaneously with built-in Zip-Slip protection, live map auto-upgrades, OkHttp networking, and engine safeguards."
         )

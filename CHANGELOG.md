@@ -36,6 +36,7 @@ All notable changes to the MineServe project will be documented in this file.
 - **Inline Port Conflict Warning**: Displays real-time inline warnings in both Step 3 (Configuration) and Step 4 (Review) when an entered port is already configured on another server, informing users which server shares the port.
 - **Port Input Validation Safeguards**: Validates port bounds (1-65535) with inline error messages and disables the Next button when the port field is empty or out of range.
 - **Settings Port Synchronization**: Synchronizes server configuration files and in-memory server state whenever a server's port is modified via `server.properties` in Settings.
+- **Server RAM Allocation Settings**: Reconfigure allocated RAM memory on existing servers directly within the Settings tab. Features interactive slider and manual input controls, device memory recommendations, and automatic server restart advisories when running.
 
 ### 👥 Visual Player & Whitelist Management
 - **Visual Management Tables**: Added dedicated, file-backed management tables for Whitelisted Players (`whitelist.json`), Server Operators (`ops.json`), Banned Players (`banned-players.json`), and Banned IP Addresses (`banned-ips.json`), with automatic backwards compatibility for legacy text files.

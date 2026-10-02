@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -79,7 +80,12 @@ import kotlinx.coroutines.launch
 import com.devwithzachary.mineserve.model.ServerBuildInfo
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.ui.components.RamSlider
 import com.devwithzachary.mineserve.ui.components.ServerSoftwareCard
+import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.ui.draw.clip
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -122,6 +128,10 @@ fun SettingsTab(
     var customRelayPort by remember(server.tunnelConfig.customRelayPort) { mutableIntStateOf(server.tunnelConfig.customRelayPort) }
     var playitSecret by remember(server.tunnelConfig.playitSecret) { mutableStateOf(server.tunnelConfig.playitSecret) }
 
+    // RAM allocation state
+    var currentRamMb by remember(server.allocatedRamMb) { mutableIntStateOf(server.allocatedRamMb) }
+    var ramSavedMessage by remember { mutableStateOf<String?>(null) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -138,6 +148,119 @@ fun SettingsTab(
             onUpdateBuild = onUpdateBuild,
             onUpgradeVersion = onUpgradeVersion
         )
+
+        // Section: Server Memory & RAM Allocation
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Default.Memory, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
+                Text(
+                    text = stringResource(R.string.settings_ram_section_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            }
+
+            Button(
+                onClick = {
+                    val updated = server.copy(allocatedRamMb = currentRamMb)
+                    onSaveServer(updated)
+                    ramSavedMessage = context.getString(R.string.settings_ram_saved)
+                    scope.launch {
+                        delay(2000)
+                        ramSavedMessage = null
+                    }
+                },
+                enabled = currentRamMb != server.allocatedRamMb || ramSavedMessage != null,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EmeraldPrimary,
+                    disabledContainerColor = Slate800,
+                    disabledContentColor = Slate400
+                ),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Icon(
+                    Icons.Default.Save,
+                    contentDescription = null,
+                    tint = if (currentRamMb != server.allocatedRamMb) Color.Black else Slate400,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.settings_ram_save_button),
+                    color = if (currentRamMb != server.allocatedRamMb) Color.Black else Slate400,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+
+        AnimatedVisibility(visible = ramSavedMessage != null) {
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = EmeraldDark.copy(alpha = 0.3f),
+                border = BorderStroke(1.dp, EmeraldPrimary),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                    Text(text = ramSavedMessage ?: "", color = EmeraldLight, fontSize = 13.sp)
+                }
+            }
+        }
+
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(GoldYellow.copy(alpha = 0.12f))
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = null,
+                            tint = GoldYellow,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.settings_ram_running_restart_notice),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = GoldYellow,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                RamSlider(
+                    allocatedMb = currentRamMb,
+                    onValueChange = { currentRamMb = it },
+                    showTitle = false
+                )
+            }
+        }
 
         // Section: Server Properties (Visual Editor)
         Row(
