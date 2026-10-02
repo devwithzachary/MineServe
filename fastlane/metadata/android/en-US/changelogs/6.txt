@@ -1,5 +1,5 @@
 • High-Speed Tunnels: Run Playit & Bore natively on Android to cut 30+ ms of tunnel latency
-• File Manager Unzip: Extract zip files directly in the app for plugins, mods, and worlds
-• Minecraft Forge Support: Run Forge modded servers with automatic installer execution
+• File Manager Unzip: Extract zip files directly in the app with subfolder & cleanup options
+• Server RAM & Forge: Adjust allocated RAM in Settings and run Forge modded servers
 • Legacy Minecraft Down to 1.0: Support classic Minecraft releases with Java 8
 • Visual Player Management: Full player controls, whitelist, bans, and 3D skin avatars

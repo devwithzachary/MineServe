@@ -38,17 +38,15 @@ data class ReleaseChangelog(
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.4.0",
-        date = "September 30, 2026",
+        date = "October 2, 2026",
         initialExpanded = true,
         highlights = listOf(
-            "In-App Zip Extraction: Extract zip archives directly in the file manager with a single tap or via file options to quickly deploy plugins, mods, configurations, and world saves.",
-            "Minecraft Forge Support: Run Forge servers across classic and modern versions with automatic installer handling and Modrinth mod browser integration.",
-            "Legacy Minecraft Releases Down to 1.0: Full support for historical Minecraft versions from 1.0 to 1.16.5 with automated Java 8 environment setup.",
-            "Subfolder & Cleanup Controls: Choose between extracting into the active directory or a custom subfolder, with an option to automatically delete archives after extraction.",
-            "Server RAM & Setup Controls: Reconfigure allocated server RAM directly in the Settings tab with live device memory guidance, alongside automatic port collision detection in the setup wizard.",
             "High-Performance Native Tunneling: Playit.gg and Bore tunnel agents now run directly as native Android processes outside PRoot, eliminating syscall emulation overhead to reduce public tunnel latency by 30+ ms.",
-            "Visual Player & Whitelist Management: Full player management for Whitelists, Operators, Banned Players, and Banned IPs with 3D skin avatars and a full-screen player action page (kick, ban, teleport, gamemode, give items).",
-            "Multi-File Batch Import & Reliability: Select and import multiple files simultaneously with built-in Zip-Slip protection, live map auto-upgrades, OkHttp networking, and engine safeguards."
+            "Minecraft Forge & Legacy Support: Run Forge modded servers with automatic installer execution, alongside full support for historical Minecraft releases down to version 1.0 with automated Java 8 runtime mapping.",
+            "In-App Zip Extraction & Batch Import: Unpack zip archives directly in the file manager with subfolder routing and optional archive cleanup, plus multi-file batch imports for plugins and mods.",
+            "Visual Player & Whitelist Management: Full player management for Whitelists, Operators, Banned Players, and Banned IPs with 3D Minotar skin avatars and a dedicated full-screen administration page (kick, ban, teleport, gamemode, give items).",
+            "Server Settings & RAM Reallocation: Adjust allocated RAM memory on existing servers directly within Settings with live memory guidance, alongside automatic port collision detection in the setup wizard.",
+            "Engine Reliability & Architecture: Modular ServerSoftwareManager and RootfsManager lifecycle, automated live map upgrades, unified OkHttp networking, and background memory safety safeguards."
         )
     ),
     ReleaseChangelog(
