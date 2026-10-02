@@ -1,6 +1,7 @@
 package com.devwithzachary.mineserve.api
 
 import android.util.Log
+import com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,8 +10,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 class PurpurApiClient(
     private val client: OkHttpClient = MineServeHttpClient.client,
@@ -23,23 +22,20 @@ class PurpurApiClient(
 
     suspend fun getVersions(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url(BASE_URL)
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(BASE_URL)
             client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
-                val body = resp.body?.string() ?: return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                if (!resp.isSuccessful) return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+                val body = resp.body?.string() ?: return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
                 val obj = json.parseToJsonElement(body).jsonObject
                 val versionsArray = obj["versions"]?.jsonArray
                 if (versionsArray != null) {
                     return@withContext versionsArray.map { it.jsonPrimitive.content }.sortedMinecraftVersionsDescending()
                 }
-                MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                DEFAULT_MINECRAFT_FALLBACK_VERSIONS
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch Purpur versions", e)
-            MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+            DEFAULT_MINECRAFT_FALLBACK_VERSIONS
         }
     }
 
@@ -49,10 +45,7 @@ class PurpurApiClient(
 
     suspend fun getLatestBuildInfo(version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$BASE_URL/$version")
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest("$BASE_URL/$version")
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext Pair("latest", getDownloadUrl(version))
                 val body = resp.body?.string() ?: return@withContext Pair("latest", getDownloadUrl(version))

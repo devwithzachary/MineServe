@@ -58,6 +58,10 @@ mkdir -p "$HOME/.cache/android-sdk-linux/ndk"
 mkdir -p "$HOME/.cache/android-sdk-linux/platforms"
 mkdir -p "$HOME/.cache/android-sdk-linux/build-tools"
 mkdir -p "$HOME/.cache/android-sdk-linux/cmake"
+mkdir -p "$HOME/.cache/rustup-linux"
+mkdir -p "$HOME/.cache/cargo-linux/bin"
+mkdir -p "$HOME/.cache/cargo-linux/registry"
+mkdir -p "$HOME/.cache/cargo-linux/git"
 
 # Gradle cache volume mount for speed
 GRADLE_CACHE_MOUNT=""
@@ -98,14 +102,26 @@ docker run --rm \
     -v "$HOME/.cache/android-sdk-linux/platforms":/opt/android-sdk/platforms \
     -v "$HOME/.cache/android-sdk-linux/build-tools":/opt/android-sdk/build-tools \
     -v "$HOME/.cache/android-sdk-linux/cmake":/opt/android-sdk/cmake \
+    -v "$HOME/.cache/rustup-linux":/root/.rustup \
+    -v "$HOME/.cache/cargo-linux/bin":/root/.cargo/bin \
+    -v "$HOME/.cache/cargo-linux/registry":/root/.cargo/registry \
+    -v "$HOME/.cache/cargo-linux/git":/root/.cargo/git \
     $GRADLE_CACHE_MOUNT \
     -w "$FDROID_BUILD_DIR" \
     "$DOCKER_IMAGE" \
     bash -c '
         set -e
-        echo "🔧 Installing build prerequisites (make, gawk)..."
+        echo "🔧 Installing build prerequisites (make, gawk, curl, git, gcc, libc6-dev)..."
         apt-get update -qq
-        apt-get install -y -qq make gawk >/dev/null
+        apt-get install -y -qq make gawk curl git gcc libc6-dev >/dev/null
+
+        export PATH="$HOME/.cargo/bin:$PATH"
+        if ! command -v cargo >/dev/null 2>&1; then
+            echo "🦀 Installing Rust & Cargo via rustup..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal >/dev/null
+            export PATH="$HOME/.cargo/bin:$PATH"
+            rustup target add aarch64-linux-android x86_64-linux-android >/dev/null
+        fi
 
         if [ ! -d "/opt/android-sdk/ndk/28.2.13676358" ]; then
             echo "⬇️  Installing Android NDK 28.2.13676358 (cached on host)..."
@@ -126,10 +142,13 @@ docker run --rm \
         echo "⚙️  Configuring local.properties for Linux build environment..."
         cp local.properties local.properties.host 2>/dev/null || true
         echo "sdk.dir=/opt/android-sdk" > local.properties
-        echo "ndk.dir=/opt/android-sdk/ndk/28.2.13676358" >> local.properties
 
         echo "📦 Compiling Android release artifacts with Gradle..."
-        ./gradlew clean bundleRelease assembleRelease --no-daemon --no-configuration-cache
+        ./gradlew bundleRelease assembleRelease \
+            --no-daemon \
+            --no-configuration-cache \
+            --max-workers=2 \
+            -Dorg.gradle.jvmargs="-Xmx4096m -Dfile.encoding=UTF-8"
     '
 
 OUT_DIR="$PROJECT_ROOT/release"

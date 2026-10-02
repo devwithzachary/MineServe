@@ -37,9 +37,22 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.4.0",
+        date = "October 2, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "High-Performance Native Tunneling: Playit.gg and Bore tunnel agents now run directly as native Android processes outside PRoot, eliminating syscall emulation overhead to reduce public tunnel latency by 30+ ms.",
+            "Minecraft Forge & Legacy Support: Run Forge modded servers with automatic installer execution, alongside full support for historical Minecraft releases down to version 1.0 with automated Java 8 runtime mapping.",
+            "In-App Zip Extraction & Batch Import: Unpack zip archives directly in the file manager with subfolder routing and optional archive cleanup, plus multi-file batch imports for plugins and mods.",
+            "Visual Player & Whitelist Management: Full player management for Whitelists, Operators, Banned Players, and Banned IPs with 3D Minotar skin avatars and a dedicated full-screen administration page (kick, ban, teleport, gamemode, give items).",
+            "Server Settings & RAM Reallocation: Adjust allocated RAM memory on existing servers directly within Settings with live memory guidance, alongside automatic port collision detection in the setup wizard.",
+            "Engine Reliability & Architecture: Modular ServerSoftwareManager and RootfsManager lifecycle, automated live map upgrades, unified OkHttp networking, and background memory safety safeguards."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.3.1",
         date = "September 17, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Standby Auto-Wake on Ping: Servers now automatically start up on player ping across both Java Edition (TCP) and Bedrock Edition (RakNet) with dynamic port binding and reliable reconnection.",
             "World Backup Deletion & Retention: Delete individual backups directly in the app and set automatic retention limits on scheduled backup tasks to automatically prune older backups.",

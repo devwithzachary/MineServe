@@ -51,15 +51,15 @@ fun WizardStep3Configuration(
     conflictingServerName: String? = null,
     modifier: Modifier = Modifier
 ) {
-    var portText by remember { mutableStateOf(port.toString()) }
+    var portText by remember { mutableStateOf(if (port in 1..65535) port.toString() else "") }
 
     LaunchedEffect(port) {
-        if (portText.toIntOrNull() != port) {
+        if (port in 1..65535 && portText.toIntOrNull() != port) {
             portText = port.toString()
         }
     }
 
-    val isPortValid = portText.toIntOrNull()?.let { it in 1..65535 } == true
+    val isPortValid = portText.isNotEmpty() && portText.toIntOrNull()?.let { it in 1..65535 } == true
 
     Column(
         modifier = modifier,
@@ -91,15 +91,28 @@ fun WizardStep3Configuration(
             onValueChange = { input ->
                 val digitsOnly = input.filter { it.isDigit() }.take(5)
                 portText = digitsOnly
-                digitsOnly.toIntOrNull()?.let { parsed ->
-                    if (parsed in 1..65535) {
-                        onPortChange(parsed)
-                    }
+                val parsed = digitsOnly.toIntOrNull()
+                if (parsed != null && parsed in 1..65535) {
+                    onPortChange(parsed)
+                } else {
+                    onPortChange(0)
                 }
             },
             label = { Text(stringResource(R.string.wizard_step3_port_label)) },
             singleLine = true,
-            isError = portText.isNotEmpty() && !isPortValid,
+            isError = !isPortValid,
+            supportingText = {
+                if (!isPortValid) {
+                    Text(
+                        text = if (portText.isEmpty()) {
+                            stringResource(R.string.wizard_step3_port_empty_error)
+                        } else {
+                            stringResource(R.string.wizard_step3_port_range_error)
+                        },
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number,
                 imeAction = ImeAction.Done
@@ -135,13 +148,13 @@ fun WizardStep3Configuration(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "Port in use by '$conflictingServerName'",
+                            text = stringResource(R.string.wizard_port_conflict_title, conflictingServerName ?: ""),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = GoldYellow
                         )
                         Text(
-                            text = "Port $port is currently configured on '$conflictingServerName'. Only one server can be live and running on this port at one time.",
+                            text = stringResource(R.string.wizard_port_conflict_desc, port, conflictingServerName ?: ""),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.9f)
                         )

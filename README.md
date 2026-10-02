@@ -33,13 +33,15 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * **Folia**: Cutting-edge regionized multithreading server software for high player concurrency.
   * **FabricMC**: Lightweight, modular modding framework and server platform for modern versions and snapshots.
   * **NeoForged**: Modern community-driven modding API and server platform.
-  * **Mojang Vanilla**: Official standalone Minecraft server software from Mojang Studios.
+  * **Minecraft Forge**: Full support for classic and modern Forge modded servers (from 1.1 up to 1.20+) with automated installer handling, dedicated JVM installer heap allocation, and live setup progress streaming.
+  * **Mojang Vanilla**: Official standalone Minecraft server software from Mojang Studios, with historical support down to version 1.0.
   * **Bedrock Geyser / Floodgate**: Seamless protocol translation proxy enabling Bedrock edition players on iOS, Android, and consoles to connect to your Java server.
 * **☕ Isolated Java Runtime Environments**: Automatic detection and 1-tap installation of OpenJDK versions inside the container:
   * **Java 25 / Java 21**: For modern Minecraft 1.20.5+ and snapshots.
   * **Java 17**: For Minecraft 1.17 - 1.20.4.
-  * **Java 8**: For legacy Minecraft 1.12.2 and older server versions.
+  * **Java 8**: For legacy Minecraft releases (from 1.16.5 down to 1.0) and classic Forge servers.
 * **🌐 Zero-Port-Forwarding Public Tunneling**:
+  * **High-Speed Native Android Tunnels**: Both **bore (`bore.pub`)** and **Playit.gg** agents run directly as native Android binaries outside PRoot virtualization, eliminating ptrace emulation overhead to reduce network latency by 30+ ms.
   * **Dual Tunnel Providers**: Instant free TCP tunneling with **bore (`bore.pub`)** or persistent vanity subdomains (`*.ply.gg`, `*.joinmc.link`) with **Playit.gg**.
   * **Play Anywhere**: Host servers over mobile cellular data (4G/5G) or restrictive home Wi-Fi behind CGNAT without configuring router port forwarding.
   * **1-Tap Browser Claiming**: Interactive claim banners and direct Playit Secret key support with automatic reconnection.
@@ -55,8 +57,11 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * Supports interval quick chips (minutes/hours), daily schedules, weekly day-of-week selections with interval weeks, and advanced 5-field cron syntax with live validation.
 * **🗺️ Embedded Live Web Map (Squaremap)**:
   * Built-in 2D live web map hosted on `http://127.0.0.1:8080` and rendered directly inside the app using Jetpack Compose `WebView`.
-  * 1-tap installation and removal of Squaremap with minimal mobile RAM overhead.
+  * 1-tap installation, automatic upgrade on Minecraft version changes, and removal of Squaremap with minimal mobile RAM overhead.
   * Full world rendering tool with Overworld, Nether, and The End dimension selection, plus real-time player tracking.
+* **👥 Visual Player & Whitelist Management**:
+  * Full file-backed management tables for Whitelisted Players, Server Operators, Banned Players, and Banned IPs with 3D Minotar skin avatars.
+  * Dedicated full-screen player administration page for real-time kicking, banning, teleportation, gamemode switching, and item granting.
 * **🌍 Advanced World Management & Chunk Storage Optimizer**:
   * **World Importer**: Direct `.zip` and `.mcworld` import from device storage or Google Drive with automated format detection, Java Anvil verification, and pre-import safety backups.
   * **World Archive Exporter**: Export complete world saves (Overworld, Nether, End) with Save to Storage and Android Share Sheet support.
@@ -64,13 +69,14 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * **Chunk Pruning & Storage Optimizer**: Pure Kotlin Anvil (`.mca`) region analyzer that deletes uninhabited chunks (`InhabitedTime == 0`) and purges empty region files to reclaim storage space.
 * **📁 In-App File Explorer & Monospace Code Editor**:
   * Full interactive directory navigation for `/servers/{serverId}/` with search, upload, create, delete, rename, and duplicate operations.
+  * **In-App Zip Extraction & Batch Import**: Unpack `.zip` archives directly within the file explorer into the active directory or a custom subfolder with optional automatic archive deletion. Import multiple plugins, mods, or config files simultaneously with multi-file selection.
   * Syntax-highlighted code editor for `.yml`, `.json`, `.properties`, `.toml`, and `.txt` files with line numbering, search and replace with match counters, and cursor position tracking.
 * **🩺 Automated Crash Log Analyzer & Quick Fix Diagnostics**:
   * Automatically parses `crash-reports/` and `logs/latest.log` upon failure to diagnose root causes (Java version mismatch, Out of Memory / OOM, mod ID conflicts, port conflicts, unaccepted EULA).
   * Interactive diagnostic sheet providing 1-tap quick fixes to accept the EULA, switch Java runtimes, allocate RAM, or assign open ports.
 * **🔄 Upstream Build Updates & In-Place Minecraft Version Upgrades**:
   * 1-tap checking and updating for PaperMC and Purpur upstream server builds while preserving worlds and configs.
-  * In-place Minecraft version upgrades from Server Settings with automated pre-upgrade safety backups and automatic Java runtime requirement alignment.
+  * In-place Minecraft version upgrades from Server Settings with automated pre-upgrade safety backups, automatic Java runtime requirement alignment, and automated live web map upgrades.
 * **⚡ Interactive Live Terminal & Console Enhancements**:
   * VT100/ANSI terminal emulator with direct standard input command delivery, colored log streaming, and scroll-to-bottom.
   * Customizable quick-command macro hotbar chips above the console with built-in macro editor.
@@ -82,12 +88,13 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * Active container CPU utilization, RSS memory consumption via `/proc`, live player counts, and server storage footprints.
   * Local timezone synchronization for container and JVM logs so console timestamps match host device time rather than UTC.
 * **🧩 Context-Aware Plugins & Mods Management**:
-  * Engine-aware UI: Displays **"Plugins"** for Paper/Purpur, **"Mods"** for Fabric/NeoForge, and automatically hides the tab for Vanilla servers.
+  * Engine-aware UI: Displays **"Plugins"** for Paper/Purpur, **"Mods"** for Fabric/NeoForge/Forge, and automatically hides the tab for Vanilla servers.
   * **Modrinth API Integration**: Search and browse plugins and mods with project thumbnails, categories, author credits, and full descriptions.
   * **1-Tap Installation**: Automatically resolves version download URLs matching the target server's loader and Minecraft release.
   * **Custom `.JAR` Import**: Import plugins and mods directly from Android device storage using the system Document Picker.
 * **⚙️ Server Properties & Visual Configuration**:
   * Intuitive switches and sliders for Server Port, MOTD, Max Players, Game Mode, Difficulty, PVP, Whitelist, View Distance, Animal/Monster Spawning, and Simulation Distance.
+  * **Dynamic Server RAM Reallocation**: Reconfigure allocated RAM memory on existing servers directly within Settings, complete with device memory recommendations and restart advisories.
 * **💾 World & Server Snapshot Backups**:
   * **World Save Backup**: Rapid snapshot archiving of only the world save directory.
   * **Full Server Backup**: Complete backup of server configuration, plugins/mods, logs, and worlds.
@@ -178,6 +185,8 @@ MineServe is built on the shoulders of incredible open-source projects:
 | **PurpurMC** | Highly configurable drop-in replacement for Paper. | [PurpurMC](https://purpurmc.org/) / MIT |
 | **FabricMC** | Modular, lightweight modding toolchain and server environment. | [FabricMC](https://fabricmc.net/) / Apache-2.0 |
 | **NeoForged** | Modern community-driven modding API and server platform. | [NeoForged](https://neoforged.net/) / LGPL-2.1 |
+| **Minecraft Forge** | Modding platform and server software for Minecraft. | [MinecraftForge](https://forums.minecraftforge.net/) / LGPL-2.1 |
+| **Minotar** | Minecraft 3D player avatar, head, and skin rendering API service. | [Minotar](https://minotar.net/) / MIT |
 | **GeyserMC & Floodgate** | Protocol translation proxy enabling Bedrock players to join Java servers. | [GeyserMC](https://geysermc.org/) / MIT |
 | **Squaremap** | Lightweight, ultra-fast 2D live web map with Leaflet player tracking. | [Squaremap](https://github.com/jpenilla/squaremap) / MIT |
 | **Ubuntu Base** | Official root filesystem tarball providing the Linux container environment. | [Canonical Ltd.](https://cdimage.ubuntu.com/ubuntu-base/) / Canonical |
@@ -236,7 +245,7 @@ On initial launch, tap **Initialize Server Runtime**. MineServe will download an
 
 ### 2. Creating a Server
 1. Tap the **+** button on the Dashboard.
-2. Select your desired server engine (Paper, Purpur, Folia, Fabric, NeoForge, Vanilla).
+2. Select your desired server engine (Paper, Purpur, Folia, Fabric, NeoForge, Forge, Vanilla).
 3. Select the Minecraft version and assign RAM (e.g. 2048 MB).
 4. MineServe automatically assigns an unused port (e.g. `25565`) and sets up `server.properties` and `eula.txt`.
 5. Tap **Download & Build Server**.
@@ -246,13 +255,13 @@ The Server Details screen provides dedicated tabs to manage every aspect of your
 * **Console Tab**: View live colored terminal logs, use customizable macro hotbar buttons, and execute Minecraft commands with auto-completion.
 * **Performance Tab**: Monitor real-time TPS gauges, MSPT processing time, tick budget headroom, and live CPU/RAM utilization.
 * **Automation Tab**: Configure idle auto-shutdown, arm auto-wake on ping standby listeners, and set up cron-scheduled backups and restarts.
-* **Files Tab**: Browse server files, edit configs in the monospace code editor, or inspect crash reports with the 1-tap Diagnostic Sheet.
+* **Files Tab**: Browse server files, extract `.zip` archives in-place or into subfolders, edit configs in the monospace code editor, or inspect crash reports with the 1-tap Diagnostic Sheet.
 * **World Tab**: Import singleplayer `.zip` or `.mcworld` saves, export world archives, reset Nether or End dimensions, and optimize chunk storage.
 * **Live Map Tab**: Explore your world with an embedded 2D Squaremap web view and trigger full world renders.
-* **Settings Tab**: Adjust server rules (PVP, difficulty, max players), manage Java runtime versions, update builds, and configure public tunneling (bore.pub or Playit.gg).
-* **Players Tab**: View connected players, manage operator permissions, and kick or ban players directly from the UI.
+* **Settings Tab**: Reconfigure allocated RAM memory, adjust server rules (PVP, difficulty, max players), manage Java runtime versions, update builds, and launch high-speed native tunnels (bore.pub or Playit.gg).
+* **Players Tab**: View connected players with 3D skin avatars, manage operator and whitelist permissions, and administer players from a full-screen management page (kick, ban, teleport, gamemode, item granting).
 * **Backups Tab**: Create full server or world-only snapshot zip archives, restore snapshots, delete older archives, and export them to your Downloads folder or external apps.
-* **Plugins / Mods Tab**: Search Modrinth for plugins (Paper/Purpur) or mods (Fabric/NeoForge) and install them with 1 tap, or upload custom `.jar` files.
+* **Plugins / Mods Tab**: Search Modrinth for plugins (Paper/Purpur) or mods (Fabric/NeoForge/Forge) and install them with 1 tap, or upload custom `.jar` files.
 
 ---
 

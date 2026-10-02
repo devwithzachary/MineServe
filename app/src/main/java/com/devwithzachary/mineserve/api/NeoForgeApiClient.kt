@@ -23,10 +23,7 @@ class NeoForgeApiClient(
 
     suspend fun getVersions(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url(BASE_URL)
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(BASE_URL)
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext defaultFallbackVersions()
                 val body = resp.body?.string() ?: return@withContext defaultFallbackVersions()

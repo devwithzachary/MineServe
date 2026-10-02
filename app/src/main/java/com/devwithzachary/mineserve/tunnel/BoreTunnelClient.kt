@@ -1,9 +1,14 @@
 package com.devwithzachary.mineserve.tunnel
 
+import android.content.Context
+import android.os.Build
 import android.util.Log
 import com.devwithzachary.mineserve.model.TunnelProvider
+import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -19,6 +24,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 
 class BoreTunnelClient(
+    private val context: Context? = null,
     private val relayHost: String = "bore.pub",
     private val relayPort: Int = 7835,
     private val localPort: Int = 25565,
@@ -29,6 +35,8 @@ class BoreTunnelClient(
         private const val TAG = "BoreTunnelClient"
         private const val CONNECT_TIMEOUT_MS = 10000
         private const val BUFFER_SIZE = 8192
+        private val LISTENING_REGEX = Regex("""listening at\s+([a-zA-Z0-9_.-]+):([0-9]+)""")
+        private val ANSI_REGEX = Regex("\u001B\\[[0-9;]*[a-zA-Z]")
     }
 
     private var tunnelJob: Job? = null
@@ -36,6 +44,7 @@ class BoreTunnelClient(
     private val activeConnectionsCount = AtomicInteger(0)
     private val isExplicitlyStopped = AtomicBoolean(false)
     private var controlSocket: Socket? = null
+    private var nativeProcess: Process? = null
     private var assignedPort: Int = 0
 
     fun start(scope: CoroutineScope) {
@@ -43,7 +52,13 @@ class BoreTunnelClient(
         isExplicitlyStopped.set(false)
         clientScope = scope
         tunnelJob = scope.launch(Dispatchers.IO) {
-            runTunnelLoop(scope)
+            val nativeLibDir = context?.applicationInfo?.nativeLibraryDir?.let { File(it) }
+            val bundledBore = nativeLibDir?.let { File(it, "libbore.so") }
+            if (bundledBore != null && bundledBore.exists() && bundledBore.canExecute() && relayPort == 7835) {
+                runNativeBoreLoop(scope, bundledBore)
+            } else {
+                runTunnelLoop(scope)
+            }
         }
     }
 
@@ -56,7 +71,102 @@ class BoreTunnelClient(
             controlSocket?.close()
         } catch (_: Exception) {}
         controlSocket = null
+        destroyProcessSafely(nativeProcess)
+        nativeProcess = null
         onStateChanged(TunnelState.Disconnected)
+    }
+
+    private fun destroyProcessSafely(proc: Process?) {
+        if (proc == null) return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                proc.destroyForcibly()
+            } else {
+                proc.destroy()
+            }
+        } catch (_: Exception) {}
+    }
+
+    private suspend fun runNativeBoreLoop(parentScope: CoroutineScope, boreBin: File) {
+        var retryDelayMs = 2000L
+        val effectiveLocalPort = if (localPort in 1..65535) localPort else 25565
+
+        while (parentScope.isActive && !isExplicitlyStopped.get()) {
+            try {
+                if (isExplicitlyStopped.get()) break
+                onStateChanged(TunnelState.Connecting("Connecting to $relayHost via native bore..."))
+                Log.i(TAG, "Starting native Bore tunnel to $relayHost for local port $effectiveLocalPort")
+
+                val cmd = mutableListOf(
+                    boreBin.absolutePath,
+                    "local",
+                    effectiveLocalPort.toString(),
+                    "--to",
+                    relayHost
+                )
+
+                val pb = ProcessBuilder(cmd)
+                context?.filesDir?.let { pb.directory(it) }
+                context?.filesDir?.let { pb.environment()["HOME"] = it.absolutePath }
+                context?.cacheDir?.let { pb.environment()["TMPDIR"] = it.absolutePath }
+                pb.redirectErrorStream(true)
+
+                val proc = pb.start()
+                nativeProcess = proc
+
+                val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
+                while (parentScope.isActive && !isExplicitlyStopped.get()) {
+                    val rawLine = reader.readLine() ?: break
+                    val line = ANSI_REGEX.replace(rawLine, "").trim()
+                    Log.d(TAG, "[bore] $line")
+
+                    val match = LISTENING_REGEX.find(line)
+                    if (match != null) {
+                        val host = match.groupValues[1]
+                        val port = match.groupValues[2].toIntOrNull() ?: 0
+                        assignedPort = port
+                        val fullAddress = "$host:$port"
+                        retryDelayMs = 2000L
+                        Log.i(TAG, "Native Bore tunnel connected: $fullAddress")
+                        onStateChanged(
+                            TunnelState.Connected(
+                                publicHost = host,
+                                publicPort = port,
+                                fullAddress = fullAddress,
+                                provider = provider,
+                                assignedAt = System.currentTimeMillis()
+                            )
+                        )
+                    }
+                }
+
+                val exitCode = proc.waitFor()
+                Log.i(TAG, "Native Bore process exited with code $exitCode")
+
+            } catch (e: CancellationException) {
+                Log.d(TAG, "Native Bore tunnel cancelled gracefully")
+                break
+            } catch (e: Exception) {
+                if (isExplicitlyStopped.get() || !parentScope.isActive) {
+                    Log.d(TAG, "Native Bore tunnel stopped intentionally")
+                    break
+                }
+                Log.e(TAG, "Native Bore tunnel error: ${e.message}", e)
+                onStateChanged(TunnelState.Error(e.message ?: "Bore tunnel connection failed"))
+            } finally {
+                destroyProcessSafely(nativeProcess)
+                nativeProcess = null
+            }
+
+            if (!parentScope.isActive || isExplicitlyStopped.get()) break
+            Log.d(TAG, "Reconnecting native Bore in ${retryDelayMs}ms...")
+            delay(retryDelayMs)
+            retryDelayMs = (retryDelayMs * 1.5).toLong().coerceAtMost(30000L)
+        }
+
+        if (isExplicitlyStopped.get()) {
+            onStateChanged(TunnelState.Disconnected)
+        }
     }
 
     private suspend fun runTunnelLoop(parentScope: CoroutineScope) {

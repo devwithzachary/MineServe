@@ -45,6 +45,13 @@ enum class ServerType(
         supportsPlugins = false,
         supportsMods = true
     ),
+    FORGE(
+        displayName = "Forge",
+        description = "The classic Minecraft modding platform supporting thousands of mods",
+        defaultJavaVersion = 21,
+        supportsPlugins = false,
+        supportsMods = true
+    ),
     NEOFORGE(
         displayName = "NeoForge",
         description = "Community-driven modern modding API and server",

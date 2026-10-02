@@ -4,15 +4,19 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import com.devwithzachary.mineserve.api.MineServeHttpClient
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.io.InputStream
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.zip.GZIPInputStream
+import okhttp3.Request
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
@@ -44,7 +48,44 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
     private val prefs = context.getSharedPreferences("mineserve_rootfs_prefs", Context.MODE_PRIVATE)
     val rootfsDir: File get() = pRootEngine.rootfsDir
 
+    private val _setupState = MutableStateFlow<RootfsSetupState>(RootfsSetupState.Idle)
+    val setupState: StateFlow<RootfsSetupState> = _setupState.asStateFlow()
+
+    private val _isInstalled = MutableStateFlow(isInstalled())
+    val isInstalledState: StateFlow<Boolean> = _isInstalled.asStateFlow()
+
     fun isInstalled(): Boolean = pRootEngine.isRootfsInstalled()
+
+    fun refreshInstalledState() {
+        _isInstalled.value = isInstalled()
+    }
+
+    suspend fun performRootfsSetup(
+        javaRuntimeManager: JavaRuntimeManager,
+        onSuccess: suspend () -> Unit = {}
+    ) {
+        _isInstalled.value = false
+        setupRootfs().collect { state ->
+            _setupState.value = state
+            if (state is RootfsSetupState.Success) {
+                _isInstalled.value = true
+                javaRuntimeManager.installJava(21).collect { javaState ->
+                    when (javaState) {
+                        is JavaInstallState.Success -> {
+                            Log.d(TAG, "Default Java 21 installed successfully")
+                        }
+                        is JavaInstallState.Error -> {
+                            Log.e(TAG, "Java 21 install failed: ${javaState.errorMessage}")
+                        }
+                        else -> {}
+                    }
+                }
+                onSuccess()
+            } else if (state is RootfsSetupState.Error) {
+                _isInstalled.value = false
+            }
+        }
+    }
 
     private fun getArchRootfsUrls(): List<String> {
         val abi = Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
@@ -139,46 +180,41 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             for (downloadUrl in urlsToTry) {
                 try {
                     emitLog("Connecting to Ubuntu mirror: $downloadUrl...")
-                    val url = URL(downloadUrl)
-                    val connection = (url.openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 20000
-                        readTimeout = 20000
-                        instanceFollowRedirects = true
-                        setRequestProperty("User-Agent", "MineServe-Android")
-                        connect()
-                    }
+                    val request = MineServeHttpClient.newGetRequest(downloadUrl)
 
-                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                        val fileLength = connection.contentLength.toLong()
-                        val inputStream = BufferedInputStream(connection.inputStream, 65536)
-                        val outputStream = FileOutputStream(archiveFile)
+                    MineServeHttpClient.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            val body = response.body ?: throw IOException("Empty response body from $downloadUrl")
+                            val fileLength = body.contentLength()
 
-                        val buffer = ByteArray(65536)
-                        var totalRead = 0L
-                        var read: Int
-                        var lastProgressUpdate = 0L
+                            body.byteStream().use { inputStream ->
+                                FileOutputStream(archiveFile).use { outputStream ->
+                                    val buffer = ByteArray(65536)
+                                    var totalRead = 0L
+                                    var read: Int
+                                    var lastProgressUpdate = 0L
 
-                        while (inputStream.read(buffer).also { read = it } != -1) {
-                            totalRead += read
-                            outputStream.write(buffer, 0, read)
+                                    while (inputStream.read(buffer).also { read = it } != -1) {
+                                        totalRead += read
+                                        outputStream.write(buffer, 0, read)
 
-                            val now = System.currentTimeMillis()
-                            if (now - lastProgressUpdate > 100) {
-                                lastProgressUpdate = now
-                                val percent = if (fileLength > 0) ((totalRead * 100) / fileLength).toInt() else 0
-                                send(RootfsSetupState.Downloading(totalRead, fileLength, percent))
+                                        val now = System.currentTimeMillis()
+                                        if (now - lastProgressUpdate > 100) {
+                                            lastProgressUpdate = now
+                                            val percent = if (fileLength > 0) ((totalRead * 100) / fileLength).toInt() else 0
+                                            send(RootfsSetupState.Downloading(totalRead, fileLength, percent))
+                                        }
+                                    }
+                                    outputStream.flush()
+                                }
                             }
+                            downloaded = true
+                            emitLog("Downloaded Ubuntu rootfs (${archiveFile.length() / (1024 * 1024)} MB)")
+                        } else {
+                            emitLog("Mirror returned HTTP ${response.code}, trying next mirror...")
                         }
-
-                        outputStream.flush()
-                        outputStream.close()
-                        inputStream.close()
-                        downloaded = true
-                        emitLog("Downloaded Ubuntu rootfs (${totalRead / (1024 * 1024)} MB)")
-                        break
-                    } else {
-                        emitLog("Mirror returned HTTP ${connection.responseCode}, trying next mirror...")
                     }
+                    if (downloaded) break
                 } catch (e: Exception) {
                     emitLog("Mirror failed: ${e.message}, trying fallback...")
                     downloadError = e.message

@@ -84,6 +84,12 @@ Java_com_devwithzachary_mineserve_engine_PtyNative_createSubprocess(
     if (pid < 0) {
         LOGE("fork failed");
         close(master_fd);
+        env->ReleaseStringUTFChars(cmdPath, cCmd);
+        if (cwdPath) env->ReleaseStringUTFChars(cwdPath, cCwd);
+        for (int i = 0; i < argc; i++) free(argv[i]);
+        free(argv);
+        for (int i = 0; i < envc; i++) free(envp[i]);
+        free(envp);
         return -1;
     }
 

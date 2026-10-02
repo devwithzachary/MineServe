@@ -130,6 +130,7 @@ fun PluginsTab(
 
     val loaderFilter = when (server.type) {
         ServerType.FABRIC -> "fabric"
+        ServerType.FORGE -> "forge"
         ServerType.NEOFORGE -> "neoforge"
         else -> null
     }

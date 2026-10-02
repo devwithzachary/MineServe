@@ -101,6 +101,7 @@ import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.QuickFixAction
 import com.devwithzachary.mineserve.model.QuickFixType
+import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import com.devwithzachary.mineserve.ui.components.editor.AdvancedCodeEditor
 import com.devwithzachary.mineserve.ui.screens.detail.files.CrashDiagnosticSheet
 import com.devwithzachary.mineserve.ui.screens.detail.files.CreateFileDialog
@@ -108,6 +109,7 @@ import com.devwithzachary.mineserve.ui.screens.detail.files.CreateFolderDialog
 import com.devwithzachary.mineserve.ui.screens.detail.files.DeleteFileDialog
 import com.devwithzachary.mineserve.ui.screens.detail.files.FileListItem
 import com.devwithzachary.mineserve.ui.screens.detail.files.RenameFileDialog
+import com.devwithzachary.mineserve.ui.screens.detail.files.UnzipArchiveDialog
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
@@ -143,6 +145,7 @@ fun FilesTab(
     onWriteFile: suspend (String, String) -> Boolean,
     onImportFile: suspend (String, Uri) -> Boolean,
     onExportFile: suspend (String) -> Boolean,
+    onUnzipFile: suspend (String, String, Boolean) -> Result<Int> = { _, _, _ -> Result.success(0) },
     onSearchFiles: suspend (String) -> List<FileEntry>,
     onAnalyzeCrash: suspend () -> CrashDiagnosticReport?,
     onApplyQuickFix: suspend (QuickFixAction) -> Boolean,
@@ -171,6 +174,8 @@ fun FilesTab(
     var renameTargetName by remember { mutableStateOf("") }
 
     var fileToDelete by remember { mutableStateOf<FileEntry?>(null) }
+    var fileToUnzip by remember { mutableStateOf<FileEntry?>(null) }
+    var isUnzipping by remember { mutableStateOf(false) }
 
     // Active Code Editor state
     var editingFile by remember { mutableStateOf<FileEntry?>(null) }
@@ -193,17 +198,22 @@ fun FilesTab(
         refreshFiles()
     }
 
-    // Import file launcher
+    // Import file launcher (supports single or multiple files)
     val importFileLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        if (uri != null) {
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        if (uris.isNotEmpty()) {
             scope.launch {
                 isLoading = true
-                val success = onImportFile(currentPath, uri)
+                var successCount = 0
+                for (uri in uris) {
+                    val success = onImportFile(currentPath, uri)
+                    if (success) successCount++
+                }
                 isLoading = false
-                if (success) {
-                    Toast.makeText(context, "File imported successfully", Toast.LENGTH_SHORT).show()
+                if (successCount > 0) {
+                    val msg = if (uris.size == 1) "File imported successfully" else "Imported $successCount of ${uris.size} files"
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
                     refreshFiles()
                 } else {
                     Toast.makeText(context, "Failed to import file", Toast.LENGTH_SHORT).show()
@@ -301,6 +311,56 @@ fun FilesTab(
                     }
                 }
             }
+        )
+    }
+
+    // Unzip Archive Dialog
+    if (fileToUnzip != null) {
+        val target = fileToUnzip!!
+        UnzipArchiveDialog(
+            target = target,
+            currentPath = currentPath,
+            onDismiss = { fileToUnzip = null },
+            onConfirm = { destPath, deleteZipAfter ->
+                fileToUnzip = null
+                scope.launch {
+                    isUnzipping = true
+                    val result = onUnzipFile(target.relativePath, destPath, deleteZipAfter)
+                    isUnzipping = false
+                    result.fold(
+                        onSuccess = { count ->
+                            val msg = if (count == 1) "Extracted 1 file successfully" else "Extracted $count files successfully"
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            refreshFiles()
+                        },
+                        onFailure = { error ->
+                            Toast.makeText(context, "Unzip failed: ${error.message ?: "Unknown error"}", Toast.LENGTH_LONG).show()
+                            refreshFiles()
+                        }
+                    )
+                }
+            }
+        )
+    }
+
+    // Unzipping Progress Modal
+    if (isUnzipping) {
+        AppAlertDialog(
+            onDismissRequest = { /* Prevent dismiss while extracting */ },
+            title = { Text("Extracting Archive", fontWeight = FontWeight.Bold, color = Color.White) },
+            text = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    CircularProgressIndicator(color = EmeraldPrimary, modifier = Modifier.size(28.dp))
+                    Text("Extracting files, please wait...", color = Slate400, fontSize = 14.sp)
+                }
+            },
+            confirmButton = {},
+            containerColor = ObsidianCard,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 
@@ -613,6 +673,8 @@ fun FilesTab(
                                             editingFile = entry
                                             editingFileContent = content
                                         }
+                                    } else if (entry.extension.equals("zip", ignoreCase = true) || entry.isArchive) {
+                                        fileToUnzip = entry
                                     } else {
                                         Toast.makeText(context, "Binary file: Use Export or Duplicate to manage", Toast.LENGTH_SHORT).show()
                                     }
@@ -639,6 +701,9 @@ fun FilesTab(
                                 },
                                 onDelete = {
                                     fileToDelete = entry
+                                },
+                                onUnzip = {
+                                    fileToUnzip = entry
                                 }
                             )
                             HorizontalDivider(color = Slate900.copy(alpha = 0.5f))

@@ -1,6 +1,8 @@
 package com.devwithzachary.mineserve.api
 
 import android.util.Log
+import com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -8,9 +10,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
-import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 
 class PaperApiClient(
     private val client: OkHttpClient = MineServeHttpClient.client,
@@ -19,18 +18,14 @@ class PaperApiClient(
     companion object {
         private const val TAG = "PaperApiClient"
         private const val V3_BASE_URL = "https://fill.papermc.io/v3"
-        private const val USER_AGENT = MineServeHttpClient.USER_AGENT
     }
 
     suspend fun getProjectVersions(project: String = "paper"): List<String> = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$V3_BASE_URL/projects/$project")
-                .header("User-Agent", USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest("$V3_BASE_URL/projects/$project")
             client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
-                val body = resp.body?.string() ?: return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                if (!resp.isSuccessful) return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+                val body = resp.body?.string() ?: return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
                 val obj = json.parseToJsonElement(body).jsonObject
 
                 // In v3, "versions" is a map of major version to list of patch versions
@@ -56,20 +51,17 @@ class PaperApiClient(
                     return@withContext versionsArray.map { it.jsonPrimitive.content }.sortedMinecraftVersionsDescending()
                 }
 
-                MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                DEFAULT_MINECRAFT_FALLBACK_VERSIONS
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch $project versions", e)
-            MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+            DEFAULT_MINECRAFT_FALLBACK_VERSIONS
         }
     }
 
     suspend fun getLatestBuildInfo(project: String = "paper", version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$V3_BASE_URL/projects/$project/versions/$version")
-                .header("User-Agent", USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest("$V3_BASE_URL/projects/$project/versions/$version")
             client.newCall(req).execute().use { resp ->
                 if (resp.isSuccessful) {
                     val body = resp.body?.string()
@@ -80,10 +72,7 @@ class PaperApiClient(
                             ?: buildsArray?.lastOrNull()?.jsonPrimitive?.content?.toIntOrNull()
 
                         if (latestBuild != null) {
-                            val buildReq = Request.Builder()
-                                .url("$V3_BASE_URL/projects/$project/versions/$version/builds/$latestBuild")
-                                .header("User-Agent", USER_AGENT)
-                                .build()
+                            val buildReq = MineServeHttpClient.newGetRequest("$V3_BASE_URL/projects/$project/versions/$version/builds/$latestBuild")
                             client.newCall(buildReq).execute().use { buildResp ->
                                 if (buildResp.isSuccessful) {
                                     val buildBody = buildResp.body?.string()

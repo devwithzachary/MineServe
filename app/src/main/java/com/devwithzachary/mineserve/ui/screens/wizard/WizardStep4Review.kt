@@ -143,13 +143,13 @@ fun WizardStep4Review(
                     )
                     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
-                            text = "Port Shared with '$conflictingServerName'",
+                            text = stringResource(R.string.wizard_port_shared_title, conflictingServerName ?: ""),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             color = GoldYellow
                         )
                         Text(
-                            text = "Port $port is currently in use by '$conflictingServerName'. You can still create this server, but only one can run at a time.",
+                            text = stringResource(R.string.wizard_port_shared_desc, port, conflictingServerName ?: ""),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color.White.copy(alpha = 0.9f)
                         )

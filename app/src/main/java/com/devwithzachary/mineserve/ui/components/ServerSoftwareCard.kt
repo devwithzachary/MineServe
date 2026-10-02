@@ -57,6 +57,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -96,6 +97,7 @@ fun ServerSoftwareCard(
     onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var showUpdateModal by remember { mutableStateOf(false) }
     var showUpgradeModal by remember { mutableStateOf(false) }
@@ -196,7 +198,7 @@ fun ServerSoftwareCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Text("MC ${server.version}", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                        Text(stringResource(R.string.software_mc_version, server.version), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
                     }
                 }
 
@@ -211,7 +213,7 @@ fun ServerSoftwareCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        val buildLabel = server.serverBuild?.let { "Build #$it" } ?: stringResource(R.string.software_build_unknown)
+                        val buildLabel = server.serverBuild?.let { stringResource(R.string.software_build_chip, it) } ?: stringResource(R.string.software_build_unknown)
                         Text(buildLabel, color = if (server.serverBuild != null) EmeraldLight else Slate400, fontSize = 11.sp)
                     }
                 }
@@ -228,7 +230,7 @@ fun ServerSoftwareCard(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(12.dp))
-                        Text("Java ${server.javaVersion}", color = DiamondLight, fontSize = 11.sp)
+                        Text(stringResource(R.string.software_java_chip, server.javaVersion), color = DiamondLight, fontSize = 11.sp)
                     }
                 }
             }
@@ -341,7 +343,7 @@ fun ServerSoftwareCard(
                         if (success) {
                             showUpdateModal = false
                         } else {
-                            updateErrorText = "Failed to update build. Please check your connection."
+                            updateErrorText = context.getString(R.string.software_update_error)
                         }
                     }
                 )
@@ -380,7 +382,7 @@ fun ServerSoftwareCard(
                         if (success) {
                             showUpgradeModal = false
                         } else {
-                            upgradeErrorText = "Failed to upgrade server version. Please check connection."
+                            upgradeErrorText = context.getString(R.string.software_upgrade_error)
                         }
                     }
                 )

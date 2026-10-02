@@ -1,6 +1,7 @@
 package com.devwithzachary.mineserve.api
 
 import android.util.Log
+import com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,8 +10,6 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.util.concurrent.TimeUnit
 
 class FabricApiClient(
     private val client: OkHttpClient = MineServeHttpClient.client,
@@ -23,13 +22,10 @@ class FabricApiClient(
 
     suspend fun getGameVersions(): List<String> = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$BASE_URL/versions/game")
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest("$BASE_URL/versions/game")
             client.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
-                val body = resp.body?.string() ?: return@withContext MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                if (!resp.isSuccessful) return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+                val body = resp.body?.string() ?: return@withContext DEFAULT_MINECRAFT_FALLBACK_VERSIONS
                 val array = json.parseToJsonElement(body).jsonArray
                 val stableList = array.mapNotNull {
                     val obj = it.jsonObject
@@ -38,20 +34,17 @@ class FabricApiClient(
                     } else null
                 }
                 if (stableList.isNotEmpty()) return@withContext stableList.sortedMinecraftVersionsDescending()
-                MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+                DEFAULT_MINECRAFT_FALLBACK_VERSIONS
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch Fabric game versions", e)
-            MineServeHttpClient.DEFAULT_FALLBACK_VERSIONS
+            DEFAULT_MINECRAFT_FALLBACK_VERSIONS
         }
     }
 
     suspend fun getLatestLoaderVersion(): String = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$BASE_URL/versions/loader")
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest("$BASE_URL/versions/loader")
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext "0.16.10"
                 val body = resp.body?.string() ?: return@withContext "0.16.10"
@@ -66,10 +59,7 @@ class FabricApiClient(
 
     suspend fun getLatestInstallerVersion(): String = withContext(Dispatchers.IO) {
         try {
-            val req = Request.Builder()
-                .url("$BASE_URL/versions/installer")
-                .header("User-Agent", MineServeHttpClient.USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest("$BASE_URL/versions/installer")
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext "1.0.1"
                 val body = resp.body?.string() ?: return@withContext "1.0.1"

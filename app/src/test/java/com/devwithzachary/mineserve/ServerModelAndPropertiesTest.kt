@@ -116,4 +116,137 @@ class ServerModelAndPropertiesTest {
         val sorted = versions.sortedMinecraftVersionsDescending()
         assertEquals(listOf("26.2", "1.21.4", "1.21.1", "1.20.1"), sorted)
     }
+
+    @Test
+    fun testLegacyPropertiesFormattingAndNumericParsing() {
+        val modernProps = ServerProperties(
+            gamemode = "survival",
+            difficulty = "normal",
+            levelType = "DEFAULT"
+        )
+
+        // Pre-1.13 (e.g. 1.0, 1.12.2) should format gamemode and difficulty as numbers
+        val legacy10Content = modernProps.toPropertiesFileContent("1.0")
+        assertTrue(legacy10Content.contains("gamemode=0"))
+        assertTrue(legacy10Content.contains("difficulty=2"))
+        assertTrue(legacy10Content.contains("level-type=DEFAULT"))
+        assertFalse(legacy10Content.contains("level-type=minecraft:normal"))
+
+        val legacy112Content = modernProps.toPropertiesFileContent("1.12.2")
+        assertTrue(legacy112Content.contains("gamemode=0"))
+        assertTrue(legacy112Content.contains("difficulty=2"))
+
+        // Modern versions (>= 1.13) should retain named values
+        val modernContent = modernProps.toPropertiesFileContent("1.20.1")
+        assertTrue(modernContent.contains("gamemode=survival"))
+        assertTrue(modernContent.contains("difficulty=normal"))
+
+        // Parsing legacy numeric file content should convert back to canonical names
+        val parsedFromNumeric = ServerProperties.parse(legacy10Content)
+        assertEquals("survival", parsedFromNumeric.gamemode)
+        assertEquals("normal", parsedFromNumeric.difficulty)
+        assertEquals("DEFAULT", parsedFromNumeric.levelType)
+    }
+
+    @Test
+    fun testBooleanPropertiesParsingResilience() {
+        val rawConfig = """
+            online-mode=TRUE
+            pvp=False
+            hardcore=1
+            white-list=0
+            allow-flight=True
+            allow-nether=false
+            spawn-monsters=1
+            spawn-animals=0
+        """.trimIndent()
+
+        val parsed = ServerProperties.parse(rawConfig)
+        assertTrue(parsed.onlineMode)
+        assertFalse(parsed.pvp)
+        assertTrue(parsed.hardcore)
+        assertFalse(parsed.whiteList)
+        assertTrue(parsed.allowFlight)
+        assertFalse(parsed.allowNether)
+        assertTrue(parsed.spawnMonsters)
+        assertFalse(parsed.spawnAnimals)
+    }
+
+    @Test
+    fun testDefaultMinecraftFallbackVersions() {
+        val versions = com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+        assertTrue(versions.isNotEmpty())
+        assertTrue(versions.contains("1.21.4"))
+        assertTrue(versions.contains("1.16.5"))
+        val sorted = versions.sortedMinecraftVersionsDescending()
+        assertEquals("1.21.4", sorted.first())
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithEmptyList() {
+        val port = com.devwithzachary.mineserve.model.findNextAvailablePort(emptyList())
+        assertEquals(25565, port)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithDefaultPortTaken() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Server 1", type = ServerType.PAPER, version = "1.21.4", port = 25565)
+        )
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers)
+        assertEquals(25566, nextPort)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithSequentialPortsTaken() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Server 1", type = ServerType.PAPER, version = "1.21.4", port = 25565),
+            MinecraftServer(id = "s2", name = "Server 2", type = ServerType.PAPER, version = "1.21.4", port = 25566),
+            MinecraftServer(id = "s3", name = "Server 3", type = ServerType.PAPER, version = "1.21.4", port = 25567)
+        )
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers)
+        assertEquals(25568, nextPort)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithGaps() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Server 1", type = ServerType.PAPER, version = "1.21.4", port = 25566),
+            MinecraftServer(id = "s2", name = "Server 2", type = ServerType.PAPER, version = "1.21.4", port = 25568)
+        )
+        // 25565 is available and should be selected first
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers)
+        assertEquals(25565, nextPort)
+    }
+
+    @Test
+    fun testFindNextAvailablePortWithCustomStartingPort() {
+        val servers = listOf(
+            MinecraftServer(id = "s1", name = "Bedrock 1", type = ServerType.BEDROCK_GEYSER, version = "1.21.4", port = 19132)
+        )
+        val nextPort = com.devwithzachary.mineserve.model.findNextAvailablePort(servers, startingPort = 19132)
+        assertEquals(19133, nextPort)
+    }
+
+    @Test
+    fun testServerAllocatedRamUpdateAndSerialization() {
+        val server = MinecraftServer(
+            id = "test-server",
+            name = "Survival SMP",
+            type = ServerType.PAPER,
+            version = "1.21.4",
+            allocatedRamMb = 2048
+        )
+        assertEquals(2048, server.allocatedRamMb)
+
+        val updatedServer = server.copy(allocatedRamMb = 4096)
+        assertEquals(4096, updatedServer.allocatedRamMb)
+
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val serialized = json.encodeToString(MinecraftServer.serializer(), updatedServer)
+        val deserialized = json.decodeFromString(MinecraftServer.serializer(), serialized)
+
+        assertEquals(4096, deserialized.allocatedRamMb)
+    }
 }
+

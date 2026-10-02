@@ -61,6 +61,7 @@ fun FileListItem(
     onDuplicate: () -> Unit,
     onExport: () -> Unit,
     onDelete: () -> Unit,
+    onUnzip: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -163,6 +164,16 @@ fun FileListItem(
                         onClick = {
                             showMenu = false
                             onOpenFile()
+                        }
+                    )
+                }
+                if (!entry.isDirectory && (entry.isArchive || entry.extension.equals("zip", ignoreCase = true))) {
+                    DropdownMenuItem(
+                        text = { Text("Unzip / Extract") },
+                        leadingIcon = { Icon(Icons.Default.FolderZip, contentDescription = null, tint = DiamondCyan) },
+                        onClick = {
+                            showMenu = false
+                            onUnzip()
                         }
                     )
                 }

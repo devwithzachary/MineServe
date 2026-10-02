@@ -31,9 +31,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
@@ -107,7 +109,8 @@ fun ResourceBar(
 fun RamSlider(
     allocatedMb: Int,
     onValueChange: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showTitle: Boolean = true
 ) {
     val context = LocalContext.current
     val totalDeviceRamMb = getDeviceTotalMemoryMb(context)
@@ -124,9 +127,9 @@ fun RamSlider(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "RAM Allocation",
-                style = MaterialTheme.typography.titleMedium,
-                color = Color.White
+                text = stringResource(if (showTitle) R.string.ram_allocation_label else R.string.ram_current_allocation),
+                style = if (showTitle) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                color = if (showTitle) Color.White else Slate400
             )
             Text(
                 text = if (allocatedMb >= 1024) String.format(java.util.Locale.US, "%.1f GB", allocatedMb / 1024.0) else "$allocatedMb MB",
@@ -138,7 +141,7 @@ fun RamSlider(
 
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Device Total: ${totalDeviceRamMb / 1024} GB • Recommended: 2 GB to 4 GB for standard play",
+            text = stringResource(R.string.ram_device_info_format, (totalDeviceRamMb / 1024).toInt()),
             style = MaterialTheme.typography.bodySmall,
             color = Slate400
         )
@@ -170,11 +173,11 @@ fun RamSlider(
                     onValueChange(parsed)
                 }
             },
-            label = { Text("Manual RAM Allocation (MB)") },
-            placeholder = { Text("e.g. 2048") },
+            label = { Text(stringResource(R.string.ram_manual_label)) },
+            placeholder = { Text(stringResource(R.string.ram_manual_placeholder)) },
             trailingIcon = {
                 Text(
-                    text = "MB",
+                    text = stringResource(R.string.ram_unit_mb),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = Slate400,

@@ -58,7 +58,6 @@ class ModrinthApiClient(
     companion object {
         private const val TAG = "ModrinthApiClient"
         private const val BASE_URL = "https://api.modrinth.com/v2"
-        private const val USER_AGENT = MineServeHttpClient.USER_AGENT
     }
 
     suspend fun search(
@@ -89,10 +88,7 @@ class ModrinthApiClient(
             val url = "$BASE_URL/search?query=$encodedQuery&facets=$encodedFacets&limit=25"
 
             Log.d(TAG, "Executing Modrinth search: $url")
-            val req = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(url)
             client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) {
                     Log.w(TAG, "Search HTTP error: ${resp.code}")
@@ -138,10 +134,7 @@ class ModrinthApiClient(
     suspend fun getProjectDetails(projectIdOrSlug: String): ModrinthProjectDetails? = withContext(Dispatchers.IO) {
         try {
             val url = "$BASE_URL/project/$projectIdOrSlug"
-            val req = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(url)
             val details = client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext null
                 val body = resp.body?.string() ?: return@withContext null
@@ -195,10 +188,7 @@ class ModrinthApiClient(
         // Returns Pair(fileName, downloadUrl)
         try {
             val url = "$BASE_URL/project/$projectIdOrSlug/version"
-            val req = Request.Builder()
-                .url(url)
-                .header("User-Agent", USER_AGENT)
-                .build()
+            val req = MineServeHttpClient.newGetRequest(url)
             val versionsArray = client.newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@withContext null
                 val body = resp.body?.string() ?: return@withContext null

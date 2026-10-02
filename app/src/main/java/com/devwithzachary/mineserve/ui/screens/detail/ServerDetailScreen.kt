@@ -140,6 +140,7 @@ fun ServerDetailScreen(
     onWriteFile: suspend (String, String) -> Boolean = { _, _ -> false },
     onImportFile: suspend (String, android.net.Uri) -> Boolean = { _, _ -> false },
     onExportFile: suspend (String) -> Boolean = { false },
+    onUnzipFile: suspend (String, String, Boolean) -> Result<Int> = { _, _, _ -> Result.success(0) },
     onSearchFiles: suspend (String) -> List<FileEntry> = { emptyList() },
     onAnalyzeCrash: suspend () -> CrashDiagnosticReport? = { null },
     onApplyQuickFix: suspend (QuickFixAction) -> Boolean = { false },
@@ -169,6 +170,15 @@ fun ServerDetailScreen(
     onSetWebMapPort: (Int) -> Unit = {},
     onInstallWebMapPlugin: (com.devwithzachary.mineserve.model.WebMapPluginType, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onUninstallWebMapPlugin: () -> Boolean = { false },
+    onLoadPlayerLists: suspend () -> com.devwithzachary.mineserve.model.ServerPlayerLists = { com.devwithzachary.mineserve.model.ServerPlayerLists() },
+    onAddWhitelistPlayer: suspend (String) -> Boolean = { false },
+    onRemoveWhitelistPlayer: suspend (String) -> Boolean = { false },
+    onAddOp: suspend (String, Int) -> Boolean = { _, _ -> false },
+    onRemoveOp: suspend (String) -> Boolean = { false },
+    onAddBannedPlayer: suspend (String, String) -> Boolean = { _, _ -> false },
+    onRemoveBannedPlayer: suspend (String) -> Boolean = { false },
+    onAddBannedIp: suspend (String, String) -> Boolean = { _, _ -> false },
+    onRemoveBannedIp: suspend (String) -> Boolean = { false },
     onDeleteServer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -435,6 +445,7 @@ fun ServerDetailScreen(
                         onWriteFile = onWriteFile,
                         onImportFile = onImportFile,
                         onExportFile = onExportFile,
+                        onUnzipFile = onUnzipFile,
                         onSearchFiles = onSearchFiles,
                         onAnalyzeCrash = onAnalyzeCrash,
                         onApplyQuickFix = onApplyQuickFix
@@ -475,8 +486,19 @@ fun ServerDetailScreen(
                         onUpgradeVersion = onUpgradeVersion
                     )
                     DetailTab.PLAYERS -> PlayersTab(
+                        server = server,
+                        status = status,
                         metrics = metrics,
-                        onSendCommand = onSendCommand
+                        onSendCommand = onSendCommand,
+                        onLoadPlayerLists = onLoadPlayerLists,
+                        onAddWhitelistPlayer = onAddWhitelistPlayer,
+                        onRemoveWhitelistPlayer = onRemoveWhitelistPlayer,
+                        onAddOp = onAddOp,
+                        onRemoveOp = onRemoveOp,
+                        onAddBannedPlayer = onAddBannedPlayer,
+                        onRemoveBannedPlayer = onRemoveBannedPlayer,
+                        onAddBannedIp = onAddBannedIp,
+                        onRemoveBannedIp = onRemoveBannedIp
                     )
                     DetailTab.BACKUPS -> BackupsTab(
                         backups = backups,
