@@ -261,6 +261,11 @@
     <string name="player_action_add_whitelist">Add to Whitelist</string>
     <string name="player_action_deop">Remove OP Status</string>
     <string name="player_action_make_op">Grant OP Status</string>
+    <string name="player_action_manage_title">Player Management</string>
+    <string name="player_action_tp_to_player_btn">Teleport to %s</string>
+    <string name="player_action_reason_griefing">Griefing</string>
+    <string name="player_action_reason_cheating">Cheating / Hacking</string>
+    <string name="player_action_reason_spam">Spamming / Harassment</string>
 
     <!-- Add Dialogs -->
     <string name="players_add_to_whitelist">Add to Whitelist</string>

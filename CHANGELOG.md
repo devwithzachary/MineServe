@@ -41,7 +41,7 @@ All notable changes to the MineServe project will be documented in this file.
 ### 👥 Visual Player & Whitelist Management
 - **Visual Management Tables**: Added dedicated, file-backed management tables for Whitelisted Players (`whitelist.json`), Server Operators (`ops.json`), Banned Players (`banned-players.json`), and Banned IP Addresses (`banned-ips.json`), with automatic backwards compatibility for legacy text files.
 - **3D Player Avatars & Skins**: Integrated 3D player helm and skin rendering for online, whitelisted, and operator player cards with automated fallback placeholders.
-- **Interactive Player Action Dialog**: Tap any player card across active sessions or management tables to perform in-depth administrative actions: kick, ban (with custom reasons), teleport (to spawn, coordinates, or other online players), change gamemodes (Survival, Creative, Adventure, Spectator), or give items with convenient preset suggestions and amount selectors.
+- **Full-Screen Player Management Page**: Transformed player administration into a dedicated full-screen page featuring a top app bar with back navigation, player avatar banner, live status badges, and spacious management tabs: kick, ban (with preset reasons), teleport (to spawn, coordinates, or other players), gamemode switching, and item granting.
 - **Offline & Live Dual-Mode Synchronization**: File-backed mutations (Whitelist, OP, Ban, Pardon) operate seamlessly whether the server is running or offline, while live in-game actions automatically dispatch real-time console commands when online.
 
 ### 🌐 Localization & String Extraction
