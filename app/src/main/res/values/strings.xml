@@ -184,7 +184,7 @@
     <string name="settings_tunnel_relay_host_placeholder">bore.pub</string>
     <string name="settings_tunnel_port">Port</string>
 
-    <!-- Players Tab -->
+    <!-- Players Tab & Player Management -->
     <string name="players_title">Connected Players</string>
     <string name="players_empty">No players currently connected to this server.</string>
     <string name="players_manage_commands">Manage Player Commands</string>
@@ -194,6 +194,86 @@
     <string name="players_deop">Remove OP</string>
     <string name="players_kick">Kick</string>
     <string name="players_ban">Ban</string>
+    <string name="players_pardon">Pardon</string>
+    <string name="players_remove">Remove</string>
+    <string name="players_refresh">Refresh</string>
+
+    <string name="players_tab_online">Online</string>
+    <string name="players_tab_whitelist">Whitelist</string>
+    <string name="players_tab_ops">Operators</string>
+    <string name="players_tab_banned_players">Banned Players</string>
+    <string name="players_tab_banned_ips">Banned IPs</string>
+
+    <string name="players_online_title">Online Players</string>
+    <string name="players_online_empty">No players currently connected to this server.</string>
+    <string name="players_whitelist_title">Whitelisted Players</string>
+    <string name="players_whitelist_empty">No players on the whitelist. Whitelist restricts server access to approved players only.</string>
+    <string name="players_ops_title">Server Operators (OPs)</string>
+    <string name="players_ops_empty">No operators configured. OPs have permission to run administrative commands.</string>
+    <string name="players_banned_players_title">Banned Players</string>
+    <string name="players_banned_players_empty">No banned players. Banned players cannot join this server.</string>
+    <string name="players_banned_ips_title">Banned IP Addresses</string>
+    <string name="players_banned_ips_empty">No IP addresses currently banned.</string>
+
+    <!-- Player Action Dialog -->
+    <string name="player_action_dialog_title">Player Actions</string>
+    <string name="player_action_status_online">Online</string>
+    <string name="player_action_status_offline">Offline</string>
+    <string name="player_action_badge_op">OP</string>
+    <string name="player_action_badge_whitelisted">Whitelisted</string>
+    <string name="player_action_badge_banned">Banned</string>
+
+    <string name="player_action_tab_actions">Actions</string>
+    <string name="player_action_tab_gamemode">Gamemode</string>
+    <string name="player_action_tab_teleport">Teleport</string>
+    <string name="player_action_tab_items">Give Items</string>
+
+    <string name="player_action_kick">Kick Player</string>
+    <string name="player_action_kick_reason_label">Kick Reason (Optional)</string>
+    <string name="player_action_kick_default_reason">Kicked by an operator</string>
+    <string name="player_action_ban">Ban Player</string>
+    <string name="player_action_ban_reason_label">Ban Reason</string>
+    <string name="player_action_ban_default_reason">Banned by an operator</string>
+    <string name="player_action_pardon">Pardon (Unban)</string>
+
+    <string name="player_action_gamemode_title">Change Gamemode</string>
+    <string name="player_action_gamemode_survival">Survival</string>
+    <string name="player_action_gamemode_creative">Creative</string>
+    <string name="player_action_gamemode_adventure">Adventure</string>
+    <string name="player_action_gamemode_spectator">Spectator</string>
+
+    <string name="player_action_teleport_title">Teleport Player</string>
+    <string name="player_action_tp_coords">Coordinates</string>
+    <string name="player_action_tp_target">Target Player</string>
+    <string name="player_action_tp_spawn">Teleport to World Spawn</string>
+    <string name="player_action_tp_btn">Teleport</string>
+    <string name="player_action_coord_x">X</string>
+    <string name="player_action_coord_y">Y</string>
+    <string name="player_action_coord_z">Z</string>
+
+    <string name="player_action_give_title">Give Items</string>
+    <string name="player_action_give_item_id">Item Identifier (e.g. minecraft:diamond)</string>
+    <string name="player_action_give_amount">Amount (1-64)</string>
+    <string name="player_action_give_btn">Give to Player</string>
+
+    <string name="player_action_requires_running">Live in-game actions require the server to be running.</string>
+    <string name="player_action_remove_whitelist">Remove from Whitelist</string>
+    <string name="player_action_add_whitelist">Add to Whitelist</string>
+    <string name="player_action_deop">Remove OP Status</string>
+    <string name="player_action_make_op">Grant OP Status</string>
+
+    <!-- Add Dialogs -->
+    <string name="players_add_to_whitelist">Add to Whitelist</string>
+    <string name="players_add_operator">Add Operator (OP)</string>
+    <string name="players_ban_player">Ban Player</string>
+    <string name="players_ban_ip">Ban IP Address</string>
+    <string name="players_dialog_username_label">Minecraft Username</string>
+    <string name="players_dialog_ip_label">IP Address</string>
+    <string name="players_dialog_reason_label">Reason</string>
+    <string name="players_dialog_op_level_label">Operator Permission Level (1-4)</string>
+    <string name="players_dialog_add_btn">Add</string>
+    <string name="players_dialog_cancel_btn">Cancel</string>
+    <string name="players_dialog_close_btn">Close</string>
 
     <!-- Backups Tab -->
     <string name="backups_title">World &amp; Server Backups</string>

@@ -313,6 +313,15 @@ fun MineServeApp(viewModel: MainViewModel) {
                             viewModel.installWebMapPlugin(server.id, pluginType, onResult)
                         },
                         onUninstallWebMapPlugin = { viewModel.uninstallWebMapPlugin(server.id) },
+                        onLoadPlayerLists = { viewModel.loadPlayerLists(server.id) },
+                        onAddWhitelistPlayer = { name -> viewModel.addWhitelistPlayer(server.id, name) },
+                        onRemoveWhitelistPlayer = { name -> viewModel.removeWhitelistPlayer(server.id, name) },
+                        onAddOp = { name, level -> viewModel.addOp(server.id, name, level) },
+                        onRemoveOp = { name -> viewModel.removeOp(server.id, name) },
+                        onAddBannedPlayer = { name, reason -> viewModel.addBannedPlayer(server.id, name, reason) },
+                        onRemoveBannedPlayer = { name -> viewModel.removeBannedPlayer(server.id, name) },
+                        onAddBannedIp = { ip, reason -> viewModel.addBannedIp(server.id, ip, reason) },
+                        onRemoveBannedIp = { ip -> viewModel.removeBannedIp(server.id, ip) },
                         onDeleteServer = {
                             navigateTo(Screen.Dashboard)
                             viewModel.deleteServer(server.id)

@@ -170,6 +170,15 @@ fun ServerDetailScreen(
     onSetWebMapPort: (Int) -> Unit = {},
     onInstallWebMapPlugin: (com.devwithzachary.mineserve.model.WebMapPluginType, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onUninstallWebMapPlugin: () -> Boolean = { false },
+    onLoadPlayerLists: suspend () -> com.devwithzachary.mineserve.model.ServerPlayerLists = { com.devwithzachary.mineserve.model.ServerPlayerLists() },
+    onAddWhitelistPlayer: suspend (String) -> Boolean = { false },
+    onRemoveWhitelistPlayer: suspend (String) -> Boolean = { false },
+    onAddOp: suspend (String, Int) -> Boolean = { _, _ -> false },
+    onRemoveOp: suspend (String) -> Boolean = { false },
+    onAddBannedPlayer: suspend (String, String) -> Boolean = { _, _ -> false },
+    onRemoveBannedPlayer: suspend (String) -> Boolean = { false },
+    onAddBannedIp: suspend (String, String) -> Boolean = { _, _ -> false },
+    onRemoveBannedIp: suspend (String) -> Boolean = { false },
     onDeleteServer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -477,8 +486,19 @@ fun ServerDetailScreen(
                         onUpgradeVersion = onUpgradeVersion
                     )
                     DetailTab.PLAYERS -> PlayersTab(
+                        server = server,
+                        status = status,
                         metrics = metrics,
-                        onSendCommand = onSendCommand
+                        onSendCommand = onSendCommand,
+                        onLoadPlayerLists = onLoadPlayerLists,
+                        onAddWhitelistPlayer = onAddWhitelistPlayer,
+                        onRemoveWhitelistPlayer = onRemoveWhitelistPlayer,
+                        onAddOp = onAddOp,
+                        onRemoveOp = onRemoveOp,
+                        onAddBannedPlayer = onAddBannedPlayer,
+                        onRemoveBannedPlayer = onRemoveBannedPlayer,
+                        onAddBannedIp = onAddBannedIp,
+                        onRemoveBannedIp = onRemoveBannedIp
                     )
                     DetailTab.BACKUPS -> BackupsTab(
                         backups = backups,

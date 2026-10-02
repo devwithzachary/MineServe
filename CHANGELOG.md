@@ -37,8 +37,14 @@ All notable changes to the MineServe project will be documented in this file.
 - **Port Input Validation Safeguards**: Validates port bounds (1-65535) with inline error messages and disables the Next button when the port field is empty or out of range.
 - **Settings Port Synchronization**: Synchronizes server configuration files and in-memory server state whenever a server's port is modified via `server.properties` in Settings.
 
+### 👥 Visual Player & Whitelist Management
+- **Visual Management Tables**: Added dedicated, file-backed management tables for Whitelisted Players (`whitelist.json`), Server Operators (`ops.json`), Banned Players (`banned-players.json`), and Banned IP Addresses (`banned-ips.json`), with automatic backwards compatibility for legacy text files.
+- **3D Player Avatars & Skins**: Integrated 3D player helm and skin rendering for online, whitelisted, and operator player cards with automated fallback placeholders.
+- **Interactive Player Action Dialog**: Tap any player card across active sessions or management tables to perform in-depth administrative actions: kick, ban (with custom reasons), teleport (to spawn, coordinates, or other online players), change gamemodes (Survival, Creative, Adventure, Spectator), or give items with convenient preset suggestions and amount selectors.
+- **Offline & Live Dual-Mode Synchronization**: File-backed mutations (Whitelist, OP, Ban, Pardon) operate seamlessly whether the server is running or offline, while live in-game actions automatically dispatch real-time console commands when online.
+
 ### 🌐 Localization & String Extraction
-- **Resource Extraction**: Extracted hardcoded user-visible text strings across `PlayersTab`, `SettingsTab`, `ServerSoftwareCard`, `UpdateBuildModal`, `UpgradeVersionModal`, and wizard configuration steps into `res/values/strings.xml`, ensuring clean separation of presentation text and establishing full localization readiness for upcoming releases.
+- **Resource Extraction**: Extracted hardcoded user-visible text strings across `PlayersTab`, `SettingsTab`, `ServerSoftwareCard`, `UpdateBuildModal`, `UpgradeVersionModal`, player action dialogs, and wizard configuration steps into `res/values/strings.xml`, ensuring clean separation of presentation text and establishing full localization readiness for upcoming releases.
 
 ## [1.3.1] - 2026-09-17
 

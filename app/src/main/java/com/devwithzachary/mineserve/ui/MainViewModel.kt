@@ -22,6 +22,7 @@ import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PluginModEntry
 import com.devwithzachary.mineserve.model.ServerBuildInfo
 import com.devwithzachary.mineserve.model.ServerMetrics
+import com.devwithzachary.mineserve.model.ServerPlayerLists
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
@@ -317,6 +318,70 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     suspend fun listEditableConfigFiles(serverId: String): List<String> {
         return serverRepository.listEditableConfigFiles(serverId)
+    }
+
+    suspend fun loadPlayerLists(serverId: String): ServerPlayerLists {
+        return serverRepository.loadPlayerLists(serverId)
+    }
+
+    suspend fun addWhitelistPlayer(serverId: String, name: String): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            sendCommand(serverId, "whitelist add $name")
+            sendCommand(serverId, "whitelist reload")
+        }
+        return serverRepository.addWhitelistPlayer(serverId, name)
+    }
+
+    suspend fun removeWhitelistPlayer(serverId: String, name: String): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            sendCommand(serverId, "whitelist remove $name")
+            sendCommand(serverId, "whitelist reload")
+        }
+        return serverRepository.removeWhitelistPlayer(serverId, name)
+    }
+
+    suspend fun addOp(serverId: String, name: String, level: Int = 4): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            sendCommand(serverId, "op $name")
+        }
+        return serverRepository.addOp(serverId, name, level)
+    }
+
+    suspend fun removeOp(serverId: String, name: String): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            sendCommand(serverId, "deop $name")
+        }
+        return serverRepository.removeOp(serverId, name)
+    }
+
+    suspend fun addBannedPlayer(serverId: String, name: String, reason: String = "Banned by an operator."): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            val cmd = if (reason.isNotBlank()) "ban $name $reason" else "ban $name"
+            sendCommand(serverId, cmd)
+        }
+        return serverRepository.addBannedPlayer(serverId, name, reason.ifBlank { "Banned by an operator." })
+    }
+
+    suspend fun removeBannedPlayer(serverId: String, name: String): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            sendCommand(serverId, "pardon $name")
+        }
+        return serverRepository.removeBannedPlayer(serverId, name)
+    }
+
+    suspend fun addBannedIp(serverId: String, ip: String, reason: String = "Banned by an operator."): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            val cmd = if (reason.isNotBlank()) "ban-ip $ip $reason" else "ban-ip $ip"
+            sendCommand(serverId, cmd)
+        }
+        return serverRepository.addBannedIp(serverId, ip, reason.ifBlank { "Banned by an operator." })
+    }
+
+    suspend fun removeBannedIp(serverId: String, ip: String): Boolean {
+        if (processManager.isServerRunning(serverId)) {
+            sendCommand(serverId, "pardon-ip $ip")
+        }
+        return serverRepository.removeBannedIp(serverId, ip)
     }
 
     suspend fun listDirectory(serverId: String, relativePath: String = ""): List<com.devwithzachary.mineserve.model.FileEntry> {
