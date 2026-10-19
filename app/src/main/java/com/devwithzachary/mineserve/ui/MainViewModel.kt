@@ -217,6 +217,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         port: Int,
         ramMb: Int,
         motd: String,
+        eulaAccepted: Boolean = false,
         onProgress: (String, Int) -> Unit
     ): MinecraftServer? = withContext(Dispatchers.IO) {
         try {
@@ -233,7 +234,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 ramMb = ramMb,
                 motd = motd,
                 jarFileName = if (isInstaller) "installer.jar" else "server.jar",
-                serverBuild = buildInfo?.first
+                serverBuild = buildInfo?.first,
+                eulaAccepted = eulaAccepted
             )
 
             val serverDir = serverRepository.getServerDirectory(server.id)

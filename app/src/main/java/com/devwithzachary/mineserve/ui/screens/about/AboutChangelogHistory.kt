@@ -37,9 +37,21 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.4.1",
+        date = "October 19, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "Minecraft EULA Opt-In: Server creation wizard now requires explicit opt-in to the Minecraft End User License Agreement before creating a server, with automated opt-in overrides removed on process startup.",
+            "Security & Backup Protection: Android automatic cloud backup is explicitly disabled and extraction rules configured to prevent server world data and sensitive credentials from being backed up.",
+            "Network & Startup Privacy: Automatic GitHub release update check at startup is now disabled by default with on-demand user toggle in App Settings.",
+            "Native Tunnel Submodules: Integrated Playit and Bore native Rust source repositories as pinned git submodules for enhanced build reproducibility.",
+            "F-Droid Review Compliance: Dropped unofficial archive mirror fallbacks in Mojang version resolution and standardized repository licensing under GPL-3.0."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.4.0",
         date = "October 2, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "High-Performance Native Tunneling: Playit.gg and Bore tunnel agents now run directly as native Android processes outside PRoot, eliminating syscall emulation overhead to reduce public tunnel latency by 30+ ms.",
             "Minecraft Forge & Legacy Support: Run Forge modded servers with automatic installer execution, alongside full support for historical Minecraft releases down to version 1.0 with automated Java 8 runtime mapping.",

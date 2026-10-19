@@ -67,7 +67,7 @@ fun AppSettingsScreen(
     onInstallJava: (Int) -> Unit,
     onReinstallRuntime: () -> Unit,
     onBack: () -> Unit,
-    isCheckGitHubUpdatesEnabled: Boolean = true,
+    isCheckGitHubUpdatesEnabled: Boolean = false,
     onToggleCheckGitHubUpdates: (Boolean) -> Unit = {},
     isCheckingUpdate: Boolean = false,
     updateCheckStatusMessage: String? = null,

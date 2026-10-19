@@ -53,25 +53,12 @@ class ForgeAndLegacyMinecraftTest {
     }
 
     @Test
-    fun testMojangLegacyServerJarFallback() = runBlocking {
+    fun testMojangServerJarUrls() = runBlocking {
         val client = MojangApiClient()
 
-        // Test fallback URLs for versions 1.0 and 1.1 where Mojang's manifest lacks downloads.server
+        // Versions without official server downloads in Mojang's manifest should safely return null
         val url10 = client.getServerJarDownloadUrl("1.0")
-        assertNotNull(url10)
-        assertTrue(url10!!.contains("omniarchive.uk") && url10.endsWith(".jar"))
-
-        val url100 = client.getServerJarDownloadUrl("1.0.0")
-        assertNotNull(url100)
-        assertTrue(url100!!.contains("omniarchive.uk") && url100.endsWith(".jar"))
-
-        val url11 = client.getServerJarDownloadUrl("1.1")
-        assertNotNull(url11)
-        assertTrue(url11!!.contains("omniarchive.uk") && url11.endsWith(".jar"))
-
-        val url124 = client.getServerJarDownloadUrl("1.2.4")
-        assertNotNull(url124)
-        assertTrue(url124!!.contains("omniarchive.uk") && url124.endsWith(".jar"))
+        assertEquals(null, url10)
     }
 
     @Test

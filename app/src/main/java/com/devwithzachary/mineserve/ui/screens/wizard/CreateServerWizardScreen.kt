@@ -76,6 +76,7 @@ fun CreateServerWizardScreen(
         port: Int,
         ramMb: Int,
         motd: String,
+        eulaAccepted: Boolean,
         onProgress: (String, Int) -> Unit
     ) -> MinecraftServer?,
     modifier: Modifier = Modifier
@@ -104,7 +105,7 @@ fun CreateServerWizardScreen(
     var allocatedRamMb by remember { mutableIntStateOf(2048) }
     var userModifiedPort by remember { mutableStateOf(false) }
     var port by remember { mutableIntStateOf(defaultUnusedPort) }
-    var eulaAccepted by remember { mutableStateOf(true) }
+    var eulaAccepted by remember { mutableStateOf(false) }
 
     // Sync calculated unused port if servers load asynchronously, provided user hasn't explicitly set a port
     LaunchedEffect(defaultUnusedPort) {
@@ -249,7 +250,8 @@ fun CreateServerWizardScreen(
                                         selectedVersion,
                                         port,
                                         allocatedRamMb,
-                                        motd
+                                        motd,
+                                        eulaAccepted
                                     ) { status, progress ->
                                         creationStatus = status
                                         creationProgress = progress

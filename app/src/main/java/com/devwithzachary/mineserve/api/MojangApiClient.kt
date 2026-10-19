@@ -76,23 +76,6 @@ class MojangApiClient(
             Log.w(TAG, "Mojang manifest server URL lookup failed for $version: ${e.message}")
         }
 
-        // Fallback for legacy Minecraft releases down to 1.0 where Mojang's modern manifest omits server.jar
-        getLegacyServerDownloadUrl(version)
-    }
-
-    private fun getLegacyServerDownloadUrl(version: String): String? {
-        val clean = version.trim()
-        return when (clean) {
-            "1.0", "1.0.0" -> "https://vault.omniarchive.uk/archive/java/server-release/1.0.0/1.0.0.jar"
-            "1.1" -> "https://vault.omniarchive.uk/archive/java/server-release/1.1/1.1.jar"
-            "1.2.1" -> "https://vault.omniarchive.uk/archive/java/server-release/1.2/1.2.1.jar"
-            "1.2.2" -> "https://vault.omniarchive.uk/archive/java/server-release/1.2/1.2.2.jar"
-            "1.2.3" -> "https://vault.omniarchive.uk/archive/java/server-release/1.2/1.2.3.jar"
-            "1.2.4" -> "https://vault.omniarchive.uk/archive/java/server-release/1.2/1.2.4.jar"
-            "1.2", "1.2.0" -> "https://vault.omniarchive.uk/archive/java/server-release/1.2/1.2.1.jar"
-            "b1.8", "b1.8.1" -> "https://vault.omniarchive.uk/archive/java/server-beta/b1.8.1/b1.8.1.jar"
-            "b1.7", "b1.7.3" -> "https://vault.omniarchive.uk/archive/java/server-beta/b1.7.3/b1.7.3.jar"
-            else -> null
-        }
+        null
     }
 }

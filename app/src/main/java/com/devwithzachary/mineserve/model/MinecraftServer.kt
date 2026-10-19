@@ -31,7 +31,7 @@ data class MinecraftServer(
     val status: ServerStatus = ServerStatus.STOPPED,
     val motd: String = "A MineServe Minecraft Server",
     val autoStart: Boolean = false,
-    val eulaAccepted: Boolean = true,
+    val eulaAccepted: Boolean = false,
     val jvmArgs: String = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200",
     val createdAt: Long = System.currentTimeMillis(),
     val lastStartedAt: Long? = null,

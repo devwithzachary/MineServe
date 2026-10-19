@@ -192,10 +192,12 @@ class ServerProcessManager private constructor(
             try {
                 updateStatus(server.id, ServerStatus.STARTING, onStatusChanged)
 
-                // 1. Ensure EULA is accepted and container system files are configured
+                // 1. Ensure container system files are configured and eula.txt exists without auto-overriding user opt-in
                 rootfsManager.ensureSystemFilesConfigured()
                 val eulaFile = File(serverDir, "eula.txt")
-                eulaFile.writeText("# Auto-accepted by MineServe\neula=true\n")
+                if (!eulaFile.exists()) {
+                    eulaFile.writeText("eula=${if (server.eulaAccepted) "true" else "false"}\n")
+                }
 
                 // 2. Ensure server directories exist
                 File(serverDir, "plugins").mkdirs()

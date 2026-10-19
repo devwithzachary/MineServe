@@ -1,11 +1,15 @@
 Categories:
   - Game Helper
   - System
-License: GPL-2.0-or-later
+License: GPL-3.0-only
 AuthorName: Zachary Powell
 SourceCode: https://github.com/devwithzachary/MineServe
 IssueTracker: https://github.com/devwithzachary/MineServe/issues
 Changelog: https://github.com/devwithzachary/MineServe/blob/main/CHANGELOG.md
+
+AntiFeatures:
+  - NonFreeDep
+  - NonFreeNet
 
 AutoName: MineServe
 
@@ -33,9 +37,28 @@ Builds:
       $$NDK$$
     ndk: 28.2.13676358
 
+  - versionName: 1.4.1
+    versionCode: 7
+    commit: 1.4.1
+    subdir: app
+    submodules: yes
+    sudo:
+      - apt-get update
+      - apt-get install -y make gawk git gcc libc-dev rustup
+    gradle:
+      - yes
+    prebuild:
+      - rustup default 1.99.0 || rustup default stable
+      - rustup target add aarch64-linux-android x86_64-linux-android
+    scandelete:
+      - app/src/main/jniLibs
+    build: RUSTFLAGS="--remap-path-prefix=$HOME/.cargo=/root/.cargo" ../scripts/build_native_libs.sh
+      $$NDK$$
+    ndk: 28.2.13676358
+
 AllowedAPKSigningKeys: c532d763fd4ec838fa118005d9eb51ec13ce72167d2b0a1a8452ce36fc49199e
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.4.0
-CurrentVersionCode: 6
+CurrentVersion: 1.4.1
+CurrentVersionCode: 7

@@ -1,0 +1,6 @@
+[submodule "external/playit-agent"]
+	path = external/playit-agent
+	url = https://github.com/playit-cloud/playit-agent.git
+[submodule "external/bore"]
+	path = external/bore
+	url = https://github.com/ekzhang/bore.git
