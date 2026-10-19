@@ -118,7 +118,7 @@ docker run --rm \
         export PATH="$HOME/.cargo/bin:$PATH"
         if ! command -v cargo >/dev/null 2>&1; then
             echo "🦀 Installing Rust & Cargo via rustup..."
-            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal >/dev/null
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.99.0 --profile minimal >/dev/null
             export PATH="$HOME/.cargo/bin:$PATH"
             rustup target add aarch64-linux-android x86_64-linux-android >/dev/null
         fi

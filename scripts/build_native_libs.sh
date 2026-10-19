@@ -285,9 +285,14 @@ for ABI in "${ABIS[@]}"; do
             ENV_CARGO_TARGET=$(echo "$TARGET_TRIPLE" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
             export CARGO_TARGET_${ENV_CARGO_TARGET}_LINKER="$CC"
 
+            if [ -z "$RUSTFLAGS" ]; then
+                CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
+                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build"
+            fi
+
             (
                 cd "$PLAYIT_SRC"
-                cargo build --release --target "$TARGET_TRIPLE" -p playit-cli
+                cargo build --release --locked --target "$TARGET_TRIPLE" -p playit-cli
             )
             if [ -f "$PLAYIT_SRC/target/$TARGET_TRIPLE/release/playit-cli" ]; then
                 cp "$PLAYIT_SRC/target/$TARGET_TRIPLE/release/playit-cli" "$ABI_WORK_DIR/libplayit.so"
@@ -312,9 +317,14 @@ for ABI in "${ABIS[@]}"; do
             ENV_CARGO_TARGET=$(echo "$TARGET_TRIPLE" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
             export CARGO_TARGET_${ENV_CARGO_TARGET}_LINKER="$CC"
 
+            if [ -z "$RUSTFLAGS" ]; then
+                CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
+                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build"
+            fi
+
             (
                 cd "$BORE_SRC"
-                cargo build --release --target "$TARGET_TRIPLE"
+                cargo build --release --locked --target "$TARGET_TRIPLE"
             )
             if [ -f "$BORE_SRC/target/$TARGET_TRIPLE/release/bore" ]; then
                 cp "$BORE_SRC/target/$TARGET_TRIPLE/release/bore" "$ABI_WORK_DIR/libbore.so"
