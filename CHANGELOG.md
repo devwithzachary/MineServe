@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.4.1] - 2026-10-19
+## [1.4.1] - 2026-10-20
 
 ### 📜 Minecraft EULA & User Opt-In
 - **Explicit EULA Acceptance in Wizard**: The Minecraft End User License Agreement checkbox in Step 4 (Review) of the server setup wizard now defaults to unticked (`false`). The "Create Server" button remains disabled until the user explicitly reviews and agrees to the agreement.
