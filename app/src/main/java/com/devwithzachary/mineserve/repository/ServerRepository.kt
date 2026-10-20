@@ -154,7 +154,8 @@ class ServerRepository(
         ramMb: Int = 2048,
         motd: String = "A MineServe Minecraft Server",
         jarFileName: String = "server.jar",
-        serverBuild: String? = null
+        serverBuild: String? = null,
+        eulaAccepted: Boolean = false
     ): MinecraftServer = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString().take(8)
         val serverDir = File(serversDir, id).apply { mkdirs() }
@@ -170,7 +171,8 @@ class ServerRepository(
             status = ServerStatus.STOPPED,
             motd = motd,
             jarFileName = jarFileName,
-            serverBuild = serverBuild
+            serverBuild = serverBuild,
+            eulaAccepted = eulaAccepted
         )
 
         // Save server_config.json
@@ -192,7 +194,7 @@ class ServerRepository(
 
         // Save eula.txt
         val eulaFile = File(serverDir, "eula.txt")
-        eulaFile.writeText("eula=true\n")
+        eulaFile.writeText("eula=${if (eulaAccepted) "true" else "false"}\n")
 
         // Create folders
         File(serverDir, "plugins").mkdirs()

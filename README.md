@@ -247,7 +247,7 @@ On initial launch, tap **Initialize Server Runtime**. MineServe will download an
 1. Tap the **+** button on the Dashboard.
 2. Select your desired server engine (Paper, Purpur, Folia, Fabric, NeoForge, Forge, Vanilla).
 3. Select the Minecraft version and assign RAM (e.g. 2048 MB).
-4. MineServe automatically assigns an unused port (e.g. `25565`) and sets up `server.properties` and `eula.txt`.
+4. Review configuration and port assignment, and check the box to agree to the Minecraft EULA.
 5. Tap **Download & Build Server**.
 
 ### 3. Managing the Server

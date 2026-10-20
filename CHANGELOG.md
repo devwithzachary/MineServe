@@ -2,6 +2,29 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.4.1] - 2026-10-20
+
+### 📜 Minecraft EULA & User Opt-In
+- **Explicit EULA Acceptance in Wizard**: The Minecraft End User License Agreement checkbox in Step 4 (Review) of the server setup wizard now defaults to unticked (`false`). The "Create Server" button remains disabled until the user explicitly reviews and agrees to the agreement.
+- **Process Startup EULA Non-Override**: Removed the unconditional automatic overwrite of `eula.txt` on server startup in `ServerProcessManager`. Existing `eula.txt` files are strictly preserved, honoring user opt-out or custom configuration, and missing `eula.txt` files are generated respecting the server's recorded opt-in state.
+
+### 🛡️ Security, Privacy & Android Backup Protection
+- **Disabled Android Automatic Backup**: Set `android:allowBackup="false"` in `AndroidManifest.xml` to prevent server configuration files, world saves, PRoot rootfs directories, and sensitive credentials (such as Playit secrets and RCON passwords) from being backed up to unencrypted cloud backups or device transfers.
+- **Explicit Backup and Extraction Rules**: Configured comprehensive XML backup exclusion rules (`data_extraction_rules.xml` and `backup_rules.xml`) across all storage domains (`root`, `file`, `database`, `sharedpref`) as an additional safeguard.
+
+### 🌐 Network & Startup Privacy
+- **Default-Disabled Automatic Update Checks**: Startup release checks via the GitHub API now default to disabled. Users retain full control to enable automatic checks via App Settings or manually check for new releases on demand.
+- **Comprehensive Network Disclosures**: Updated store metadata (`full_description.txt`) with transparent disclosures detailing all external network interactions, including Mojang server manifests, Ubuntu root filesystem and OpenJDK downloads, tunnel fallback binaries, Modrinth REST APIs, and GitHub release queries.
+
+### 🛠️ Native Tooling & Reproducible Submodules
+- **Native Rust Submodules**: Pinned upstream `playit-agent` (v0.15.26) and `bore` (v0.6.0) source repositories as git submodules under `external/playit-agent` and `external/bore`, ensuring the F-Droid source scanner has full visibility without cloning during build time.
+- **Native Build Script Optimization**: Updated `scripts/build_native_libs.sh` to prefer local submodule source trees when present with seamless fallback to online shallow clones for local standalone builds.
+
+### ⚖️ F-Droid Compliance & Licensing Alignment
+- **Official License Harmonization**: Aligned the repository `LICENSE` file with the GNU General Public License v3.0 (GPL-3.0) text, harmonizing with `README.md` and setting `License: GPL-3.0-only` in the F-Droid recipe metadata.
+- **Removal of Unofficial Archive Fallbacks**: Dropped third-party archive mirror fallbacks (`omniarchive.uk`) from `MojangApiClient`, ensuring only official Mojang manifest endpoints are utilized for server JAR resolution.
+- **Declared F-Droid Anti-Features**: Added `NonFreeDep` and `NonFreeNet` anti-feature declarations to `com.devwithzachary.mineserve.yml` to reflect dependencies on Mojang's official proprietary server binaries and network downloads.
+
 ## [1.4.0] - 2026-10-02
 
 ### ⚙️ Minecraft Forge & Historical Version Support

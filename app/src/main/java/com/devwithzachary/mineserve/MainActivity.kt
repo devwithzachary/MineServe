@@ -200,8 +200,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                     },
                     onCancel = { navigateBack() },
                     existingServers = servers,
-                    onDownloadAndCreateServer = { name, type, version, port, ramMb, motd, onProgress ->
-                        viewModel.downloadAndCreateServer(name, type, version, port, ramMb, motd, onProgress)
+                    onDownloadAndCreateServer = { name, type, version, port, ramMb, motd, eulaAccepted, onProgress ->
+                        viewModel.downloadAndCreateServer(name, type, version, port, ramMb, motd, eulaAccepted, onProgress)
                     }
                 )
             }

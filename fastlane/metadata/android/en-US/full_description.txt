@@ -13,15 +13,25 @@ Key Features:
   - FabricMC: Lightweight, modular modding framework and server platform.
   - NeoForged: Modern community-driven modding API and server platform.
   - Forge: Traditional modding API for classic mods.
-  - BungeeCord / Velocity: High-performance reverse proxies for linking multiple server worlds.
-  - Bedrock Dedicated Server: Official Mojang server for Minecraft Bedrock Edition cross-play.
+  - Vanilla: Official standalone Mojang server software.
+  - Bedrock Cross-Play: Bedrock Edition players can connect via PaperMC servers configured with the GeyserMC plugin.
 
 • Multi-Version Isolated Java Environments: Automatically downloads and manages isolated OpenJDK runtimes (Java 8, Java 17, Java 21, and Java 25) to run any Minecraft version.
 
 • Interactive Live PTY Console: Full-featured terminal console supporting interactive commands, ANSI color rendering, auto-scrolling, command history, and instant server management.
 
-• Zero-Port-Forwarding Public Tunneling: Share your server with friends across the Internet using built-in Playit.gg tunneling and QR code sharing without configuring router ports.
+• Zero-Port-Forwarding Public Tunneling: Share your server with friends across the Internet without configuring router ports using built-in high-speed native tunneling tools:
+  - bore (libbore): Fast, lightweight open-source TCP tunnel for instant public access.
+  - Playit.gg: Global tunnel network with custom domains and QR code connection sharing.
 
 • Automated World & Server Backups: One-click snapshots and full archive backups to safeguard world progress.
 
 • Built-in Mod & Plugin Management: Browse, search, download, and manage plugins and mods directly from Modrinth within the app.
+
+Network Access & External Downloads:
+To run dedicated Minecraft servers natively on Android, MineServe connects to external services to download required components:
+• Server Software: Downloads official Mojang server manifests and JARs, as well as server distributions from PaperMC, Purpur, Fabric, Forge, and NeoForge APIs.
+• Container Environment: Downloads a minimal Ubuntu root filesystem (rootfs) and isolated OpenJDK runtimes (Java 8, 17, 21, 25) required for execution under PRoot.
+• Tunnel Agents: Uses bundled native binaries on 64-bit devices, or downloads the official playit agent binary on 32-bit ARM (armeabi-v7a) architectures.
+• Community Content: Connects to Modrinth REST APIs to search and install plugins and mods.
+• Application Updates: Optional version checks against GitHub Releases API (disabled by default; can be enabled in App Settings).

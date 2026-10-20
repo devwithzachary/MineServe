@@ -14,7 +14,7 @@ class UpdatePreferences(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     var isCheckGitHubUpdatesEnabled: Boolean
-        get() = prefs.getBoolean(KEY_CHECK_GITHUB_UPDATES, true)
+        get() = prefs.getBoolean(KEY_CHECK_GITHUB_UPDATES, false)
         set(value) = prefs.edit().putBoolean(KEY_CHECK_GITHUB_UPDATES, value).apply()
 
     var ignoredVersion: String

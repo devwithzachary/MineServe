@@ -274,9 +274,13 @@ for ABI in "${ABIS[@]}"; do
     if [ "$ABI" = "arm64-v8a" ] || [ "$ABI" = "x86_64" ]; then
         if command -v cargo >/dev/null 2>&1; then
             echo " -> Building libplayit.so with Cargo ($TARGET_TRIPLE)..."
-            PLAYIT_SRC="$BUILD_WORK_DIR/playit_src"
-            if [ ! -d "$PLAYIT_SRC" ]; then
-                git clone --depth 1 --branch v0.15.26 https://github.com/playit-cloud/playit-agent.git "$PLAYIT_SRC"
+            if [ -d "$EXTERNAL_DIR/playit-agent" ]; then
+                PLAYIT_SRC="$EXTERNAL_DIR/playit-agent"
+            else
+                PLAYIT_SRC="$BUILD_WORK_DIR/playit_src"
+                if [ ! -d "$PLAYIT_SRC" ]; then
+                    git clone --depth 1 --branch v0.15.26 https://github.com/playit-cloud/playit-agent.git "$PLAYIT_SRC"
+                fi
             fi
 
             ENV_TRIPLE_NAME=$(echo "$TARGET_TRIPLE" | tr '-' '_')
@@ -287,7 +291,7 @@ for ABI in "${ABIS[@]}"; do
 
             if [ -z "$RUSTFLAGS" ]; then
                 CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
-                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build"
+                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build --remap-path-prefix=${EXTERNAL_DIR}=/external"
             fi
 
             (
@@ -306,9 +310,13 @@ for ABI in "${ABIS[@]}"; do
     if [ "$ABI" = "arm64-v8a" ] || [ "$ABI" = "x86_64" ]; then
         if command -v cargo >/dev/null 2>&1; then
             echo " -> Building libbore.so with Cargo ($TARGET_TRIPLE)..."
-            BORE_SRC="$BUILD_WORK_DIR/bore_src"
-            if [ ! -d "$BORE_SRC" ]; then
-                git clone --depth 1 --branch v0.6.0 https://github.com/ekzhang/bore.git "$BORE_SRC"
+            if [ -d "$EXTERNAL_DIR/bore" ]; then
+                BORE_SRC="$EXTERNAL_DIR/bore"
+            else
+                BORE_SRC="$BUILD_WORK_DIR/bore_src"
+                if [ ! -d "$BORE_SRC" ]; then
+                    git clone --depth 1 --branch v0.6.0 https://github.com/ekzhang/bore.git "$BORE_SRC"
+                fi
             fi
 
             ENV_TRIPLE_NAME=$(echo "$TARGET_TRIPLE" | tr '-' '_')
@@ -319,7 +327,7 @@ for ABI in "${ABIS[@]}"; do
 
             if [ -z "$RUSTFLAGS" ]; then
                 CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
-                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build"
+                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build --remap-path-prefix=${EXTERNAL_DIR}=/external"
             fi
 
             (

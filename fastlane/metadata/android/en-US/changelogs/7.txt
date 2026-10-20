@@ -1,0 +1,5 @@
+• Minecraft EULA Opt-In: Wizard now requires explicit agreement to the Minecraft EULA before creating a server
+• Privacy & Security: Cloud backup disabled to safeguard server configs and sensitive credentials
+• Startup & Network Controls: Automatic startup update checks now default to off
+• Submodule Integration: Native Rust tunnel tools pinned as git submodules
+• F-Droid Compliance: Removed unofficial archive fallbacks and aligned project licensing
