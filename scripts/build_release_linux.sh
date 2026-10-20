@@ -63,11 +63,9 @@ mkdir -p "$HOME/.cache/cargo-linux/bin"
 mkdir -p "$HOME/.cache/cargo-linux/registry"
 mkdir -p "$HOME/.cache/cargo-linux/git"
 
-# Gradle cache volume mount for speed
-GRADLE_CACHE_MOUNT=""
-if [ -d "$HOME/.gradle/caches" ]; then
-    GRADLE_CACHE_MOUNT="-v $HOME/.gradle/caches:/root/.gradle/caches"
-fi
+# Isolated Linux Gradle cache directory on host to avoid cross-platform cache corruption
+mkdir -p "$HOME/.cache/gradle-linux"
+GRADLE_CACHE_MOUNT="-v $HOME/.cache/gradle-linux:/root/.gradle/caches"
 
 # 3. Preserve host jniLibs & local.properties so release builds do not dirty your git working tree
 TMP_JNILIBS_BACKUP=""
@@ -143,12 +141,26 @@ docker run --rm \
         cp local.properties local.properties.host 2>/dev/null || true
         echo "sdk.dir=/opt/android-sdk" > local.properties
 
-        echo "📦 Compiling Android release artifacts with Gradle..."
-        ./gradlew bundleRelease assembleRelease \
+        echo "📦 Compiling reproducible release APK with Gradle..."
+        ./gradlew assembleRelease \
+            --no-daemon \
+            --no-configuration-cache \
+            --rerun-tasks \
+            --max-workers=2 \
+            -Dorg.gradle.jvmargs="-Xmx4096m -Dfile.encoding=UTF-8"
+
+        echo "📦 Compiling Play Store App Bundle (AAB) with Gradle..."
+        ./gradlew bundleRelease \
             --no-daemon \
             --no-configuration-cache \
             --max-workers=2 \
             -Dorg.gradle.jvmargs="-Xmx4096m -Dfile.encoding=UTF-8"
+
+        echo "🔍 Verifying release APK signature..."
+        APKSIGNER_BIN=$(find /opt/android-sdk/build-tools -name apksigner 2>/dev/null | sort -V | tail -n 1)
+        if [ -n "$APKSIGNER_BIN" ]; then
+            "$APKSIGNER_BIN" verify --verbose app/build/outputs/apk/release/app-release.apk
+        fi
     '
 
 OUT_DIR="$PROJECT_ROOT/release"
