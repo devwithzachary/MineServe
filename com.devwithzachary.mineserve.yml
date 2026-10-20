@@ -1,3 +1,6 @@
+AntiFeatures:
+  - NonFreeDep
+  - NonFreeNet
 Categories:
   - Game Helper
   - System
@@ -6,10 +9,6 @@ AuthorName: Zachary Powell
 SourceCode: https://github.com/devwithzachary/MineServe
 IssueTracker: https://github.com/devwithzachary/MineServe/issues
 Changelog: https://github.com/devwithzachary/MineServe/blob/main/CHANGELOG.md
-
-AntiFeatures:
-  - NonFreeDep
-  - NonFreeNet
 
 AutoName: MineServe
 
@@ -21,9 +20,9 @@ Binaries:
 Builds:
   - versionName: 1.4.1
     versionCode: 7
-    commit: 017211a0c3aad9915ad57d4d8de99a5ee5496c2e
+    commit: fa2a3d3a9ce84e579297588adb468d750eadc201
     subdir: app
-    submodules: yes
+    submodules: true
     sudo:
       - apt-get update
       - apt-get install -y make gawk git gcc libc-dev rustup
@@ -34,8 +33,8 @@ Builds:
       - rustup target add aarch64-linux-android x86_64-linux-android
     scandelete:
       - app/src/main/jniLibs
-    build: RUSTFLAGS="--remap-path-prefix=$HOME/.cargo=/root/.cargo" ../scripts/build_native_libs.sh
-      $$NDK$$
+      - external/playit-agent/build-scripts/jsign-5.0.jar
+    build: ../scripts/build_native_libs.sh $$NDK$$
     ndk: 28.2.13676358
 
 AllowedAPKSigningKeys: c532d763fd4ec838fa118005d9eb51ec13ce72167d2b0a1a8452ce36fc49199e

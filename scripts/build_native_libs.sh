@@ -289,10 +289,8 @@ for ABI in "${ABIS[@]}"; do
             ENV_CARGO_TARGET=$(echo "$TARGET_TRIPLE" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
             export CARGO_TARGET_${ENV_CARGO_TARGET}_LINKER="$CC"
 
-            if [ -z "$RUSTFLAGS" ]; then
-                CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
-                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build --remap-path-prefix=${EXTERNAL_DIR}=/external"
-            fi
+            CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
+            export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build --remap-path-prefix=${EXTERNAL_DIR}=/external"
 
             (
                 cd "$PLAYIT_SRC"
@@ -325,10 +323,8 @@ for ABI in "${ABIS[@]}"; do
             ENV_CARGO_TARGET=$(echo "$TARGET_TRIPLE" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
             export CARGO_TARGET_${ENV_CARGO_TARGET}_LINKER="$CC"
 
-            if [ -z "$RUSTFLAGS" ]; then
-                CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
-                export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build --remap-path-prefix=${EXTERNAL_DIR}=/external"
-            fi
+            CARGO_HOME_DIR="${CARGO_HOME:-$HOME/.cargo}"
+            export RUSTFLAGS="--remap-path-prefix=${CARGO_HOME_DIR}=/cargo --remap-path-prefix=${BUILD_WORK_DIR}=/build --remap-path-prefix=${EXTERNAL_DIR}=/external"
 
             (
                 cd "$BORE_SRC"

@@ -38,7 +38,7 @@ data class ReleaseChangelog(
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.4.1",
-        date = "October 19, 2026",
+        date = "October 20, 2026",
         initialExpanded = true,
         highlights = listOf(
             "Minecraft EULA Opt-In: Server creation wizard now requires explicit opt-in to the Minecraft End User License Agreement before creating a server, with automated opt-in overrides removed on process startup.",
