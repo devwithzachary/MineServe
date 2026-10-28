@@ -114,7 +114,7 @@ fun RamSlider(
 ) {
     val context = LocalContext.current
     val totalDeviceRamMb = getDeviceTotalMemoryMb(context)
-    val maxAllocatableMb = (totalDeviceRamMb - 1024).coerceAtLeast(2048).coerceAtMost(32768).toInt()
+    val maxAllocatableMb = getMaxAllocatableRamMb(totalDeviceRamMb)
 
     var textValue by remember(allocatedMb) { mutableStateOf(allocatedMb.toString()) }
 
@@ -141,7 +141,7 @@ fun RamSlider(
 
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.ram_device_info_format, (totalDeviceRamMb / 1024).toInt()),
+            text = stringResource(R.string.ram_device_info_format, formatDeviceTotalRamGb(totalDeviceRamMb)),
             style = MaterialTheme.typography.bodySmall,
             color = Slate400
         )
@@ -201,9 +201,32 @@ fun RamSlider(
     }
 }
 
-private fun getDeviceTotalMemoryMb(context: Context): Long {
+fun getDeviceTotalMemoryMb(context: Context): Long {
     val actManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
     val memInfo = ActivityManager.MemoryInfo()
     actManager?.getMemoryInfo(memInfo)
     return memInfo.totalMem / (1024 * 1024)
+}
+
+fun getMaxAllocatableRamMb(totalDeviceRamMb: Long): Int {
+    val reservedForAndroidMb = if (totalDeviceRamMb <= 3072L) 768L else 1024L
+    val rawMax = (totalDeviceRamMb - reservedForAndroidMb).coerceIn(768L, 32768L).toInt()
+    return ((rawMax / 256) * 256).coerceAtLeast(768)
+}
+
+fun getDefaultAllocatedRamMb(context: Context): Int {
+    val totalMb = getDeviceTotalMemoryMb(context)
+    val maxAllocatable = getMaxAllocatableRamMb(totalMb)
+    val halfRamAligned = (((totalMb / 2) / 256) * 256).toInt()
+    return halfRamAligned.coerceIn(768, 2048).coerceAtMost(maxAllocatable)
+}
+
+private fun formatDeviceTotalRamGb(totalDeviceRamMb: Long): String {
+    val gb = totalDeviceRamMb / 1024.0
+    val roundedTenths = kotlin.math.round(gb * 10.0) / 10.0
+    return if (roundedTenths % 1.0 == 0.0) {
+        "${roundedTenths.toInt()} GB"
+    } else {
+        String.format(java.util.Locale.US, "%.1f GB", roundedTenths)
+    }
 }

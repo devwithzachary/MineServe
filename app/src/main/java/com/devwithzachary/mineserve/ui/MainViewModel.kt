@@ -83,6 +83,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val isRootfsInstalled: StateFlow<Boolean> = rootfsManager.isInstalledState
     val rootfsSetupState: StateFlow<RootfsSetupState> = rootfsManager.setupState
 
+    private val _installingJavaVersion = MutableStateFlow<Int?>(null)
+    val installingJavaVersion: StateFlow<Int?> = _installingJavaVersion.asStateFlow()
+
+    private val _javaInstallError = MutableStateFlow<String?>(null)
+    val javaInstallError: StateFlow<String?> = _javaInstallError.asStateFlow()
+
     private val _storageUsedMb = MutableStateFlow(0L)
     val storageUsedMb: StateFlow<Long> = _storageUsedMb.asStateFlow()
 
@@ -122,6 +128,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         refreshData()
+
+        if (rootfsManager.hasIncompleteSetup()) {
+            startRootfsSetup(forceReinstall = false)
+        }
 
         if (updatePreferences.isCheckGitHubUpdatesEnabled) {
             checkForGitHubUpdates(isManual = false)
@@ -165,9 +175,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun startRootfsSetup() {
+    fun startRootfsSetup(forceReinstall: Boolean = false) {
         viewModelScope.launch {
-            rootfsManager.performRootfsSetup(javaRuntimeManager) {
+            rootfsManager.performRootfsSetup(javaRuntimeManager, forceReinstall = forceReinstall) {
                 refreshData()
             }
         }
@@ -175,14 +185,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun installJava(version: Int = 21) {
         viewModelScope.launch {
+            _installingJavaVersion.value = version
+            _javaInstallError.value = null
             javaRuntimeManager.installJava(version).collect { state ->
                 when (state) {
                     is JavaInstallState.Success -> {
                         Log.d(TAG, "Java $version installed successfully")
+                        _installingJavaVersion.value = null
+                        _javaInstallError.value = null
                         refreshData()
                     }
                     is JavaInstallState.Error -> {
                         Log.e(TAG, "Java $version install failed: ${state.errorMessage}")
+                        _installingJavaVersion.value = null
+                        _javaInstallError.value = "Java $version installation failed: ${state.errorMessage}"
                     }
                     else -> {}
                 }

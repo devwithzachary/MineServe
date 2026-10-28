@@ -39,7 +39,8 @@ class JavaRuntimeManager(
         if (jvmDir.exists()) {
             val matching = jvmDir.listFiles()?.any {
                 (it.name.contains("-$version-") || it.name.contains("java-$version") || it.name.contains("jdk-$version")) &&
-                File(it, "bin/java").exists()
+                File(it, "bin/java").exists() &&
+                (File(it, "lib/server/libjvm.so").exists() || File(it, "jre/lib").exists())
             } ?: false
             if (matching) return true
         }
@@ -141,15 +142,19 @@ class JavaRuntimeManager(
                 emit(JavaInstallState.Progress(version, "Updating apt package index and installing $pkgName..."))
 
                 val installScript = buildString {
+                    append("unset LD_LIBRARY_PATH; ")
                     append("export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; ")
+                    append("export HOME=/root USER=root LOGNAME=root TMPDIR=/tmp TMP=/tmp TEMP=/tmp; ")
+                    append("export DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 NEEDRESTART_MODE=a; ")
                     append("killall -9 apt-get dpkg 2>/dev/null || true; ")
-                    append("rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock /var/lib/dpkg/updates/* /usr/bin/*.dpkg-new /usr/lib/*.dpkg-new 2>/dev/null; ")
+                    append("rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock /var/cache/apt/archives/lock /usr/bin/*.dpkg-new /usr/lib/*.dpkg-new 2>/dev/null; ")
+                    append("mkdir -p /tmp /var/tmp /var/lib/dpkg/updates /var/lib/dpkg/info /var/lib/apt/lists/partial /var/cache/apt/archives/partial 2>/dev/null; ")
                     append("chmod 755 /usr /usr/local /usr/bin /usr/sbin /etc 2>/dev/null; ")
                     append("chmod -R 777 /var/lib/dpkg /var/lib/apt /var/cache/apt /tmp /var/tmp /.l2s 2>/dev/null; ")
-                    append("mkdir -p /etc/dpkg/dpkg.cfg.d && echo force-unsafe-io > /etc/dpkg/dpkg.cfg.d/00-mineserve && echo force-overwrite >> /etc/dpkg/dpkg.cfg.d/00-mineserve && echo force-confold >> /etc/dpkg/dpkg.cfg.d/00-mineserve && echo force-confdef >> /etc/dpkg/dpkg.cfg.d/00-mineserve; ")
-                    append("mkdir -p /etc/apt/apt.conf.d && echo 'APT::Sandbox::User \"root\";' > /etc/apt/apt.conf.d/99mineserve && echo 'Acquire::http::Pipeline-Depth \"0\";' >> /etc/apt/apt.conf.d/99mineserve && echo 'Acquire::http::No-Cache \"true\";' >> /etc/apt/apt.conf.d/99mineserve && echo 'Acquire::PDiffs \"false\";' >> /etc/apt/apt.conf.d/99mineserve && echo 'Acquire::ForceIPv4 \"true\";' >> /etc/apt/apt.conf.d/99mineserve; ")
+                    append("mkdir -p /etc/dpkg/dpkg.cfg.d && printf 'force-unsafe-io\\nforce-overwrite\\nforce-confold\\nforce-confdef\\n' > /etc/dpkg/dpkg.cfg.d/00-mineserve; ")
+                    append("mkdir -p /etc/apt/apt.conf.d && printf 'APT::Sandbox::User \"root\";\\nDpkg::Use-Pty \"0\";\\nAcquire::Retries \"3\";\\nAcquire::http::Pipeline-Depth \"0\";\\nAcquire::http::No-Cache \"true\";\\nAcquire::BrokenProxy \"true\";\\nAcquire::PDiffs \"false\";\\nAcquire::ForceIPv4 \"true\";\\n' > /etc/apt/apt.conf.d/99mineserve; ")
                     append("chmod 666 /var/lib/dpkg/status* 2>/dev/null; ")
-                    append("dpkg --configure -a --force-confold --force-confdef 2>/dev/null; ")
+                    append("dpkg --configure -a --force-confold --force-confdef || (rm -f /var/lib/dpkg/updates/* 2>/dev/null && dpkg --configure -a --force-confold --force-confdef); ")
                     append("apt-get update -y && apt-get install -y --no-install-recommends $pkgName curl wget ca-certificates-java")
                 }
 
@@ -181,21 +186,48 @@ class JavaRuntimeManager(
                 } catch (_: Exception) {}
 
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
+                val recentLines = ArrayDeque<String>()
+                val errorLines = ArrayDeque<String>()
                 var line: String?
 
                 while (reader.readLine().also { line = it } != null) {
                     val currentLine = line ?: break
                     Log.d(TAG, "[Java $version Install] $currentLine")
+                    val trimmed = currentLine.trim()
+                    if (trimmed.isNotEmpty()) {
+                        if (recentLines.size >= 10) recentLines.removeFirst()
+                        recentLines.addLast(trimmed)
+                        if (trimmed.startsWith("E:") ||
+                            trimmed.startsWith("Err:") ||
+                            trimmed.startsWith("dpkg:") ||
+                            trimmed.contains("error", ignoreCase = true) ||
+                            trimmed.contains("failed", ignoreCase = true) ||
+                            trimmed.contains("cannot", ignoreCase = true)
+                        ) {
+                            if (errorLines.size >= 6) errorLines.removeFirst()
+                            errorLines.addLast(trimmed)
+                        }
+                    }
                     emit(JavaInstallState.Progress(version, currentLine))
                 }
 
                 val exitCode = process.waitFor()
                 reader.close()
 
-                if (exitCode == 0 || isJavaInstalled(version)) {
+                if (exitCode == 0 && isJavaInstalled(version)) {
+                    emit(JavaInstallState.Success(version, getJavaExecutablePath(version)))
+                } else if (isJavaInstalled(version)) {
                     emit(JavaInstallState.Success(version, getJavaExecutablePath(version)))
                 } else {
-                    emit(JavaInstallState.Error(version, "Java installation exited with code $exitCode"))
+                    val detail = errorLines.takeLast(3).joinToString(" | ").ifBlank {
+                        recentLines.takeLast(3).joinToString(" | ")
+                    }
+                    val errorMsg = if (detail.isNotBlank()) {
+                        "Java installation exited with code $exitCode ($detail)"
+                    } else {
+                        "Java installation exited with code $exitCode"
+                    }
+                    emit(JavaInstallState.Error(version, errorMsg))
                 }
 
             } catch (e: Exception) {

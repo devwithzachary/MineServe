@@ -47,16 +47,26 @@ class PRootEngine(val context: Context) {
         return File(binDir, PROOT_BIN_NAME)
     }
 
-    fun isRootfsInstalled(): Boolean {
+    fun isBaseRootfsExtracted(): Boolean {
         if (!rootfsDir.exists()) return false
         val osRelease = File(rootfsDir, "etc/os-release")
+        val dpkgStatus = File(rootfsDir, "var/lib/dpkg/status")
         val binSh = File(rootfsDir, "bin/sh")
         val usrBinSh = File(rootfsDir, "usr/bin/sh")
         val dpkg = File(rootfsDir, "usr/bin/dpkg")
         val apt = File(rootfsDir, "usr/bin/apt-get")
         val libGlibc = File(rootfsDir, "usr/lib")
         val hasShell = binSh.exists() || usrBinSh.exists()
-        return osRelease.exists() && hasShell && (dpkg.exists() || apt.exists() || libGlibc.exists())
+        return osRelease.exists() && dpkgStatus.exists() && hasShell && (dpkg.exists() || apt.exists() || libGlibc.exists())
+    }
+
+    fun isRootfsInstalled(): Boolean {
+        if (!isBaseRootfsExtracted()) return false
+        val marker = File(rootfsDir, ".runtime_initialized")
+        if (marker.exists()) return true
+        val jvmDir = File(rootfsDir, "usr/lib/jvm")
+        val hasJava = jvmDir.exists() && (jvmDir.listFiles()?.any { File(it, "bin/java").exists() } == true)
+        return hasJava
     }
 
     suspend fun ensurePRootExecutable(): File = withContext(Dispatchers.IO) {
@@ -158,8 +168,7 @@ class PRootEngine(val context: Context) {
                 "/proc/self/fd:/dev/fd",
                 "/proc/self/fd/0:/dev/stdin",
                 "/proc/self/fd/1:/dev/stdout",
-                "/proc/self/fd/2:/dev/stderr",
-                "/proc/self:/proc/1"
+                "/proc/self/fd/2:/dev/stderr"
             )
 
             // Mount servers directory into /servers and /home/mineserve/servers in rootfs
@@ -198,18 +207,18 @@ class PRootEngine(val context: Context) {
                 }
 
                 val hostSdcard = Environment.getExternalStorageDirectory()
-                if (hostSdcard.exists()) {
+                if (hostSdcard.exists() && hostSdcard.canRead()) {
                     mounts.add("${hostSdcard.absolutePath}:/storage/emulated/0")
                 }
 
                 val downloadsHost = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (downloadsHost.exists()) {
+                if (downloadsHost.exists() && downloadsHost.canRead()) {
                     mounts.add("${downloadsHost.absolutePath}:/root/Downloads")
                     mounts.add("${downloadsHost.absolutePath}:/sdcard/Download")
                 }
 
                 val documentsHost = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS)
-                if (documentsHost.exists()) {
+                if (documentsHost.exists() && documentsHost.canRead()) {
                     mounts.add("${documentsHost.absolutePath}:/sdcard/Documents")
                 }
 
@@ -218,7 +227,7 @@ class PRootEngine(val context: Context) {
                 }
 
                 val storageDir = File("/storage")
-                if (storageDir.exists()) {
+                if (storageDir.exists() && storageDir.canRead()) {
                     mounts.add("/storage")
                 }
             }
@@ -357,6 +366,7 @@ class PRootEngine(val context: Context) {
         }
         if (loader32File.exists() && loader32File.length() > 0L) {
             env["PROOT_LOADER32"] = loader32File.absolutePath
+            env["PROOT_LOADER_32"] = loader32File.absolutePath
         }
 
         return env

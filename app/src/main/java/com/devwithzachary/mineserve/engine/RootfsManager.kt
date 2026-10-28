@@ -56,34 +56,117 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
 
     fun isInstalled(): Boolean = pRootEngine.isRootfsInstalled()
 
+    fun isBaseRootfsExtracted(): Boolean = pRootEngine.isBaseRootfsExtracted()
+
+    fun hasIncompleteSetup(): Boolean {
+        return rootfsDir.exists() &&
+            (File(rootfsDir, "etc/os-release").exists() || File(rootfsDir, "usr").exists()) &&
+            !isInstalled()
+    }
+
     fun refreshInstalledState() {
         _isInstalled.value = isInstalled()
     }
 
     suspend fun performRootfsSetup(
         javaRuntimeManager: JavaRuntimeManager,
+        forceReinstall: Boolean = false,
         onSuccess: suspend () -> Unit = {}
     ) {
+        if (!forceReinstall && isBaseRootfsExtracted()) {
+            val setupLogs = mutableListOf(
+                "Ubuntu rootfs is already extracted.",
+                "Configuring DNS resolvers and APT environment..."
+            )
+            _setupState.value = RootfsSetupState.Extracting(
+                message = "Installing OpenJDK 21 runtime...",
+                progressPercent = 96,
+                logs = setupLogs.toList()
+            )
+            withContext(Dispatchers.IO) {
+                configureSystemFiles(isInitialSetup = false)
+            }
+            installDefaultJavaDuringSetup(javaRuntimeManager, setupLogs, onSuccess)
+            return
+        }
+
         _isInstalled.value = false
         setupRootfs().collect { state ->
-            _setupState.value = state
-            if (state is RootfsSetupState.Success) {
-                _isInstalled.value = true
-                javaRuntimeManager.installJava(21).collect { javaState ->
-                    when (javaState) {
-                        is JavaInstallState.Success -> {
-                            Log.d(TAG, "Default Java 21 installed successfully")
-                        }
-                        is JavaInstallState.Error -> {
-                            Log.e(TAG, "Java 21 install failed: ${javaState.errorMessage}")
-                        }
-                        else -> {}
-                    }
+            when (state) {
+                is RootfsSetupState.Success -> {
+                    val setupLogs = state.logs.toMutableList()
+                    installDefaultJavaDuringSetup(javaRuntimeManager, setupLogs, onSuccess)
                 }
-                onSuccess()
-            } else if (state is RootfsSetupState.Error) {
-                _isInstalled.value = false
+                is RootfsSetupState.Error -> {
+                    _isInstalled.value = isInstalled()
+                    _setupState.value = state
+                }
+                else -> {
+                    _setupState.value = state
+                }
             }
+        }
+    }
+
+    private suspend fun installDefaultJavaDuringSetup(
+        javaRuntimeManager: JavaRuntimeManager,
+        setupLogs: MutableList<String>,
+        onSuccess: suspend () -> Unit
+    ) {
+        fun appendSetupLog(msg: String) {
+            if (setupLogs.size >= 200) {
+                setupLogs.removeAt(0)
+            }
+            setupLogs.add(msg)
+        }
+
+        appendSetupLog("Installing OpenJDK 21 runtime environment...")
+        _setupState.value = RootfsSetupState.Extracting(
+            message = "Installing OpenJDK 21 runtime...",
+            progressPercent = 96,
+            logs = setupLogs.toList()
+        )
+
+        var javaSucceeded = false
+        var javaErrorMsg: String? = null
+
+        javaRuntimeManager.installJava(21).collect { javaState ->
+            when (javaState) {
+                is JavaInstallState.Progress -> {
+                    appendSetupLog(javaState.message)
+                    _setupState.value = RootfsSetupState.Extracting(
+                        message = "Installing OpenJDK 21: ${javaState.message.take(80)}",
+                        progressPercent = 98,
+                        logs = setupLogs.toList()
+                    )
+                }
+                is JavaInstallState.Success -> {
+                    Log.d(TAG, "Default Java 21 installed successfully")
+                    appendSetupLog("OpenJDK 21 runtime installed at ${javaState.javaPath}")
+                    javaSucceeded = true
+                }
+                is JavaInstallState.Error -> {
+                    Log.e(TAG, "Java 21 install failed: ${javaState.errorMessage}")
+                    appendSetupLog("ERROR: ${javaState.errorMessage}")
+                    javaErrorMsg = javaState.errorMessage
+                }
+            }
+        }
+
+        if (javaSucceeded) {
+            try {
+                File(rootfsDir, ".runtime_initialized").writeText("1\n")
+            } catch (_: Exception) {}
+            _isInstalled.value = isInstalled()
+            _setupState.value = RootfsSetupState.Success(rootfsDir, setupLogs.toList())
+            onSuccess()
+        } else {
+            _isInstalled.value = isInstalled()
+            val errMsg = javaErrorMsg ?: "Failed to install OpenJDK 21 inside the container."
+            _setupState.value = RootfsSetupState.Error(
+                message = "OpenJDK 21 installation failed: $errMsg",
+                logs = setupLogs.toList()
+            )
         }
     }
 
@@ -240,7 +323,7 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
 
             emitLog("Configuring DNS resolvers, APT sandbox, and system permissions...")
             send(RootfsSetupState.Extracting("Configuring system files and permissions...", 95, logList.toList()))
-            configureSystemFiles()
+            configureSystemFiles(isInitialSetup = true)
 
             emitLog("Rootfs setup completed successfully!")
             send(RootfsSetupState.Success(rootfsDir, logList.toList()))
@@ -253,16 +336,16 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
     }.flowOn(Dispatchers.IO)
 
     fun ensureSystemFilesConfigured() {
-        configureSystemFiles()
+        configureSystemFiles(isInitialSetup = false)
     }
 
-    private fun configureSystemFiles() {
+    private fun configureSystemFiles(isInitialSetup: Boolean = false) {
         try {
             val etcDir = File(rootfsDir, "etc").apply { if (!exists()) mkdirs() }
             
-            // DNS configuration
+            // DNS configuration (Cloudflare, Google, and Android Emulator SLIRP DNS 10.0.2.3)
             val resolvConf = File(etcDir, "resolv.conf")
-            resolvConf.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 1.0.0.1\n")
+            resolvConf.writeText("nameserver 1.1.1.1\nnameserver 8.8.8.8\nnameserver 10.0.2.3\n")
 
             // Hosts
             val hosts = File(etcDir, "hosts")
@@ -342,17 +425,20 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                 shadowFile.writeText("root:*:19000:0:99999:7:::\nmineserve:*:19000:0:99999:7:::\n")
             }
 
-            // Clean any stale APT or DPKG lock files left behind
-            val staleLocks = listOf(
-                File(rootfsDir, "var/lib/dpkg/lock"),
-                File(rootfsDir, "var/lib/dpkg/lock-frontend"),
-                File(rootfsDir, "var/lib/apt/lists/lock"),
-                File(rootfsDir, "var/cache/apt/archives/lock")
-            )
-            for (lf in staleLocks) {
-                try {
-                    if (lf.exists()) lf.delete()
-                } catch (_: Exception) {}
+            if (isInitialSetup) {
+                // Clean any stale APT or DPKG lock files during initial rootfs setup only
+                // (never delete active lock files during concurrent server startups)
+                val staleLocks = listOf(
+                    File(rootfsDir, "var/lib/dpkg/lock"),
+                    File(rootfsDir, "var/lib/dpkg/lock-frontend"),
+                    File(rootfsDir, "var/lib/apt/lists/lock"),
+                    File(rootfsDir, "var/cache/apt/archives/lock")
+                )
+                for (lf in staleLocks) {
+                    try {
+                        if (lf.exists()) lf.delete()
+                    } catch (_: Exception) {}
+                }
             }
 
             // Create and permit /home/mineserve
@@ -383,6 +469,8 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             val aptConfig = File(aptConfigDir, "99mineserve")
             aptConfig.writeText(
                 "APT::Sandbox::User \"root\";\n" +
+                "Dpkg::Use-Pty \"0\";\n" +
+                "Acquire::Retries \"3\";\n" +
                 "Acquire::http::Pipeline-Depth \"0\";\n" +
                 "Acquire::http::No-Cache \"true\";\n" +
                 "Acquire::BrokenProxy \"true\";\n" +
@@ -422,7 +510,9 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             usrBinSh.setExecutable(true, false)
             usrBinBash.setExecutable(true, false)
 
-            fixAllPermissions(rootfsDir)
+            if (isInitialSetup) {
+                fixAllPermissions(rootfsDir)
+            }
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to configure system files", e)
@@ -432,6 +522,11 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
     private fun fixAllPermissions(dir: File) {
         try {
             dir.listFiles()?.forEach { file ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    try {
+                        if (java.nio.file.Files.isSymbolicLink(file.toPath())) return@forEach
+                    } catch (_: Exception) {}
+                }
                 file.setReadable(true, false)
                 if (file.isDirectory) {
                     file.setWritable(true, false)

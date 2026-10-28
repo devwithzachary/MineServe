@@ -2868,5 +2868,38 @@ end:
 	if (status2 < 0)
 		status = status2;
 
+	/* On architectures like x86_64 under Android's Zygote seccomp filter,
+	 * legacy rename/renameat and unlink/rmdir syscalls are trapped with
+	 * SIGSYS.  If sysenter ran first (e.g. under PTRACE_SYSCALL), the
+	 * link2symlink extension has already modified link counts in
+	 * SYSCALL_ENTER_END above; letting the legacy syscall number reach
+	 * the kernel and bounce through SIGSYS would re-run sysenter a second
+	 * time.  Upgrade them to renameat2 / unlinkat here after all
+	 * SYSCALL_ENTER_END hooks have completed.  */
+	if (status >= 0) {
+		Sysnum current_sysnum = get_sysnum(tracee, CURRENT);
+		if (current_sysnum == PR_rename
+		    && detranslate_sysnum(get_abi(tracee), PR_renameat2) != SYSCALL_AVOIDER) {
+			set_sysnum(tracee, PR_renameat2);
+			poke_reg(tracee, SYSARG_5, 0);
+			poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
+			poke_reg(tracee, SYSARG_3, AT_FDCWD);
+			poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+			poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		}
+		else if (current_sysnum == PR_renameat
+			 && detranslate_sysnum(get_abi(tracee), PR_renameat2) != SYSCALL_AVOIDER) {
+			set_sysnum(tracee, PR_renameat2);
+			poke_reg(tracee, SYSARG_5, 0);
+		}
+		else if ((current_sysnum == PR_unlink || current_sysnum == PR_rmdir)
+			 && detranslate_sysnum(get_abi(tracee), PR_unlinkat) != SYSCALL_AVOIDER) {
+			set_sysnum(tracee, PR_unlinkat);
+			poke_reg(tracee, SYSARG_3, current_sysnum == PR_rmdir ? AT_REMOVEDIR : 0);
+			poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+			poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		}
+	}
+
 	return status;
 }

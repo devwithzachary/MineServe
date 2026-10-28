@@ -1,0 +1,4 @@
+• x86_64 & PRoot Reliability: Fixed OpenJDK package installation failures and eliminated SELinux denial floods under PRoot on Android x86_64 environments
+• Setup & Console Error Visibility: Runtime setup now waits for OpenJDK 21 installation and displays detailed error logs and retry options on failure, with persistent console output at server start
+• Smart RAM Defaults: Server wizard now scales default RAM allocation on 2-3 GB devices to leave memory headroom for Android
+

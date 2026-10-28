@@ -253,7 +253,8 @@ void translate_syscall_exit(Tracee *tracee)
 		break;
 
 	case PR_rename:
-	case PR_renameat: {
+	case PR_renameat:
+	case PR_renameat2: {
 		char old_path[PATH_MAX];
 		char new_path[PATH_MAX];
 		ssize_t old_length;
@@ -267,7 +268,7 @@ void translate_syscall_exit(Tracee *tracee)
 		if ((int) syscall_result < 0)
 			goto end;
 
-		if (syscall_number == PR_rename) {
+		if (syscall_number == PR_rename && get_sysnum(tracee, MODIFIED) == PR_rename) {
 			old_reg = SYSARG_1;
 			new_reg = SYSARG_2;
 		}

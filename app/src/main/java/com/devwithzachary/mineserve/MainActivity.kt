@@ -100,6 +100,8 @@ fun MineServeApp(viewModel: MainViewModel) {
     val availableUpdate by viewModel.availableUpdate.collectAsStateWithLifecycle()
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     val updateCheckStatus by viewModel.updateCheckStatus.collectAsStateWithLifecycle()
+    val installingJavaVersion by viewModel.installingJavaVersion.collectAsStateWithLifecycle()
+    val javaInstallError by viewModel.javaInstallError.collectAsStateWithLifecycle()
 
     val initialScreen = remember {
         if (viewModel.rootfsManager.isInstalled()) Screen.Dashboard else Screen.Splash
@@ -339,8 +341,10 @@ fun MineServeApp(viewModel: MainViewModel) {
                     storageUsedMb = storageUsedMb,
                     isJavaVersionInstalled = { ver -> viewModel.javaRuntimeManager.isJavaInstalled(ver) },
                     onInstallJava = { ver -> viewModel.installJava(ver) },
+                    installingJavaVer = installingJavaVersion,
+                    javaInstallError = javaInstallError,
                     onReinstallRuntime = {
-                        viewModel.startRootfsSetup()
+                        viewModel.startRootfsSetup(forceReinstall = true)
                         backStack.clear()
                         backStack.add(Screen.Splash)
                     },

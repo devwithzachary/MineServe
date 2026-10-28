@@ -71,6 +71,7 @@ class ServerProcessManager private constructor(
     private val rootfsManager = RootfsManager(context, pRootEngine)
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val sessions = ConcurrentHashMap<String, ActiveServerSession>()
+    private val emulators = ConcurrentHashMap<String, TerminalEmulator>()
 
     private val _serverStatuses = MutableStateFlow<Map<String, ServerStatus>>(emptyMap())
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = _serverStatuses.asStateFlow()
@@ -90,7 +91,9 @@ class ServerProcessManager private constructor(
     fun getSession(serverId: String): ActiveServerSession? = sessions[serverId]
 
     fun getEmulator(serverId: String): TerminalEmulator {
-        return sessions[serverId]?.emulator ?: TerminalEmulator(cols = 80, rows = 24)
+        return sessions[serverId]?.emulator ?: emulators.getOrPut(serverId) {
+            TerminalEmulator(cols = 80, rows = 24)
+        }
     }
 
     fun isServerRunning(serverId: String): Boolean {
@@ -186,12 +189,23 @@ class ServerProcessManager private constructor(
         onStatusChanged: ((ServerStatus) -> Unit)? = null
     ) {
         StandbyPingManager.instance.stopStandby(server.id)
-        if (isServerRunning(server.id) && sessions[server.id]?.ptyProcess != null) return
+        if (isServerRunning(server.id) || sessions.containsKey(server.id)) return
+
+        val emulator = getEmulator(server.id)
+        emulator.scrollToBottom()
+
+        val session = ActiveServerSession(
+            server = server,
+            emulator = emulator,
+            ptyProcess = null,
+            pid = -1,
+            startTimeMillis = System.currentTimeMillis()
+        )
+        sessions[server.id] = session
+        updateStatus(server.id, ServerStatus.STARTING, onStatusChanged)
 
         scope.launch {
             try {
-                updateStatus(server.id, ServerStatus.STARTING, onStatusChanged)
-
                 // 1. Ensure container system files are configured and eula.txt exists without auto-overriding user opt-in
                 rootfsManager.ensureSystemFilesConfigured()
                 val eulaFile = File(serverDir, "eula.txt")
@@ -207,23 +221,12 @@ class ServerProcessManager private constructor(
                 // 3. Ensure legacy files and properties are sanitized for early Minecraft versions
                 sanitizeLegacyFilesAndProperties(server, serverDir)
 
-                val emulator = sessions[server.id]?.emulator ?: TerminalEmulator(cols = 80, rows = 24)
-                emulator.scrollToBottom()
-
-                val session = ActiveServerSession(
-                    server = server,
-                    emulator = emulator,
-                    ptyProcess = null,
-                    pid = -1,
-                    startTimeMillis = System.currentTimeMillis()
-                )
-                sessions[server.id] = session
-
                 if (!javaRuntimeManager.isJavaInstalled(server.javaVersion)) {
                     val initMsg = "\u001B[33m[MineServe] OpenJDK is not yet installed. Auto-installing Java ${server.javaVersion}...\u001B[0m\r\n"
                     emulator.appendBytes(initMsg.toByteArray(Charsets.UTF_8), initMsg.length)
                     triggerRefresh(server.id)
 
+                    var javaInstallFailed = false
                     javaRuntimeManager.installJava(server.javaVersion).collect { state ->
                         when (state) {
                             is JavaInstallState.Progress -> {
@@ -237,20 +240,37 @@ class ServerProcessManager private constructor(
                                 triggerRefresh(server.id)
                             }
                             is JavaInstallState.Error -> {
-                                val line = "\u001B[31m[MineServe] Error installing OpenJDK: ${state.errorMessage}\u001B[0m\r\n"
+                                val line = "\r\n\u001B[31m[MineServe] Error installing OpenJDK ${state.version}: ${state.errorMessage}\u001B[0m\r\n" +
+                                    "\u001B[33m[MineServe] Please verify your internet connection or reinstall the runtime in App Settings.\u001B[0m\r\n"
                                 emulator.appendBytes(line.toByteArray(Charsets.UTF_8), line.length)
                                 triggerRefresh(server.id)
-                                updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
-                                return@collect
+                                javaInstallFailed = true
                             }
                         }
                     }
+
+                    if (javaInstallFailed || !javaRuntimeManager.isJavaInstalled(server.javaVersion)) {
+                        sessions.remove(server.id)
+                        updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
+                        return@launch
+                    }
+                }
+
+                if (sessions[server.id] !== session ||
+                    _serverStatuses.value[server.id] == ServerStatus.STOPPING ||
+                    _serverStatuses.value[server.id] == ServerStatus.STOPPED
+                ) {
+                    return@launch
                 }
 
                 launchMinecraftProcess(server, serverDir, session, onStatusChanged)
 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed launching Minecraft server ${server.id}", e)
+                val errMsg = "\r\n\u001B[31m[MineServe] Error starting server: ${e.localizedMessage ?: e.message}\u001B[0m\r\n"
+                emulator.appendBytes(errMsg.toByteArray(Charsets.UTF_8), errMsg.length)
+                triggerRefresh(server.id)
+                sessions.remove(server.id)
                 updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
             }
         }
@@ -447,7 +467,9 @@ class ServerProcessManager private constructor(
 
                     if (autoWakeEnabled || wasAutoSleeping) {
                         enterStandby(session.server)
-                    } else if (_serverStatuses.value[server.id] != ServerStatus.STANDBY) {
+                    } else if (_serverStatuses.value[server.id] != ServerStatus.STANDBY &&
+                        _serverStatuses.value[server.id] != ServerStatus.ERROR
+                    ) {
                         updateStatus(server.id, ServerStatus.STOPPED, onStatusChanged)
                     }
                 }
@@ -455,6 +477,10 @@ class ServerProcessManager private constructor(
 
         } catch (e: Exception) {
             Log.e(TAG, "Error starting PTY for server ${server.id}", e)
+            val errMsg = "\r\n\u001B[31m[MineServe] Error starting server process: ${e.localizedMessage ?: e.message}\u001B[0m\r\n"
+            session.emulator.appendBytes(errMsg.toByteArray(Charsets.UTF_8), errMsg.length)
+            triggerRefresh(server.id)
+            sessions.remove(server.id)
             updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
         }
     }
@@ -542,14 +568,18 @@ class ServerProcessManager private constructor(
 
     fun stopServer(serverId: String) {
         val session = sessions[serverId] ?: return
-        sendCommand(serverId, "stop")
+        if (session.ptyProcess != null) {
+            sendCommand(serverId, "stop")
+        }
         scope.launch {
             updateStatus(serverId, ServerStatus.STOPPING)
-            for (i in 0 until 30) {
-                if (isServerFullyStopped(serverId)) break
-                delay(500)
+            if (session.ptyProcess != null) {
+                for (i in 0 until 30) {
+                    if (isServerFullyStopped(serverId)) break
+                    delay(500)
+                }
             }
-            if (isProcessActive(serverId)) {
+            if (isProcessActive(serverId) || sessions.containsKey(serverId)) {
                 try { session.ptyProcess?.destroy() } catch (_: Exception) {}
                 killProcessesForServer(serverId, session.pid)
                 sessions.remove(serverId)
@@ -564,6 +594,7 @@ class ServerProcessManager private constructor(
 
     suspend fun forceStopAndCleanup(serverId: String) = withContext(Dispatchers.IO) {
         val session = sessions.remove(serverId)
+        emulators.remove(serverId)
         val pid = session?.pid ?: -1
 
         if (session != null) {

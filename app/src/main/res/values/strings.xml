@@ -30,6 +30,7 @@
     <string name="splash_extracting_runtime">Extracting Runtime (%d%%)</string>
     <string name="splash_setup_error">Setup Error</string>
     <string name="splash_retry_setup">Retry Setup</string>
+    <string name="splash_continue_anyway">Continue to Dashboard</string>
     <string name="splash_loading_servers">Loading servers…</string>
 
     <!-- Notification Permission Card (Init & Settings) -->
@@ -506,7 +507,7 @@
     <string name="settings_ram_running_restart_notice">Server is currently running. RAM changes will take effect after restarting the server.</string>
     <string name="ram_allocation_label">RAM Allocation</string>
     <string name="ram_current_allocation">Allocated Memory</string>
-    <string name="ram_device_info_format">Device Total: %d GB • Recommended: 2 GB to 4 GB for standard play</string>
+    <string name="ram_device_info_format">Device Total: %s • Recommended: 2 GB to 4 GB for standard play</string>
     <string name="ram_manual_label">Manual RAM Allocation (MB)</string>
     <string name="ram_manual_placeholder">e.g. 2048</string>
     <string name="ram_unit_mb">MB</string>

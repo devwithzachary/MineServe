@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -56,6 +57,7 @@ import com.devwithzachary.mineserve.api.PaperApiClient
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.findNextAvailablePort
+import com.devwithzachary.mineserve.ui.components.getDefaultAllocatedRamMb
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.Slate400
@@ -98,11 +100,12 @@ fun CreateServerWizardScreen(
     }
 
     // Form State
+    val context = LocalContext.current
     var serverName by remember { mutableStateOf("My Minecraft Server") }
     var motd by remember { mutableStateOf("Welcome to my MineServe Server!") }
     var selectedType by remember { mutableStateOf(ServerType.PAPER) }
     var selectedVersion by remember { mutableStateOf("26.2") }
-    var allocatedRamMb by remember { mutableIntStateOf(2048) }
+    var allocatedRamMb by remember { mutableIntStateOf(getDefaultAllocatedRamMb(context)) }
     var userModifiedPort by remember { mutableStateOf(false) }
     var port by remember { mutableIntStateOf(defaultUnusedPort) }
     var eulaAccepted by remember { mutableStateOf(false) }

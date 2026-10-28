@@ -185,6 +185,8 @@ for ABI in "${ABIS[@]}"; do
             CC="$TOOLCHAIN_BIN/${TARGET_TRIPLE}${MIN_API}-clang"
             CC_32="$TOOLCHAIN_BIN/armv7a-linux-androideabi${MIN_API}-clang"
             LOADER_TEXT_ADDR="0x2000000000"
+            LOADER32_TEXT_ADDR="0x20000000"
+            LOADER32_CFLAGS=""
             HAS_LOADER32=1
             ;;
         "armeabi-v7a")
@@ -192,13 +194,17 @@ for ABI in "${ABIS[@]}"; do
             CC="$TOOLCHAIN_BIN/${TARGET_TRIPLE}${MIN_API}-clang"
             CC_32=""
             LOADER_TEXT_ADDR="0x20000000"
+            LOADER32_TEXT_ADDR=""
+            LOADER32_CFLAGS=""
             HAS_LOADER32=0
             ;;
         "x86_64")
             TARGET_TRIPLE="x86_64-linux-android"
             CC="$TOOLCHAIN_BIN/${TARGET_TRIPLE}${MIN_API}-clang"
             CC_32="$TOOLCHAIN_BIN/i686-linux-android${MIN_API}-clang"
-            LOADER_TEXT_ADDR="0x2000000000"
+            LOADER_TEXT_ADDR="0x600000000000"
+            LOADER32_TEXT_ADDR="0xa0000000"
+            LOADER32_CFLAGS="-mregparm=3"
             HAS_LOADER32=1
             ;;
         *)
@@ -234,9 +240,9 @@ for ABI in "${ABIS[@]}"; do
     # 4. Build 32-bit Loader (libproot_loader32.so) if applicable
     if [ "$HAS_LOADER32" -eq 1 ]; then
         echo " -> Building libproot_loader32.so..."
-        $CC_32 -I "$EXTERNAL_DIR/proot" -fPIC -ffreestanding -c "$EXTERNAL_DIR/proot/loader/loader.c" -o "$ABI_WORK_DIR/loader32.o"
-        $CC_32 -I "$EXTERNAL_DIR/proot" -fPIC -ffreestanding -c "$EXTERNAL_DIR/proot/loader/assembly.S" -o "$ABI_WORK_DIR/assembly32.o"
-        $CC_32 -static -nostdlib -Wl,--build-id=none,-Ttext=0x20000000,--rosegment,-z,noexecstack \
+        $CC_32 $LOADER32_CFLAGS -I "$EXTERNAL_DIR/proot" -fPIC -ffreestanding -c "$EXTERNAL_DIR/proot/loader/loader.c" -o "$ABI_WORK_DIR/loader32.o"
+        $CC_32 $LOADER32_CFLAGS -I "$EXTERNAL_DIR/proot" -fPIC -ffreestanding -c "$EXTERNAL_DIR/proot/loader/assembly.S" -o "$ABI_WORK_DIR/assembly32.o"
+        $CC_32 -static -nostdlib -Wl,--build-id=none,-Ttext=${LOADER32_TEXT_ADDR},--rosegment,-z,noexecstack \
             "$ABI_WORK_DIR/loader32.o" "$ABI_WORK_DIR/assembly32.o" \
             -o "$ABI_WORK_DIR/libproot_loader32.so"
     fi

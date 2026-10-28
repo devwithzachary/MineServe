@@ -2,6 +2,25 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.4.2] - 2026-10-28
+
+### 🖥️ x86_64 Emulator & PRoot Runtime Fixes
+- **x86_64 Android Zygote Seccomp `renameat2` & Legacy Syscall Translation**: Fixed `dpkg` and `apt-get` failing with `Function not implemented (ENOSYS)` under Android's `x86_64` Zygote seccomp policy in `external/proot/tracee/seccomp.c`, `external/proot/syscall/enter.c`, `external/proot/syscall/exit.c`, and `external/proot/tracee/event.c`. Rewrote legacy `PR_rename` and `PR_renameat` syscalls to `PR_renameat2` (and `PR_unlink`/`PR_rmdir` to `PR_unlinkat`) after `SYSCALL_ENTER_END` and in `SIGSYS` recovery so `link2symlink` link counts are never decremented twice, and added `SIGSYS` translation for `readlink`, `creat`, `mknod`, `epoll_create`, `inotify_init`, `eventfd`, `signalfd`, `fork`, `vfork`, `alarm`, and self-`dup2`.
+- **Eliminated Android SELinux `setattr` Denial Flood in PRoot**: Patched `override_permissions` in `external/proot/extension/fake_id0/fake_id0.c` to skip host pseudo-filesystems (`/proc`, `/sys`, `/dev`) and system-owned paths not owned by the app UID, preventing thousands of `avc: denied { setattr }` audit logs per second during `apt-get` and `dpkg` execution on Android 14-16.
+- **Removed Restricted `/proc/1` & Unreadable Storage Bindings**: Dropped the `/proc/self:/proc/1` host bind mount in `PRootEngine` (which triggered SELinux `getattr` denials against Android `init` while PRoot already virtualizes `/proc/1` internally) and guarded external storage mounts with `canRead()` checks.
+- **x86_64 Native Loader Address & Calling Convention Alignment**: Fixed `scripts/build_native_libs.sh` to link the 64-bit `x86_64` `libproot_loader.so` at `0x600000000000` and the 32-bit `x86` `libproot_loader32.so` at `0xa0000000` with `-mregparm=3` matching `arch.h`, and exported `PROOT_LOADER_32` alongside `PROOT_LOADER32`.
+- **Sanitized Guest Environment & Emulator DNS Resolution**: Explicitly cleared host `LD_LIBRARY_PATH` in the traced child process before `execvp` (`external/proot/tracee/event.c`), enforced `TMPDIR=/tmp` inside the OpenJDK installation script so `mktemp` in `ca-certificates` post-install scripts never targets inaccessible host `/data/local/tmp`, added Android Emulator SLIRP DNS (`10.0.2.3`) to `/etc/resolv.conf`, and enabled `Dpkg::Use-Pty "0"` and `Acquire::Retries "3"` in APT configuration.
+
+### 🛠️ Setup Error Visibility & Console Output Persistence
+- **Synchronous OpenJDK 21 Setup & Error Reporting**: `RootfsManager.performRootfsSetup` now keeps the initial setup screen active while OpenJDK 21 is installed, streaming live `apt-get` progress logs directly to `SplashScreen` instead of navigating to the Dashboard prematurely and racing with server creation. If OpenJDK installation fails, `SplashScreen` displays the detailed error message, scrollable installation logs, and retry controls.
+- **Eliminated Concurrent APT Lock Deletion Race**: Restricted APT/DPKG lock file cleanup and recursive rootfs permission sweeps in `RootfsManager.configureSystemFiles` to initial extraction only, preventing `ServerProcessManager.startServer` from deleting active `dpkg` locks while a background package installation is in progress.
+- **Persistent Server Console Terminal Emulator**: `ServerProcessManager` now retains a persistent `TerminalEmulator` buffer per server ID across session creation, stop, and error states, ensuring OpenJDK auto-installation messages and startup errors are never lost when navigating to the Console tab or after process termination.
+- **Server Start Error State Preservation**: Fixed `ServerProcessManager.startServer` where a `JavaInstallState.Error` only returned from the `collect` lambda and fell through to `launchMinecraftProcess`, which immediately failed and overwrote `ServerStatus.ERROR` with `STOPPED` ("Offline"). Failed Java installations now abort launch cleanly and preserve the `ERROR` state and console diagnostics.
+
+### 🎛️ Device-Aware Default RAM Allocation
+- **Adaptive Default RAM Preselection**: Updated Step 3 of the server creation wizard (`CreateServerWizardScreen`) and `RamSlider` (`ResourceAndRamComponents`) to calculate a device-aware default RAM allocation (`getDefaultAllocatedRamMb`) and maximum slider cap that leaves headroom for Android on lower-memory devices (2 GB to 3 GB total RAM) while preserving the 2048 MB default on devices with 4 GB+ RAM.
+- **Fractional Total RAM Formatting**: Updated the "Device Total" memory readout in `RamSlider` to display fractional gigabytes (such as `2.5 GB`) instead of truncating via integer division.
+
 ## [1.4.1] - 2026-10-20
 
 ### 📜 Minecraft EULA & User Opt-In

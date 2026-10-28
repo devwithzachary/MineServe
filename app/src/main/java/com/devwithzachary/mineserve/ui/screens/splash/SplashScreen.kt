@@ -30,6 +30,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -264,17 +265,56 @@ fun SplashScreen(
                             color = Slate400,
                             textAlign = TextAlign.Center
                         )
+
+                        if (setupState.logs.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(140.dp)
+                                    .background(Slate950, RoundedCornerShape(8.dp))
+                                    .padding(8.dp)
+                            ) {
+                                items(setupState.logs) { log ->
+                                    Text(
+                                        text = log,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = if (log.startsWith("ERROR:") || log.startsWith("E:")) RedstoneRed else Slate400
+                                    )
+                                }
+                            }
+                            LaunchedEffect(setupState.logs.size) {
+                                listState.animateScrollToItem((setupState.logs.size - 1).coerceAtLeast(0))
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(
                             onClick = onStartSetup,
                             colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                            shape = RoundedCornerShape(12.dp)
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
                                 text = stringResource(R.string.splash_retry_setup),
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold
                             )
+                        }
+                        if (isRootfsInstalled || setupState.logs.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = onContinueToDashboard,
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.splash_continue_anyway),
+                                    color = Slate400,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
                 }

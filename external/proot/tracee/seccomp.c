@@ -2,7 +2,12 @@
 #include <signal.h>    /* SIGSYS, */
 #include <unistd.h>    /* getpgid, */
 #include <utime.h>     /* utimbuf, */
+#include <sys/time.h>  /* itimerval, ITIMER_REAL, */
+#include <sys/stat.h>  /* lstat, */
 #include <sys/vfs.h>   /* statfs64 */
+#include <fcntl.h>     /* O_*, AT_*, */
+#include <sched.h>     /* CLONE_*, */
+#include <stdio.h>     /* snprintf, */
 #include <string.h>    /* memset   */
 #include <linux/net.h> /* SYS_SENDMMSG */
 #include <assert.h>    /* assert(3), */
@@ -69,6 +74,7 @@ void set_result_after_seccomp(Tracee *tracee, word_t result) {
  */
 int handle_seccomp_event(Tracee* tracee)
 {
+	const bool was_in_sysenter = IS_IN_SYSENTER(tracee);
 	int ret;
 
 	/* Reset status so next SIGTRAP | 0x80 is
@@ -86,23 +92,6 @@ int handle_seccomp_event(Tracee* tracee)
 		return SIGSYS;
 	}
 
-#if defined(ARCH_ARM_EABI) || defined(ARCH_ARM64)
-	/* A synthesized sysexit ran before this SIGSYS and poked
-	 * SYSARG_RESULT, which on ARM/ARM64 aliases SYSARG_1.  The blocked
-	 * syscall's first argument (e.g. a path pointer, or the rgid of
-	 * setresgid) was thus overwritten with the faked result.  Restore it
-	 * from the entry snapshot so both the SIGSYS emulation and any *at
-	 * style restart below read the real argument.  The sysnum guard keeps
-	 * a stale ORIGINAL (from an unrelated prior syscall) from leaking in.  */
-	if (tracee->restore_sysarg1_after_sigsys
-	    && get_sysnum(tracee, ORIGINAL) == get_sysnum(tracee, CURRENT))
-		poke_reg(tracee, SYSARG_1, peek_reg(tracee, ORIGINAL, SYSARG_1));
-#endif
-	tracee->restore_sysarg1_after_sigsys = false;
-
-	/* Save regs so they can be restored at end of replaced call.  */
-	save_current_regs(tracee, ORIGINAL_SECCOMP_REWRITE);
-
 	/* X86 uses orig_rax when selecting syscall,
 	 * however at this point we are after syscall has been rejected
 	 * and orig_rax was reset to -1.  */
@@ -111,6 +100,24 @@ int handle_seccomp_event(Tracee* tracee)
 #elif defined(ARCH_X86)
 	tracee->_regs[CURRENT].orig_eax = tracee->_regs[CURRENT].eax;
 #endif
+
+	if (!was_in_sysenter && get_sysnum(tracee, ORIGINAL) == get_sysnum(tracee, CURRENT)) {
+		/* sysenter already ran before the kernel raised SIGSYS, so
+		 * CURRENT registers hold translated host paths and a modified
+		 * stack pointer.  Restore the untranslated guest arguments
+		 * from ORIGINAL while keeping the current INSTR_POINTER.  */
+		poke_reg(tracee, SYSARG_1, peek_reg(tracee, ORIGINAL, SYSARG_1));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, ORIGINAL, SYSARG_2));
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, ORIGINAL, SYSARG_3));
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, ORIGINAL, SYSARG_4));
+		poke_reg(tracee, SYSARG_5, peek_reg(tracee, ORIGINAL, SYSARG_5));
+		poke_reg(tracee, SYSARG_6, peek_reg(tracee, ORIGINAL, SYSARG_6));
+		poke_reg(tracee, STACK_POINTER, peek_reg(tracee, ORIGINAL, STACK_POINTER));
+	}
+	tracee->restore_sysarg1_after_sigsys = false;
+
+	/* Save regs so they can be restored at end of replaced call.  */
+	save_current_regs(tracee, ORIGINAL_SECCOMP_REWRITE);
 
 	print_current_regs(tracee, 3, "seccomp SIGSYS");
 
@@ -471,6 +478,17 @@ static int handle_seccomp_event_common(Tracee *tracee)
 		break;
 
 	case PR_dup2:
+		if (peek_reg(tracee, CURRENT, SYSARG_1) == peek_reg(tracee, CURRENT, SYSARG_2)) {
+			char proc_fd[64];
+			struct stat st;
+			snprintf(proc_fd, sizeof(proc_fd), "/proc/%d/fd/%d",
+				 tracee->pid, (int) peek_reg(tracee, CURRENT, SYSARG_1));
+			if (lstat(proc_fd, &st) < 0)
+				set_result_after_seccomp(tracee, -EBADF);
+			else
+				set_result_after_seccomp(tracee, peek_reg(tracee, CURRENT, SYSARG_1));
+			break;
+		}
 		set_sysnum(tracee, PR_dup3);
 		poke_reg(tracee, SYSARG_3, 0);
 		restart_syscall_after_seccomp(tracee);
@@ -494,13 +512,118 @@ static int handle_seccomp_event_common(Tracee *tracee)
 		break;
 
 	case PR_rename:
-		set_sysnum(tracee, PR_renameat);
+		if (detranslate_sysnum(get_abi(tracee), PR_renameat2) != SYSCALL_AVOIDER) {
+			set_sysnum(tracee, PR_renameat2);
+			poke_reg(tracee, SYSARG_5, 0);
+		} else {
+			set_sysnum(tracee, PR_renameat);
+		}
 		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
 		poke_reg(tracee, SYSARG_3, AT_FDCWD);
 		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
 		poke_reg(tracee, SYSARG_1, AT_FDCWD);
 		restart_syscall_after_seccomp(tracee);
 		break;
+
+	case PR_renameat:
+		if (detranslate_sysnum(get_abi(tracee), PR_renameat2) == SYSCALL_AVOIDER) {
+			set_result_after_seccomp(tracee, -ENOSYS);
+			break;
+		}
+		set_sysnum(tracee, PR_renameat2);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_readlink:
+		set_sysnum(tracee, PR_readlinkat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_creat:
+		set_sysnum(tracee, PR_openat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_3, O_CREAT | O_WRONLY | O_TRUNC);
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_mknod:
+		set_sysnum(tracee, PR_mknodat);
+		poke_reg(tracee, SYSARG_4, peek_reg(tracee, CURRENT, SYSARG_3));
+		poke_reg(tracee, SYSARG_3, peek_reg(tracee, CURRENT, SYSARG_2));
+		poke_reg(tracee, SYSARG_2, peek_reg(tracee, CURRENT, SYSARG_1));
+		poke_reg(tracee, SYSARG_1, AT_FDCWD);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_epoll_create:
+		if ((int) peek_reg(tracee, CURRENT, SYSARG_1) <= 0) {
+			set_result_after_seccomp(tracee, -EINVAL);
+			break;
+		}
+		set_sysnum(tracee, PR_epoll_create1);
+		poke_reg(tracee, SYSARG_1, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_inotify_init:
+		set_sysnum(tracee, PR_inotify_init1);
+		poke_reg(tracee, SYSARG_1, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_eventfd:
+		set_sysnum(tracee, PR_eventfd2);
+		poke_reg(tracee, SYSARG_2, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_signalfd:
+		set_sysnum(tracee, PR_signalfd4);
+		poke_reg(tracee, SYSARG_4, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_fork:
+		set_sysnum(tracee, PR_clone);
+		poke_reg(tracee, SYSARG_1, SIGCHLD);
+		poke_reg(tracee, SYSARG_2, 0);
+		poke_reg(tracee, SYSARG_3, 0);
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_vfork:
+		set_sysnum(tracee, PR_clone);
+		poke_reg(tracee, SYSARG_1, CLONE_VFORK | CLONE_VM | SIGCHLD);
+		poke_reg(tracee, SYSARG_2, 0);
+		poke_reg(tracee, SYSARG_3, 0);
+		poke_reg(tracee, SYSARG_4, 0);
+		poke_reg(tracee, SYSARG_5, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+
+	case PR_alarm: {
+		struct itimerval it = {};
+		it.it_value.tv_sec = (time_t) peek_reg(tracee, CURRENT, SYSARG_1);
+		ret = set_sysarg_data(tracee, &it, sizeof(it), SYSARG_2);
+		if (ret < 0) {
+			set_result_after_seccomp(tracee, ret);
+			break;
+		}
+		set_sysnum(tracee, PR_setitimer);
+		poke_reg(tracee, SYSARG_1, ITIMER_REAL);
+		poke_reg(tracee, SYSARG_3, 0);
+		restart_syscall_after_seccomp(tracee);
+		break;
+	}
 
 	case PR_select:
 	{
