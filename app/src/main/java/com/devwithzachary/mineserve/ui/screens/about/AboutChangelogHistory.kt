@@ -38,7 +38,7 @@ data class ReleaseChangelog(
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.5.0",
-        date = "In Development",
+        date = "October 29, 2026",
         initialExpanded = true,
         highlights = listOf(
             "Universal Port Forwarding: Zero-config UPnP and NAT-PMP router port mapping so friends can connect directly via WAN IP without third-party tunnel proxies.",

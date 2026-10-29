@@ -11,7 +11,7 @@
 
 **MineServe** is an open-source Android application designed to download, configure, run, and manage full-featured dedicated Minecraft servers natively on Android devices **without requiring root permissions**.
 
-Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-terminal**, multi-version **OpenJDK runtime isolation (Java 8, 17, 21, 25)**, live telemetry monitoring, public zero-port-forwarding tunneling, smart auto-wake automation, and a modern **Jetpack Compose** interface, MineServe turns your smartphone or tablet into a portable, high-performance Minecraft dedicated server host.
+Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-terminal**, multi-version **OpenJDK runtime isolation (Java 8, 17, 21, 25)**, live telemetry monitoring with rolling charts, zero-config UPnP/NAT-PMP router port forwarding, public high-speed tunneling, automated cloud backup sync, web remote admin panel, smart auto-wake automation, and a modern **Jetpack Compose** interface, MineServe turns your smartphone or tablet into a portable, high-performance Minecraft dedicated server host.
 
 <p align="center">
   <a href="https://play.google.com/store/apps/details?id=com.devwithzachary.mineserve">
@@ -40,6 +40,14 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * **Java 25 / Java 21**: For modern Minecraft 1.20.5+ and snapshots.
   * **Java 17**: For Minecraft 1.17 - 1.20.4.
   * **Java 8**: For legacy Minecraft releases (from 1.16.5 down to 1.0) and classic Forge servers.
+* **🖥️ Web Remote Admin Panel (LAN & Web Management)**:
+  * **Built-in Local Web Admin**: Embedded zero-dependency lightweight local HTTP server allowing full management from any desktop browser or tablet on the same Wi-Fi network.
+  * **Interactive Console & Remote File Manager**: Real-time terminal output with syntax highlighting, command execution bar, and in-browser code editor for server configuration files.
+  * **Live Telemetry Dashboard**: Real-time TPS and MSPT gauges, server memory utilization progress bar, CPU usage, and online player monitoring.
+  * **Secure Authentication & Public Exposure**: Cryptographic session tokens, constant-time verification, brute-force rate limiting, and optional public exposure via UPnP router port forwarding, Bore, or Playit tunnels.
+* **🌐 Universal Router Port Forwarding (UPnP & NAT-PMP)**:
+  * **Automatic Router Port Forwarding**: Zero-config UPnP (SSDP/SOAP) and RFC 6886 NAT-PMP client for automatic router port mapping. Friends can connect directly to your residential public WAN IP without third-party tunnel proxies.
+  * **Dynamic WAN Connection Card**: Server Settings and status cards display mapped public WAN IP and port with live mapping health, local IP mapping, and a 1-tap copy button for direct server invites.
 * **🌐 Zero-Port-Forwarding Public Tunneling**:
   * **High-Speed Native Android Tunnels**: Both **bore (`bore.pub`)** and **Playit.gg** agents run directly as native Android binaries outside PRoot virtualization, eliminating ptrace emulation overhead to reduce network latency by 30+ ms.
   * **Dual Tunnel Providers**: Instant free TCP tunneling with **bore (`bore.pub`)** or persistent vanity subdomains (`*.ply.gg`, `*.joinmc.link`) with **Playit.gg**.
@@ -84,11 +92,14 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * Command history memory recall (Up and Down buttons).
   * Smooth terminal canvas scrollback with touch word detection, draggable teardrop selection handles, and floating action toolbar (Copy, Select All, Share).
 * **📊 Real-Time Game Engine Telemetry & Health**:
-  * Live tracking of dynamic TPS gauge, MSPT processing time, tick budget headroom, and passive overload warnings (`Can't keep up!`).
+  * **Rolling Canvas Telemetry Graphs**: Smooth real-time Canvas charts graphing rolling historical TPS (0 to 20 scale) and MSPT (0 to 100 ms scale) with dynamic threshold coloring and target reference lines.
+  * **Proactive Lag Diagnostics**: Live diagnostics card detects sustained tick degradation beyond the 50 ms budget, providing actionable recommendations to optimize performance.
+  * **Aikar's G1GC Flags Preset**: 1-tap action to apply Aikar's optimized JVM garbage collection flags tuned for minimal pauses and low CPU contention on mobile processors.
+  * **System Storage Safeguards**: Proactive warning banners when device free storage drops below 1 GB to protect worlds from corruption.
   * Active container CPU utilization, RSS memory consumption via `/proc`, live player counts, and server storage footprints.
-  * Local timezone synchronization for container and JVM logs so console timestamps match host device time rather than UTC.
 * **🧩 Context-Aware Plugins & Mods Management**:
   * Engine-aware UI: Displays **"Plugins"** for Paper/Purpur, **"Mods"** for Fabric/NeoForge/Forge, and automatically hides the tab for Vanilla servers.
+  * **Modrinth (.mrpack) Modpack Importer**: 1-tap download and installation of official Modrinth `.mrpack` archives with automated dependency resolution, client-only mod filtering, and server overrides extraction.
   * **Modrinth API Integration**: Search and browse plugins and mods with project thumbnails, categories, author credits, and full descriptions.
   * **1-Tap Installation**: Automatically resolves version download URLs matching the target server's loader and Minecraft release.
   * **Custom `.JAR` Import**: Import plugins and mods directly from Android device storage using the system Document Picker.
@@ -96,6 +107,7 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * Intuitive switches and sliders for Server Port, MOTD, Max Players, Game Mode, Difficulty, PVP, Whitelist, View Distance, Animal/Monster Spawning, and Simulation Distance.
   * **Dynamic Server RAM Reallocation**: Reconfigure allocated RAM memory on existing servers directly within Settings, complete with device memory recommendations and restart advisories.
 * **💾 World & Server Snapshot Backups**:
+  * **Cloud Backup Sync (100% F-Droid Compliant)**: Automated off-device sync to Nextcloud, ownCloud, WebDAV, or any Android Storage Access Framework cloud directory (Google Drive, OneDrive, SD card) with zero proprietary Play Services libraries.
   * **World Save Backup**: Rapid snapshot archiving of only the world save directory.
   * **Full Server Backup**: Complete backup of server configuration, plugins/mods, logs, and worlds.
   * **1-Tap Restore, Export & Deletion**: Instant rollback restoration, direct deletion to reclaim device storage, and export to Android public Downloads or system Share sheet.
@@ -115,7 +127,7 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
 |                    Android UI Layer (Jetpack Compose)                 |
 |   DashboardScreen | ServerDetailScreen | CreateWizard | AppSettings   |
 |   (Console | Perf | Automation | Files | World | LiveMap | Settings)  |
-|   (Players | Backups | Plugins/Mods)                                  |
+|   (Players | Backups | Plugins/Mods) | RemoteAdminScreen              |
 +-----------------------------------------------------------------------+
                                    |
                                    v
@@ -124,6 +136,7 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
 |    MainViewModel | ServerProcessManager | JavaRuntimeManager          |
 |    ServerRepository | BackupRepository | PluginRepository             |
 |    AutomationScheduler | StandbyPingListener | TunnelManager          |
+|    PortForwardManager | WebAdminManager | CloudSyncManager            |
 |    ChunkOptimizer | CrashDiagnosticEngine | PRootEngine               |
 +-----------------------------------------------------------------------+
              |                             |
@@ -253,15 +266,18 @@ On initial launch, tap **Initialize Server Runtime**. MineServe will download an
 ### 3. Managing the Server
 The Server Details screen provides dedicated tabs to manage every aspect of your server:
 * **Console Tab**: View live colored terminal logs, use customizable macro hotbar buttons, and execute Minecraft commands with auto-completion.
-* **Performance Tab**: Monitor real-time TPS gauges, MSPT processing time, tick budget headroom, and live CPU/RAM utilization.
+* **Performance Tab**: Monitor real-time TPS gauges, rolling historical Canvas graphs, MSPT processing time, tick budget headroom, proactive lag diagnostics, and apply Aikar's G1GC flags preset.
 * **Automation Tab**: Configure idle auto-shutdown, arm auto-wake on ping standby listeners, and set up cron-scheduled backups and restarts.
 * **Files Tab**: Browse server files, extract `.zip` archives in-place or into subfolders, edit configs in the monospace code editor, or inspect crash reports with the 1-tap Diagnostic Sheet.
 * **World Tab**: Import singleplayer `.zip` or `.mcworld` saves, export world archives, reset Nether or End dimensions, and optimize chunk storage.
 * **Live Map Tab**: Explore your world with an embedded 2D Squaremap web view and trigger full world renders.
-* **Settings Tab**: Reconfigure allocated RAM memory, adjust server rules (PVP, difficulty, max players), manage Java runtime versions, update builds, and launch high-speed native tunnels (bore.pub or Playit.gg).
+* **Settings Tab**: Reconfigure allocated RAM memory, adjust server rules (PVP, difficulty, max players), manage Java runtime versions, update builds, enable UPnP/NAT-PMP router port forwarding, and launch high-speed native tunnels (bore.pub or Playit.gg).
 * **Players Tab**: View connected players with 3D skin avatars, manage operator and whitelist permissions, and administer players from a full-screen management page (kick, ban, teleport, gamemode, item granting).
-* **Backups Tab**: Create full server or world-only snapshot zip archives, restore snapshots, delete older archives, and export them to your Downloads folder or external apps.
-* **Plugins / Mods Tab**: Search Modrinth for plugins (Paper/Purpur) or mods (Fabric/NeoForge/Forge) and install them with 1 tap, or upload custom `.jar` files.
+* **Backups Tab**: Create full server or world-only snapshot zip archives, restore snapshots, configure automated cloud backup sync (Nextcloud, WebDAV, SAF), delete older archives, and export to storage.
+* **Plugins / Mods Tab**: Search Modrinth for plugins (Paper/Purpur), mods (Fabric/NeoForge/Forge), or import full `.mrpack` modpacks with 1 tap, or upload custom `.jar` files.
+
+### 4. Web Remote Admin Panel (LAN & Web Management)
+From **App Settings**, launch the built-in Web Remote Admin Panel to manage your servers, interactive terminal console, file editor, and live performance metrics from any desktop browser or tablet on your local Wi-Fi network, or expose it online via UPnP, Bore, or Playit tunnels.
 
 ---
 

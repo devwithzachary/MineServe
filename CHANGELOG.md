@@ -2,7 +2,16 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.5.0] - Unreleased
+## [1.5.0] - 2026-10-29
+
+### 🖥️ Web Remote Admin Panel (LAN & Web Management)
+- **Built-in Local Web Admin**: Embedded zero-dependency lightweight local HTTP server allowing full management from any desktop browser or tablet on the same Wi-Fi network.
+- **Full Server Console & Command Input**: Real-time terminal output with syntax highlighting, command execution bar, command history navigation, and quick action pills.
+- **Remote File Manager & Editor**: In-browser directory browser with text file inspection and code editing for server configuration files (`server.properties`, configs) and file deletion.
+- **Live Telemetry Dashboard**: Real-time TPS and MSPT gauges, server memory utilization progress bar, CPU usage, and online player lists.
+- **Cryptographic Security & Brute-Force Rate Limiting**: Secure session tokens, constant-time credential verification, configurable admin username/password, and automatic 5-minute lockout after failed attempts.
+- **Online Exposure Support**: Expose the web admin panel securely over the internet using UPnP router port forwarding, Bore public tunnels, or Playit.
+- **In-App QR Code & One-Tap Sharing**: Display QR code in the app for instant scanning with camera devices plus one-tap copy and browser launch.
 
 ### 🌐 Universal Router Port Forwarding (UPnP & NAT-PMP)
 - **Automatic Router Port Forwarding**: Added built-in zero-config UPnP (SSDP/SOAP) and RFC 6886 NAT-PMP client for automatic router port mapping. Friends on the Internet can now connect directly to the host's residential public WAN IP without requiring manual router admin configuration or third-party tunnel proxies.
@@ -20,26 +29,13 @@ All notable changes to the MineServe project will be documented in this file.
 - **Configuration & Override Extraction**: Streams real-time progress while extracting `overrides/` and `server-overrides/` directly into the server directory.
 
 ### 📊 Live Performance Telemetry & Diagnostics
-- **Rolling Canvas Telemetry Graphs**: Added smooth real-time Canvas charts in the Performance tab graphing rolling historical TPS (0 to 20 scale) and MSPT (0 to 100 ms scale) with baseline target reference lines.
-- **Proactive Server Lag Diagnostics**: Live diagnostics card detects when tick durations exceed the 50.0 ms budget, providing actionable recommendations to optimize view distances and check runaway entity clusters.
+- **Rolling Canvas Telemetry Graphs**: Added smooth real-time Canvas charts in the Performance tab graphing rolling historical TPS (0 to 20 scale) and MSPT (0 to 100 ms scale) with dynamic threshold coloring and baseline target reference lines.
+- **Proactive Server Lag Diagnostics**: Live diagnostics card detects sustained tick degradation beyond the 50.0 ms budget while gracefully ignoring normal startup spikes, providing actionable recommendations to optimize view distances and check runaway entity clusters.
 - **Aikar's G1GC JVM Flags Preset**: Added a 1-tap action to apply Aikar's optimized G1GC flags tuned for minimal garbage collection pauses and reduced CPU contention on mobile processors.
 - **Low Storage Threshold Safeguards**: Displays a proactive warning banner when available device storage drops below 1 GB to prevent world corruption during chunk generation.
 
-### 🖥️ Web Remote Admin Panel (LAN & Web Management)
-- **Built-in Local Web Admin**: Embedded zero-dependency lightweight local HTTP server allowing full management from any desktop browser or tablet on the same Wi-Fi network.
-- **Full Server Console & Command Input**: Real-time terminal output with syntax highlighting, command execution bar, command history navigation, and quick action pills.
-- **Remote File Manager & Editor**: In-browser directory browser with text file inspection and code editing for server configuration files (`server.properties`, configs) and file deletion.
-- **Live Telemetry Dashboard**: Real-time TPS and MSPT gauges, server memory utilization progress bar, CPU usage, and online player lists.
-- **Cryptographic Security & Brute-Force Rate Limiting**: Secure session tokens, constant-time credential verification, configurable admin username/password, and automatic 5-minute lockout after failed attempts.
-- **Online Exposure Support**: Expose the web admin panel securely over the internet using UPnP router port forwarding, Bore public tunnels, or Playit.
-- **In-App QR Code & One-Tap Sharing**: Display QR code in the app for instant scanning with camera devices plus one-tap copy and browser launch.
-
 ### 🎨 UI & UX Polish
 - **Server Creation Wizard EULA Layout**: Wrapped the EULA agreement link onto its own line with responsive padding on Step 4 of the server wizard, preventing text truncation on narrow screens.
-- **Booting Lag Card Suppression**: Prevented lag diagnosis cards from displaying during initial server boot when tick rate initialization naturally spikes.
-- **Engine Health Badge Compactness**: Streamlined the engine health badge text to a single-line label ("Optimal" / "Moderate" / "Lag") to eliminate overflow next to the card title.
-- **Rolling MSPT Telemetry Graph Palette**: Updated the MSPT rolling chart line and text to display in green while tick time is within the 50 ms budget, switching to amber/orange only when exceeding the target threshold.
-- **Cloud Backup Setup Clarity**: Simplified the Cloud Backup configuration header and description to focus directly on supported storage destinations without technical badge clutter.
 - **Mod & Plugin Enable Switch Contrast**: Added distinct background track and border styling to the plugin enable toggle, along with increased margin from item descriptions, providing clear visual toggle status.
 
 ## [1.4.2] - 2026-10-29
