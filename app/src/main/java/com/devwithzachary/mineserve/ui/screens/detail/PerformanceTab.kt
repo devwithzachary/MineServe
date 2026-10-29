@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.util.FileStorageUtils
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
@@ -634,13 +635,7 @@ fun PerformanceInfoRow(
 }
 
 private fun formatStorageSize(bytes: Long): String {
-    if (bytes <= 0) return "0 MB"
-    val mb = bytes / (1024.0 * 1024.0)
-    return if (mb >= 1024.0) {
-        String.format(Locale.US, "%.2f GB", mb / 1024.0)
-    } else {
-        String.format(Locale.US, "%.1f MB", mb)
-    }
+    return FileStorageUtils.formatBytes(bytes, includeKb = false, gbDecimals = 2)
 }
 
 private fun formatUptime(seconds: Long): String {

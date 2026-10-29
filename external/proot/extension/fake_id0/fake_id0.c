@@ -412,8 +412,22 @@ static void override_permissions(const Tracee *tracee, const char *path, bool is
 	if (should_skip_file_access_due_to_f2fs_bug(tracee, path)) 
 		return;
 
+	/* Never attempt chmod on host pseudo-filesystems (/proc, /sys, /dev).
+	 * On Android, calling chmod on /proc or /sys triggers thousands of
+	 * SELinux avc: denied { setattr } audit logs per second.  */
+	if (strncmp(path, "/proc/", 6) == 0 || strcmp(path, "/proc") == 0
+	    || strncmp(path, "/sys/", 5) == 0 || strcmp(path, "/sys") == 0
+	    || strncmp(path, "/dev/", 5) == 0 || strcmp(path, "/dev") == 0)
+		return;
+
 	status = stat(path, &perms);
 	if (status < 0)
+		return;
+
+	/* Only chmod files owned by the current effective UID; attempting
+	 * chmod on system-owned paths always fails with EPERM/EACCES and
+	 * generates SELinux denials on Android.  */
+	if (perms.st_uid != geteuid())
 		return;
 
 	/* Copy the current permissions */

@@ -37,9 +37,20 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.4.2",
+        date = "October 29, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "x86_64 Emulator & PRoot Reliability: Fixed OpenJDK installation failures and eliminated SELinux permission denial floods under PRoot on Android x86_64 emulators and devices.",
+            "Runtime Setup & Console Diagnostics: First-time setup now streams live OpenJDK installation logs and surfaces any installation errors with retry controls, while server console buffers persist across startups and errors.",
+            "Device-Aware RAM Allocation: Server creation wizard now automatically scales default and maximum RAM preselection on 2 GB to 3 GB devices to leave memory headroom for Android.",
+            "Architecture & Performance: Streamlined codebase modularity across large composables and repositories, eliminated dead code paths, and optimized live console parsing."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.4.1",
         date = "October 20, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Minecraft EULA Opt-In: Server creation wizard now requires explicit opt-in to the Minecraft End User License Agreement before creating a server, with automated opt-in overrides removed on process startup.",
             "Security & Backup Protection: Android automatic cloud backup is explicitly disabled and extraction rules configured to prevent server world data and sensitive credentials from being backed up.",

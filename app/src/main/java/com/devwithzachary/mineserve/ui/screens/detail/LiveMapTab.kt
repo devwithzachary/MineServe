@@ -28,32 +28,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -68,17 +58,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.devwithzachary.mineserve.R
-import com.devwithzachary.mineserve.model.DimensionType
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.WebMapPluginType
 import com.devwithzachary.mineserve.model.WebMapState
+import com.devwithzachary.mineserve.ui.screens.detail.map.LiveMapFullRenderDialog
+import com.devwithzachary.mineserve.ui.screens.detail.map.LiveMapPortDialog
+import com.devwithzachary.mineserve.ui.screens.detail.map.LiveMapUninstallDialog
+import com.devwithzachary.mineserve.ui.screens.detail.map.ServerStoppedMapView
+import com.devwithzachary.mineserve.ui.screens.detail.map.SquaremapInstallView
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
@@ -121,11 +114,8 @@ fun LiveMapTab(
     var showPortDialog by remember { mutableStateOf(false) }
     var showUninstallDialog by remember { mutableStateOf(false) }
     var showRenderDialog by remember { mutableStateOf(false) }
-    var portInputText by remember { mutableStateOf(mapState.port.toString()) }
-
     fun refreshState() {
         mapState = onGetWebMapState()
-        portInputText = mapState.port.toString()
     }
 
     LaunchedEffect(status, server.id) {
@@ -447,308 +437,38 @@ fun LiveMapTab(
 
     // Modal: Port Configuration Dialog
     if (showPortDialog) {
-        AppAlertDialog(
-            onDismissRequest = { showPortDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Settings,
-                    contentDescription = null,
-                    tint = DiamondCyan,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.map_change_port_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        text = stringResource(R.string.map_change_port_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
-                    )
-                    OutlinedTextField(
-                        value = portInputText,
-                        onValueChange = { portInputText = it.filter { char -> char.isDigit() } },
-                        label = { Text("Web Map Port") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = DiamondCyan,
-                            unfocusedBorderColor = Slate700
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val parsed = portInputText.toIntOrNull() ?: mapState.port
-                        if (parsed in 1..65535) {
-                            onSetWebMapPort(parsed)
-                            refreshState()
-                            showPortDialog = false
-                            webViewRef?.loadUrl("http://127.0.0.1:$parsed")
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = DiamondCyan),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Save Port", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { showPortDialog = false },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
-            },
-            containerColor = Slate950
+        LiveMapPortDialog(
+            initialPort = mapState.port,
+            onDismiss = { showPortDialog = false },
+            onSavePort = { newPort ->
+                onSetWebMapPort(newPort)
+                refreshState()
+                webViewRef?.loadUrl("http://127.0.0.1:$newPort")
+            }
         )
     }
 
     // Modal: Uninstall Confirmation Dialog
     if (showUninstallDialog) {
-        AppAlertDialog(
-            onDismissRequest = { showUninstallDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = RedstoneRed,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.map_uninstall_dialog_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.map_uninstall_dialog_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val ok = onUninstallWebMapPlugin()
-                        showUninstallDialog = false
-                        refreshState()
-                        if (ok) {
-                            Toast.makeText(context, "Squaremap uninstalled.", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Failed to uninstall Squaremap.", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Uninstall", color = Color.White, fontWeight = FontWeight.Bold)
+        LiveMapUninstallDialog(
+            onDismiss = { showUninstallDialog = false },
+            onConfirmUninstall = {
+                val ok = onUninstallWebMapPlugin()
+                refreshState()
+                if (ok) {
+                    Toast.makeText(context, "Squaremap uninstalled.", Toast.LENGTH_SHORT).show()
+                } else {
+                    Toast.makeText(context, "Failed to uninstall Squaremap.", Toast.LENGTH_SHORT).show()
                 }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { showUninstallDialog = false },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
-            },
-            containerColor = Slate950
+            }
         )
     }
 
     // Modal: Full World Render Dialog
     if (showRenderDialog) {
-        var selectedDimension by remember { mutableStateOf(DimensionType.OVERWORLD) }
-        var worldInputText by remember(selectedDimension) {
-            mutableStateOf(getRenderWorldIdentifier(selectedDimension))
-        }
-
-        AppAlertDialog(
-            onDismissRequest = { showRenderDialog = false },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Layers,
-                    contentDescription = null,
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.map_render_dialog_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Performance Warning Card
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = GoldYellow.copy(alpha = 0.12f),
-                        border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.4f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(10.dp),
-                            verticalAlignment = Alignment.Top,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = null,
-                                tint = GoldYellow,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = stringResource(R.string.map_render_warning),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Slate400,
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp
-                            )
-                        }
-                    }
-
-                    // Dimension Selector Chips
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = stringResource(R.string.map_render_dimension_label),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Slate400
-                        )
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            listOf(
-                                DimensionType.OVERWORLD to "Overworld",
-                                DimensionType.NETHER to "Nether",
-                                DimensionType.THE_END to "The End"
-                            ).forEach { (dim, label) ->
-                                val isSelected = selectedDimension == dim
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = if (isSelected) EmeraldPrimary.copy(alpha = 0.2f) else Slate900,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (isSelected) EmeraldPrimary else Slate800
-                                    ),
-                                    onClick = {
-                                        selectedDimension = dim
-                                        worldInputText = getRenderWorldIdentifier(dim)
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = label,
-                                        color = if (isSelected) EmeraldLight else Color.White,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(vertical = 8.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // World Name TextField
-                    OutlinedTextField(
-                        value = worldInputText,
-                        onValueChange = { worldInputText = it },
-                        label = { Text(stringResource(R.string.map_render_world_name_label)) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = Slate700
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // Cancel Active Render Option
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(
-                            onClick = {
-                                val target = normalizeWorldIdentifier(worldInputText, selectedDimension)
-                                onSendCommand("squaremap cancelrender $target")
-                                Toast.makeText(context, R.string.map_render_cancelled_toast, Toast.LENGTH_SHORT).show()
-                                showRenderDialog = false
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = null,
-                                tint = RedstoneLight,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.map_render_cancel_btn),
-                                color = RedstoneLight,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val target = normalizeWorldIdentifier(worldInputText, selectedDimension)
-                        onSendCommand("squaremap fullrender $target")
-                        Toast.makeText(context, R.string.map_render_dispatched_toast, Toast.LENGTH_SHORT).show()
-                        showRenderDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.map_render_start_btn),
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { showRenderDialog = false },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
-            },
-            containerColor = Slate950
+        LiveMapFullRenderDialog(
+            onDismiss = { showRenderDialog = false },
+            onSendCommand = onSendCommand
         )
     }
 
@@ -756,230 +476,5 @@ fun LiveMapTab(
         onDispose {
             webViewRef?.destroy()
         }
-    }
-}
-
-@Composable
-private fun SquaremapInstallView(
-    isInstalling: Boolean,
-    onInstall: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Icon(
-            imageVector = Icons.Default.Map,
-            contentDescription = null,
-            tint = DiamondCyan,
-            modifier = Modifier.size(48.dp)
-        )
-
-        Text(
-            text = stringResource(R.string.map_no_plugin_title),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-
-        Text(
-            text = stringResource(R.string.map_no_plugin_desc),
-            style = MaterialTheme.typography.bodySmall,
-            color = Slate400,
-            fontSize = 12.sp
-        )
-
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Map,
-                            contentDescription = null,
-                            tint = EmeraldLight,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "Squaremap",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(4.dp),
-                        color = EmeraldDark.copy(alpha = 0.4f),
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = "Recommended",
-                            color = EmeraldLight,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
-                }
-
-                Text(
-                    text = "Lightweight, ultra-fast 2D web map optimized for mobile devices with minimal RAM and CPU overhead. Features real-time player tracking, multi-world support, and Leaflet web rendering.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Slate800,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = "Default HTTP Port: 8080 • Form factor: 2D Interactive Leaflet",
-                        color = DiamondLight,
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(8.dp)
-                    )
-                }
-
-                Button(
-                    onClick = onInstall,
-                    enabled = !isInstalling,
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth(),
-                    contentPadding = PaddingValues(vertical = 12.dp)
-                ) {
-                    if (isInstalling) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp,
-                            color = Color.Black
-                        )
-                    } else {
-                        Icon(
-                            imageVector = Icons.Default.Download,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = stringResource(R.string.map_btn_install_squaremap),
-                            color = Color.Black,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ServerStoppedMapView(
-    port: Int,
-    pluginName: String,
-    onStartServer: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Surface(
-            shape = RoundedCornerShape(12.dp),
-            color = ObsidianCard,
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Map,
-                    contentDescription = null,
-                    tint = DiamondCyan,
-                    modifier = Modifier.size(40.dp)
-                )
-
-                Text(
-                    text = "$pluginName is Installed",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-
-                Text(
-                    text = stringResource(R.string.map_offline_notice),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
-                )
-
-                Button(
-                    onClick = onStartServer,
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        tint = Color.Black,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = stringResource(R.string.map_btn_start_server),
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun getRenderWorldIdentifier(dimension: DimensionType): String {
-    return when (dimension) {
-        DimensionType.OVERWORLD -> "overworld"
-        DimensionType.NETHER -> "the_nether"
-        DimensionType.THE_END -> "the_end"
-    }
-}
-
-private fun normalizeWorldIdentifier(input: String, dimension: DimensionType): String {
-    val trimmed = input.trim()
-    if (trimmed.isBlank()) {
-        return getRenderWorldIdentifier(dimension)
-    }
-    return when (trimmed.lowercase()) {
-        "world" -> "overworld"
-        "world_nether", "nether" -> "the_nether"
-        "world_the_end", "end" -> "the_end"
-        else -> trimmed
     }
 }

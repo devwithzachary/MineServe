@@ -30,6 +30,7 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
+import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 import com.devwithzachary.mineserve.ui.theme.Slate400
 
 data class JavaRuntimeItem(
@@ -43,6 +44,7 @@ fun JavaEnvironmentCard(
     isJavaVersionInstalled: (Int) -> Boolean,
     installingJavaVer: Int?,
     onInstallJava: (Int) -> Unit,
+    javaInstallError: String? = null,
     modifier: Modifier = Modifier
 ) {
     val runtimes = listOf(
@@ -122,6 +124,13 @@ fun JavaEnvironmentCard(
                             }
                         }
                     }
+                }
+                if (!javaInstallError.isNullOrBlank()) {
+                    Text(
+                        text = javaInstallError,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = RedstoneRed
+                    )
                 }
             }
         }

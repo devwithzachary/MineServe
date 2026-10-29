@@ -294,7 +294,7 @@ static int my_readlink(const char symlink[PATH_MAX], char value[PATH_MAX])
 		? readlink(symlink, value, PATH_MAX)
 		: readlinkat(dir_fd, name, value, PATH_MAX);
 	if (size < 0)
-		return size;
+		return -errno;
 	if (size >= PATH_MAX)
 		return -ENAMETOOLONG;
 	value[size] = '\0';
@@ -578,7 +578,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
 		strcat(final, ".0002");
 		status = l2s_rename(original, final);
 		if (status < 0)
-			return status;
+			return -errno;
 		status = notify_extensions(tracee, LINK2SYMLINK_RENAME, (intptr_t) original, (intptr_t) final);
 		if (status < 0)
 			return status;
@@ -586,12 +586,12 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
 		/* Symlink the intermediate to the final file.  */
 		status = l2s_symlink(final, intermediate);
 		if (status < 0)
-			return status;
+			return -errno;
 
 		/* Symlink the original path to the intermediate one.  */
 		status = symlink(intermediate, original);
 		if (status < 0)
-			return status;
+			return -errno;
 	} else {
 		/*Move the original content to new location, by incrementing count at end of path. */
 		size = my_readlink(intermediate, final);
@@ -606,7 +606,7 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
 
 		status = l2s_rename(final, new_final);
 		if (status < 0)
-			return status;
+			return -errno;
 		status = notify_extensions(tracee, LINK2SYMLINK_RENAME, (intptr_t) final, (intptr_t) new_final);
 		if (status < 0)
 			return status;
@@ -614,10 +614,10 @@ static int move_and_symlink_path(Tracee *tracee, Reg sysarg, Reg link_target_sys
 		/* Symlink the intermediate to the final file.  */
 		status = l2s_unlink(intermediate);
 		if (status < 0)
-			return status;
+			return -errno;
 		status = l2s_symlink(final, intermediate);
 		if (status < 0)
-			return status;
+			return -errno;
 	}
 
 	/* Perform symlink() operation within PRoot.  */
@@ -703,7 +703,7 @@ static int decrement_link_count(Tracee *tracee, Reg sysarg)
 
 		status = l2s_rename(final, new_final);
 		if (status < 0)
-			return status;
+			return -errno;
 		status = notify_extensions(tracee, LINK2SYMLINK_RENAME, (intptr_t) final, (intptr_t) new_final);
 		if (status < 0)
 			return status;
@@ -713,19 +713,19 @@ static int decrement_link_count(Tracee *tracee, Reg sysarg)
 		/* Symlink the intermediate to the final file.  */
 		status = l2s_unlink(intermediate);
 		if (status < 0)
-			return status;
+			return -errno;
 
 		status = l2s_symlink(final, intermediate);
 		if (status < 0)
-			return status;
+			return -errno;
 	} else {
 		/* If it is the last, delete the intermediate and final */
 		status = l2s_unlink(intermediate);
 		if (status < 0)
-			return status;
+			return -errno;
 		status = l2s_unlink(final);
 		if (status < 0)
-			return status;
+			return -errno;
 		status = notify_extensions(tracee, LINK2SYMLINK_UNLINK, (intptr_t) final, 0);
 		if (status < 0)
 			return status;

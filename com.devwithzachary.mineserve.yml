@@ -37,9 +37,28 @@ Builds:
     build: ../scripts/build_native_libs.sh $$NDK$$
     ndk: 28.2.13676358
 
+  - versionName: 1.4.2
+    versionCode: 8
+    commit: 1.4.2
+    subdir: app
+    submodules: true
+    sudo:
+      - apt-get update
+      - apt-get install -y make gawk git gcc libc-dev rustup
+    gradle:
+      - yes
+    prebuild:
+      - rustup default 1.99.0 || rustup default stable
+      - rustup target add aarch64-linux-android x86_64-linux-android
+    scandelete:
+      - app/src/main/jniLibs
+      - external/playit-agent/build-scripts/jsign-5.0.jar
+    build: ../scripts/build_native_libs.sh $$NDK$$
+    ndk: 28.2.13676358
+
 AllowedAPKSigningKeys: c532d763fd4ec838fa118005d9eb51ec13ce72167d2b0a1a8452ce36fc49199e
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.4.1
-CurrentVersionCode: 7
+CurrentVersion: 1.4.2
+CurrentVersionCode: 8

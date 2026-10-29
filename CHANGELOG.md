@@ -2,6 +2,37 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.4.2] - 2026-10-29
+
+### 🖥️ x86_64 Emulator & PRoot Runtime Fixes
+- **x86_64 Android Zygote Seccomp `renameat2` & Legacy Syscall Translation**: Fixed `dpkg` and `apt-get` failing with `Function not implemented (ENOSYS)` under Android's `x86_64` Zygote seccomp policy in `external/proot/tracee/seccomp.c`, `external/proot/syscall/enter.c`, `external/proot/syscall/exit.c`, and `external/proot/tracee/event.c`. Rewrote legacy `PR_rename` and `PR_renameat` syscalls to `PR_renameat2` (and `PR_unlink`/`PR_rmdir` to `PR_unlinkat`) after `SYSCALL_ENTER_END` and in `SIGSYS` recovery so `link2symlink` link counts are never decremented twice, and added `SIGSYS` translation for `readlink`, `creat`, `mknod`, `epoll_create`, `inotify_init`, `eventfd`, `signalfd`, `fork`, `vfork`, `alarm`, and self-`dup2`.
+- **Eliminated Android SELinux `setattr` Denial Flood in PRoot**: Patched `override_permissions` in `external/proot/extension/fake_id0/fake_id0.c` to skip host pseudo-filesystems (`/proc`, `/sys`, `/dev`) and system-owned paths not owned by the app UID, preventing thousands of `avc: denied { setattr }` audit logs per second during `apt-get` and `dpkg` execution on Android 14-16.
+- **Removed Restricted `/proc/1` & Unreadable Storage Bindings**: Dropped the `/proc/self:/proc/1` host bind mount in `PRootEngine` (which triggered SELinux `getattr` denials against Android `init` while PRoot already virtualizes `/proc/1` internally) and guarded external storage mounts with `canRead()` checks.
+- **x86_64 Native Loader Address & Calling Convention Alignment**: Fixed `scripts/build_native_libs.sh` to link the 64-bit `x86_64` `libproot_loader.so` at `0x600000000000` and the 32-bit `x86` `libproot_loader32.so` at `0xa0000000` with `-mregparm=3` matching `arch.h`, and exported `PROOT_LOADER_32` alongside `PROOT_LOADER32`.
+- **Sanitized Guest Environment & Emulator DNS Resolution**: Explicitly cleared host `LD_LIBRARY_PATH` in the traced child process before `execvp` (`external/proot/tracee/event.c`), enforced `TMPDIR=/tmp` inside the OpenJDK installation script so `mktemp` in `ca-certificates` post-install scripts never targets inaccessible host `/data/local/tmp`, added Android Emulator SLIRP DNS (`10.0.2.3`) to `/etc/resolv.conf`, and enabled `Dpkg::Use-Pty "0"` and `Acquire::Retries "3"` in APT configuration.
+
+### 🛠️ Setup Error Visibility & Console Diagnostics Persistence
+- **Synchronous OpenJDK 21 Setup & Error Reporting**: Initial setup now remains on the initialization screen while OpenJDK 21 installs, streaming live progress logs directly to `SplashScreen`. If package installation fails, `SplashScreen` displays detailed error output with retry controls instead of dropping to the dashboard without a working runtime.
+- **Persistent Server Console Diagnostics**: `ServerProcessManager` now maintains a persistent terminal buffer per server across session creation, stop, and error states, ensuring pre-launch auto-installation logs and startup errors remain visible in the Console tab.
+- **Graceful Java Installation Failure Handling**: Failed runtime installations during server startup now halt launch immediately, preserving console error diagnostics and server error status instead of failing silently to an offline state.
+
+### 🎛️ Device-Aware Default RAM Allocation
+- **Adaptive Default RAM Preselection**: Updated Step 3 of the server creation wizard (`CreateServerWizardScreen`) and `RamSlider` (`ResourceAndRamComponents`) to calculate a device-aware default RAM allocation (`getDefaultAllocatedRamMb`) and maximum slider cap that leaves headroom for Android on lower-memory devices (2 GB to 3 GB total RAM) while preserving the 2048 MB default on devices with 4 GB+ RAM.
+- **Fractional Total RAM Formatting**: Updated the "Device Total" memory readout in `RamSlider` to display fractional gigabytes (such as `2.5 GB`) instead of truncating via integer division.
+
+### 🏗️ Codebase Architecture, Modularity & Dead Code Cleanup
+- **Decomposed Monolithic Composables and Repositories**: Refactored oversized files into focused, single-responsibility components:
+  - Extracted `PlayerListRepository` and `ServerFileRepository` from `ServerRepository` (reducing it from 806 to 242 lines).
+  - Decomposed `LiveMapTab` into `map/LiveMapDialogs.kt` and `map/LiveMapStatusViews.kt` (reducing it from 985 to 478 lines).
+  - Decomposed `PlayerActionDialog` into `player/PlayerActionTabs.kt` (reducing it from 949 to 297 lines).
+  - Decomposed `PlayersTab` into `players/PlayerListSections.kt` (reducing it from 929 to 505 lines).
+  - Decomposed `AddScheduledTaskDialog` into `automation/ScheduleTimingSelectors.kt` (reducing it from 891 to 523 lines).
+  - Extracted standalone `StandbyPingManager` from `StandbyPingListener.kt`.
+- **Precompiled Regex Performance in Console Streaming**: Extracted `ConsoleOutputParser` with precompiled static regexes for done indicators, player joins/leaves, and server ports, eliminating repetitive dynamic regex allocations on every received console log buffer.
+- **Optimized Per-Server Metric Sampling**: Discovery of PID trees in `ServerProcessManager` is now performed once per tick and shared between memory and CPU calculations, halving the `/proc` directory traversal overhead during metric polling.
+- **Consolidated Shared Storage & Zip Operations**: Centralized file formatting, directory sizing, recursive stream zipping, and safe zip extraction with Zip-Slip traversal protection into `FileStorageUtils`.
+- **Eliminated Dead Code & Redundant Commands**: Removed unused raw config reading/saving routes, legacy unused utility helpers (`QuickCommandBar`, `ensurePRootExecutable`, `applyTheme`, etc.), and prevented duplicate console command dispatches on player management actions.
+
 ## [1.4.1] - 2026-10-20
 
 ### 📜 Minecraft EULA & User Opt-In

@@ -161,6 +161,8 @@ docker run --rm \
         if [ -n "$APKSIGNER_BIN" ]; then
             "$APKSIGNER_BIN" verify --verbose app/build/outputs/apk/release/app-release.apk
         fi
+
+        chown -R '"$(id -u):$(id -g)"' "$FDROID_BUILD_DIR" 2>/dev/null || true
     '
 
 OUT_DIR="$PROJECT_ROOT/release"

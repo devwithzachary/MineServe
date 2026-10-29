@@ -24,12 +24,4 @@ class UpdatePreferences(context: Context) {
     var lastCheckTime: Long
         get() = prefs.getLong(KEY_LAST_CHECK_TIME, 0L)
         set(value) = prefs.edit().putLong(KEY_LAST_CHECK_TIME, value).apply()
-
-    fun ignoreVersion(versionTag: String) {
-        ignoredVersion = versionTag
-    }
-
-    fun clearIgnoredVersion() {
-        ignoredVersion = ""
-    }
 }

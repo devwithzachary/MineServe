@@ -138,16 +138,6 @@ class TerminalEmulator(
     private val csiParams = StringBuilder()
     private val ansiColors = Array(16) { i -> theme.ansiColors.getOrElse(i) { Color.White } }
 
-    fun applyTheme(newTheme: TerminalTheme) {
-        theme = newTheme
-        for (i in 0 until 16) {
-            if (i < newTheme.ansiColors.size) {
-                ansiColors[i] = newTheme.ansiColors[i]
-            }
-        }
-        resetSgr()
-    }
-
     fun resize(newCols: Int, newRows: Int) {
         if (newCols <= 0 || newRows <= 0) return
         val oldCols = cols
@@ -424,21 +414,6 @@ class TerminalEmulator(
             return Color(v, v, v)
         }
         return theme.defaultFg
-    }
-
-    fun getAllText(): String = buildString {
-        for (row in scrollback) {
-            appendLine(row.joinToString("") { it.ch.toString() }.trimEnd())
-        }
-        for (r in 0 until rows) {
-            appendLine(grid[r].joinToString("") { it.ch.toString() }.trimEnd())
-        }
-    }
-
-    fun getVisibleText(): String = buildString {
-        for (r in 0 until rows) {
-            appendLine(getRenderRow(r).joinToString("") { it.ch.toString() }.trimEnd())
-        }
     }
 
     fun getWordAt(row: Int, col: Int): Pair<Int, Int> {

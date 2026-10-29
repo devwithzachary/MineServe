@@ -67,6 +67,8 @@ fun AppSettingsScreen(
     onInstallJava: (Int) -> Unit,
     onReinstallRuntime: () -> Unit,
     onBack: () -> Unit,
+    installingJavaVer: Int? = null,
+    javaInstallError: String? = null,
     isCheckGitHubUpdatesEnabled: Boolean = false,
     onToggleCheckGitHubUpdates: (Boolean) -> Unit = {},
     isCheckingUpdate: Boolean = false,
@@ -77,7 +79,6 @@ fun AppSettingsScreen(
     onAboutClick: (() -> Unit)? = null
 ) {
     var keepScreenAwake by remember { mutableStateOf(true) }
-    var installingJavaVer by remember { mutableStateOf<Int?>(null) }
 
     BackHandler(onBack = onBack)
 
@@ -128,8 +129,8 @@ fun AppSettingsScreen(
             JavaEnvironmentCard(
                 isJavaVersionInstalled = isJavaVersionInstalled,
                 installingJavaVer = installingJavaVer,
+                javaInstallError = javaInstallError,
                 onInstallJava = { ver ->
-                    installingJavaVer = ver
                     onInstallJava(ver)
                 }
             )

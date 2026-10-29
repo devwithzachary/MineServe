@@ -101,17 +101,4 @@ class PaperApiClient(
         }
         null
     }
-
-    suspend fun getLatestBuildDownloadUrl(project: String, version: String): String? = withContext(Dispatchers.IO) {
-        val info = getLatestBuildInfo(project, version)
-        if (info != null) return@withContext info.second
-
-        // Fallback: Mojang Vanilla JAR if Paper fails
-        try {
-            return@withContext MojangApiClient().getServerJarDownloadUrl(version)
-        } catch (e: Exception) {
-            Log.e(TAG, "Fallback download URL failed", e)
-            return@withContext null
-        }
-    }
 }
