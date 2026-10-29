@@ -11,7 +11,7 @@ Our goal is to deliver the most reliable, capable, and accessible portable Minec
 | Version | Focus / Theme | Target Milestone | Status |
 | :--- | :--- | :--- | :--- |
 | **v1.4.2** | Android x86_64 PRoot Reliability & Codebase Modularity | October 2026 | **Shipped** ✅ |
-| **v1.5.0** | Connectivity, Cloud Backups, Web Remote Admin & Telemetry | Q4 2026 | **In Progress** 🔨 |
+| **v1.5.0** | Connectivity, Cloud Backups, Web Remote Admin & Telemetry | October 2026 | **Shipped** ✅ |
 | **v1.6.0** | Bedrock Dedicated Server, Proxy Networks & Discord Bridge | Q1 2027 | **Scheduled** 📋 |
 | **v1.7.0** | World Mastery, NBT Editor & Android System Integration | Q2 2027 | **Scheduled** 📋 |
 | **v1.8.0** | Alpine Lightweight Rootfs & Mesh VPN | Mid 2027 | **Scheduled** 📋 |
