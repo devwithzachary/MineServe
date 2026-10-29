@@ -11,10 +11,10 @@ Our goal is to deliver the most reliable, capable, and accessible portable Minec
 | Version | Focus / Theme | Target Milestone | Status |
 | :--- | :--- | :--- | :--- |
 | **v1.4.2** | Android x86_64 PRoot Reliability & Codebase Modularity | October 2026 | **Shipped** ✅ |
-| **v1.5.0** | Connectivity, Cloud Backups, Modpacks & Telemetry | Q4 2026 | **In Progress** 🔨 |
+| **v1.5.0** | Connectivity, Cloud Backups, Web Remote Admin & Telemetry | Q4 2026 | **In Progress** 🔨 |
 | **v1.6.0** | Bedrock Dedicated Server, Proxy Networks & Discord Bridge | Q1 2027 | **Scheduled** 📋 |
 | **v1.7.0** | World Mastery, NBT Editor & Android System Integration | Q2 2027 | **Scheduled** 📋 |
-| **v1.8.0** | Alpine Lightweight Rootfs, Remote Web Admin & Mesh VPN | Mid 2027 | **Scheduled** 📋 |
+| **v1.8.0** | Alpine Lightweight Rootfs & Mesh VPN | Mid 2027 | **Scheduled** 📋 |
 | **v1.9.0 / v2.0.0** | Autonomous Ops, Self-Healing & Multi-Device Clustering | Late 2027 | **Vision / Exploration** 💡 |
 | **v2.1.0+** | Bare-Metal Bionic Runtimes & Multi-Game Hosting | Future Vision | **Exploration** 🔭 |
 
@@ -59,6 +59,15 @@ The 1.5.0 milestone concentrates on expanding connection options beyond third-pa
   - 1-tap toggle in Server Settings to apply optimized G1GC Aikar's flags tuned specifically for mobile RAM constraints and minimal GC pause times.
 - **Storage Warning Thresholds**:
   - Proactive warning banner when available device storage drops below 1 GB during active server runtime or world generation.
+
+### 🌐 5. Web Remote Admin Panel (LAN & Web Management)
+- **Built-in Local Web Admin**:
+  - Optional lightweight local HTTP server enabling full server management from a desktop browser or tablet on the same Wi-Fi network.
+  - Access terminal console with live command execution, file manager with in-browser text editing, and real-time performance telemetry without touching the Android phone.
+- **Security & Strong Authentication**:
+  - Secure credential validation with cryptographically random session tokens, constant-time verification, and brute-force rate limiting.
+- **Online Exposure Support**:
+  - Expose the web admin panel securely over the internet via UPnP router port forwarding, Bore tunnels, or Playit.
 
 ---
 
@@ -117,21 +126,16 @@ The 1.7.0 milestone delivers advanced world editing tools, deep operating system
 
 ---
 
-## 💡 Version 1.8.0: Alpine Lightweight Rootfs, Remote Web Admin & Mesh VPN
+## 💡 Version 1.8.0: Alpine Lightweight Rootfs & Mesh VPN
 
-The 1.8.0 milestone focuses on container footprint minimization, desktop browser management, and private mesh networking.
+The 1.8.0 milestone focuses on container footprint minimization and private mesh networking.
 
 ### 🖥️ 1. Lightweight Container Profile (Alpine Linux)
 - **Ultra-Minimal Alpine Linux Rootfs**:
   - Optional musl/Alpine rootfs profile reducing container base disk consumption by over 60% compared to standard Ubuntu.
   - Faster cold-boot times and minimal footprint for budget Android hardware.
 
-### 🌐 2. Web Remote Admin Panel (LAN Management)
-- **Built-in Local Web Admin**:
-  - Optional lightweight local HTTP server enabling full management from a desktop browser or tablet on the same Wi-Fi network.
-  - Access terminal console, manage files, and monitor telemetry on a large screen without touching the Android phone.
-
-### 🔒 3. Private Mesh VPN Networking (Tailscale & WireGuard)
+### 🔒 2. Private Mesh VPN Networking (Tailscale & WireGuard)
 - **Tailscale Mesh Integration**:
   - Connect your server to a private Tailscale tailnet directly within the app, allowing friends with Tailscale to join privately without public exposure.
 

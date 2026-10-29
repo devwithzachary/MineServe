@@ -39,6 +39,7 @@ class PortForwardManager private constructor(
 
     private val activeUpnpGateways = ConcurrentHashMap<String, UpnpGateway>()
     private val activeMappedServers = ConcurrentHashMap<String, MinecraftServer>()
+    private val activeCustomMappings = ConcurrentHashMap<String, Pair<Int, PortForwardProtocol>>()
 
     private val _states = MutableStateFlow<Map<String, PortForwardState>>(emptyMap())
     val states: StateFlow<Map<String, PortForwardState>> = _states.asStateFlow()
@@ -65,7 +66,40 @@ class PortForwardManager private constructor(
         return state
     }
 
+    suspend fun forwardCustomPort(
+        mappingId: String,
+        port: Int,
+        description: String,
+        protocolConfig: PortForwardProtocol = PortForwardProtocol.TCP,
+        leaseDurationSeconds: Int = 0
+    ): PortForwardState {
+        updateState(mappingId, PortForwardState.Discovering("Discovering router gateway..."))
+        val state = forwardCustomPortInternal(mappingId, port, description, protocolConfig, leaseDurationSeconds)
+        updateState(mappingId, state)
+        return state
+    }
+
     private suspend fun forwardPortInternal(server: MinecraftServer): PortForwardState {
+        val state = forwardCustomPortInternal(
+            mappingId = server.id,
+            port = server.port,
+            description = "MineServe-${server.name}",
+            protocolConfig = server.portForwardConfig.protocol,
+            leaseDurationSeconds = server.portForwardConfig.leaseDurationSeconds
+        )
+        if (state is PortForwardState.Mapped) {
+            activeMappedServers[server.id] = server
+        }
+        return state
+    }
+
+    private suspend fun forwardCustomPortInternal(
+        mappingId: String,
+        port: Int,
+        description: String,
+        protocolConfig: PortForwardProtocol,
+        leaseDurationSeconds: Int
+    ): PortForwardState {
         val localIp = getLocalWifiIpAddress()
         if (localIp == null) {
             val err = "Device is not connected to a local Wi-Fi network."
@@ -73,8 +107,6 @@ class PortForwardManager private constructor(
             return PortForwardState.Failed(err)
         }
 
-        val serverPort = server.port
-        val protocolConfig = server.portForwardConfig.protocol
         val protocols = when (protocolConfig) {
             PortForwardProtocol.TCP -> listOf("TCP")
             PortForwardProtocol.UDP -> listOf("UDP")
@@ -82,34 +114,34 @@ class PortForwardManager private constructor(
         }
 
         // 1. Try UPnP Discovery
-        Log.i(TAG, "Attempting UPnP discovery for server ${server.name} ($localIp:$serverPort)...")
+        Log.i(TAG, "Attempting UPnP discovery for $description ($localIp:$port)...")
         val gateway = upnpClient.discoverGateway()
         if (gateway != null) {
-            activeUpnpGateways[server.id] = gateway
+            activeUpnpGateways[mappingId] = gateway
             val externalIp = upnpClient.getExternalIp(gateway)
             if (externalIp != null) {
                 var allSucceeded = true
                 for (proto in protocols) {
                     val ok = upnpClient.addPortMapping(
                         gateway = gateway,
-                        externalPort = serverPort,
-                        internalPort = serverPort,
+                        externalPort = port,
+                        internalPort = port,
                         internalIp = localIp,
                         protocol = proto,
-                        description = "MineServe-${server.name}",
-                        leaseDurationSeconds = server.portForwardConfig.leaseDurationSeconds
+                        description = description,
+                        leaseDurationSeconds = leaseDurationSeconds
                     )
                     if (!ok) allSucceeded = false
                 }
 
                 if (allSucceeded) {
-                    activeMappedServers[server.id] = server
-                    Log.i(TAG, "UPnP port forward success: $externalIp:$serverPort -> $localIp:$serverPort")
+                    activeCustomMappings[mappingId] = Pair(port, protocolConfig)
+                    Log.i(TAG, "UPnP port forward success: $externalIp:$port -> $localIp:$port")
                     return PortForwardState.Mapped(
                         externalIp = externalIp,
-                        externalPort = serverPort,
+                        externalPort = port,
                         internalIp = localIp,
-                        internalPort = serverPort,
+                        internalPort = port,
                         protocol = protocolConfig,
                         gatewayName = gateway.friendlyName
                     )
@@ -128,8 +160,8 @@ class PortForwardManager private constructor(
                     val isUdp = proto == "UDP"
                     val resPort = natPmpClient.mapPort(
                         gatewayIp = gatewayIp,
-                        internalPort = serverPort,
-                        externalPort = serverPort,
+                        internalPort = port,
+                        externalPort = port,
                         isUdp = isUdp,
                         lifetimeSeconds = 7200
                     )
@@ -137,12 +169,12 @@ class PortForwardManager private constructor(
                 }
 
                 if (mappedExternalPort != null) {
-                    activeMappedServers[server.id] = server
+                    activeCustomMappings[mappingId] = Pair(port, protocolConfig)
                     return PortForwardState.Mapped(
                         externalIp = externalIp,
                         externalPort = mappedExternalPort,
                         internalIp = localIp,
-                        internalPort = serverPort,
+                        internalPort = port,
                         protocol = protocolConfig,
                         gatewayName = "NAT-PMP Gateway"
                     )
@@ -155,17 +187,25 @@ class PortForwardManager private constructor(
 
     fun releasePort(serverId: String) {
         val server = activeMappedServers.remove(serverId)
+        val custom = activeCustomMappings.remove(serverId)
         val gateway = activeUpnpGateways.remove(serverId)
 
-        if (server != null && gateway != null) {
+        if (gateway != null) {
             scope.launch {
-                val protocols = when (server.portForwardConfig.protocol) {
-                    PortForwardProtocol.TCP -> listOf("TCP")
-                    PortForwardProtocol.UDP -> listOf("UDP")
-                    PortForwardProtocol.BOTH -> listOf("TCP", "UDP")
+                val (port, protocol) = when {
+                    server != null -> Pair(server.port, server.portForwardConfig.protocol)
+                    custom != null -> custom
+                    else -> Pair(-1, PortForwardProtocol.TCP)
                 }
-                for (proto in protocols) {
-                    upnpClient.deletePortMapping(gateway, server.port, proto)
+                if (port > 0) {
+                    val protocols = when (protocol) {
+                        PortForwardProtocol.TCP -> listOf("TCP")
+                        PortForwardProtocol.UDP -> listOf("UDP")
+                        PortForwardProtocol.BOTH -> listOf("TCP", "UDP")
+                    }
+                    for (proto in protocols) {
+                        upnpClient.deletePortMapping(gateway, port, proto)
+                    }
                 }
             }
         }

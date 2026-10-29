@@ -25,6 +25,15 @@ All notable changes to the MineServe project will be documented in this file.
 - **Aikar's G1GC JVM Flags Preset**: Added a 1-tap action to apply Aikar's optimized G1GC flags tuned for minimal garbage collection pauses and reduced CPU contention on mobile processors.
 - **Low Storage Threshold Safeguards**: Displays a proactive warning banner when available device storage drops below 1 GB to prevent world corruption during chunk generation.
 
+### 🖥️ Web Remote Admin Panel (LAN & Web Management)
+- **Built-in Local Web Admin**: Embedded zero-dependency lightweight local HTTP server allowing full management from any desktop browser or tablet on the same Wi-Fi network.
+- **Full Server Console & Command Input**: Real-time terminal output with syntax highlighting, command execution bar, command history navigation, and quick action pills.
+- **Remote File Manager & Editor**: In-browser directory browser with text file inspection and code editing for server configuration files (`server.properties`, configs) and file deletion.
+- **Live Telemetry Dashboard**: Real-time TPS and MSPT gauges, server memory utilization progress bar, CPU usage, and online player lists.
+- **Cryptographic Security & Brute-Force Rate Limiting**: Secure session tokens, constant-time credential verification, configurable admin username/password, and automatic 5-minute lockout after failed attempts.
+- **Online Exposure Support**: Expose the web admin panel securely over the internet using UPnP router port forwarding, Bore public tunnels, or Playit.
+- **In-App QR Code & One-Tap Sharing**: Display QR code in the app for instant scanning with camera devices plus one-tap copy and browser launch.
+
 ### 🎨 UI & UX Polish
 - **Server Creation Wizard EULA Layout**: Wrapped the EULA agreement link onto its own line with responsive padding on Step 4 of the server wizard, preventing text truncation on narrow screens.
 - **Booting Lag Card Suppression**: Prevented lag diagnosis cards from displaying during initial server boot when tick rate initialization naturally spikes.

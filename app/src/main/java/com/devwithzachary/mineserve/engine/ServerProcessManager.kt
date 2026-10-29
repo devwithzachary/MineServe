@@ -580,6 +580,28 @@ class ServerProcessManager private constructor(
         }
     }
 
+    fun getRecentConsoleLines(serverId: String, maxLines: Int = 100): List<String> {
+        val emulator = getEmulator(serverId)
+        return emulator.getRecentLines(maxLines)
+    }
+
+    fun getServerStatus(serverId: String): ServerStatus {
+        return _serverStatuses.value[serverId] ?: ServerStatus.STOPPED
+    }
+
+    fun restartServer(server: MinecraftServer, serverDir: java.io.File, onStateChange: ((ServerStatus) -> Unit)? = null) {
+        stopServer(server.id)
+        scope.launch(Dispatchers.IO) {
+            var waited = 0
+            while (isServerRunning(server.id) && waited < 10000) {
+                delay(500)
+                waited += 500
+            }
+            delay(1000)
+            startServer(server, serverDir, onStateChange)
+        }
+    }
+
     fun resizeTerminal(serverId: String, cols: Int, rows: Int) {
         val session = sessions[serverId] ?: return
         session.emulator.resize(cols, rows)

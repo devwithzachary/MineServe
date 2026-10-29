@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -57,6 +59,7 @@ import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.Slate400
+import com.devwithzachary.mineserve.ui.theme.Slate800
 import com.devwithzachary.mineserve.ui.theme.Slate950
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,6 +78,9 @@ fun AppSettingsScreen(
     updateCheckStatusMessage: String? = null,
     onCheckForUpdatesNow: () -> Unit = {},
     onOpenGitHubReleases: () -> Unit = {},
+    webAdminEnabled: Boolean = false,
+    webAdminLocalUrl: String? = null,
+    onRemoteAdminClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onAboutClick: (() -> Unit)? = null
 ) {
@@ -134,6 +140,78 @@ fun AppSettingsScreen(
                     onInstallJava(ver)
                 }
             )
+
+            // Web Remote Admin Card
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Dns,
+                                contentDescription = null,
+                                tint = EmeraldLight,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "Web Remote Admin",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = if (webAdminEnabled) EmeraldDark.copy(alpha = 0.4f) else Slate800
+                        ) {
+                            Text(
+                                text = if (webAdminEnabled) "Running" else "Stopped",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = if (webAdminEnabled) EmeraldLight else Slate400,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+
+                    Text(
+                        text = if (webAdminEnabled && webAdminLocalUrl != null) {
+                            "Web admin is active at $webAdminLocalUrl. Access console terminals, manage files, and view telemetry from your desktop browser."
+                        } else {
+                            "Access server console terminals, manage files, and view telemetry from a desktop browser or tablet on your network."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+
+                    Button(
+                        onClick = { onRemoteAdminClick?.invoke() },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (webAdminEnabled) "Manage Remote Admin" else "Configure Web Remote Admin",
+                            color = EmeraldLight,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
 
             // Behavior Card
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

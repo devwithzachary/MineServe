@@ -1,4 +1,5 @@
-- Universal Port Forwarding: 1-tap zero-config UPnP and NAT-PMP router mapping for direct multiplayer connections.
-- Cloud Backup Sync: 100% F-Droid compliant off-device sync to Nextcloud, WebDAV, or Android SAF cloud folders.
-- Modrinth Modpack Importer: 1-tap installation of .mrpack archives with dependency resolution and config extraction.
-- Telemetry & UI Polish: Rolling TPS/MSPT graphs, lag diagnostics, Aikar's G1GC flags, and responsive layout polish.
+- Web Remote Admin: Manage console, files & telemetry from desktop browsers via Wi-Fi or tunnels.
+- Universal Port Forwarding: Zero-config UPnP & NAT-PMP router mapping for direct invites.
+- Cloud Backup Sync: Off-device sync to Nextcloud, WebDAV, or Android SAF folders.
+- Modrinth Importer: 1-tap installation of .mrpack modpacks with dependency resolution.
+- Telemetry & Diagnostics: Rolling TPS/MSPT graphs, lag alerts, and Aikar's G1GC presets.

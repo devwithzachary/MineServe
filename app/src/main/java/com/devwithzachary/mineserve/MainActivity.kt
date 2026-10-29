@@ -43,6 +43,7 @@ import com.devwithzachary.mineserve.ui.screens.credits.CreditsScreen
 import com.devwithzachary.mineserve.ui.screens.dashboard.DashboardScreen
 import com.devwithzachary.mineserve.ui.screens.detail.ServerDetailScreen
 import com.devwithzachary.mineserve.ui.screens.settings.AppSettingsScreen
+import com.devwithzachary.mineserve.ui.screens.settings.RemoteAdminScreen
 import com.devwithzachary.mineserve.ui.screens.splash.SplashScreen
 import com.devwithzachary.mineserve.ui.screens.wizard.CreateServerWizardScreen
 import com.devwithzachary.mineserve.ui.theme.MineServeTheme
@@ -54,6 +55,7 @@ sealed class Screen {
     data object Wizard : Screen()
     data class Detail(val serverId: String) : Screen()
     data object Settings : Screen()
+    data object RemoteAdmin : Screen()
     data object About : Screen()
     data object Credits : Screen()
 }
@@ -102,6 +104,8 @@ fun MineServeApp(viewModel: MainViewModel) {
     val updateCheckStatus by viewModel.updateCheckStatus.collectAsStateWithLifecycle()
     val installingJavaVersion by viewModel.installingJavaVersion.collectAsStateWithLifecycle()
     val javaInstallError by viewModel.javaInstallError.collectAsStateWithLifecycle()
+    val webAdminState by viewModel.webAdminState.collectAsStateWithLifecycle()
+    val webAdminConfig by viewModel.webAdminConfig.collectAsStateWithLifecycle()
 
     val initialScreen = remember {
         if (viewModel.rootfsManager.isInstalled()) Screen.Dashboard else Screen.Splash
@@ -181,7 +185,9 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onCreateServerClick = { navigateTo(Screen.Wizard) },
                     onSettingsClick = { navigateTo(Screen.Settings) },
                     onAboutClick = { navigateTo(Screen.About) },
-                    onCreditsClick = { navigateTo(Screen.Credits) }
+                    onCreditsClick = { navigateTo(Screen.Credits) },
+                    webAdminEnabled = webAdminConfig.enabled,
+                    onRemoteAdminClick = { navigateTo(Screen.RemoteAdmin) }
                 )
             }
 
@@ -360,8 +366,21 @@ fun MineServeApp(viewModel: MainViewModel) {
                             context.startActivity(intent)
                         } catch (_: Exception) {}
                     },
+                    webAdminEnabled = webAdminConfig.enabled,
+                    webAdminLocalUrl = webAdminState.localUrl,
+                    onRemoteAdminClick = { navigateTo(Screen.RemoteAdmin) },
                     onBack = { navigateBack() },
                     onAboutClick = { navigateTo(Screen.About) }
+                )
+            }
+
+            is Screen.RemoteAdmin -> {
+                RemoteAdminScreen(
+                    adminState = webAdminState,
+                    adminConfig = webAdminConfig,
+                    onUpdateConfig = { viewModel.webAdminManager.updateConfig(it) },
+                    onGeneratePassword = { viewModel.webAdminManager.generateNewPassword() },
+                    onBack = { navigateBack() }
                 )
             }
 

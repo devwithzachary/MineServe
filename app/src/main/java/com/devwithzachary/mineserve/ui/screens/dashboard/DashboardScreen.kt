@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -66,6 +67,8 @@ fun DashboardScreen(
     onSettingsClick: () -> Unit,
     onAboutClick: () -> Unit,
     onCreditsClick: () -> Unit,
+    webAdminEnabled: Boolean = false,
+    onRemoteAdminClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val runningCount = serverStatuses.count {
@@ -112,6 +115,16 @@ fun DashboardScreen(
                             contentDescription = stringResource(R.string.credits_page_title),
                             tint = Slate400
                         )
+                    }
+
+                    if (onRemoteAdminClick != null) {
+                        IconButton(onClick = onRemoteAdminClick) {
+                            Icon(
+                                imageVector = Icons.Default.Dns,
+                                contentDescription = "Web Remote Admin",
+                                tint = if (webAdminEnabled) EmeraldLight else Slate400
+                            )
+                        }
                     }
 
                     IconButton(onClick = onAboutClick) {

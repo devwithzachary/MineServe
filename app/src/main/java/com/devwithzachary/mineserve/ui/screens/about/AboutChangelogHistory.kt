@@ -42,6 +42,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         initialExpanded = true,
         highlights = listOf(
             "Universal Port Forwarding: Zero-config UPnP and NAT-PMP router port mapping so friends can connect directly via WAN IP without third-party tunnel proxies.",
+            "Web Remote Admin Panel: Manage your servers, terminal console, and files from a desktop browser or tablet over Wi-Fi or public tunnels with secure authentication.",
             "Cloud Backup Sync (F-Droid Compliant): Automated off-device world backup sync to Nextcloud, ownCloud, WebDAV, or any Android SAF cloud folder with zero proprietary SDKs.",
             "Modrinth Modpack Importer: 1-tap download and installation of official Modrinth .mrpack modpacks with automatic dependency resolution and config extraction.",
             "Live Telemetry & Diagnostics: Real-time rolling Canvas TPS and MSPT performance charts, proactive lag diagnostics, and 1-tap Aikar's optimized G1GC flags.",

@@ -44,26 +44,32 @@ class TunnelManager private constructor(
     }
 
     fun startTunnel(server: MinecraftServer) {
-        val serverId = server.id
-        stopTunnel(serverId)
+        startCustomTunnel(server.id, server.port, server.tunnelConfig, server.name)
+    }
 
-        val config = server.tunnelConfig
-        Log.i(TAG, "Starting public tunnel for server ${server.name} ($serverId) on port ${server.port} using ${config.provider}")
+    fun startCustomTunnel(
+        tunnelId: String,
+        localPort: Int,
+        config: com.devwithzachary.mineserve.model.TunnelConfig,
+        label: String = tunnelId
+    ) {
+        stopTunnel(tunnelId)
+        Log.i(TAG, "Starting public tunnel for $label ($tunnelId) on port $localPort using ${config.provider}")
 
         when (config.provider) {
             TunnelProvider.PLAYIT -> {
                 lateinit var client: PlayitTunnelClient
                 client = PlayitTunnelClient(
                     context = context,
-                    localPort = server.port,
+                    localPort = localPort,
                     secret = config.playitSecret,
                     onStateChanged = { newState ->
-                        if (activePlayitClients[serverId] === client || newState is TunnelState.Disconnected) {
-                            updateTunnelState(serverId, newState)
+                        if (activePlayitClients[tunnelId] === client || newState is TunnelState.Disconnected) {
+                            updateTunnelState(tunnelId, newState)
                         }
                     }
                 )
-                activePlayitClients[serverId] = client
+                activePlayitClients[tunnelId] = client
                 client.start(scope)
             }
             TunnelProvider.BORE, TunnelProvider.CUSTOM_BORE -> {
@@ -83,15 +89,15 @@ class TunnelManager private constructor(
                     context = context,
                     relayHost = relayHost,
                     relayPort = relayPort,
-                    localPort = server.port,
+                    localPort = localPort,
                     provider = config.provider,
                     onStateChanged = { newState ->
-                        if (activeBoreClients[serverId] === client || newState is TunnelState.Disconnected) {
-                            updateTunnelState(serverId, newState)
+                        if (activeBoreClients[tunnelId] === client || newState is TunnelState.Disconnected) {
+                            updateTunnelState(tunnelId, newState)
                         }
                     }
                 )
-                activeBoreClients[serverId] = client
+                activeBoreClients[tunnelId] = client
                 client.start(scope)
             }
         }

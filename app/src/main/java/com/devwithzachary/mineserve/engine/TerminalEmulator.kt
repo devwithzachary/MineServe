@@ -90,6 +90,28 @@ class TerminalEmulator(
         scrollOffset = 0
     }
 
+    fun getRecentLines(maxLines: Int = 100): List<String> {
+        val lines = mutableListOf<String>()
+        val scrollbackCount = scrollback.size
+        val neededFromScrollback = (maxLines - grid.size).coerceAtLeast(0).coerceAtMost(scrollbackCount)
+        if (neededFromScrollback > 0) {
+            val startIdx = scrollbackCount - neededFromScrollback
+            for (i in startIdx until scrollbackCount) {
+                val row = scrollback[i]
+                val str = row.map { it.ch }.joinToString("").trimEnd()
+                lines.add(str)
+            }
+        }
+        for (row in grid) {
+            val str = row.map { it.ch }.joinToString("").trimEnd()
+            lines.add(str)
+        }
+        while (lines.isNotEmpty() && lines.last().isBlank()) {
+            lines.removeAt(lines.size - 1)
+        }
+        return if (lines.size > maxLines) lines.takeLast(maxLines) else lines
+    }
+
     fun getRenderRow(r: Int): Array<TerminalChar> {
         if (scrollOffset == 0 || scrollback.isEmpty()) {
             return if (r < grid.size) grid[r] else Array(cols) { TerminalChar() }

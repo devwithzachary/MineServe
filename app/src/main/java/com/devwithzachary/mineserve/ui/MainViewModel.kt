@@ -66,12 +66,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val updateChecker = GitHubUpdateChecker()
     val updatePreferences = UpdatePreferences(application)
     val schedulerManager = ServerSchedulerManager.getInstance(application, serverRepository, backupRepository)
+    val webAdminManager = com.devwithzachary.mineserve.admin.web.WebAdminManager.getInstance(
+        application,
+        serverRepository,
+        processManager,
+        tunnelManager,
+        com.devwithzachary.mineserve.net.portforward.PortForwardManager.getInstance(application)
+    )
 
     val servers: StateFlow<List<MinecraftServer>> = serverRepository.servers
     val serverStatuses: StateFlow<Map<String, ServerStatus>> = processManager.serverStatuses
     val serverMetrics: StateFlow<Map<String, ServerMetrics>> = processManager.serverMetrics
     val refreshTriggers: StateFlow<Map<String, Long>> = processManager.refreshTriggers
     val tunnelStates: StateFlow<Map<String, TunnelState>> = tunnelManager.tunnelStates
+    val webAdminState: StateFlow<com.devwithzachary.mineserve.admin.web.WebAdminState> = webAdminManager.state
+    val webAdminConfig: StateFlow<com.devwithzachary.mineserve.admin.web.WebAdminConfig> = webAdminManager.config
 
     private val _isCheckGitHubUpdatesEnabled = MutableStateFlow(updatePreferences.isCheckGitHubUpdatesEnabled)
     val isCheckGitHubUpdatesEnabled: StateFlow<Boolean> = _isCheckGitHubUpdatesEnabled.asStateFlow()
