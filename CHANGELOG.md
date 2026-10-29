@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.4.2] - 2026-10-28
+## [1.4.2] - 2026-10-29
 
 ### 🖥️ x86_64 Emulator & PRoot Runtime Fixes
 - **x86_64 Android Zygote Seccomp `renameat2` & Legacy Syscall Translation**: Fixed `dpkg` and `apt-get` failing with `Function not implemented (ENOSYS)` under Android's `x86_64` Zygote seccomp policy in `external/proot/tracee/seccomp.c`, `external/proot/syscall/enter.c`, `external/proot/syscall/exit.c`, and `external/proot/tracee/event.c`. Rewrote legacy `PR_rename` and `PR_renameat` syscalls to `PR_renameat2` (and `PR_unlink`/`PR_rmdir` to `PR_unlinkat`) after `SYSCALL_ENTER_END` and in `SIGSYS` recovery so `link2symlink` link counts are never decremented twice, and added `SIGSYS` translation for `readlink`, `creat`, `mknod`, `epoll_create`, `inotify_init`, `eventfd`, `signalfd`, `fork`, `vfork`, `alarm`, and self-`dup2`.
@@ -11,11 +11,10 @@ All notable changes to the MineServe project will be documented in this file.
 - **x86_64 Native Loader Address & Calling Convention Alignment**: Fixed `scripts/build_native_libs.sh` to link the 64-bit `x86_64` `libproot_loader.so` at `0x600000000000` and the 32-bit `x86` `libproot_loader32.so` at `0xa0000000` with `-mregparm=3` matching `arch.h`, and exported `PROOT_LOADER_32` alongside `PROOT_LOADER32`.
 - **Sanitized Guest Environment & Emulator DNS Resolution**: Explicitly cleared host `LD_LIBRARY_PATH` in the traced child process before `execvp` (`external/proot/tracee/event.c`), enforced `TMPDIR=/tmp` inside the OpenJDK installation script so `mktemp` in `ca-certificates` post-install scripts never targets inaccessible host `/data/local/tmp`, added Android Emulator SLIRP DNS (`10.0.2.3`) to `/etc/resolv.conf`, and enabled `Dpkg::Use-Pty "0"` and `Acquire::Retries "3"` in APT configuration.
 
-### 🛠️ Setup Error Visibility & Console Output Persistence
-- **Synchronous OpenJDK 21 Setup & Error Reporting**: `RootfsManager.performRootfsSetup` now keeps the initial setup screen active while OpenJDK 21 is installed, streaming live `apt-get` progress logs directly to `SplashScreen` instead of navigating to the Dashboard prematurely and racing with server creation. If OpenJDK installation fails, `SplashScreen` displays the detailed error message, scrollable installation logs, and retry controls.
-- **Eliminated Concurrent APT Lock Deletion Race**: Restricted APT/DPKG lock file cleanup and recursive rootfs permission sweeps in `RootfsManager.configureSystemFiles` to initial extraction only, preventing `ServerProcessManager.startServer` from deleting active `dpkg` locks while a background package installation is in progress.
-- **Persistent Server Console Terminal Emulator**: `ServerProcessManager` now retains a persistent `TerminalEmulator` buffer per server ID across session creation, stop, and error states, ensuring OpenJDK auto-installation messages and startup errors are never lost when navigating to the Console tab or after process termination.
-- **Server Start Error State Preservation**: Fixed `ServerProcessManager.startServer` where a `JavaInstallState.Error` only returned from the `collect` lambda and fell through to `launchMinecraftProcess`, which immediately failed and overwrote `ServerStatus.ERROR` with `STOPPED` ("Offline"). Failed Java installations now abort launch cleanly and preserve the `ERROR` state and console diagnostics.
+### 🛠️ Setup Error Visibility & Console Diagnostics Persistence
+- **Synchronous OpenJDK 21 Setup & Error Reporting**: Initial setup now remains on the initialization screen while OpenJDK 21 installs, streaming live progress logs directly to `SplashScreen`. If package installation fails, `SplashScreen` displays detailed error output with retry controls instead of dropping to the dashboard without a working runtime.
+- **Persistent Server Console Diagnostics**: `ServerProcessManager` now maintains a persistent terminal buffer per server across session creation, stop, and error states, ensuring pre-launch auto-installation logs and startup errors remain visible in the Console tab.
+- **Graceful Java Installation Failure Handling**: Failed runtime installations during server startup now halt launch immediately, preserving console error diagnostics and server error status instead of failing silently to an offline state.
 
 ### 🎛️ Device-Aware Default RAM Allocation
 - **Adaptive Default RAM Preselection**: Updated Step 3 of the server creation wizard (`CreateServerWizardScreen`) and `RamSlider` (`ResourceAndRamComponents`) to calculate a device-aware default RAM allocation (`getDefaultAllocatedRamMb`) and maximum slider cap that leaves headroom for Android on lower-memory devices (2 GB to 3 GB total RAM) while preserving the 2048 MB default on devices with 4 GB+ RAM.

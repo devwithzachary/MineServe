@@ -38,7 +38,7 @@ data class ReleaseChangelog(
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.4.2",
-        date = "October 28, 2026",
+        date = "October 29, 2026",
         initialExpanded = true,
         highlights = listOf(
             "x86_64 Emulator & PRoot Reliability: Fixed OpenJDK installation failures and eliminated SELinux permission denial floods under PRoot on Android x86_64 emulators and devices.",
