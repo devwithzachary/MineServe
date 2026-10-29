@@ -407,44 +407,25 @@ fun BackupsTab(
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CloudSync,
-                            contentDescription = null,
-                            tint = EmeraldLight,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "Cloud Backup Sync",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = EmeraldDark.copy(alpha = 0.3f),
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = "F-DROID COMPLIANT",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = EmeraldLight,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.CloudSync,
+                        contentDescription = null,
+                        tint = EmeraldLight,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Cloud Backup Sync",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
                 }
 
                 Text(
-                    text = "Sync world backups off-device using 100% open-source protocols: WebDAV (Nextcloud / ownCloud) or Android Storage Access Framework (SAF) without proprietary Google Play Services.",
+                    text = "Sync world backups off-device using Nextcloud, ownCloud, WebDAV, or any connected Android storage folder (such as Google Drive or SD card).",
                     style = MaterialTheme.typography.bodySmall,
                     color = Slate400,
                     fontSize = 12.sp

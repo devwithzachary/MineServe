@@ -25,6 +25,14 @@ All notable changes to the MineServe project will be documented in this file.
 - **Aikar's G1GC JVM Flags Preset**: Added a 1-tap action to apply Aikar's optimized G1GC flags tuned for minimal garbage collection pauses and reduced CPU contention on mobile processors.
 - **Low Storage Threshold Safeguards**: Displays a proactive warning banner when available device storage drops below 1 GB to prevent world corruption during chunk generation.
 
+### 🎨 UI & UX Polish
+- **Server Creation Wizard EULA Layout**: Wrapped the EULA agreement link onto its own line with responsive padding on Step 4 of the server wizard, preventing text truncation on narrow screens.
+- **Booting Lag Card Suppression**: Prevented lag diagnosis cards from displaying during initial server boot when tick rate initialization naturally spikes.
+- **Engine Health Badge Compactness**: Streamlined the engine health badge text to a single-line label ("Optimal" / "Moderate" / "Lag") to eliminate overflow next to the card title.
+- **Rolling MSPT Telemetry Graph Palette**: Updated the MSPT rolling chart line and text to display in green while tick time is within the 50 ms budget, switching to amber/orange only when exceeding the target threshold.
+- **Cloud Backup Setup Clarity**: Simplified the Cloud Backup configuration header and description to focus directly on supported storage destinations without technical badge clutter.
+- **Mod & Plugin Enable Switch Contrast**: Added distinct background track and border styling to the plugin enable toggle, along with increased margin from item descriptions, providing clear visual toggle status.
+
 ## [1.4.2] - 2026-10-29
 
 ### 🖥️ x86_64 Emulator & PRoot Runtime Fixes

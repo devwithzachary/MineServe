@@ -864,11 +864,20 @@ fun PluginsTab(
                             }
                         }
 
+                        Spacer(modifier = Modifier.width(12.dp))
+
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = p.enabled,
                                 onCheckedChange = { onTogglePlugin(p) },
-                                colors = SwitchDefaults.colors(checkedThumbColor = EmeraldPrimary)
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = EmeraldPrimary,
+                                    checkedTrackColor = Slate800,
+                                    checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f),
+                                    uncheckedThumbColor = Slate400,
+                                    uncheckedTrackColor = Slate900,
+                                    uncheckedBorderColor = Slate700
+                                )
                             )
                             IconButton(onClick = { onDeletePlugin(p) }) {
                                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = RedstoneLight)

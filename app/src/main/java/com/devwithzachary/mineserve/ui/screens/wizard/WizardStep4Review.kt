@@ -159,7 +159,7 @@ fun WizardStep4Review(
         }
 
         Row(
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Top,
             modifier = Modifier.fillMaxWidth()
         ) {
             Checkbox(
@@ -168,14 +168,16 @@ fun WizardStep4Review(
                 colors = CheckboxDefaults.colors(
                     checkedColor = EmeraldPrimary,
                     uncheckedColor = Slate700
-                )
+                ),
+                modifier = Modifier.padding(top = 2.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(8.dp))
 
             val prefixText = stringResource(R.string.wizard_step4_eula_prefix)
             val linkText = stringResource(R.string.wizard_step4_eula_link)
             val annotatedString = buildAnnotatedString {
-                append(prefixText)
+                append(prefixText.trim())
+                append("\n")
                 pushStringAnnotation(tag = "URL", annotation = eulaUrl)
                 withStyle(
                     style = SpanStyle(
@@ -194,11 +196,10 @@ fun WizardStep4Review(
                 text = annotatedString,
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = Color.White,
-                    fontSize = 11.5.sp
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
                 ),
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Ellipsis,
+                softWrap = true,
                 onClick = { offset ->
                     val annotation = annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset).firstOrNull()
                     if (annotation != null) {

@@ -314,8 +314,8 @@ fun PerformanceTab(
             isOnline = isOnline
         )
 
-        // Lag Diagnostics & Remediation Card (Triggered when MSPT > 50ms or TPS < 18.0)
-        if (isOnline && (mspt > 50.0 || tps < 18.0 || lagWarnings > 0)) {
+        // Lag Diagnostics & Remediation Card (Triggered when running and MSPT > 50ms or TPS < 18.0)
+        if (isRunning && (mspt > 50.0 || tps < 18.0 || lagWarnings > 0)) {
             Card(
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = ObsidianCard),
@@ -409,9 +409,9 @@ fun PerformanceTab(
                         ) {
                             Text(
                                 text = when {
-                                    tps >= 19.5 -> "Optimal (20.0 TPS)"
-                                    tps >= 15.0 -> "Moderate Load"
-                                    else -> "Lag Detected"
+                                    tps >= 19.5 -> "Optimal"
+                                    tps >= 15.0 -> "Moderate"
+                                    else -> "Lag"
                                 },
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
@@ -837,6 +837,18 @@ fun RollingTelemetryChartCard(
                 }
             }
 
+            val isMsptUnderTarget = currentMspt <= 50f
+            val dataPoints = if (selectedMetric == 0) tpsHistory else msptHistory
+            val maxValue = if (selectedMetric == 0) 20f else 100f
+            val targetValue = if (selectedMetric == 0) 20f else 50f
+            val primaryColor = if (selectedMetric == 0) {
+                EmeraldPrimary
+            } else if (isMsptUnderTarget) {
+                EmeraldPrimary
+            } else {
+                GoldYellow
+            }
+
             // Legend / Current Value display
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -863,15 +875,9 @@ fun RollingTelemetryChartCard(
                     },
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (!isOnline) Slate400 else if (selectedMetric == 0) EmeraldLight else GoldYellow
+                    color = if (!isOnline) Slate400 else if (selectedMetric == 0) EmeraldLight else if (isMsptUnderTarget) EmeraldLight else GoldYellow
                 )
             }
-
-            // Canvas Line Chart
-            val dataPoints = if (selectedMetric == 0) tpsHistory else msptHistory
-            val maxValue = if (selectedMetric == 0) 20f else 100f
-            val targetValue = if (selectedMetric == 0) 20f else 50f
-            val primaryColor = if (selectedMetric == 0) EmeraldPrimary else GoldYellow
 
             Box(
                 modifier = Modifier
