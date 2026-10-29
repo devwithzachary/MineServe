@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.model
 
+import com.devwithzachary.mineserve.util.FileStorageUtils
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -29,14 +30,7 @@ data class BackupEntry(
     val isWorldOnly: Boolean
 ) {
     val formattedSize: String
-        get() {
-            val mb = sizeBytes / (1024.0 * 1024.0)
-            return if (mb >= 1024.0) {
-                String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
-            } else {
-                String.format(java.util.Locale.US, "%.1f MB", mb)
-            }
-        }
+        get() = FileStorageUtils.formatBytes(sizeBytes, includeKb = false, gbDecimals = 2)
 }
 
 @Serializable
@@ -57,17 +51,7 @@ data class PluginModEntry(
     val slug: String = ""
 ) {
     val formattedSize: String
-        get() {
-            val mb = fileSizeBytes / (1024.0 * 1024.0)
-            return if (mb >= 1024.0) {
-                String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
-            } else if (mb >= 0.1) {
-                String.format(java.util.Locale.US, "%.1f MB", mb)
-            } else {
-                val kb = fileSizeBytes / 1024.0
-                String.format(java.util.Locale.US, "%.1f KB", kb)
-            }
-        }
+        get() = FileStorageUtils.formatBytes(fileSizeBytes, includeKb = true, gbDecimals = 2)
 }
 
 @Serializable
@@ -84,18 +68,7 @@ data class FileEntry(
     val isWorldRegion: Boolean = false
 ) {
     val formattedSize: String
-        get() {
-            if (isDirectory) return "Folder"
-            val mb = sizeBytes / (1024.0 * 1024.0)
-            return if (mb >= 1024.0) {
-                String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
-            } else if (mb >= 0.1) {
-                String.format(java.util.Locale.US, "%.1f MB", mb)
-            } else {
-                val kb = sizeBytes / 1024.0
-                String.format(java.util.Locale.US, "%.1f KB", kb)
-            }
-        }
+        get() = if (isDirectory) "Folder" else FileStorageUtils.formatBytes(sizeBytes, includeKb = true, gbDecimals = 2)
 }
 
 enum class CrashSeverity {

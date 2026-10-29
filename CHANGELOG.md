@@ -21,6 +21,19 @@ All notable changes to the MineServe project will be documented in this file.
 - **Adaptive Default RAM Preselection**: Updated Step 3 of the server creation wizard (`CreateServerWizardScreen`) and `RamSlider` (`ResourceAndRamComponents`) to calculate a device-aware default RAM allocation (`getDefaultAllocatedRamMb`) and maximum slider cap that leaves headroom for Android on lower-memory devices (2 GB to 3 GB total RAM) while preserving the 2048 MB default on devices with 4 GB+ RAM.
 - **Fractional Total RAM Formatting**: Updated the "Device Total" memory readout in `RamSlider` to display fractional gigabytes (such as `2.5 GB`) instead of truncating via integer division.
 
+### 🏗️ Codebase Architecture, Modularity & Dead Code Cleanup
+- **Decomposed Monolithic Composables and Repositories**: Refactored oversized files into focused, single-responsibility components:
+  - Extracted `PlayerListRepository` and `ServerFileRepository` from `ServerRepository` (reducing it from 806 to 242 lines).
+  - Decomposed `LiveMapTab` into `map/LiveMapDialogs.kt` and `map/LiveMapStatusViews.kt` (reducing it from 985 to 478 lines).
+  - Decomposed `PlayerActionDialog` into `player/PlayerActionTabs.kt` (reducing it from 949 to 297 lines).
+  - Decomposed `PlayersTab` into `players/PlayerListSections.kt` (reducing it from 929 to 505 lines).
+  - Decomposed `AddScheduledTaskDialog` into `automation/ScheduleTimingSelectors.kt` (reducing it from 891 to 523 lines).
+  - Extracted standalone `StandbyPingManager` from `StandbyPingListener.kt`.
+- **Precompiled Regex Performance in Console Streaming**: Extracted `ConsoleOutputParser` with precompiled static regexes for done indicators, player joins/leaves, and server ports, eliminating repetitive dynamic regex allocations on every received console log buffer.
+- **Optimized Per-Server Metric Sampling**: Discovery of PID trees in `ServerProcessManager` is now performed once per tick and shared between memory and CPU calculations, halving the `/proc` directory traversal overhead during metric polling.
+- **Consolidated Shared Storage & Zip Operations**: Centralized file formatting, directory sizing, recursive stream zipping, and safe zip extraction with Zip-Slip traversal protection into `FileStorageUtils`.
+- **Eliminated Dead Code & Redundant Commands**: Removed unused raw config reading/saving routes, legacy unused utility helpers (`QuickCommandBar`, `ensurePRootExecutable`, `applyTheme`, etc.), and prevented duplicate console command dispatches on player management actions.
+
 ## [1.4.1] - 2026-10-20
 
 ### 📜 Minecraft EULA & User Opt-In

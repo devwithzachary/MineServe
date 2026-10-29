@@ -88,8 +88,6 @@ class ServerProcessManager private constructor(
         startMetricsMonitor()
     }
 
-    fun getSession(serverId: String): ActiveServerSession? = sessions[serverId]
-
     fun getEmulator(serverId: String): TerminalEmulator {
         return sessions[serverId]?.emulator ?: emulators.getOrPut(serverId) {
             TerminalEmulator(cols = 80, rows = 24)
@@ -219,7 +217,7 @@ class ServerProcessManager private constructor(
                 File(serverDir, "world").mkdirs()
 
                 // 3. Ensure legacy files and properties are sanitized for early Minecraft versions
-                sanitizeLegacyFilesAndProperties(server, serverDir)
+                LegacyServerSanitizer.sanitize(server, serverDir)
 
                 if (!javaRuntimeManager.isJavaInstalled(server.javaVersion)) {
                     val initMsg = "\u001B[33m[MineServe] OpenJDK is not yet installed. Auto-installing Java ${server.javaVersion}...\u001B[0m\r\n"
@@ -272,72 +270,6 @@ class ServerProcessManager private constructor(
                 triggerRefresh(server.id)
                 sessions.remove(server.id)
                 updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
-            }
-        }
-    }
-
-    private fun sanitizeLegacyFilesAndProperties(server: MinecraftServer, serverDir: File) {
-        val isLegacy = compareMinecraftVersions(server.version, "1.13") < 0
-        if (isLegacy) {
-            val legacyFiles = listOf("banned-players.txt", "banned-ips.txt", "ops.txt", "white-list.txt")
-            for (name in legacyFiles) {
-                val f = File(serverDir, name)
-                if (!f.exists()) {
-                    try {
-                        f.createNewFile()
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Failed creating legacy file $name for server ${server.id}", e)
-                    }
-                }
-            }
-        }
-
-        val propFile = File(serverDir, "server.properties")
-        if (propFile.exists()) {
-            try {
-                var content = propFile.readText()
-                var modified = false
-
-                if (isLegacy) {
-                    if (content.contains("level-type=minecraft:normal", ignoreCase = true) ||
-                        content.contains(Regex("(?m)^level-type=\\s*$"))
-                    ) {
-                        content = content.replace(Regex("(?im)^level-type=.*$"), "level-type=DEFAULT")
-                        modified = true
-                    }
-
-                    val gmMap = mapOf("survival" to "0", "creative" to "1", "adventure" to "2", "spectator" to "3")
-                    for ((name, code) in gmMap) {
-                        val regex = Regex("(?im)^gamemode\\s*=\\s*$name\\s*$")
-                        if (regex.containsMatchIn(content)) {
-                            content = content.replace(regex, "gamemode=$code")
-                            modified = true
-                        }
-                    }
-
-                    val diffMap = mapOf("peaceful" to "0", "easy" to "1", "normal" to "2", "hard" to "3")
-                    for ((name, code) in diffMap) {
-                        val regex = Regex("(?im)^difficulty\\s*=\\s*$name\\s*$")
-                        if (regex.containsMatchIn(content)) {
-                            content = content.replace(regex, "difficulty=$code")
-                            modified = true
-                        }
-                    }
-                }
-
-                if (modified) {
-                    propFile.writeText(content)
-                    Log.i(TAG, "Sanitized server.properties for server ${server.id} (${server.version})")
-                }
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to sanitize server.properties for server ${server.id}", e)
-            }
-        } else {
-            try {
-                val defaultProps = ServerProperties(motd = server.name, serverPort = server.port)
-                propFile.writeText(defaultProps.toPropertiesFileContent(server.version))
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed creating default server.properties for server ${server.id}", e)
             }
         }
     }
@@ -450,7 +382,9 @@ class ServerProcessManager private constructor(
                         val read = inputStream.read(buffer)
                         if (read <= 0) break
                         session.emulator.appendBytes(buffer, read)
-                        parseConsoleOutput(server.id, buffer, read, session, onStatusChanged)
+                        ConsoleOutputParser.parseBuffer(server.id, buffer, read, session) { sId, newStatus ->
+                            updateStatus(sId, newStatus, onStatusChanged)
+                        }
                         triggerRefresh(server.id)
                     }
                 } catch (e: Exception) {
@@ -482,87 +416,6 @@ class ServerProcessManager private constructor(
             triggerRefresh(server.id)
             sessions.remove(server.id)
             updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
-        }
-    }
-
-    private fun parseConsoleOutput(
-        serverId: String,
-        buffer: ByteArray,
-        length: Int,
-        session: ActiveServerSession,
-        onStatusChanged: ((ServerStatus) -> Unit)?
-    ) {
-        val text = String(buffer, 0, length, Charsets.UTF_8)
-        val lines = text.split("\n", "\r")
-
-        for (rawLine in lines) {
-            val line = rawLine.replace(Regex("\u001B\\[[;\\d]*[ -/]*[@-~]"), "").trim()
-            if (line.isBlank()) continue
-
-            // 1. Done / Running trigger
-            if (line.contains("Done (") || line.contains("For help, type \"help\"") || line.contains("Time elapsed:")) {
-                updateStatus(serverId, ServerStatus.RUNNING, onStatusChanged)
-            }
-
-            // 2. Player joins
-            if (line.contains("joined the game", ignoreCase = true) || line.contains("logged in with entity id", ignoreCase = true)) {
-                val match = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\s+joined the game""", RegexOption.IGNORE_CASE).find(line)
-                    ?: Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\[/.*?\]\s+logged in""", RegexOption.IGNORE_CASE).find(line)
-                match?.groupValues?.get(1)?.let { player ->
-                    session.onlinePlayers.add(player)
-                    session.idleStartTimeMillis = null
-                    session.isAutoSleeping = false
-                }
-            }
-
-            // 3. Player leaves
-            if (line.contains("left the game", ignoreCase = true) || line.contains("lost connection", ignoreCase = true)) {
-                val match = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\s+(?:left the game|lost connection)""", RegexOption.IGNORE_CASE).find(line)
-                match?.groupValues?.get(1)?.let { player ->
-                    session.onlinePlayers.remove(player)
-                    if (session.onlinePlayers.isEmpty()) {
-                        session.idleStartTimeMillis = System.currentTimeMillis()
-                    }
-                }
-            }
-
-            // 4. Server overload / tick lag detection ("Can't keep up!")
-            if (line.contains("Can't keep up!", ignoreCase = true)) {
-                val match = Regex("""Can't keep up!.*?Running\s+(\d+)ms\s+or\s+(\d+)\s+ticks behind""", RegexOption.IGNORE_CASE).find(line)
-                val msBehind = match?.groupValues?.get(1)?.toDoubleOrNull() ?: 1000.0
-                val now = System.currentTimeMillis()
-                session.totalLagWarnings++
-                session.lastLagWarningTime = now
-                session.lastTpsLogTime = now
-                val dropTps = (20.0 * (1.0 - (msBehind / (msBehind + 1000.0)).coerceIn(0.0, 0.95))).coerceIn(1.0, 19.5)
-                session.currentTps = kotlin.math.min(session.currentTps, dropTps)
-                session.currentMspt = (1000.0 / session.currentTps).coerceIn(50.0, 500.0)
-            }
-
-            // 5. Paper / Purpur / Spigot /tps output
-            if (line.contains("TPS from last", ignoreCase = true)) {
-                val match = Regex("""TPS from last [^:]+:\s*[*§a-f0-9]*([0-9.]+)(?:,\s*[*§a-f0-9]*([0-9.]+))?""", RegexOption.IGNORE_CASE).find(line)
-                match?.groupValues?.get(1)?.toDoubleOrNull()?.let { parsedTps ->
-                    session.currentTps = parsedTps.coerceIn(0.0, 20.0)
-                    session.currentMspt = if (session.currentTps >= 19.95) 20.0 else (1000.0 / session.currentTps)
-                    session.lastTpsLogTime = System.currentTimeMillis()
-                }
-            }
-
-            // 6. Minecraft 1.20+ /tick query or MSPT logs
-            if (line.contains("average tick time", ignoreCase = true)) {
-                val match = Regex("""(?:Average tick time|The average tick time is):\s*([0-9.]+)ms""", RegexOption.IGNORE_CASE).find(line)
-                match?.groupValues?.get(1)?.toDoubleOrNull()?.let { parsedMspt ->
-                    session.currentMspt = parsedMspt
-                    session.currentTps = if (parsedMspt <= 50.0) 20.0 else (1000.0 / parsedMspt).coerceIn(0.0, 20.0)
-                    session.lastTpsLogTime = System.currentTimeMillis()
-                }
-            }
-
-            // 7. Stopping trigger
-            if (line.contains("Stopping the server") || line.contains("Stopping server")) {
-                updateStatus(serverId, ServerStatus.STOPPING, onStatusChanged)
-            }
         }
     }
 
@@ -770,8 +623,9 @@ class ServerProcessManager private constructor(
                     val isRunning = isServerRunning(serverId)
                     if (isRunning && session.pid > 0) {
                         val uptimeSec = (now - session.startTimeMillis) / 1000
-                        val ramUsed = estimateMemoryMb(serverId, session)
-                        val cpuPct = estimateCpuPercentage(serverId, session)
+                        val pids = getServerPids(serverId, session.pid)
+                        val ramUsed = estimateMemoryMb(pids, session)
+                        val cpuPct = estimateCpuPercentage(pids)
 
                         // Check Idle Auto-Sleep
                         if (session.server.automationConfig.idleSleepEnabled && session.onlinePlayers.isEmpty()) {
@@ -841,9 +695,8 @@ class ServerProcessManager private constructor(
         }
     }
 
-    private fun estimateMemoryMb(serverId: String, session: ActiveServerSession): Long {
+    private fun estimateMemoryMb(pids: Set<Int>, session: ActiveServerSession): Long {
         var totalRssKb = 0L
-        val pids = getServerPids(serverId, session.pid)
         for (pid in pids) {
             try {
                 val statusFile = File("/proc/$pid/status")
@@ -866,8 +719,7 @@ class ServerProcessManager private constructor(
         return if (mb > 10) mb else (session.server.allocatedRamMb / 4L).coerceAtLeast(256L)
     }
 
-    private fun estimateCpuPercentage(serverId: String, session: ActiveServerSession): Float {
-        val pids = getServerPids(serverId, session.pid)
+    private fun estimateCpuPercentage(pids: Set<Int>): Float {
         val now = System.currentTimeMillis()
         var totalCpuPct = 0f
         var countedPids = 0

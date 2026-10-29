@@ -43,6 +43,7 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
+import com.devwithzachary.mineserve.util.FileStorageUtils
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
 import com.devwithzachary.mineserve.ui.theme.DiamondLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
@@ -345,13 +346,7 @@ fun ServerCard(
 }
 
 private fun formatStorage(bytes: Long): String {
-    if (bytes <= 0) return "0 MB"
-    val mb = bytes / (1024.0 * 1024.0)
-    return if (mb >= 1024.0) {
-        String.format(java.util.Locale.US, "%.1f GB", mb / 1024.0)
-    } else {
-        String.format(java.util.Locale.US, "%.1f MB", mb)
-    }
+    return FileStorageUtils.formatBytes(bytes, includeKb = false, gbDecimals = 1)
 }
 
 private fun formatRam(mb: Long): String {

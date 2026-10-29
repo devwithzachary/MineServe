@@ -81,8 +81,4 @@ class ConsolePreferences(context: Context) {
 
         return trimmedHistory
     }
-
-    fun clearCommandHistory() {
-        prefs.edit().remove(KEY_HISTORY_JSON).apply()
-    }
 }

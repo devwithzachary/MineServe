@@ -43,7 +43,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         highlights = listOf(
             "x86_64 Emulator & PRoot Reliability: Fixed OpenJDK installation failures and eliminated SELinux permission denial floods under PRoot on Android x86_64 emulators and devices.",
             "Runtime Setup & Console Diagnostics: First-time setup now streams live OpenJDK installation logs and surfaces any installation errors with retry controls, while server console buffers persist across startups and errors.",
-            "Device-Aware RAM Allocation: Server creation wizard now automatically scales default and maximum RAM preselection on 2 GB to 3 GB devices to leave memory headroom for Android."
+            "Device-Aware RAM Allocation: Server creation wizard now automatically scales default and maximum RAM preselection on 2 GB to 3 GB devices to leave memory headroom for Android.",
+            "Architecture & Performance: Streamlined codebase modularity across large composables and repositories, eliminated dead code paths, and optimized live console parsing."
         )
     ),
     ReleaseChangelog(

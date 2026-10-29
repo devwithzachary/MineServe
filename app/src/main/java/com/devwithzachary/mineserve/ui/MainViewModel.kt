@@ -322,22 +322,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    suspend fun readRawConfigFile(serverId: String, fileName: String): String {
-        return serverRepository.readRawConfigFile(serverId, fileName)
-    }
-
-    suspend fun saveRawConfigFile(serverId: String, fileName: String, content: String): Boolean {
-        val success = serverRepository.saveRawConfigFile(serverId, fileName, content)
-        if (success && fileName == "server.properties") {
-            loadServerDetails(serverId)
-        }
-        return success
-    }
-
-    suspend fun listEditableConfigFiles(serverId: String): List<String> {
-        return serverRepository.listEditableConfigFiles(serverId)
-    }
-
     suspend fun loadPlayerLists(serverId: String): ServerPlayerLists {
         return serverRepository.loadPlayerLists(serverId)
     }
@@ -637,18 +621,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         tunnelManager.toggleTunnel(server)
     }
 
-    fun updateTunnelConfig(server: MinecraftServer, config: TunnelConfig) {
-        viewModelScope.launch {
-            val updated = server.copy(tunnelConfig = config)
-            serverRepository.updateServer(updated)
-            if (config.enabled && !tunnelManager.isTunnelActive(server.id)) {
-                tunnelManager.startTunnel(updated)
-            } else if (!config.enabled && tunnelManager.isTunnelActive(server.id)) {
-                tunnelManager.stopTunnel(server.id)
-            }
-        }
-    }
-
     fun updateServer(server: MinecraftServer) {
         viewModelScope.launch {
             serverRepository.updateServer(server)
@@ -746,24 +718,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val levelName = _serverPropertiesMap.value[serverId]?.levelName
             ?: serverRepository.loadServerProperties(serverId).levelName
 
-        // Stop server if running
-        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
-            onProgress("Stopping server to safely import world...", 5)
-            stopServer(serverId)
-            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
-                delay(200)
-            }
-        }
-
-        // Safety backup
-        if (createBackup) {
-            onProgress("Creating safety backup of current world...", 10)
-            backupRepository.createBackup(
-                serverDir = serverDir,
-                isWorldOnly = true,
-                customName = "pre_import_world_${System.currentTimeMillis()}"
-            )
-        }
+        ensureStoppedWithSafetyBackup(
+            serverId = serverId,
+            serverDir = serverDir,
+            createBackup = createBackup,
+            backupPrefix = "pre_import_world",
+            stopMessage = "Stopping server to safely import world...",
+            backupMessage = "Creating safety backup of current world...",
+            onProgress = onProgress
+        )
 
         com.devwithzachary.mineserve.engine.WorldManager.importWorld(
             serverDir = serverDir,
@@ -799,22 +762,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val levelName = _serverPropertiesMap.value[serverId]?.levelName
             ?: serverRepository.loadServerProperties(serverId).levelName
 
-        // Stop server if running
-        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
-            stopServer(serverId)
-            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
-                delay(200)
-            }
-        }
-
-        // Safety backup
-        if (createBackup) {
-            backupRepository.createBackup(
-                serverDir = serverDir,
-                isWorldOnly = true,
-                customName = "pre_reset_${dimension.name.lowercase()}_${System.currentTimeMillis()}"
-            )
-        }
+        ensureStoppedWithSafetyBackup(
+            serverId = serverId,
+            serverDir = serverDir,
+            createBackup = createBackup,
+            backupPrefix = "pre_reset_${dimension.name.lowercase()}"
+        )
 
         com.devwithzachary.mineserve.engine.WorldManager.resetDimension(
             serverDir = serverDir,
@@ -832,24 +785,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val levelName = _serverPropertiesMap.value[serverId]?.levelName
             ?: serverRepository.loadServerProperties(serverId).levelName
 
-        // Stop server if running
-        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
-            onProgress("Stopping server to safely prune chunks...", 2)
-            stopServer(serverId)
-            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
-                delay(200)
-            }
-        }
-
-        // Safety backup
-        if (options.createBackup) {
-            onProgress("Creating safety backup before chunk pruning...", 5)
-            backupRepository.createBackup(
-                serverDir = serverDir,
-                isWorldOnly = true,
-                customName = "pre_prune_chunks_${System.currentTimeMillis()}"
-            )
-        }
+        ensureStoppedWithSafetyBackup(
+            serverId = serverId,
+            serverDir = serverDir,
+            createBackup = options.createBackup,
+            backupPrefix = "pre_prune_chunks",
+            stopMessage = "Stopping server to safely prune chunks...",
+            backupMessage = "Creating safety backup before chunk pruning...",
+            onProgress = onProgress
+        )
 
         com.devwithzachary.mineserve.engine.ChunkOptimizer.optimizeWorld(
             serverDir = serverDir,
@@ -857,6 +801,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             levelName = levelName,
             onProgress = onProgress
         )
+    }
+
+    private suspend fun ensureStoppedWithSafetyBackup(
+        serverId: String,
+        serverDir: File,
+        createBackup: Boolean,
+        backupPrefix: String,
+        stopMessage: String? = null,
+        backupMessage: String? = null,
+        onProgress: ((String, Int) -> Unit)? = null
+    ) {
+        if (serverStatuses.value[serverId] == ServerStatus.RUNNING) {
+            if (stopMessage != null && onProgress != null) {
+                onProgress(stopMessage, 2)
+            }
+            stopServer(serverId)
+            while (serverStatuses.value[serverId] == ServerStatus.STOPPING) {
+                delay(200)
+            }
+        }
+        if (createBackup) {
+            if (backupMessage != null && onProgress != null) {
+                onProgress(backupMessage, 5)
+            }
+            backupRepository.createBackup(
+                serverDir = serverDir,
+                isWorldOnly = true,
+                customName = "${backupPrefix}_${System.currentTimeMillis()}"
+            )
+        }
     }
 
     private val _webMapPorts = mutableMapOf<String, Int>()

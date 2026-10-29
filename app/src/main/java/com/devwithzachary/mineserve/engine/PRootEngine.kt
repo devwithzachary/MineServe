@@ -69,16 +69,6 @@ class PRootEngine(val context: Context) {
         return hasJava
     }
 
-    suspend fun ensurePRootExecutable(): File = withContext(Dispatchers.IO) {
-        val oldProot = File(binDir, "proot")
-        if (oldProot.exists()) {
-            oldProot.delete()
-        }
-        val prootExec = prootBinary
-        Log.d(TAG, "Using bundled native library proot executable at: ${prootExec.absolutePath}")
-        return@withContext prootExec
-    }
-
     private fun addBindMount(cmdList: MutableList<String>, path: String) {
         val file = File(path)
         if (file.exists()) {

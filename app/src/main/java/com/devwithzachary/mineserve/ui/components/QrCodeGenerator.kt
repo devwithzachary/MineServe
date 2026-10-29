@@ -67,10 +67,6 @@ object QrCodeHelper {
         return "minecraft://?addExternalServer=$encodedName|$host:$port"
     }
 
-    fun buildJavaAddress(host: String, port: Int): String {
-        return if (port == 25565) host else "$host:$port"
-    }
-
     fun buildInviteText(
         serverName: String,
         serverType: String,
