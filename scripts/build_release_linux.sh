@@ -77,6 +77,8 @@ fi
 restore_host_state() {
     echo "🔄 Restoring original host files to keep git working tree clean..."
     if [ -n "$TMP_JNILIBS_BACKUP" ] && [ -d "$TMP_JNILIBS_BACKUP" ]; then
+        rm -rf "$PROJECT_ROOT/app/src/main/jniLibs" 2>/dev/null || docker run --rm -v "$PROJECT_ROOT":/app alpine rm -rf /app/app/src/main/jniLibs 2>/dev/null || true
+        mkdir -p "$PROJECT_ROOT/app/src/main/jniLibs"
         cp -a "$TMP_JNILIBS_BACKUP/." "$PROJECT_ROOT/app/src/main/jniLibs/"
         rm -rf "$TMP_JNILIBS_BACKUP"
     fi
@@ -89,12 +91,16 @@ trap restore_host_state EXIT
 # 4. Execute build in the F-Droid buildserver container
 FDROID_APP_ID="com.devwithzachary.mineserve"
 FDROID_BUILD_DIR="/home/vagrant/build/$FDROID_APP_ID"
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
 
 echo "🚀 Starting containerized build in Debian Trixie (linux/amd64)..."
 echo "📁 Container Mount Path: $FDROID_BUILD_DIR"
 
 docker run --rm \
     --platform linux/amd64 \
+    -e HOST_UID="$HOST_UID" \
+    -e HOST_GID="$HOST_GID" \
     -v "$PROJECT_ROOT":"$FDROID_BUILD_DIR" \
     -v "$HOME/.cache/android-sdk-linux/ndk":/opt/android-sdk/ndk \
     -v "$HOME/.cache/android-sdk-linux/platforms":/opt/android-sdk/platforms \
@@ -162,7 +168,10 @@ docker run --rm \
             "$APKSIGNER_BIN" verify --verbose app/build/outputs/apk/release/app-release.apk
         fi
 
-        chown -R '"$(id -u):$(id -g)"' "$FDROID_BUILD_DIR" 2>/dev/null || true
+        if [ -n "$HOST_UID" ] && [ -n "$HOST_GID" ]; then
+            echo "🔄 Restoring file ownership for host user ($HOST_UID:$HOST_GID)..."
+            chown -R "$HOST_UID:$HOST_GID" "$FDROID_BUILD_DIR" 2>/dev/null || true
+        fi
     '
 
 OUT_DIR="$PROJECT_ROOT/release"

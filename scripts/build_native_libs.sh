@@ -12,6 +12,11 @@ EXTERNAL_DIR="$PROJECT_ROOT/external"
 JNI_LIBS_DIR="$PROJECT_ROOT/app/src/main/jniLibs"
 BUILD_WORK_DIR="$PROJECT_ROOT/build/native_libs_work"
 
+VERSION_NAME=$(grep -E 'versionName\s*=' "$PROJECT_ROOT/app/build.gradle.kts" 2>/dev/null | head -n 1 | sed 's/.*"\(.*\)".*/\1/' || true)
+if [ -z "$VERSION_NAME" ]; then
+    VERSION_NAME="1.0.0"
+fi
+
 MIN_API=24
 
 # -------------------------------------------------------------
@@ -253,6 +258,7 @@ for ABI in "${ABIS[@]}"; do
     rm -rf "$PROOT_SRC_COPY"
     mkdir -p "$PROOT_SRC_COPY"
     cp -R "$EXTERNAL_DIR/proot/." "$PROOT_SRC_COPY/"
+    sed -i -e "s/VERSION=.*;/VERSION=${VERSION_NAME};/" "$PROOT_SRC_COPY/GNUmakefile"
 
     # Ensure clean state in source and copy
     find "$EXTERNAL_DIR" \( -name "*.o" -o -name "*.d" \) -delete 2>/dev/null || true
