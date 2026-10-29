@@ -20,7 +20,7 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
 </p>
 
 > [!NOTE]
-> **Active Development & Bug Reporting**: MineServe is under active development. If you discover any bugs, compatibility issues, or have feature suggestions, please [submit an issue on GitHub](https://github.com/devwithzachary/MineServe/issues)!
+> **Active Development & Roadmap**: MineServe is under active development. Check out our public [Product Roadmap](ROADMAP.md) to see planned features for upcoming milestones, or [submit an issue on GitHub](https://github.com/devwithzachary/MineServe/issues) if you discover a bug or have a suggestion!
 
 ---
 
