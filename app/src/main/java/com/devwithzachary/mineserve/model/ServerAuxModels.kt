@@ -14,6 +14,8 @@ data class ServerMetrics(
     val onlinePlayers: List<String> = emptyList(),
     val tps: Double = 20.0,
     val mspt: Double = 20.0,
+    val tpsHistory: List<Float> = emptyList(),
+    val msptHistory: List<Float> = emptyList(),
     val lagWarningsCount: Int = 0,
     val uptimeSeconds: Long = 0L,
     val pid: Int = -1

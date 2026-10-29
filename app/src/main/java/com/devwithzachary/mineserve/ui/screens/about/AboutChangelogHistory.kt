@@ -37,9 +37,20 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.5.0",
+        date = "In Development",
+        initialExpanded = true,
+        highlights = listOf(
+            "Universal Port Forwarding: Zero-config UPnP and NAT-PMP router port mapping so friends can connect directly via WAN IP without third-party tunnel proxies.",
+            "Cloud Backup Sync (F-Droid Compliant): Automated off-device world backup sync to Nextcloud, ownCloud, WebDAV, or any Android SAF cloud folder with zero proprietary SDKs.",
+            "Modrinth Modpack Importer: 1-tap download and installation of official Modrinth .mrpack modpacks with automatic dependency resolution and config extraction.",
+            "Live Telemetry & Diagnostics: Real-time rolling Canvas TPS and MSPT performance charts, proactive lag diagnostics, and 1-tap Aikar's optimized G1GC flags."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.4.2",
         date = "October 29, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "x86_64 Emulator & PRoot Reliability: Fixed OpenJDK installation failures and eliminated SELinux permission denial floods under PRoot on Android x86_64 emulators and devices.",
             "Runtime Setup & Console Diagnostics: First-time setup now streams live OpenJDK installation logs and surfaces any installation errors with retry controls, while server console buffers persist across startups and errors.",

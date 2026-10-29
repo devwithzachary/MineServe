@@ -38,6 +38,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.ui.text.style.TextOverflow
+import com.devwithzachary.mineserve.modpack.ModpackIndex
+import com.devwithzachary.mineserve.modpack.ModpackInstallProgress
+import com.devwithzachary.mineserve.modpack.ModpackInstaller
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -97,6 +103,7 @@ fun PluginsTab(
     onDeletePlugin: (PluginModEntry) -> Unit,
     onInstallPluginOrMod: (fileName: String, downloadUrl: String, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit,
     onImportJar: (Uri, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit,
+    onImportModpack: ((Uri, (ModpackInstallProgress) -> Unit, (Result<ModpackIndex>) -> Unit) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -163,6 +170,143 @@ fun PluginsTab(
                 }
             }
         }
+    }
+
+    // Modpack state
+    var pendingModpackUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingModpackIndex by remember { mutableStateOf<ModpackIndex?>(null) }
+    var isInstallingModpack by remember { mutableStateOf(false) }
+    var modpackProgress by remember { mutableStateOf<ModpackInstallProgress?>(null) }
+
+    val modpackPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            pendingModpackUri = uri
+            scope.launch {
+                val res = ModpackInstaller().readMetadata(context, uri)
+                res.fold(
+                    onSuccess = { meta ->
+                        pendingModpackIndex = meta
+                    },
+                    onFailure = { err ->
+                        pendingModpackUri = null
+                        Toast.makeText(context, "Failed reading .mrpack: ${err.message}", Toast.LENGTH_LONG).show()
+                    }
+                )
+            }
+        }
+    }
+
+    // Modpack Confirmation Dialog
+    if (pendingModpackIndex != null && pendingModpackUri != null && !isInstallingModpack) {
+        val meta = pendingModpackIndex!!
+        val uri = pendingModpackUri!!
+        val serverModsCount = meta.files.count { it.isServerCompatible }
+
+        AppAlertDialog(
+            onDismissRequest = {
+                pendingModpackIndex = null
+                pendingModpackUri = null
+            },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icons.Default.Widgets, contentDescription = null, tint = EmeraldLight)
+                    Text("Install Modpack?", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(meta.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = EmeraldLight)
+                    if (!meta.summary.isNullOrBlank()) {
+                        Text(meta.summary, style = MaterialTheme.typography.bodySmall, color = Slate400)
+                    }
+                    HorizontalDivider(color = ObsidianCardBorder)
+                    Text("• $serverModsCount server mods will be downloaded into mods/", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    Text("• Configuration overrides will be applied to the server root", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                    val targetMc = meta.dependencies["minecraft"]
+                    if (targetMc != null) {
+                        Text("• Modpack target Minecraft: $targetMc (Current: ${server.version})", style = MaterialTheme.typography.bodySmall, color = if (targetMc == server.version) EmeraldLight else GoldYellow)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (onImportModpack != null) {
+                            isInstallingModpack = true
+                            onImportModpack(uri, { prog ->
+                                modpackProgress = prog
+                            }) { result ->
+                                isInstallingModpack = false
+                                pendingModpackIndex = null
+                                pendingModpackUri = null
+                                modpackProgress = null
+                                result.fold(
+                                    onSuccess = { installed ->
+                                        Toast.makeText(context, "Modpack '${installed.name}' installed successfully!", Toast.LENGTH_LONG).show()
+                                    },
+                                    onFailure = { err ->
+                                        Toast.makeText(context, "Modpack install failed: ${err.message}", Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Install Modpack", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        pendingModpackIndex = null
+                        pendingModpackUri = null
+                    },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text("Cancel", color = Color.White)
+                }
+            },
+            containerColor = ObsidianCard,
+            shape = RoundedCornerShape(16.dp)
+        )
+    }
+
+    // Modpack Installing Progress Dialog
+    if (isInstallingModpack && modpackProgress != null) {
+        val prog = modpackProgress!!
+        AppAlertDialog(
+            onDismissRequest = {},
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = EmeraldPrimary, strokeWidth = 2.5.dp)
+                    Text("Installing Modpack...", fontWeight = FontWeight.Bold, color = Color.White)
+                }
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(prog.stage, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = EmeraldLight)
+                    Text(prog.currentItem, style = MaterialTheme.typography.bodySmall, color = Slate400, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    LinearProgressIndicator(
+                        progress = { prog.progress },
+                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+                        color = EmeraldPrimary,
+                        trackColor = Slate800
+                    )
+                    Text(
+                        text = "${prog.currentCount} / ${prog.totalCount} files (${(prog.progress * 100).toInt()}%)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Slate400
+                    )
+                }
+            },
+            confirmButton = {},
+            containerColor = ObsidianCard,
+            shape = RoundedCornerShape(16.dp)
+        )
     }
 
     // Detail Dialog
@@ -379,22 +523,43 @@ fun PluginsTab(
                 )
             }
 
-            Button(
-                onClick = {
-                    jarPickerLauncher.launch(arrayOf("application/java-archive", "application/zip", "application/octet-stream", "*/*"))
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
-                border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(Icons.Default.FileUpload, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "Upload .JAR",
-                    color = EmeraldLight,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 12.sp
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (isModServer || isHybrid) {
+                    OutlinedButton(
+                        onClick = {
+                            modpackPickerLauncher.launch(arrayOf("*/*"))
+                        },
+                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.Widgets, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = ".mrpack",
+                            color = EmeraldLight,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
+                Button(
+                    onClick = {
+                        jarPickerLauncher.launch(arrayOf("application/java-archive", "application/zip", "application/octet-stream", "*/*"))
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
+                    border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(Icons.Default.FileUpload, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Upload .JAR",
+                        color = EmeraldLight,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
             }
         }
 

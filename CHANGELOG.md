@@ -2,6 +2,29 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.5.0] - Unreleased
+
+### 🌐 Universal Router Port Forwarding (UPnP & NAT-PMP)
+- **Automatic Router Port Forwarding**: Added built-in zero-config UPnP (SSDP/SOAP) and RFC 6886 NAT-PMP client for automatic router port mapping. Friends on the Internet can now connect directly to the host's residential public WAN IP without requiring manual router admin configuration or third-party tunnel proxies.
+- **Dynamic Connection Card & One-Tap Direct Address Copy**: Server Settings and status cards now display external mapped WAN IP and port with live mapping health, local IP mapping, and a 1-tap copy button for direct server invites.
+
+### ☁️ Cloud Backup Sync (100% F-Droid Compliant)
+- **Open-Source Cloud Sync Architecture**: Integrated automated off-device backup sync strictly adhering to F-Droid guidelines using 100% open-source protocols (RFC 4918 WebDAV and Android Storage Access Framework) without proprietary closed-source Google Play Services libraries.
+- **Nextcloud & WebDAV Provider**: Full support for syncing world snapshots to self-hosted Nextcloud, ownCloud, or generic WebDAV endpoints with directory recursion, authentication testing, and streaming upload progress.
+- **Android SAF Cloud / Storage Folder Integration**: Allows users to bind any cloud provider folder (Google Drive, Nextcloud, OneDrive, external SD card) via Android's native document tree picker with persistable permissions.
+- **Automated Pre-Action & Instant Cloud Sync**: Added an auto-sync toggle that automatically pushes newly created world snapshots to the configured cloud destination upon backup creation, plus 1-tap manual cloud sync on individual backup entries.
+
+### 🧩 Modrinth (.mrpack) Modpack Importer
+- **One-Tap Modpack Installation**: Added native support for importing official Modrinth `.mrpack` modpack archives directly from device storage or downloads.
+- **Dependency & Environment Filtering**: Automatically reads `modrinth.index.json`, filters out client-only mods (`env.server == "unsupported"`), checks version and modloader compatibility, and downloads all required server-side mods with SHA-1/SHA-512 checksum validation.
+- **Configuration & Override Extraction**: Streams real-time progress while extracting `overrides/` and `server-overrides/` directly into the server directory.
+
+### 📊 Live Performance Telemetry & Diagnostics
+- **Rolling Canvas Telemetry Graphs**: Added smooth real-time Canvas charts in the Performance tab graphing rolling historical TPS (0 to 20 scale) and MSPT (0 to 100 ms scale) with baseline target reference lines.
+- **Proactive Server Lag Diagnostics**: Live diagnostics card detects when tick durations exceed the 50.0 ms budget, providing actionable recommendations to optimize view distances and check runaway entity clusters.
+- **Aikar's G1GC JVM Flags Preset**: Added a 1-tap action to apply Aikar's optimized G1GC flags tuned for minimal garbage collection pauses and reduced CPU contention on mobile processors.
+- **Low Storage Threshold Safeguards**: Displays a proactive warning banner when available device storage drops below 1 GB to prevent world corruption during chunk generation.
+
 ## [1.4.2] - 2026-10-29
 
 ### 🖥️ x86_64 Emulator & PRoot Runtime Fixes

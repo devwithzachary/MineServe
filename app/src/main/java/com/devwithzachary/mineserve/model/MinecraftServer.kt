@@ -1,5 +1,7 @@
 package com.devwithzachary.mineserve.model
 
+import com.devwithzachary.mineserve.backup.cloud.CloudBackupConfig
+import com.devwithzachary.mineserve.net.portforward.PortForwardConfig
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -37,6 +39,8 @@ data class MinecraftServer(
     val lastStartedAt: Long? = null,
     val jarFileName: String = "server.jar",
     val tunnelConfig: TunnelConfig = TunnelConfig(),
+    val portForwardConfig: PortForwardConfig = PortForwardConfig(),
+    val cloudBackupConfig: CloudBackupConfig = CloudBackupConfig(),
     val automationConfig: ServerAutomationConfig = ServerAutomationConfig(),
     val serverBuild: String? = null
 ) {

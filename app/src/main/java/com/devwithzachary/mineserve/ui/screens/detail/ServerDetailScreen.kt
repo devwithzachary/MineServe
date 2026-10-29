@@ -146,10 +146,12 @@ fun ServerDetailScreen(
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
     onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
+    onSyncBackupToCloud: ((BackupEntry, (Result<String>) -> Unit) -> Unit)? = null,
     onTogglePlugin: (PluginModEntry) -> Unit,
     onDeletePlugin: (PluginModEntry) -> Unit,
     onInstallPluginOrMod: (fileName: String, downloadUrl: String, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     onImportJar: (android.net.Uri, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    onImportModpack: ((android.net.Uri, (com.devwithzachary.mineserve.modpack.ModpackInstallProgress) -> Unit, (Result<com.devwithzachary.mineserve.modpack.ModpackIndex>) -> Unit) -> Unit)? = null,
     isStandbyActive: Boolean = false,
     onSaveAutomationConfig: (com.devwithzachary.mineserve.model.ServerAutomationConfig) -> Unit = {},
     onEnterStandby: () -> Unit = {},
@@ -420,7 +422,8 @@ fun ServerDetailScreen(
                         server = server,
                         status = status,
                         metrics = metrics,
-                        storageBytes = storageBytes
+                        storageBytes = storageBytes,
+                        onUpdateServer = onSaveServer
                     )
                     DetailTab.AUTOMATION -> AutomationTab(
                         server = server,
@@ -498,12 +501,15 @@ fun ServerDetailScreen(
                         onRemoveBannedIp = onRemoveBannedIp
                     )
                     DetailTab.BACKUPS -> BackupsTab(
+                        server = server,
                         backups = backups,
                         onCreateBackup = onCreateBackup,
                         onRestoreBackup = onRestoreBackup,
                         onExportBackup = onExportBackup,
                         onDeleteBackup = onDeleteBackup,
-                        onGetShareIntent = onGetShareIntent
+                        onGetShareIntent = onGetShareIntent,
+                        onSaveServer = onSaveServer,
+                        onSyncBackupToCloud = onSyncBackupToCloud
                     )
                     DetailTab.PLUGINS_MODS -> {
                         if (showPluginsOrModsTab) {
@@ -513,7 +519,8 @@ fun ServerDetailScreen(
                                 onTogglePlugin = onTogglePlugin,
                                 onDeletePlugin = onDeletePlugin,
                                 onInstallPluginOrMod = onInstallPluginOrMod,
-                                onImportJar = onImportJar
+                                onImportJar = onImportJar,
+                                onImportModpack = onImportModpack
                             )
                         }
                     }

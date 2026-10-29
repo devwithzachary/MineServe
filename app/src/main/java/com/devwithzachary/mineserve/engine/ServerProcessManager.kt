@@ -8,6 +8,7 @@ import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.compareMinecraftVersions
+import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import java.io.File
@@ -38,7 +39,9 @@ data class ActiveServerSession(
     var lastLagWarningTime: Long = 0L,
     var lastTpsLogTime: Long = 0L,
     var idleStartTimeMillis: Long? = null,
-    var isAutoSleeping: Boolean = false
+    var isAutoSleeping: Boolean = false,
+    val tpsHistory: ArrayDeque<Float> = ArrayDeque(30),
+    val msptHistory: ArrayDeque<Float> = ArrayDeque(30)
 )
 
 class ServerProcessManager private constructor(
@@ -600,8 +603,12 @@ class ServerProcessManager private constructor(
             if (session != null && (session.server.tunnelConfig.autoStart || session.server.tunnelConfig.enabled)) {
                 TunnelManager.getInstance(context).startTunnel(session.server)
             }
+            if (session != null && (session.server.portForwardConfig.autoForward || session.server.portForwardConfig.enabled)) {
+                PortForwardManager.getInstance(context).forwardPortAsync(session.server)
+            }
         } else if (status == ServerStatus.STOPPED || status == ServerStatus.ERROR) {
             TunnelManager.getInstance(context).stopTunnel(serverId)
+            PortForwardManager.getInstance(context).releasePort(serverId)
         }
 
         if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING || status == ServerStatus.STANDBY) {
@@ -667,6 +674,13 @@ class ServerProcessManager private constructor(
                             session.currentMspt = (10.0 + (cpuPct / 100f) * 32.0).coerceIn(8.0, 48.0)
                         }
 
+                        // Record rolling telemetry history
+                        session.tpsHistory.addLast(session.currentTps.toFloat())
+                        if (session.tpsHistory.size > 30) session.tpsHistory.removeFirst()
+
+                        session.msptHistory.addLast(session.currentMspt.toFloat())
+                        if (session.msptHistory.size > 30) session.msptHistory.removeFirst()
+
                         metricsMap[serverId] = ServerMetrics(
                             serverId = serverId,
                             isRunning = true,
@@ -677,6 +691,8 @@ class ServerProcessManager private constructor(
                             onlinePlayers = session.onlinePlayers.toList(),
                             tps = session.currentTps,
                             mspt = session.currentMspt,
+                            tpsHistory = session.tpsHistory.toList(),
+                            msptHistory = session.msptHistory.toList(),
                             lagWarningsCount = session.totalLagWarnings,
                             uptimeSeconds = uptimeSec,
                             pid = session.pid

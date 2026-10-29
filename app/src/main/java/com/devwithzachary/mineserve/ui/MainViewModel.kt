@@ -2,6 +2,7 @@ package com.devwithzachary.mineserve.ui
 
 import android.app.Application
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -9,6 +10,7 @@ import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.api.GitHubRelease
 import com.devwithzachary.mineserve.api.GitHubUpdateChecker
 import com.devwithzachary.mineserve.api.UpdateCheckResult
+import com.devwithzachary.mineserve.backup.cloud.CloudBackupManager
 import com.devwithzachary.mineserve.engine.JavaInstallState
 import com.devwithzachary.mineserve.engine.JavaRuntimeManager
 import com.devwithzachary.mineserve.engine.PRootEngine
@@ -17,6 +19,9 @@ import com.devwithzachary.mineserve.engine.RootfsSetupState
 import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSchedulerManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
+import com.devwithzachary.mineserve.modpack.ModpackIndex
+import com.devwithzachary.mineserve.modpack.ModpackInstallProgress
+import com.devwithzachary.mineserve.modpack.ModpackInstaller
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PluginModEntry
@@ -506,9 +511,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val serverDir = serverRepository.getServerDirectory(serverId)
             val result = backupRepository.createBackup(serverDir, isWorldOnly)
+            if (result != null) {
+                val server = servers.value.firstOrNull { it.id == serverId }
+                if (server != null && server.cloudBackupConfig.enabled && server.cloudBackupConfig.autoSyncOnBackup) {
+                    val backupFile = File(File(serverDir, "backups"), result.fileName)
+                    CloudBackupManager.getInstance(getApplication()).syncBackupAsync(backupFile, server.cloudBackupConfig)
+                }
+            }
             loadServerDetails(serverId)
             withContext(Dispatchers.Main) {
                 onResult(result != null)
+            }
+        }
+    }
+
+    fun syncBackupToCloud(serverId: String, backup: BackupEntry, onResult: (Result<String>) -> Unit = {}) {
+        viewModelScope.launch {
+            val serverDir = serverRepository.getServerDirectory(serverId)
+            val backupFile = File(File(serverDir, "backups"), backup.fileName)
+            val server = servers.value.firstOrNull { it.id == serverId }
+            if (server != null) {
+                CloudBackupManager.getInstance(getApplication()).syncBackupAsync(backupFile, server.cloudBackupConfig) { res ->
+                    viewModelScope.launch(Dispatchers.Main) {
+                        onResult(res)
+                    }
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    onResult(Result.failure(IllegalStateException("Server not found")))
+                }
+            }
+        }
+    }
+
+    fun importModpack(
+        server: MinecraftServer,
+        uri: Uri,
+        onProgress: (ModpackInstallProgress) -> Unit,
+        onResult: (Result<ModpackIndex>) -> Unit
+    ) {
+        viewModelScope.launch {
+            val serverDir = serverRepository.getServerDirectory(server.id)
+            val installer = ModpackInstaller()
+            val result = installer.installModpack(getApplication(), uri, serverDir) { progress ->
+                viewModelScope.launch(Dispatchers.Main) {
+                    onProgress(progress)
+                }
+            }
+            loadServerDetails(server.id)
+            withContext(Dispatchers.Main) {
+                onResult(result)
             }
         }
     }

@@ -267,6 +267,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onExportBackup = { b, onResult -> viewModel.exportBackup(b, onResult) },
                         onDeleteBackup = { b, onResult -> viewModel.deleteBackup(server.id, b, onResult) },
                         onGetShareIntent = { b -> viewModel.getBackupShareIntent(b) },
+                        onSyncBackupToCloud = { b, onResult -> viewModel.syncBackupToCloud(server.id, b, onResult) },
                         onTogglePlugin = { p -> viewModel.togglePlugin(server.id, p) },
                         onDeletePlugin = { p -> viewModel.deletePlugin(server.id, p) },
                         onInstallPluginOrMod = { fileName, url, isMod, onResult ->
@@ -274,6 +275,9 @@ fun MineServeApp(viewModel: MainViewModel) {
                         },
                         onImportJar = { uri, isMod, onResult ->
                             viewModel.importPluginOrMod(server.id, uri, isMod, onResult)
+                        },
+                        onImportModpack = { uri, onProgress, onResult ->
+                            viewModel.importModpack(server, uri, onProgress, onResult)
                         },
                         isStandbyActive = viewModel.isServerInStandby(server.id),
                         onSaveAutomationConfig = { config -> viewModel.updateAutomationConfig(server.id, config) },

@@ -2,6 +2,7 @@ package com.devwithzachary.mineserve.ui.screens.detail
 
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -83,9 +84,21 @@ import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.ui.components.RamSlider
 import com.devwithzachary.mineserve.ui.components.ServerSoftwareCard
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devwithzachary.mineserve.net.portforward.PortForwardManager
+import com.devwithzachary.mineserve.net.portforward.PortForwardState
+import com.devwithzachary.mineserve.ui.theme.RedstoneLight
+import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -127,6 +140,13 @@ fun SettingsTab(
     var customRelayHost by remember(server.tunnelConfig.customRelayHost) { mutableStateOf(server.tunnelConfig.customRelayHost) }
     var customRelayPort by remember(server.tunnelConfig.customRelayPort) { mutableIntStateOf(server.tunnelConfig.customRelayPort) }
     var playitSecret by remember(server.tunnelConfig.playitSecret) { mutableStateOf(server.tunnelConfig.playitSecret) }
+
+    // Port forwarding config state
+    var portForwardAutoForward by remember(server.portForwardConfig.autoForward) { mutableStateOf(server.portForwardConfig.autoForward) }
+    val portForwardManager = remember { PortForwardManager.getInstance(context) }
+    val portForwardStates by portForwardManager.states.collectAsStateWithLifecycle()
+    val currentForwardState = portForwardStates[server.id] ?: portForwardManager.getState(server.id)
+    val clipboardManager = LocalClipboardManager.current
 
     // RAM allocation state
     var currentRamMb by remember(server.allocatedRamMb) { mutableIntStateOf(server.allocatedRamMb) }
@@ -543,6 +563,211 @@ fun SettingsTab(
                         ),
                         modifier = Modifier.weight(1f)
                     )
+                }
+            }
+        }
+
+        // Section: Router Port Forwarding (UPnP & NAT-PMP)
+        Card(
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Router,
+                            contentDescription = null,
+                            tint = EmeraldPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Router Port Forwarding (UPnP / NAT-PMP)",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (currentForwardState is PortForwardState.Mapped) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = EmeraldDark.copy(alpha = 0.3f),
+                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "MAPPED",
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = EmeraldLight,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = "Automatically configure port forwarding on your local Wi-Fi router so friends on the Internet can join directly via your public WAN IP without third-party tunnel proxies.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate400,
+                    fontSize = 12.sp
+                )
+
+                SettingSwitchRow(
+                    title = "Auto-Forward Port on Server Boot",
+                    checked = portForwardAutoForward,
+                    onCheckedChange = {
+                        portForwardAutoForward = it
+                        val updated = server.portForwardConfig.copy(autoForward = it, enabled = it)
+                        onSaveServer(server.copy(portForwardConfig = updated))
+                    }
+                )
+
+                // Current State Details & Actions
+                when (val fState = currentForwardState) {
+                    is PortForwardState.Mapped -> {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Slate900.copy(alpha = 0.6f),
+                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.3f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Public Direct Address:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    Text(fState.directAddress, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = EmeraldLight)
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Local Mapping:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    Text("${fState.internalIp}:${fState.internalPort} (${fState.protocol})", style = MaterialTheme.typography.bodySmall, color = Color.White)
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Gateway:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    Text(fState.gatewayName, style = MaterialTheme.typography.bodySmall, color = Color.White)
+                                }
+
+                                Spacer(modifier = Modifier.height(4.dp))
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    Button(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(fState.directAddress))
+                                            Toast.makeText(context, "Copied ${fState.directAddress} to clipboard!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("Copy IP", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            portForwardManager.releasePort(server.id)
+                                            Toast.makeText(context, "Released port mapping.", Toast.LENGTH_SHORT).show()
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("Release", color = Color.White, fontSize = 12.sp)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    is PortForwardState.Discovering -> {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Slate900.copy(alpha = 0.6f),
+                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    color = EmeraldPrimary,
+                                    strokeWidth = 2.dp
+                                )
+                                Text(fState.message, style = MaterialTheme.typography.bodySmall, color = Slate400)
+                            }
+                        }
+                    }
+
+                    is PortForwardState.Failed -> {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = RedstoneRed.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text("Port Forwarding Failed", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = RedstoneLight)
+                                Text(fState.reason, style = MaterialTheme.typography.bodySmall, color = Slate400, fontSize = 11.sp)
+                                OutlinedButton(
+                                    onClick = {
+                                        portForwardManager.forwardPortAsync(server)
+                                    },
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Retry Router Mapping", color = Color.White, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    is PortForwardState.Idle -> {
+                        OutlinedButton(
+                            onClick = {
+                                portForwardManager.forwardPortAsync(server)
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Router, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Forward Port ${server.port} Now", color = Color.White, fontSize = 12.sp)
+                        }
+                    }
                 }
             }
         }
