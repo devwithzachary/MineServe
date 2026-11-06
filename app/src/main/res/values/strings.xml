@@ -357,7 +357,7 @@
     <string name="about_privacy_title">Privacy Policy</string>
     <string name="about_github_repo_url">https://github.com/devwithzachary/MineServe</string>
     <string name="about_github_issues_url">https://github.com/devwithzachary/MineServe/issues</string>
-    <string name="about_discord_url">https://discord.gg/csGrrg5MGF</string>
+    <string name="about_discord_url">https://discord.gg/QdT9yCrKmV</string>
     <string name="about_support_title">Support MineServe</string>
     <string name="about_support_text">MineServe is free and open source. If you find it helpful, consider supporting ongoing development!</string>
     <string name="about_discord_title">Discord Community</string>
@@ -375,7 +375,7 @@
     <string name="credits_patreon">Patreon</string>
     <string name="credits_patreon_url">https://patreon.com/devwithzachary</string>
     <string name="credits_buymeacoffee">Buy Me a Coffee</string>
-    <string name="credits_buymeacoffee_url">https://buymeacoffee.com/linuxonandroid</string>
+    <string name="credits_buymeacoffee_url">https://www.buymeacoffee.com/devwithzachary</string>
 
     <!-- Public Tunneling & QR Code Sharing -->
     <string name="tunnel_title">Public Tunnel &amp; Zero-Port-Forwarding</string>

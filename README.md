@@ -1,7 +1,7 @@
 # MineServe
 
 [![Google Play](https://img.shields.io/badge/Google_Play-Get%20it%20on%20Google%20Play-414141?logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.devwithzachary.mineserve)
-[![Discord Community](https://img.shields.io/badge/Discord-Join%20Community-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/csGrrg5MGF)
+[![Discord Community](https://img.shields.io/badge/Discord-Join%20Community-5865F2.svg?logo=discord&logoColor=white)](https://discord.gg/QdT9yCrKmV)
 [![Android MinSDK](https://img.shields.io/badge/Min%20SDK-23%20%28Android%206.0%2B%29-brightgreen.svg)](https://developer.android.com/about/versions/marshmallow)
 [![Kotlin](https://img.shields.io/badge/Language-Kotlin-blue.svg)](https://kotlinlang.org/)
 [![UI Framework](https://img.shields.io/badge/UI-Jetpack%20Compose%20Material3-purple.svg)](https://developer.android.com/jetpack/compose)
@@ -286,6 +286,18 @@ From **App Settings**, launch the built-in Web Remote Admin Panel to manage your
 Contributions, bug reports, and feature requests are warmly welcomed! Feel free to open an issue or submit a pull request.
 
 Please review our **[AI Usage Policy](AI.md)** for guidelines regarding the use of AI coding assistants when contributing to this project. All submitted code must be thoroughly tested, verified, and personally owned by the human author.
+
+---
+
+## ☕ Support the Project
+
+If MineServe has been useful to you, consider supporting continued development:
+
+<div align="center">
+  <a href="https://www.patreon.com/DevWithZachary"><img src="https://img.shields.io/badge/Patreon-Become%20a%20Patron-F96854.svg?logo=patreon&logoColor=white&style=for-the-badge" alt="Patreon" /></a>
+  &nbsp;
+  <a href="https://www.buymeacoffee.com/devwithzachary"><img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Tip%20the%20Dev-FFDD00.svg?logo=buymeacoffee&logoColor=black&style=for-the-badge" alt="Buy Me a Coffee" /></a>
+</div>
 
 ---
 

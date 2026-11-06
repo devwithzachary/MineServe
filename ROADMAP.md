@@ -190,5 +190,5 @@ Long-term research initiatives exploring post-PRoot architectures and expanding 
 Have a feature request or suggestion that should be on our roadmap?
 - **GitHub Discussions**: Share ideas and workflows in [GitHub Discussions](https://github.com/devwithzachary/MineServe/discussions).
 - **Issue Tracker**: Submit detailed bug reports or enhancement proposals on [GitHub Issues](https://github.com/devwithzachary/MineServe/issues).
-- **Discord Community**: Join our community of mobile server hosts on [Discord](https://discord.gg/csGrrg5MGF).
+- **Discord Community**: Join our community of mobile server hosts on [Discord](https://discord.gg/QdT9yCrKmV).
 
