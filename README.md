@@ -209,10 +209,16 @@ MineServe is built on the shoulders of incredible open-source projects:
 | **OkHttp & Coil** | High-performance HTTP client and image loading engine for Compose. | [Square](https://square.github.io/okhttp) & [Coil](https://coil-kt.github.io/coil) / Apache-2.0 |
 | **KotlinX Coroutines & Serialization** | Asynchronous coroutines and multiplatform JSON serialization for Kotlin. | [JetBrains](https://github.com/Kotlin) / Apache-2.0 |
 
-### 💖 Patreon Supporters
-Special thanks to our generous Patreon supporters whose contributions help fuel ongoing MineServe development:
-* **Old PC Gunk (and stuff)**
-* **насэр Хорр**
+### 💖 Project Supporters
+Special thanks to our generous Patreon, YouTube, and Buy Me a Coffee supporters whose contributions help fuel ongoing MineServe development:
+* **Alen** (Tinkerer - Buy Me a Coffee)
+* **Many Fun Adventures** (Supporter - Buy Me a Coffee)
+* **Old PC Gunk (and stuff)** (Supporter - Patreon)
+* **ShoaffSquatch** (Supporter - YouTube)
+* **Swamp Gaming Network** (Supporter - Patreon)
+* **насэр Хорр** (Supporter - Patreon)
+* **Alcove Electronics Workshop** (Tipper - YouTube)
+* **Ian Scales** (Tipper - YouTube)
 
 ---
 

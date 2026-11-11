@@ -37,9 +37,18 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.5.1",
+        date = "November 11, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "Project Supporters & Community Links: Updated Project Supporters recognition across Credits and About for Patreon, YouTube, and Buy Me a Coffee members, added a direct Buy Me a Coffee button on Credits, and unified Discord community invite links.",
+            "UI & Layout Polish: Updated the About screen supporters section to wrap chips cleanly across rows and refined support button spacing."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.5.0",
         date = "October 29, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Universal Port Forwarding: Zero-config UPnP and NAT-PMP router port mapping so friends can connect directly via WAN IP without third-party tunnel proxies.",
             "Web Remote Admin Panel: Manage your servers, terminal console, and files from a desktop browser or tablet over Wi-Fi or public tunnels with secure authentication.",

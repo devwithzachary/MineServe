@@ -7,6 +7,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -290,23 +291,23 @@ fun AboutScreen(
                         ) {
                             Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(16.dp))
                             Text(
-                                text = "Patreon Supporters",
+                                text = "Project Supporters",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = RedstoneLight
                             )
                         }
 
-                        Row(
+                        FlowRow(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             PATREON_SUPPORTERS.forEach { supporter ->
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = Slate900,
-                                    border = BorderStroke(1.dp, Slate800),
-                                    modifier = Modifier.weight(1f)
+                                    border = BorderStroke(1.dp, Slate800)
                                 ) {
                                     Row(
                                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
@@ -319,7 +320,8 @@ fun AboutScreen(
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.SemiBold,
                                             color = Color.White,
-                                            maxLines = 1
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
                                 }

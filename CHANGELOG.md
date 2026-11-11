@@ -2,6 +2,16 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.5.1] - 2026-11-11
+
+### ❤️ Community, Supporters & Links
+- **Expanded Project Supporters Recognition**: Updated the **Credits** screen, **About** screen, and `README.md` to honor all Patreon, YouTube, and Buy Me a Coffee supporters (**Alen**, **Many Fun Adventures**, **Old PC Gunk (and stuff)**, **ShoaffSquatch**, **Swamp Gaming Network**, **насэр Хорр**, **Alcove Electronics Workshop**, and **Ian Scales**).
+- **Unified Support & Discord Links**: Added a direct **Buy Me a Coffee** button alongside Patreon on the **Credits** screen (`https://www.buymeacoffee.com/devwithzachary`) and ensured all Discord community invite links across the app, documentation, and website point to `https://discord.gg/QdT9yCrKmV`.
+- **Funding Metadata**: Added `.github/FUNDING.yml` linking GitHub Sponsors, Patreon, Buy Me a Coffee, and `devwithzachary.com`.
+
+### 🎨 UI & Layout Polish
+- **Responsive Supporter Chip Grid**: Updated the **About** screen supporter list to use a responsive `FlowRow` layout under the **Project Supporters** heading so the expanded supporter list wraps cleanly without horizontal clipping, and refined side-by-side support button padding on **Credits**.
+
 ## [1.5.0] - 2026-10-29
 
 ### 🖥️ Web Remote Admin Panel (LAN & Web Management)

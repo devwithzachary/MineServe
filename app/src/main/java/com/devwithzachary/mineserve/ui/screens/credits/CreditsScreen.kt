@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
@@ -81,12 +83,36 @@ data class PatreonSupporter(
 
 val PATREON_SUPPORTERS: List<PatreonSupporter> = listOf(
     PatreonSupporter(
+        name = "Alen",
+        tier = "Tinkerer (BuyMeACoffee)"
+    ),
+    PatreonSupporter(
+        name = "Many Fun Adventures",
+        tier = "Supporter (BuyMeACoffee)"
+    ),
+    PatreonSupporter(
         name = "Old PC Gunk (and stuff)",
-        tier = "Patreon Supporter"
+        tier = "Supporter (Patreon)"
+    ),
+    PatreonSupporter(
+        name = "ShoaffSquatch",
+        tier = "Supporter (YouTube)"
+    ),
+    PatreonSupporter(
+        name = "Swamp Gaming Network",
+        tier = "Supporter (Patreon)"
     ),
     PatreonSupporter(
         name = "насэр Хорр",
-        tier = "Patreon Supporter"
+        tier = "Supporter (Patreon)"
+    ),
+    PatreonSupporter(
+        name = "Alcove Electronics Workshop",
+        tier = "Tipper (YouTube)"
+    ),
+    PatreonSupporter(
+        name = "Ian Scales",
+        tier = "Tipper (YouTube)"
     )
 )
 
@@ -379,7 +405,7 @@ fun CreditsScreen(
                     ) {
                         Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(22.dp))
                         Text(
-                            text = "Patreon Supporters",
+                            text = "Project Supporters",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
@@ -387,7 +413,7 @@ fun CreditsScreen(
                     }
 
                     Text(
-                        text = "Special thanks to our generous Patreon members whose support powers ongoing MineServe development!",
+                        text = "Special thanks to our generous Patreon, YouTube, and Buy Me a Coffee members whose support powers ongoing MineServe development!",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Slate400
                     )
@@ -446,7 +472,7 @@ fun CreditsScreen(
                                         border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.3f))
                                     ) {
                                         Text(
-                                            text = "Patron",
+                                            text = "Supporter",
                                             style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = RedstoneLight,
@@ -458,15 +484,49 @@ fun CreditsScreen(
                         }
                     }
 
-                    Button(
-                        onClick = { uriHandler.openUri("https://patreon.com/devwithzachary") },
-                        colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Become a Patron", color = Color.White, fontWeight = FontWeight.Bold)
+                        Button(
+                            onClick = { uriHandler.openUri("https://www.patreon.com/DevWithZachary") },
+                            colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Join Patreon",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+
+                        Button(
+                            onClick = { uriHandler.openUri("https://www.buymeacoffee.com/devwithzachary") },
+                            colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Buy Me a Coffee",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp,
+                                maxLines = 1,
+                                softWrap = false,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }

@@ -1,0 +1,4 @@
+- Updated Project Supporters recognition on the Credits and About screens honoring Patreon, YouTube, and Buy Me a Coffee supporters.
+- Added a direct Buy Me a Coffee link on the Credits screen and unified Discord community invite links across the app.
+- Improved the About screen supporter chip layout with responsive wrapping so all supporters display cleanly.
+
