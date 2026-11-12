@@ -104,6 +104,26 @@ object WorldManager {
                 }
             } ?: return@withContext Result.failure(Exception("Could not open world file stream"))
 
+            importWorldFromZip(serverDir, tempZipFile, levelName, onProgress)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed importing world", e)
+            Result.failure(e)
+        } finally {
+            tempZipFile?.delete()
+            File(serverDir, "temp_import").deleteRecursively()
+        }
+    }
+
+    /**
+     * Imports a Minecraft world from an already-staged local .zip or .mcworld file.
+     */
+    suspend fun importWorldFromZip(
+        serverDir: File,
+        zipFile: File,
+        levelName: String = "world",
+        onProgress: (status: String, percent: Int) -> Unit = { _, _ -> }
+    ): Result<String> = withContext(Dispatchers.IO) {
+        try {
             onProgress("Analyzing world archive contents...", 25)
 
             // Inspect archive entries
@@ -112,7 +132,7 @@ object WorldManager {
             var hasBedrockDb = false
             var hasJavaRegion = false
 
-            ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zipIn ->
+            ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zipIn ->
                 var entry = zipIn.nextEntry
                 while (entry != null) {
                     val name = entry.name.replace('\\', '/')
@@ -175,7 +195,7 @@ object WorldManager {
             onProgress("Extracting world files...", 60)
 
             var extractedCount = 0
-            ZipInputStream(BufferedInputStream(FileInputStream(tempZipFile))).use { zipIn ->
+            ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zipIn ->
                 var entry = zipIn.nextEntry
                 while (entry != null) {
                     val rawName = entry.name.replace('\\', '/')
@@ -227,9 +247,6 @@ object WorldManager {
         } catch (e: Exception) {
             Log.e(TAG, "Failed importing world", e)
             Result.failure(e)
-        } finally {
-            tempZipFile?.delete()
-            File(serverDir, "temp_import").deleteRecursively()
         }
     }
 

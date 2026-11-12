@@ -2,12 +2,16 @@ package com.devwithzachary.mineserve.admin.web
 
 import android.content.Context
 import android.util.Log
+import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.engine.ServerProcessManager
+import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.model.TunnelProvider
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.net.portforward.PortForwardProtocol
 import com.devwithzachary.mineserve.net.portforward.PortForwardState
+import com.devwithzachary.mineserve.repository.BackupRepository
+import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
@@ -24,6 +28,9 @@ class WebAdminManager private constructor(
     private val context: Context,
     private val serverRepository: ServerRepository,
     private val processManager: ServerProcessManager,
+    private val serverSoftwareManager: ServerSoftwareManager,
+    private val backupRepository: BackupRepository,
+    private val pluginRepository: PluginRepository,
     private val tunnelManager: TunnelManager,
     private val portForwardManager: PortForwardManager
 ) {
@@ -38,6 +45,9 @@ class WebAdminManager private constructor(
             context: Context,
             serverRepository: ServerRepository,
             processManager: ServerProcessManager,
+            serverSoftwareManager: ServerSoftwareManager,
+            backupRepository: BackupRepository,
+            pluginRepository: PluginRepository,
             tunnelManager: TunnelManager,
             portForwardManager: PortForwardManager
         ): WebAdminManager {
@@ -46,6 +56,9 @@ class WebAdminManager private constructor(
                     context.applicationContext,
                     serverRepository,
                     processManager,
+                    serverSoftwareManager,
+                    backupRepository,
+                    pluginRepository,
                     tunnelManager,
                     portForwardManager
                 ).also { INSTANCE = it }
@@ -104,7 +117,24 @@ class WebAdminManager private constructor(
             security = security,
             configProvider = { _config.value },
             serverRepository = serverRepository,
-            processManager = processManager
+            processManager = processManager,
+            serverSoftwareManager = serverSoftwareManager,
+            backupRepository = backupRepository,
+            pluginRepository = pluginRepository,
+            tunnelManager = tunnelManager,
+            portForwardManager = portForwardManager,
+            assetProvider = { assetName ->
+                try {
+                    if (assetName == "logo.png") {
+                        context.resources.openRawResource(R.drawable.ic_launcher_logo).use { it.readBytes() }
+                    } else {
+                        context.assets.open("webadmin/$assetName").use { it.readBytes() }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to read webadmin asset: $assetName", e)
+                    null
+                }
+            }
         )
         s.start()
         server = s

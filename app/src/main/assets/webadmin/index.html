@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MineServe Web Admin</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Login View -->
+  <div id="login-view" class="login-container">
+    <div class="login-card">
+      <div class="login-brand">
+        <img src="/logo.png" alt="MineServe Logo" class="brand-logo">
+        <h1>MineServe</h1>
+        <p>Web Remote Admin</p>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="login-user">Username</label>
+          <input type="text" id="login-user" autocomplete="username" required value="admin">
+        </div>
+        <div class="form-group">
+          <label for="login-pass">Password</label>
+          <input type="password" id="login-pass" autocomplete="current-password" required>
+        </div>
+        <div id="login-error" class="error-banner hidden"></div>
+        <button type="submit" id="login-btn" class="btn btn-primary btn-full">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App View -->
+  <div id="app-view" class="app-shell hidden">
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-row">
+          <img src="/logo.png" alt="MineServe Logo" class="brand-logo-sm">
+          <span class="brand-title">MineServe</span>
+        </div>
+        <button id="mobile-close-sidebar" class="btn-icon mobile-only" title="Close Menu">✕</button>
+      </div>
+
+      <div class="sidebar-actions">
+        <button id="open-create-modal-btn" class="btn btn-primary btn-full">+ New Server</button>
+      </div>
+
+      <div class="sidebar-section-label">Servers</div>
+      <div id="server-list" class="server-list"></div>
+
+      <div class="sidebar-footer">
+        <div id="system-info" class="system-info">Loading host info...</div>
+        <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="mobile-menu-btn" class="btn-icon mobile-only" title="Menu">☰</button>
+          <div>
+            <h2 id="active-server-name">Select a Server</h2>
+            <div id="active-server-meta" class="server-meta-line"></div>
+          </div>
+        </div>
+        <div id="server-controls" class="topbar-controls hidden">
+          <span id="active-server-badge" class="status-badge">STOPPED</span>
+          <button id="btn-start" class="btn btn-primary btn-sm">Start</button>
+          <button id="btn-restart" class="btn btn-secondary btn-sm">Restart</button>
+          <button id="btn-stop" class="btn btn-danger btn-sm">Stop</button>
+        </div>
+      </header>
+
+      <div id="empty-state" class="empty-state">
+        <div class="empty-icon">🖥️</div>
+        <h3>No Server Selected</h3>
+        <p>Select a server from the sidebar or create a new one to start managing it.</p>
+        <button id="empty-create-btn" class="btn btn-primary">+ Create Server</button>
+      </div>
+
+      <div id="server-workspace" class="workspace hidden">
+        <!-- Metrics Strip -->
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">CPU</span>
+            <span id="metric-cpu" class="metric-value">0%</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Memory</span>
+            <span id="metric-ram" class="metric-value">0 / 0 MB</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">TPS / MSPT</span>
+            <span id="metric-tps" class="metric-value">20.0 / 0.0 ms</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-label">Players</span>
+            <span id="metric-players" class="metric-value">0</span>
+          </div>
+        </div>
+
+        <!-- Workspace Tabs -->
+        <nav class="tabs-bar">
+          <button class="tab-btn active" data-tab="console">Console</button>
+          <button class="tab-btn" data-tab="performance">Performance</button>
+          <button class="tab-btn" data-tab="automation">Automation</button>
+          <button class="tab-btn" data-tab="files">Files</button>
+          <button class="tab-btn" data-tab="world">World</button>
+          <button class="tab-btn" data-tab="livemap">Live Map</button>
+          <button class="tab-btn" data-tab="settings">Settings &amp; Network</button>
+          <button class="tab-btn" data-tab="players">Players</button>
+          <button class="tab-btn" data-tab="backups">Backups</button>
+          <button class="tab-btn" data-tab="plugins">Plugins / Mods</button>
+        </nav>
+
+        <!-- Console Tab -->
+        <section id="tab-console" class="tab-panel active">
+          <div id="console-output" class="console-output"></div>
+          <form id="console-form" class="console-input-bar">
+            <input type="text" id="console-input" placeholder="Enter server command (e.g. say Hello, op Steve)..." autocomplete="off">
+            <button type="submit" class="btn btn-primary">Send</button>
+          </form>
+        </section>
+
+        <!-- Performance Tab -->
+        <section id="tab-performance" class="tab-panel">
+          <div class="settings-layout">
+            <div class="panel-card">
+              <h3>Live Performance &amp; Storage</h3>
+              <div class="metrics-grid">
+                <div class="metric-card"><span class="metric-label">CPU</span><span id="perf-cpu" class="metric-value">0%</span></div>
+                <div class="metric-card"><span class="metric-label">RAM</span><span id="perf-ram" class="metric-value">0 MB</span></div>
+                <div class="metric-card"><span class="metric-label">TPS</span><span id="perf-tps" class="metric-value">20.0</span></div>
+                <div class="metric-card"><span class="metric-label">MSPT</span><span id="perf-mspt" class="metric-value">0.0 ms</span></div>
+                <div class="metric-card"><span class="metric-label">Uptime</span><span id="perf-uptime" class="metric-value">0s</span></div>
+                <div class="metric-card"><span class="metric-label">Server Disk</span><span id="perf-disk" class="metric-value">0 MB</span></div>
+                <div class="metric-card"><span class="metric-label">Device Free</span><span id="perf-free-disk" class="metric-value">0 GB</span></div>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="files-toolbar" style="margin-bottom:8px;">
+                <div>
+                  <h3 style="margin:0;">Telemetry Over Time</h3>
+                  <div id="perf-chart-summary" class="player-sub">Collecting live samples every 2.5s...</div>
+                </div>
+                <div class="chart-legend">
+                  <span class="legend-item"><span class="legend-dot legend-cpu"></span>CPU %</span>
+                  <span class="legend-item"><span class="legend-dot legend-ram"></span>RAM %</span>
+                  <span class="legend-item"><span class="legend-dot legend-tps"></span>TPS (scaled)</span>
+                  <button type="button" id="perf-clear-chart-btn" class="btn btn-ghost btn-sm">Clear</button>
+                </div>
+              </div>
+              <div class="chart-wrap">
+                <canvas id="perf-chart-canvas"></canvas>
+              </div>
+            </div>
+            <div class="panel-card">
+              <h3>JVM Optimization (Aikar's G1GC Preset)</h3>
+              <p class="player-sub" id="perf-aikar-status">Checking JVM flags...</p>
+              <button type="button" id="apply-aikar-btn" class="btn btn-primary btn-sm">Apply Aikar's G1GC Flags</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Automation Tab -->
+        <section id="tab-automation" class="tab-panel">
+          <div class="settings-layout">
+            <div class="panel-card">
+              <h3>Power &amp; Standby Automation</h3>
+              <form id="automation-power-form">
+                <div class="form-grid">
+                  <label class="checkbox-label"><input type="checkbox" id="auto-idle-sleep"><span>Idle Auto-Shutdown</span></label>
+                  <div class="form-group">
+                    <label for="auto-idle-mins">Idle Timeout (Minutes)</label>
+                    <input type="number" id="auto-idle-mins" min="1" max="240" value="10">
+                  </div>
+                  <label class="checkbox-label"><input type="checkbox" id="auto-wake-ping"><span>Auto-Wake on Ping</span></label>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Save Power Settings</button>
+              </form>
+            </div>
+            <div class="panel-card">
+              <h3>Scheduled Tasks</h3>
+              <form id="automation-task-form" class="inline-form">
+                <input type="text" id="task-name" placeholder="Task name (e.g. Nightly Backup)" required>
+                <select id="task-type">
+                  <option value="WORLD_BACKUP">World Backup</option>
+                  <option value="FULL_BACKUP">Full Backup</option>
+                  <option value="RESTART_SERVER">Restart Server</option>
+                  <option value="BROADCAST_MESSAGE">Broadcast</option>
+                  <option value="CUSTOM_COMMAND">Command</option>
+                </select>
+                <select id="task-freq">
+                  <option value="INTERVAL">Every N Minutes</option>
+                  <option value="DAILY_TIME">Daily Time</option>
+                </select>
+                <input type="number" id="task-interval" min="1" value="360" placeholder="Minutes" style="max-width:110px;">
+                <input type="text" id="task-cmd" placeholder="Command / message (optional)">
+                <button type="submit" class="btn btn-primary btn-sm">+ Add Task</button>
+              </form>
+              <div id="automation-tasks-list" class="player-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Files Tab -->
+        <section id="tab-files" class="tab-panel">
+          <div class="files-toolbar">
+            <div class="files-breadcrumb">
+              <button id="files-up-btn" class="btn btn-secondary btn-sm">Up</button>
+              <span id="files-current-path" class="mono">/</span>
+            </div>
+            <button id="files-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+          </div>
+          <div class="files-layout">
+            <div id="files-list" class="files-list"></div>
+            <div id="file-editor-pane" class="file-editor-pane hidden">
+              <div class="editor-header">
+                <span id="editor-filename" class="mono"></span>
+                <div class="editor-actions">
+                  <button id="editor-save-btn" class="btn btn-primary btn-sm">Save</button>
+                  <button id="editor-close-btn" class="btn btn-ghost btn-sm">Close</button>
+                </div>
+              </div>
+              <textarea id="editor-textarea" spellcheck="false"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- World Tab -->
+        <section id="tab-world" class="tab-panel">
+          <div class="settings-layout">
+            <div class="panel-card">
+              <h3>World Summary (<span id="world-level-name">world</span>)</h3>
+              <p class="player-sub" id="world-totals">Loading world info...</p>
+              <div id="world-dimensions-list" class="player-list"></div>
+            </div>
+            <div class="panel-card">
+              <h3>World Import &amp; Export</h3>
+              <p class="player-sub">Export your Overworld, Nether, and End as a .zip archive, or import a Java Edition world (.zip / .mcworld). Stop the server first.</p>
+              <div class="toggle-row" style="margin-bottom:12px;">
+                <button type="button" id="world-export-btn" class="btn btn-secondary btn-sm">Export World (.zip)</button>
+              </div>
+              <form id="world-import-form" class="inline-form">
+                <input type="file" id="world-import-file" accept=".zip,.mcworld" required>
+                <label class="checkbox-label"><input type="checkbox" id="world-import-backup" checked><span>Backup before import</span></label>
+                <button type="submit" id="world-import-btn" class="btn btn-primary btn-sm">Import World</button>
+              </form>
+            </div>
+            <div class="panel-card">
+              <h3>Chunk Pruner &amp; Optimizer</h3>
+              <p class="player-sub">Delete uninhabited or lightly explored chunks to reclaim storage. Stop the server before pruning.</p>
+              <div class="form-grid" style="margin-bottom:12px;">
+                <div class="form-group">
+                  <label for="prune-threshold">Inhabited Time Threshold</label>
+                  <select id="prune-threshold">
+                    <option value="UNTOUCHED">0s (Untouched / Pass-through only)</option>
+                    <option value="THIRTY_SECONDS">30s (Quick Sprint)</option>
+                    <option value="TWO_MINUTES">2m (Brief Visit)</option>
+                    <option value="FIVE_MINUTES">5m (Light Exploration)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-bottom:12px;">
+                <label class="checkbox-label"><input type="checkbox" id="prune-nether" checked><span>Prune Nether (DIM-1)</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prune-end" checked><span>Prune The End (DIM1)</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prune-backup" checked><span>Create world backup first</span></label>
+              </div>
+              <button type="button" id="optimize-world-btn" class="btn btn-primary btn-sm">Run Chunk Pruner</button>
+              <p class="player-sub" id="prune-last-result" style="margin-top:8px;"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Live Map Tab -->
+        <section id="tab-livemap" class="tab-panel">
+          <div class="panel-card">
+            <div class="files-toolbar">
+              <div>
+                <h3 style="margin:0;">Live Map (Squaremap)</h3>
+                <div id="livemap-status-text" class="player-sub">Checking Squaremap status...</div>
+              </div>
+              <div class="player-actions">
+                <button type="button" id="livemap-install-btn" class="btn btn-primary btn-sm hidden">Install Squaremap</button>
+                <button type="button" id="livemap-open-btn" class="btn btn-secondary btn-sm hidden">Open in New Tab</button>
+                <button type="button" id="livemap-uninstall-btn" class="btn btn-danger btn-sm hidden">Uninstall</button>
+              </div>
+            </div>
+            <div id="livemap-port-row" class="inline-form hidden" style="margin-top:10px;align-items:center;">
+              <label for="livemap-port-input" class="player-sub" style="margin:0;">Squaremap HTTP Port:</label>
+              <input type="number" id="livemap-port-input" min="1024" max="65535" value="8081" style="max-width:120px;">
+              <button type="button" id="livemap-port-save-btn" class="btn btn-secondary btn-sm">Save Port</button>
+            </div>
+            <div id="livemap-conflict-banner" class="conflict-banner hidden"></div>
+            <iframe id="livemap-frame" class="livemap-frame hidden" title="Squaremap Live Map"></iframe>
+          </div>
+        </section>
+
+        <!-- Settings & Properties Tab -->
+        <section id="tab-settings" class="tab-panel">
+          <form id="settings-form" class="settings-layout">
+            <div class="panel-card">
+              <h3>Server Runtime &amp; Configuration</h3>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="set-name">Server Name</label>
+                  <input type="text" id="set-name" required>
+                </div>
+                <div class="form-group">
+                  <label for="set-ram">Allocated RAM (MB)</label>
+                  <input type="number" id="set-ram" min="256" step="128" required>
+                </div>
+                <div class="form-group">
+                  <label for="set-java">Java Version</label>
+                  <select id="set-java">
+                    <option value="8">Java 8</option>
+                    <option value="17">Java 17</option>
+                    <option value="21">Java 21</option>
+                    <option value="25">Java 25</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="set-port">Server Port</label>
+                  <input type="number" id="set-port" min="1" max="65535" required>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="set-jvm-args">JVM Arguments</label>
+                <input type="text" id="set-jvm-args" class="mono">
+              </div>
+              <div class="toggle-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="set-autostart">
+                  <span>Auto-start when app launches</span>
+                </label>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="set-eula">
+                  <span>Minecraft EULA accepted</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <h3>server.properties</h3>
+              <div class="form-grid">
+                <div class="form-group span-2">
+                  <label for="prop-motd">MOTD</label>
+                  <input type="text" id="prop-motd">
+                </div>
+                <div class="form-group">
+                  <label for="prop-max-players">Max Players</label>
+                  <input type="number" id="prop-max-players" min="1" max="1000">
+                </div>
+                <div class="form-group">
+                  <label for="prop-gamemode">Gamemode</label>
+                  <select id="prop-gamemode">
+                    <option value="survival">Survival</option>
+                    <option value="creative">Creative</option>
+                    <option value="adventure">Adventure</option>
+                    <option value="spectator">Spectator</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="prop-difficulty">Difficulty</label>
+                  <select id="prop-difficulty">
+                    <option value="peaceful">Peaceful</option>
+                    <option value="easy">Easy</option>
+                    <option value="normal">Normal</option>
+                    <option value="hard">Hard</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="prop-view-distance">View Distance</label>
+                  <input type="number" id="prop-view-distance" min="2" max="32">
+                </div>
+                <div class="form-group">
+                  <label for="prop-sim-distance">Simulation Distance</label>
+                  <input type="number" id="prop-sim-distance" min="2" max="32">
+                </div>
+                <div class="form-group">
+                  <label for="prop-level-name">World Name</label>
+                  <input type="text" id="prop-level-name">
+                </div>
+                <div class="form-group">
+                  <label for="prop-level-seed">World Seed</label>
+                  <input type="text" id="prop-level-seed">
+                </div>
+              </div>
+
+              <div class="checkbox-grid">
+                <label class="checkbox-label"><input type="checkbox" id="prop-pvp"><span>PvP Enabled</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-hardcore"><span>Hardcore Mode</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-online-mode"><span>Online Mode (Auth)</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-whitelist"><span>Whitelist Enabled</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-enforce-whitelist"><span>Enforce Whitelist</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-cmd-block"><span>Command Blocks</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-spawn-monsters"><span>Spawn Monsters</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-spawn-animals"><span>Spawn Animals</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-spawn-npcs"><span>Spawn Villagers/NPCs</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-allow-flight"><span>Allow Flight</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-allow-nether"><span>Allow Nether</span></label>
+                <label class="checkbox-label"><input type="checkbox" id="prop-force-gamemode"><span>Force Gamemode</span></label>
+              </div>
+            </div>
+
+            <div class="settings-footer">
+              <button type="button" id="delete-server-btn" class="btn btn-danger">Delete Server</button>
+              <button type="submit" class="btn btn-primary">Save Settings</button>
+            </div>
+          </form>
+
+          <div class="players-grid" style="margin-top: 14px;">
+            <div class="panel-card">
+              <h3>Public Tunnel (Bore / Playit.gg)</h3>
+              <p id="tunnel-status-text" class="player-sub">Disconnected</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="net-tunnel-provider">Provider</label>
+                  <select id="net-tunnel-provider">
+                    <option value="BORE">Instant Free Tunnel (bore.pub)</option>
+                    <option value="PLAYIT">Playit.gg</option>
+                    <option value="CUSTOM_BORE">Custom Bore Relay</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="net-bore-host">Custom Relay Host</label>
+                  <input type="text" id="net-bore-host" value="bore.pub">
+                </div>
+                <div class="form-group">
+                  <label for="net-bore-port">Custom Relay Port</label>
+                  <input type="number" id="net-bore-port" value="7835">
+                </div>
+                <div class="form-group">
+                  <label for="net-playit-secret">Playit Secret (optional)</label>
+                  <input type="password" id="net-playit-secret" placeholder="Leave blank to keep existing">
+                </div>
+              </div>
+              <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="net-tunnel-autostart"><span>Auto-start tunnel with server</span></label>
+              <div class="player-actions">
+                <button type="button" id="tunnel-start-btn" class="btn btn-primary btn-sm">Start Tunnel</button>
+                <button type="button" id="tunnel-stop-btn" class="btn btn-danger btn-sm">Stop Tunnel</button>
+                <button type="button" id="tunnel-save-btn" class="btn btn-secondary btn-sm">Save</button>
+              </div>
+            </div>
+
+            <div class="panel-card">
+              <h3>Router Port Forwarding (UPnP / NAT-PMP)</h3>
+              <p id="pf-status-text" class="player-sub">Idle</p>
+              <div class="form-grid">
+                <div class="form-group">
+                  <label for="net-pf-protocol">Protocol</label>
+                  <select id="net-pf-protocol">
+                    <option value="BOTH">TCP + UDP</option>
+                    <option value="TCP">TCP Only</option>
+                    <option value="UDP">UDP Only</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="net-pf-lease">Lease Duration (sec, 0=perm)</label>
+                  <input type="number" id="net-pf-lease" min="0" value="0">
+                </div>
+              </div>
+              <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="net-pf-auto"><span>Auto-forward port on start</span></label>
+              <div class="player-actions">
+                <button type="button" id="pf-start-btn" class="btn btn-primary btn-sm">Map Port</button>
+                <button type="button" id="pf-stop-btn" class="btn btn-danger btn-sm">Release Port</button>
+                <button type="button" id="pf-save-btn" class="btn btn-secondary btn-sm">Save</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Players Tab -->
+        <section id="tab-players" class="tab-panel">
+          <div class="players-grid">
+            <div class="panel-card">
+              <h3>Online Players</h3>
+              <div id="players-online-list" class="player-list"></div>
+            </div>
+
+            <div class="panel-card">
+              <h3>Whitelist</h3>
+              <form id="whitelist-add-form" class="inline-form">
+                <input type="text" id="whitelist-add-input" placeholder="Player username" required>
+                <button type="submit" class="btn btn-primary btn-sm">Add</button>
+              </form>
+              <div id="players-whitelist-list" class="player-list"></div>
+            </div>
+
+            <div class="panel-card">
+              <h3>Operators (OPs)</h3>
+              <form id="op-add-form" class="inline-form">
+                <input type="text" id="op-add-input" placeholder="Player username" required>
+                <select id="op-level-input" title="OP Level">
+                  <option value="4">Level 4</option>
+                  <option value="3">Level 3</option>
+                  <option value="2">Level 2</option>
+                  <option value="1">Level 1</option>
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm">Op</button>
+              </form>
+              <div id="players-ops-list" class="player-list"></div>
+            </div>
+
+            <div class="panel-card">
+              <h3>Banned Players</h3>
+              <form id="ban-add-form" class="inline-form">
+                <input type="text" id="ban-add-input" placeholder="Player username" required>
+                <input type="text" id="ban-reason-input" placeholder="Reason (optional)">
+                <button type="submit" class="btn btn-danger btn-sm">Ban</button>
+              </form>
+              <div id="players-banned-list" class="player-list"></div>
+            </div>
+
+            <div class="panel-card">
+              <h3>Banned IPs</h3>
+              <form id="banip-add-form" class="inline-form">
+                <input type="text" id="banip-add-input" placeholder="IP address" required>
+                <input type="text" id="banip-reason-input" placeholder="Reason (optional)">
+                <button type="submit" class="btn btn-danger btn-sm">Ban IP</button>
+              </form>
+              <div id="players-banned-ips-list" class="player-list"></div>
+            </div>
+          </div>
+        </section>
+        <!-- Backups Tab -->
+        <section id="tab-backups" class="tab-panel">
+          <div class="panel-card">
+            <div class="files-toolbar">
+              <h3 style="margin:0;">Server Backups</h3>
+              <div class="player-actions">
+                <button type="button" id="backup-world-btn" class="btn btn-primary btn-sm">+ World Backup</button>
+                <button type="button" id="backup-full-btn" class="btn btn-secondary btn-sm">+ Full Backup</button>
+              </div>
+            </div>
+            <div id="backups-list" class="player-list" style="max-height:55vh;"></div>
+          </div>
+        </section>
+
+        <!-- Plugins / Mods Tab -->
+        <section id="tab-plugins" class="tab-panel">
+          <div class="players-grid">
+            <div class="panel-card">
+              <h3>Installed Plugins / Mods</h3>
+              <div id="plugins-installed-list" class="player-list" style="max-height:55vh;"></div>
+            </div>
+            <div class="panel-card">
+              <h3>Search Modrinth</h3>
+              <form id="modrinth-search-form" class="inline-form">
+                <input type="text" id="modrinth-query" placeholder="Search plugins or mods..." required>
+                <button type="submit" class="btn btn-primary btn-sm">Search</button>
+              </form>
+              <div id="modrinth-results-list" class="player-list" style="max-height:50vh;"></div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- Create Server Modal -->
+  <div id="create-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Create New Minecraft Server</h3>
+        <button id="close-create-modal" class="btn-icon">✕</button>
+      </div>
+      <form id="create-server-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="create-name">Server Name</label>
+            <input type="text" id="create-name" placeholder="My Survival World" required>
+          </div>
+          <div class="form-group">
+            <label for="create-type">Server Software</label>
+            <select id="create-type" required></select>
+          </div>
+          <div class="form-group">
+            <label for="create-version">Minecraft Version</label>
+            <select id="create-version" required></select>
+          </div>
+          <div class="form-group">
+            <label for="create-port">Port</label>
+            <input type="number" id="create-port" min="1" max="65535" value="25565" required>
+          </div>
+          <div class="form-group">
+            <label for="create-ram">RAM Allocation (MB)</label>
+            <input type="number" id="create-ram" min="512" step="256" value="2048" required>
+          </div>
+          <div class="form-group">
+            <label for="create-motd">MOTD</label>
+            <input type="text" id="create-motd" value="A MineServe Minecraft Server">
+          </div>
+        </div>
+
+        <label class="checkbox-label eula-box">
+          <input type="checkbox" id="create-eula">
+          <span>I agree to the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer">Minecraft EULA</a></span>
+        </label>
+
+        <div id="create-progress-box" class="progress-box hidden">
+          <div class="progress-text-row">
+            <span id="create-progress-msg">Preparing...</span>
+            <span id="create-progress-pct">0%</span>
+          </div>
+          <div class="progress-track">
+            <div id="create-progress-fill" class="progress-fill" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div id="create-error" class="error-banner hidden"></div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-create-btn" class="btn btn-ghost">Cancel</button>
+          <button type="submit" id="submit-create-btn" class="btn btn-primary">Create &amp; Download</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
+

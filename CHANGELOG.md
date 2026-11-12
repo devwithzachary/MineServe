@@ -2,6 +2,17 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.6.0] - 2026-11-12
+
+### 🖥️ Full Feature-Parity Web Remote Admin UI
+- **Modular Web Admin Assets & Branding**: Replaced the inline HTML string with modular static assets (`index.html`, `styles.css`, `app.js`) and served the official MineServe app icon at `/logo.png`.
+- **Full Server Lifecycle & Player Management**: Added browser-based server creation (Paper, Purpur, Folia, Vanilla, Fabric, Forge, NeoForge with version lookup and async progress tracking), server deletion, full `server.properties` and runtime settings editing, and complete player management (Whitelist, Ops, Player Bans, IP Bans, Kick).
+- **Live Performance & Telemetry Chart**: Added the **Performance** tab featuring real-time CPU, RAM, TPS, MSPT, uptime, and disk metrics, an interactive rolling HTML5 Canvas chart plotting CPU %, RAM %, and TPS over time, plus 1-click **Aikar's G1GC Flags** optimization.
+- **Automation & Scheduled Tasks**: Added the **Automation** tab to configure Idle Auto-Shutdown, Auto-Wake on Ping, and scheduled tasks (world/full backups, restarts, broadcasts, and custom commands).
+- **World Management, Import/Export & Chunk Pruner**: Added the **World** tab with per-dimension storage/chunk summaries, dimension resets, streaming `.zip`/`.mcworld` world import and `.zip` world export, and configurable Chunk Pruner options (inhabited time threshold, Nether/End toggles, and pre-prune backup).
+- **Live Map (Squaremap) Integration**: Added the **Live Map** tab with Squaremap installation/uninstallation via Modrinth, embedded iframe preview, custom Squaremap HTTP port configuration, automatic port-conflict detection against the Web Admin port, and auto-assignment to port `8081` on fresh installs.
+- **Networking, Backups & Plugins/Mods**: Added **Settings & Network** controls for Bore/Playit.gg tunnels and UPnP/NAT-PMP router port forwarding, a **Backups** tab (create, restore, delete, download `.zip`), and a **Plugins / Mods** tab (list, enable/disable, delete, and Modrinth search/install).
+
 ## [1.5.1] - 2026-11-11
 
 ### ❤️ Community, Supporters & Links

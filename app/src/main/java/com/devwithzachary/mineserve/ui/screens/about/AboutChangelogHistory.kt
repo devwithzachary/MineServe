@@ -37,9 +37,19 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.6.0",
+        date = "November 12, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "Full Feature-Parity Web UI: Create and delete servers, manage players (Whitelist, Ops, Bans), configure automation and scheduled tasks, and edit all server settings directly from your browser.",
+            "Web Performance, World & Live Map: Added live CPU/RAM/TPS telemetry charts over time, 1-click Aikar's flags, world import/export, configurable chunk pruning, and Squaremap live map integration with automatic port conflict protection.",
+            "Web Backups, Plugins & Networking: Added browser-based backup creation/restore/download, Modrinth plugin and mod search/install, and Bore/Playit.gg tunnel and UPnP/NAT-PMP port forwarding controls."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.5.1",
         date = "November 11, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Project Supporters & Community Links: Updated Project Supporters recognition across Credits and About for Patreon, YouTube, and Buy Me a Coffee members, added a direct Buy Me a Coffee button on Credits, and unified Discord community invite links.",
             "UI & Layout Polish: Updated the About screen supporters section to wrap chips cleanly across rows and refined support button spacing."

@@ -1,12 +1,18 @@
 package com.devwithzachary.mineserve.admin.web
 
 import android.os.Build
-import android.os.Debug
 import android.util.Log
 import com.devwithzachary.mineserve.engine.ServerProcessManager
+import com.devwithzachary.mineserve.engine.ServerSoftwareManager
+import com.devwithzachary.mineserve.net.portforward.PortForwardManager
+import com.devwithzachary.mineserve.repository.BackupRepository
+import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import com.devwithzachary.mineserve.tunnel.TunnelManager
+import java.io.BufferedInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.InputStream
 import java.io.OutputStream
 import java.net.ServerSocket
 import java.net.Socket
@@ -24,13 +30,30 @@ class WebAdminServer(
     private val security: WebAdminSecurity,
     private val configProvider: () -> WebAdminConfig,
     private val serverRepository: ServerRepository,
-    private val processManager: ServerProcessManager
+    private val processManager: ServerProcessManager,
+    private val serverSoftwareManager: ServerSoftwareManager,
+    private val backupRepository: BackupRepository,
+    private val pluginRepository: PluginRepository,
+    private val tunnelManager: TunnelManager,
+    private val portForwardManager: PortForwardManager,
+    private val assetProvider: (String) -> ByteArray?
 ) {
     companion object {
         private const val TAG = "WebAdminServer"
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + Job())
+    private val apiHandlers = WebAdminApiHandlers(scope, serverRepository, processManager, serverSoftwareManager)
+    private val extHandlers = WebAdminExtendedHandlers(
+        webAdminPort = port,
+        serverRepository = serverRepository,
+        processManager = processManager,
+        serverSoftwareManager = serverSoftwareManager,
+        backupRepository = backupRepository,
+        pluginRepository = pluginRepository,
+        tunnelManager = tunnelManager,
+        portForwardManager = portForwardManager
+    )
     private var serverSocket: ServerSocket? = null
     private var acceptJob: Job? = null
 
@@ -80,11 +103,11 @@ class WebAdminServer(
     private suspend fun handleClient(socket: Socket) {
         val clientIp = socket.inetAddress?.hostAddress ?: "unknown"
         try {
-            socket.soTimeout = 10000 // 10s socket timeout
-            val reader = BufferedReader(InputStreamReader(socket.getInputStream(), Charsets.UTF_8))
+            socket.soTimeout = 30000 // 30s socket timeout
+            val rawIn = BufferedInputStream(socket.getInputStream())
             val out = socket.getOutputStream()
 
-            val requestLine = reader.readLine() ?: run {
+            val requestLine = readHeaderLine(rawIn) ?: run {
                 socket.close()
                 return
             }
@@ -103,7 +126,7 @@ class WebAdminServer(
             // Read Headers
             val headers = mutableMapOf<String, String>()
             while (true) {
-                val headerLine = reader.readLine() ?: break
+                val headerLine = readHeaderLine(rawIn) ?: break
                 if (headerLine.isEmpty()) break
                 val colonIdx = headerLine.indexOf(':')
                 if (colonIdx > 0) {
@@ -113,38 +136,57 @@ class WebAdminServer(
                 }
             }
 
-            // Read Body if present
-            val contentLength = headers["content-length"]?.toIntOrNull() ?: 0
-            val body = if (contentLength > 0 && contentLength < 5 * 1024 * 1024) { // Max 5MB
-                val buf = CharArray(contentLength)
-                var readTotal = 0
-                while (readTotal < contentLength) {
-                    val r = reader.read(buf, readTotal, contentLength - readTotal)
-                    if (r < 0) break
-                    readTotal += r
-                }
-                String(buf, 0, readTotal)
-            } else {
-                ""
-            }
-
             // Handle CORS preflight
             if (method == "OPTIONS") {
                 sendResponse(out, 204, "No Content", "text/plain", ByteArray(0))
                 return
             }
 
-            // Static Root / SPA HTML
-            if (path == "/" || path == "/index.html") {
-                val htmlBytes = WebAdminHtml.HTML.toByteArray(Charsets.UTF_8)
-                sendResponse(out, 200, "OK", "text/html; charset=utf-8", htmlBytes)
+            // Static Web Admin Assets
+            if (method == "GET" && serveStaticAsset(out, path)) {
                 return
             }
 
-            // Extract Auth Token
+            val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
+            val isWorldImportUpload = method == "POST" &&
+                path.startsWith("/api/servers/") &&
+                path.endsWith("/world/import")
+
+            // Extract Auth Token before reading potentially large bodies
             val authHeader = headers["authorization"]
             val cookieHeader = headers["cookie"]
             val token = extractToken(authHeader, cookieHeader)
+
+            if (isWorldImportUpload) {
+                if (security.validateSession(token) == null) {
+                    val errObj = JSONObject().put("error", "Unauthorized. Please log in.")
+                    sendResponse(out, 401, "Unauthorized", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
+                    return
+                }
+                val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
+                val serverId = segments.getOrNull(0) ?: ""
+                if (contentLength <= 0L || contentLength > 512L * 1024L * 1024L) {
+                    val errObj = JSONObject().put("error", "World archive must be between 1 byte and 512 MB.")
+                    sendResponse(out, 400, "Bad Request", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
+                    return
+                }
+                val tempFile = File.createTempFile("web_world_import_", ".zip")
+                try {
+                    streamFixedBytesToFile(rawIn, contentLength, tempFile)
+                    val createBackup = queryParams["createBackup"]?.toBooleanStrictOrNull() ?: true
+                    sendApiResult(out, extHandlers.handleImportWorld(serverId, tempFile, createBackup))
+                } finally {
+                    tempFile.delete()
+                }
+                return
+            }
+
+            // Read JSON/Text Body if present (Max 5MB)
+            val body = if (contentLength > 0 && contentLength < 5L * 1024 * 1024) {
+                readFixedBytes(rawIn, contentLength.toInt()).toString(Charsets.UTF_8)
+            } else {
+                ""
+            }
 
             // Public Endpoint: Login
             if (path == "/api/login" && method == "POST") {
@@ -189,7 +231,17 @@ class WebAdminServer(
                 return
             }
 
-            // List Servers
+            // Software Types & Versions
+            if (path == "/api/software/types" && method == "GET") {
+                sendApiResult(out, apiHandlers.handleSoftwareTypes())
+                return
+            }
+            if (path == "/api/software/versions" && method == "GET") {
+                sendApiResult(out, apiHandlers.handleSoftwareVersions(queryParams["type"]))
+                return
+            }
+
+            // List or Create Servers
             if (path == "/api/servers" && method == "GET") {
                 val servers = serverRepository.servers.value
                 val statuses = processManager.serverStatuses.value
@@ -209,6 +261,15 @@ class WebAdminServer(
                 sendResponse(out, 200, "OK", "application/json", arr.toString().toByteArray(Charsets.UTF_8))
                 return
             }
+            if (path == "/api/servers" && method == "POST") {
+                sendApiResult(out, apiHandlers.handleCreateServer(body))
+                return
+            }
+            if (path.startsWith("/api/servers/jobs/") && method == "GET") {
+                val jobId = path.removePrefix("/api/servers/jobs/").trim('/')
+                sendApiResult(out, apiHandlers.handleGetCreationJob(jobId))
+                return
+            }
 
             // Server Specific Endpoints: /api/servers/{id}/...
             if (path.startsWith("/api/servers/")) {
@@ -223,7 +284,11 @@ class WebAdminServer(
                         return
                     }
 
-                    // 1. GET /api/servers/{id}
+                    // 1. GET or DELETE /api/servers/{id}
+                    if (segments.size == 1 && method == "DELETE") {
+                        sendApiResult(out, apiHandlers.handleDeleteServer(serverId))
+                        return
+                    }
                     if (segments.size == 1 && method == "GET") {
                         val status = processManager.getServerStatus(serverId).name
                         val metrics = processManager.serverMetrics.value[serverId]
@@ -277,6 +342,40 @@ class WebAdminServer(
                         processManager.restartServer(server, serverDir)
                         val resp = JSONObject().put("success", true).put("message", "Server restart requested")
                         sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                        return
+                    }
+
+                    // 4b. POST /api/servers/{id}/delete
+                    if (action == "delete" && method == "POST") {
+                        sendApiResult(out, apiHandlers.handleDeleteServer(serverId))
+                        return
+                    }
+
+                    // 4c. GET & POST /api/servers/{id}/settings
+                    if (action == "settings") {
+                        if (method == "GET") {
+                            sendApiResult(out, apiHandlers.handleGetSettings(serverId))
+                            return
+                        } else if (method == "POST") {
+                            sendApiResult(out, apiHandlers.handleSaveSettings(serverId, body))
+                            return
+                        }
+                    }
+
+                    // 4d. Players Endpoints: /api/servers/{id}/players[/whitelist|ops|ban|ban-ip|kick]
+                    if (action == "players") {
+                        val playerAction = segments.getOrNull(2)
+                        if (playerAction == null && method == "GET") {
+                            sendApiResult(out, apiHandlers.handleGetPlayers(serverId))
+                            return
+                        } else if (playerAction != null && method == "POST") {
+                            sendApiResult(out, apiHandlers.handlePlayerAction(serverId, playerAction, body))
+                            return
+                        }
+                    }
+
+                    // 4e. Performance, Automation, World, Live Map, Network, Backups, Plugins
+                    if (dispatchExtendedRoutes(out, serverId, action, segments, method, queryParams, body)) {
                         return
                     }
 
@@ -445,7 +544,7 @@ class WebAdminServer(
         sb.append("Content-Length: ${body.size}\r\n")
         sb.append("Connection: close\r\n")
         sb.append("Access-Control-Allow-Origin: *\r\n")
-        sb.append("Access-Control-Allow-Methods: GET, POST, OPTIONS\r\n")
+        sb.append("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n")
         sb.append("Access-Control-Allow-Headers: Content-Type, Authorization, Cookie\r\n")
         sb.append("X-Content-Type-Options: nosniff\r\n")
         sb.append("X-Frame-Options: SAMEORIGIN\r\n")
@@ -457,6 +556,193 @@ class WebAdminServer(
         if (body.isNotEmpty()) {
             out.write(body)
         }
+        out.flush()
+    }
+
+    private fun serveStaticAsset(out: OutputStream, path: String): Boolean {
+        val assetName = when (path) {
+            "/", "/index.html" -> "index.html"
+            "/styles.css" -> "styles.css"
+            "/app.js" -> "app.js"
+            "/logo.png" -> "logo.png"
+            else -> return false
+        }
+        val bytes = assetProvider(assetName) ?: return false
+        val contentType = when {
+            assetName.endsWith(".html") -> "text/html; charset=utf-8"
+            assetName.endsWith(".css") -> "text/css; charset=utf-8"
+            assetName.endsWith(".js") -> "application/javascript; charset=utf-8"
+            assetName.endsWith(".png") -> "image/png"
+            else -> "application/octet-stream"
+        }
+        sendResponse(out, 200, "OK", contentType, bytes)
+        return true
+    }
+
+    private suspend fun dispatchExtendedRoutes(
+        out: OutputStream,
+        serverId: String,
+        action: String?,
+        segments: List<String>,
+        method: String,
+        queryParams: Map<String, String>,
+        body: String
+    ): Boolean {
+        val sub = segments.getOrNull(2)
+        val result: WebApiResult? = when (action) {
+            "performance" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetPerformance(serverId)
+                sub == "aikar" && method == "POST" -> extHandlers.handleApplyAikarFlags(serverId)
+                else -> null
+            }
+            "automation" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetAutomation(serverId)
+                sub == null && method == "POST" -> extHandlers.handleSaveAutomation(serverId, body)
+                sub == "tasks" && method == "POST" -> {
+                    val taskAction = segments.getOrNull(3) ?: "add"
+                    extHandlers.handleAutomationTask(serverId, taskAction, body)
+                }
+                else -> null
+            }
+            "world" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetWorld(serverId)
+                sub == "reset" && method == "POST" -> extHandlers.handleResetDimension(serverId, body)
+                sub == "optimize" && method == "POST" -> extHandlers.handleOptimizeWorld(serverId, body)
+                sub == "export" && method == "GET" -> {
+                    val (tempFile, errResult) = extHandlers.exportWorldToTempZip(serverId)
+                    if (errResult != null) {
+                        errResult
+                    } else if (tempFile != null) {
+                        try {
+                            sendFileStreamResponse(
+                                out = out,
+                                contentType = "application/zip",
+                                file = tempFile,
+                                extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"${serverId}-world.zip\"")
+                            )
+                        } finally {
+                            tempFile.delete()
+                        }
+                        return true
+                    } else {
+                        WebApiResult(500, "Internal Server Error", JSONObject().put("error", "World export failed"))
+                    }
+                }
+                else -> null
+            }
+            "livemap" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetLiveMap(serverId)
+                sub == "install" && method == "POST" -> extHandlers.handleInstallLiveMap(serverId)
+                sub == "uninstall" && method == "POST" -> extHandlers.handleUninstallLiveMap(serverId)
+                sub == "port" && method == "POST" -> extHandlers.handleSetLiveMapPort(serverId, body)
+                else -> null
+            }
+            "network" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetNetwork(serverId)
+                sub == "tunnel" && method == "POST" -> extHandlers.handleTunnelAction(serverId, body)
+                sub == "portforward" && method == "POST" -> extHandlers.handlePortForwardAction(serverId, body)
+                else -> null
+            }
+            "backups" -> when {
+                sub == null && method == "GET" -> extHandlers.handleListBackups(serverId)
+                sub == "create" && method == "POST" -> extHandlers.handleCreateBackup(serverId, body)
+                sub == "restore" && method == "POST" -> extHandlers.handleRestoreBackup(serverId, body)
+                sub == "delete" && method == "POST" -> extHandlers.handleDeleteBackup(serverId, body)
+                sub == "download" && method == "GET" -> {
+                    val file = extHandlers.getBackupFile(serverId, queryParams["file"] ?: "")
+                    if (file != null) {
+                        sendResponse(
+                            out, 200, "OK", "application/zip", file.readBytes(),
+                            extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"${file.name}\"")
+                        )
+                        return true
+                    }
+                    WebApiResult(404, "Not Found", JSONObject().put("error", "Backup not found"))
+                }
+                else -> null
+            }
+            "plugins" -> when {
+                sub == null && method == "GET" -> extHandlers.handleListPlugins(serverId)
+                sub == "search" && method == "GET" -> extHandlers.handleSearchModrinth(serverId, queryParams["q"] ?: "")
+                sub == "install" && method == "POST" -> extHandlers.handleInstallModrinth(serverId, body)
+                (sub == "toggle" || sub == "delete") && method == "POST" -> extHandlers.handlePluginAction(serverId, sub, body)
+                else -> null
+            }
+            else -> null
+        }
+        if (result != null) {
+            sendApiResult(out, result)
+            return true
+        }
+        return false
+    }
+
+    private fun sendApiResult(out: OutputStream, result: WebApiResult) {
+        sendResponse(
+            out = out,
+            statusCode = result.statusCode,
+            statusText = result.statusText,
+            contentType = "application/json",
+            body = result.body.toString().toByteArray(Charsets.UTF_8)
+        )
+    }
+
+    private fun readHeaderLine(input: InputStream): String? {
+        val baos = ByteArrayOutputStream()
+        var b = input.read()
+        if (b == -1) return null
+        while (b != -1) {
+            if (b == '\n'.code) break
+            if (b != '\r'.code) baos.write(b)
+            b = input.read()
+        }
+        return baos.toString(Charsets.UTF_8.name())
+    }
+
+    private fun readFixedBytes(input: InputStream, length: Int): ByteArray {
+        val data = ByteArray(length)
+        var offset = 0
+        while (offset < length) {
+            val read = input.read(data, offset, length - offset)
+            if (read < 0) break
+            offset += read
+        }
+        return if (offset == length) data else data.copyOf(offset)
+    }
+
+    private fun streamFixedBytesToFile(input: InputStream, length: Long, dest: File) {
+        val buffer = ByteArray(16 * 1024)
+        var remaining = length
+        dest.outputStream().use { fileOut ->
+            while (remaining > 0) {
+                val toRead = minOf(buffer.size.toLong(), remaining).toInt()
+                val read = input.read(buffer, 0, toRead)
+                if (read < 0) break
+                fileOut.write(buffer, 0, read)
+                remaining -= read
+            }
+        }
+    }
+
+    private fun sendFileStreamResponse(
+        out: OutputStream,
+        contentType: String,
+        file: File,
+        extraHeaders: Map<String, String> = emptyMap()
+    ) {
+        val sb = StringBuilder()
+        sb.append("HTTP/1.1 200 OK\r\n")
+        sb.append("Content-Type: $contentType\r\n")
+        sb.append("Content-Length: ${file.length()}\r\n")
+        sb.append("Access-Control-Allow-Origin: *\r\n")
+        sb.append("Cache-Control: no-store\r\n")
+        sb.append("Connection: close\r\n")
+        for ((k, v) in extraHeaders) {
+            sb.append("$k: $v\r\n")
+        }
+        sb.append("\r\n")
+        out.write(sb.toString().toByteArray(Charsets.UTF_8))
+        file.inputStream().use { it.copyTo(out) }
         out.flush()
     }
 }

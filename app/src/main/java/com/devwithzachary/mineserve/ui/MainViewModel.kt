@@ -70,6 +70,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         application,
         serverRepository,
         processManager,
+        serverSoftwareManager,
+        backupRepository,
+        pluginRepository,
         tunnelManager,
         com.devwithzachary.mineserve.net.portforward.PortForwardManager.getInstance(application)
     )
