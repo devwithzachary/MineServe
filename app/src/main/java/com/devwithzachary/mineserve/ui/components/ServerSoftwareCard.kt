@@ -17,7 +17,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.foundation.clickable
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Memory
@@ -95,6 +96,7 @@ fun ServerSoftwareCard(
     onFetchVersions: suspend (ServerType) -> List<String>,
     onUpdateBuild: (createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit,
     onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit,
+    onUpdateJavaVersion: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -121,6 +123,8 @@ fun ServerSoftwareCard(
     var upgradeStatusText by remember { mutableStateOf("") }
     var upgradeErrorText by remember { mutableStateOf<String?>(null) }
     var versionDropdownExpanded by remember { mutableStateOf(false) }
+
+    var showJavaVersionDialog by remember { mutableStateOf(false) }
 
     val isRunning = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
 
@@ -218,19 +222,27 @@ fun ServerSoftwareCard(
                     }
                 }
 
-                // Java chip
-                Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Slate800,
-                    border = BorderStroke(1.dp, ObsidianCardBorder)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                // Java chip (clickable when not running to allow manual override)
+                if (!server.type.isBedrockNative) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Slate800,
+                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        modifier = Modifier.clickable(enabled = onUpdateJavaVersion != null && !isRunning) {
+                            showJavaVersionDialog = true
+                        }
                     ) {
-                        Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(12.dp))
-                        Text(stringResource(R.string.software_java_chip, server.javaVersion), color = DiamondLight, fontSize = 11.sp)
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(12.dp))
+                            Text(stringResource(R.string.software_java_chip, server.javaVersion), color = DiamondLight, fontSize = 11.sp)
+                            if (onUpdateJavaVersion != null && !isRunning) {
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Slate400, modifier = Modifier.size(14.dp))
+                            }
+                        }
                     }
                 }
             }
@@ -387,6 +399,93 @@ fun ServerSoftwareCard(
                     }
                 )
             }
+        )
+    }
+
+    // Modal 3: Manual Java Runtime Version Override
+    if (showJavaVersionDialog && onUpdateJavaVersion != null) {
+        val supportedJavaVersions = listOf(8, 17, 21, 25)
+        AlertDialog(
+            onDismissRequest = { showJavaVersionDialog = false },
+            title = {
+                Text(
+                    text = "Select Java Runtime",
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Choose the OpenJDK version used to launch ${server.name}. The selected runtime will be auto-installed if not already present on device.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    supportedJavaVersions.forEach { jVer ->
+                        val isCurrent = server.javaVersion == jVer
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (isCurrent) EmeraldDark.copy(alpha = 0.35f) else Slate800,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isCurrent) EmeraldPrimary else ObsidianCardBorder
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    onUpdateJavaVersion(jVer)
+                                    showJavaVersionDialog = false
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Memory,
+                                        contentDescription = null,
+                                        tint = if (isCurrent) EmeraldLight else DiamondLight,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Text(
+                                        text = "Java $jVer (OpenJDK $jVer)",
+                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                                        color = if (isCurrent) EmeraldLight else Color.White,
+                                        fontSize = 13.sp
+                                    )
+                                }
+                                if (isCurrent) {
+                                    Text(
+                                        text = "ACTIVE",
+                                        fontWeight = FontWeight.Bold,
+                                        color = EmeraldLight,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showJavaVersionDialog = false },
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(text = stringResource(R.string.cancel), color = Color.White)
+                }
+            },
+            containerColor = ObsidianCard,
+            shape = RoundedCornerShape(16.dp)
         )
     }
 }

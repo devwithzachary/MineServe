@@ -80,6 +80,8 @@ class ServerRepository(
                         }
                         val normalizedJava = if (server.type.isProxy && server.javaVersion < server.type.defaultJavaVersion) {
                             server.type.defaultJavaVersion
+                        } else if (server.type == ServerType.NEOFORGE && server.javaVersion == 8) {
+                            determineJavaVersion(server.version, server.type)
                         } else {
                             server.javaVersion
                         }

@@ -46,7 +46,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Web Backups, Plugins & Networking: Added browser-based backup creation/restore/download, Modrinth plugin/mod search and install, custom .jar upload, .mrpack modpack importer, and Bore/Playit.gg tunnel and UPnP/NAT-PMP port forwarding controls.",
             "Discord Webhook & Event Bridge: Configure Discord webhooks per server in Settings or the Web UI to broadcast server online/offline/crash events, player join/leave notices with skins, and completed backups with zero plugins.",
             "Proxy & Multi-Server Networks (Velocity & BungeeCord): Create Velocity or BungeeCord proxies, link multiple backend servers into a unified network, and bind backends strictly to 127.0.0.1.",
-            "Native Bedrock Dedicated Server (BDS - Beta): Experimental support for Mojang's official Bedrock Dedicated Server (native on x86_64, qemu-x86_64 on ARM64) with Bedrock-tailored diagnostics."
+            "Native Bedrock Dedicated Server (BDS - Beta): Experimental support for Mojang's official Bedrock Dedicated Server (native on x86_64, qemu-x86_64 on ARM64) with Bedrock-tailored diagnostics.",
+            "NeoForge Java Runtime Fix: Correctly maps NeoForge 21.x to Java 21 and added a manual Java version selector (8, 17, 21, 25) in Server Settings."
         )
     ),
     ReleaseChangelog(

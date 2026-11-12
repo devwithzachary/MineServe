@@ -51,6 +51,7 @@ class StandbyPingListener(
     private val scope = CoroutineScope(Dispatchers.IO + job)
 
     fun isRunning(): Boolean = isRunning.get()
+    fun isListening(): Boolean = isRunning.get() && (isTcpBound.get() || isUdpBound.get())
 
     fun start() {
         if (!isRunning.compareAndSet(false, true)) return

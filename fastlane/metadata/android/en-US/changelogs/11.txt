@@ -1,4 +1,5 @@
-- Full Feature-Parity Web UI: create/delete servers, edit settings, Whitelist/Ops/Bans, performance charts, world import/export, backups, Modrinth plugins/mods, .jar upload, .mrpack modpacks, tunneling/UPnP, and Squaremap Live Map
-- Native Bedrock Hosting (Beta): official Mojang Bedrock Dedicated Server (BDS)
-- Velocity & BungeeCord Proxies: link backends with 127.0.0.1 loopback binding
-- Discord Webhook Bridge: start/stop/crash, player, and backup alerts
+- Full Feature-Parity Web UI: create/delete servers, settings, telemetry charts, backups, plugins/mods, Live Map
+- Native Bedrock Hosting (Beta): official Bedrock Dedicated Server
+- Velocity & BungeeCord Proxies: link backends with 127.0.0.1 loopback
+- Discord Webhooks: start/stop/crash, player, and backup alerts
+- Engine Fix: NeoForge Java 21 mapping and manual Java picker

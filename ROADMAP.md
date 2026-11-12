@@ -12,7 +12,7 @@ Our goal is to deliver the most reliable, capable, and accessible dedicated Mine
 | :--- | :--- | :--- | :--- |
 | **v1.4.2** | Android x86_64 PRoot Reliability & Codebase Modularity | October 2026 | **Shipped** ✅ |
 | **v1.5.0 / v1.5.1** | Connectivity, Cloud Backups, Web Remote Admin, Telemetry & Community | October / November 2026 | **Shipped** ✅ |
-| **v1.6.0** | Full Feature-Parity Web UI, Bedrock Dedicated Server, Proxies & Discord Bridge | Q1 2027 | **Scheduled** 📋 |
+| **v1.6.0** | Full Feature-Parity Web UI, Bedrock Dedicated Server, Proxies & Discord Bridge | November 2026 | **Shipped** ✅ |
 | **v1.7.0** | `:core` KMP Module Extraction, World Mastery, NBT Editor & Android Integration | Q2 2027 | **Scheduled** 📋 |
 | **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Mesh VPN | Mid 2027 | **Scheduled** 📋 |
 | **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Late 2027 | **Scheduled** 📋 |
@@ -84,12 +84,10 @@ The 1.6.0 milestone upgrades the Web Remote Admin Panel into a complete, standal
   - **Worlds, Backups & Automation**: Manage world imports/exports, dimension resets, local & cloud backup sync (Nextcloud/WebDAV), scheduled cron tasks, and UPnP/Bore/Playit networking.
   - **Modern Bundled Web Assets**: Refactor the embedded single-string HTML into clean, bundled static web assets served by the embedded HTTP server.
 
-### 🧱 2. Native Bedrock Dedicated Server (BDS) & PocketMine
+### 🧱 2. Native Bedrock Dedicated Server (BDS - Beta)
 - **Official Mojang Bedrock Dedicated Server (BDS)**:
-  - Run the native Ubuntu x86_64 / ARM64 `bedrock_server` binary inside the PRoot container.
+  - Run the native Ubuntu `x86_64` `bedrock_server` binary inside the PRoot container (native on `x86_64`, `qemu-x86_64` user-mode emulation on `ARM64`).
   - Pure Bedrock hosting with zero Java protocol translation overhead, supporting official Add-Ons, Behavior Packs, and Resource Packs.
-- **PocketMine-MP Engine Support**:
-  - Ultra-lightweight PHP-based Minecraft: Bedrock Edition server software with plugin support.
 
 ### 🔀 3. Proxy & Multi-Server Networks (Velocity & BungeeCord)
 - **Velocity & BungeeCord Proxy Orchestration**:

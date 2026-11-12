@@ -174,7 +174,10 @@ fun SettingsTab(
             onCheckForUpdate = onCheckForUpdate,
             onFetchVersions = onFetchVersions,
             onUpdateBuild = onUpdateBuild,
-            onUpgradeVersion = onUpgradeVersion
+            onUpgradeVersion = onUpgradeVersion,
+            onUpdateJavaVersion = { newJava ->
+                onSaveServer(server.copy(javaVersion = newJava))
+            }
         )
 
         // Section: Server Memory & RAM Allocation (JVM heap only)

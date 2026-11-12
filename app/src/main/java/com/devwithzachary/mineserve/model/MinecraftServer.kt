@@ -62,6 +62,20 @@ fun determineJavaVersion(version: String, type: ServerType = ServerType.PAPER): 
         return type.defaultJavaVersion
     }
     val clean = version.trim().lowercase()
+
+    // Handle NeoForge loader version format (e.g., "21.1.265", "20.4.80", "47.1.0")
+    if (type == ServerType.NEOFORGE) {
+        val major = clean.substringBefore('.').toIntOrNull()
+        if (major != null) {
+            return when {
+                major >= 26 -> 25
+                major >= 21 -> 21
+                major in 20..20 || major == 47 -> 17
+                else -> 21
+            }
+        }
+    }
+
     if (clean == "26.2" || clean.startsWith("26.") || clean.startsWith("25.") || clean.startsWith("1.22")) {
         return 25
     }

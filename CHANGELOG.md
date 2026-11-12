@@ -24,6 +24,9 @@ All notable changes to the MineServe project will be documented in this file.
 ### 🧱 Native Bedrock Dedicated Server (BDS - Beta)
 - **Official Mojang Bedrock Dedicated Server (Beta)**: Added `BEDROCK_BDS` server type with automatic Mojang download link resolution, `.zip` extraction, UDP port `19132` defaulting, Bedrock console/player connect/disconnect parsing, and automatic `qemu-x86_64` user-mode execution on ARM64 devices (native on `x86_64`). Marked as an experimental Beta feature with dedicated in-app badges and advisory notices.
 
+### 🐛 Bug Fixes & Engine Improvements
+- **NeoForge Java 21 Determination**: Fixed an issue where NeoForge 21.x servers (Minecraft 1.21.x) were misassigned Java 8 instead of Java 21 due to loader version string formats (`21.x.x`), preventing launch with `@user_jvm_args.txt` errors ([#10](https://github.com/devwithzachary/MineServe/issues/10)). Added auto-migration for existing NeoForge servers and a manual Java runtime selector dialog (Java 8, 17, 21, 25) in Server Settings.
+
 ## [1.5.1] - 2026-11-11
 
 ### ❤️ Community, Supporters & Links

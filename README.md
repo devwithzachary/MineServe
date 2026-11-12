@@ -35,16 +35,23 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
   * **NeoForged**: Modern community-driven modding API and server platform.
   * **Minecraft Forge**: Full support for classic and modern Forge modded servers (from 1.1 up to 1.20+) with automated installer handling, dedicated JVM installer heap allocation, and live setup progress streaming.
   * **Mojang Vanilla**: Official standalone Minecraft server software from Mojang Studios, with historical support down to version 1.0.
+  * **Bedrock Dedicated Server (Beta)**: Official Mojang pure Minecraft: Bedrock Edition server (`bedrock_server`) with native execution on x86_64 and automatic `qemu-x86_64` user-mode emulation on ARM64 devices.
   * **Bedrock Geyser / Floodgate**: Seamless protocol translation proxy enabling Bedrock edition players on iOS, Android, and consoles to connect to your Java server.
+  * **Velocity & BungeeCord Proxies**: High-performance proxy software to link multiple backend servers into a seamless network with internal `127.0.0.1` loopback binding.
 * **☕ Isolated Java Runtime Environments**: Automatic detection and 1-tap installation of OpenJDK versions inside the container:
   * **Java 25 / Java 21**: For modern Minecraft 1.20.5+ and snapshots.
   * **Java 17**: For Minecraft 1.17 - 1.20.4.
   * **Java 8**: For legacy Minecraft releases (from 1.16.5 down to 1.0) and classic Forge servers.
-* **🖥️ Web Remote Admin Panel (LAN & Web Management)**:
-  * **Built-in Local Web Admin**: Embedded zero-dependency lightweight local HTTP server allowing full management from any desktop browser or tablet on the same Wi-Fi network.
+* **🖥️ Full Feature-Parity Web Remote Admin Panel (LAN & Web Management)**:
+  * **Built-in Standalone Web Admin**: Embedded zero-dependency lightweight local HTTP server allowing full management from any desktop browser or tablet on the same Wi-Fi network or over public tunnels.
+  * **Full Lifecycle & Player Administration**: Create and delete servers in-browser, edit `server.properties`, manage Whitelist, Ops, Player Bans, and IP Bans with 1-click kicking and banning.
+  * **World, Backups & Modding**: Upload `.jar` files, install Modrinth plugins and mods, import `.mrpack` modpacks, export/import world saves, prune old chunks, trigger manual/scheduled backups, and explore worlds with embedded Squaremap live map.
   * **Interactive Console & Remote File Manager**: Real-time terminal output with syntax highlighting, command execution bar, and in-browser code editor for server configuration files.
-  * **Live Telemetry Dashboard**: Real-time TPS and MSPT gauges, server memory utilization progress bar, CPU usage, and online player monitoring.
+  * **Live Telemetry Dashboard**: Real-time rolling Canvas chart tracking CPU %, RAM %, and TPS over time, MSPT processing times, and 1-click Aikar's G1GC optimization flags.
   * **Secure Authentication & Public Exposure**: Cryptographic session tokens, constant-time verification, brute-force rate limiting, and optional public exposure via UPnP router port forwarding, Bore, or Playit tunnels.
+* **💬 Discord Webhook & Server Event Bridge**:
+  * **Zero-Plugin Event Broadcasts**: Native HTTP webhook bridge in Server Settings and Web Admin to dispatch real-time rich embeds to Discord channels.
+  * **Lifecycle & Player Alerts**: Instant alerts for server startup, shutdown, unexpected crash exits, player join and leave notices (with optional 3D player avatar thumbnails), and completed automated backups.
 * **🌐 Universal Router Port Forwarding (UPnP & NAT-PMP)**:
   * **Automatic Router Port Forwarding**: Zero-config UPnP (SSDP/SOAP) and RFC 6886 NAT-PMP client for automatic router port mapping. Friends can connect directly to your residential public WAN IP without third-party tunnel proxies.
   * **Dynamic WAN Connection Card**: Server Settings and status cards display mapped public WAN IP and port with live mapping health, local IP mapping, and a 1-tap copy button for direct server invites.
@@ -206,6 +213,8 @@ MineServe is built on the shoulders of incredible open-source projects:
 | **Modrinth API** | Public REST API for discovering and downloading Minecraft plugins and mods. | [Modrinth](https://modrinth.com/) / AGPL-3.0 |
 | **bore (`bore.pub`)** | Modern, zero-config TCP tunneling tool enabling instant public port forwarding. | [bore](https://github.com/ekzhang/bore) / MIT |
 | **Playit.gg** | Global game server tunneling proxy network providing persistent subdomains. | [Playit.gg](https://playit.gg) / MIT |
+| **Velocity & BungeeCord** | High-performance Minecraft proxy software for multi-server networks. | [PaperMC](https://papermc.io/) & [SpigotMC](https://www.spigotmc.org/) / GPL-3.0 & BSD |
+| **Bedrock Dedicated Server** | Official Mojang standalone server binary for Minecraft: Bedrock Edition. | [Mojang Studios](https://www.minecraft.net/) / Mojang EULA |
 | **OkHttp & Coil** | High-performance HTTP client and image loading engine for Compose. | [Square](https://square.github.io/okhttp) & [Coil](https://coil-kt.github.io/coil) / Apache-2.0 |
 | **KotlinX Coroutines & Serialization** | Asynchronous coroutines and multiplatform JSON serialization for Kotlin. | [JetBrains](https://github.com/Kotlin) / Apache-2.0 |
 
@@ -283,7 +292,7 @@ The Server Details screen provides dedicated tabs to manage every aspect of your
 * **Plugins / Mods Tab**: Search Modrinth for plugins (Paper/Purpur), mods (Fabric/NeoForge/Forge), or import full `.mrpack` modpacks with 1 tap, or upload custom `.jar` files.
 
 ### 4. Web Remote Admin Panel (LAN & Web Management)
-From **App Settings**, launch the built-in Web Remote Admin Panel to manage your servers, interactive terminal console, file editor, and live performance metrics from any desktop browser or tablet on your local Wi-Fi network, or expose it online via UPnP, Bore, or Playit tunnels.
+From **App Settings**, launch the built-in Web Remote Admin Panel to manage your servers, create and delete servers, edit configuration files, manage players (Whitelist, Ops, Bans), import modpacks and world saves, monitor live telemetry charts over time, and administer servers from any desktop browser or tablet on your local Wi-Fi network, or expose it online via UPnP, Bore, or Playit tunnels.
 
 ---
 
