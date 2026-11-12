@@ -2,6 +2,7 @@ package com.devwithzachary.mineserve.admin.web
 
 import com.devwithzachary.mineserve.api.ModrinthApiClient
 import com.devwithzachary.mineserve.engine.ChunkOptimizer
+import com.devwithzachary.mineserve.engine.ProxyNetworkManager
 import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSchedulerManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
@@ -12,6 +13,7 @@ import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.InhabitedTimeThreshold
 import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.ProxyRoute
 import com.devwithzachary.mineserve.model.ScheduleFrequency
 import com.devwithzachary.mineserve.model.ScheduledTask
 import com.devwithzachary.mineserve.model.ScheduledTaskType
@@ -569,6 +571,90 @@ internal class WebAdminExtendedHandlers(
         )
     }
 
+    // --- Proxy Network & Loopback ---
+
+    suspend fun handleGetProxy(serverId: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        if (server.type.isProxy) {
+            val allServers = serverRepository.servers.value
+            val candidates = JSONArray()
+            for (b in allServers) {
+                if (b.id == server.id || b.type.isProxy) continue
+                val existing = server.proxyConfig.routes.firstOrNull { it.targetServerId == b.id }
+                candidates.put(
+                    JSONObject()
+                        .put("id", b.id)
+                        .put("name", b.name)
+                        .put("type", b.type.displayName)
+                        .put("port", b.port)
+                        .put("linked", existing != null)
+                        .put("alias", existing?.alias ?: ProxyNetworkManager.sanitizeAlias(b.name))
+                )
+            }
+            return ok(
+                JSONObject()
+                    .put("isProxy", true)
+                    .put("proxyType", server.type.displayName)
+                    .put("onlineMode", server.proxyConfig.onlineMode)
+                    .put("candidates", candidates)
+            )
+        } else {
+            val props = serverRepository.loadServerProperties(serverId)
+            return ok(
+                JSONObject()
+                    .put("isProxy", false)
+                    .put("loopbackOnly", props.serverIp.trim() == "127.0.0.1")
+            )
+        }
+    }
+
+    suspend fun handleSaveProxy(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val json = parseJsonObject(body)
+        if (server.type.isProxy) {
+            val allServers = serverRepository.servers.value
+            val targetIds = json.optJSONArray("linkedServerIds") ?: JSONArray()
+            val routes = mutableListOf<ProxyRoute>()
+            for (i in 0 until targetIds.length()) {
+                val tid = targetIds.optString(i, "")
+                val backend = allServers.firstOrNull { it.id == tid && !it.type.isProxy } ?: continue
+                routes.add(
+                    ProxyRoute(
+                        alias = ProxyNetworkManager.sanitizeAlias(backend.name),
+                        targetServerId = backend.id,
+                        host = "127.0.0.1",
+                        port = backend.port
+                    )
+                )
+            }
+            val onlineMode = json.optBoolean("onlineMode", server.proxyConfig.onlineMode)
+            val draft = server.copy(
+                proxyConfig = server.proxyConfig.copy(
+                    routes = routes,
+                    tryOrder = routes.map { it.alias },
+                    onlineMode = onlineMode
+                )
+            )
+            val appliedCfg = ProxyNetworkManager.applyProxyConfig(
+                proxyServer = draft,
+                proxyDir = serverRepository.getServerDirectory(serverId),
+                allServers = allServers
+            )
+            serverRepository.updateServer(draft.copy(proxyConfig = appliedCfg))
+
+            if (json.optBoolean("bindBackendsLoopback", false)) {
+                routes.forEach { r ->
+                    ProxyNetworkManager.setBackendLoopbackMode(serverRepository, r.targetServerId, true)
+                }
+            }
+            return ok(JSONObject().put("success", true).put("linkedCount", routes.size))
+        } else {
+            val loopbackOnly = json.optBoolean("loopbackOnly", false)
+            ProxyNetworkManager.setBackendLoopbackMode(serverRepository, serverId, loopbackOnly)
+            return ok(JSONObject().put("success", true).put("loopbackOnly", loopbackOnly))
+        }
+    }
+
     suspend fun handleRestoreBackup(serverId: String, body: String): WebApiResult {
         serverRepository.getServer(serverId) ?: return notFound("Server not found")
         if (processManager.isServerRunning(serverId)) {
@@ -691,6 +777,8 @@ internal class WebAdminExtendedHandlers(
         ServerType.FABRIC -> "fabric"
         ServerType.FORGE -> "forge"
         ServerType.NEOFORGE -> "neoforge"
+        ServerType.VELOCITY -> "velocity"
+        ServerType.BUNGEECORD -> "bungeecord"
         else -> "paper"
     }
 

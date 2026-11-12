@@ -151,6 +151,12 @@ fun CreateServerWizardScreen(
                 ServerType.FOLIA -> {
                     PaperApiClient().getProjectVersions("folia")
                 }
+                ServerType.VELOCITY -> {
+                    PaperApiClient().getProjectVersions("velocity")
+                }
+                ServerType.BUNGEECORD -> {
+                    com.devwithzachary.mineserve.api.BungeeCordApiClient().getVersions()
+                }
                 ServerType.VANILLA -> {
                     MojangApiClient().getReleaseVersions()
                 }

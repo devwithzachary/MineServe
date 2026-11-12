@@ -17,6 +17,10 @@ All notable changes to the MineServe project will be documented in this file.
 - **Plugin-Free Discord Event Notifications**: Added pure-OkHttp Discord webhook support per server (`DiscordWebhookClient`) configurable in both **Server Settings** and the **Web Admin UI**, complete with a **Test Webhook** action.
 - **Lifecycle, Player & Backup Broadcasts**: Automatically sends rich Discord embed notifications for server online, clean shutdown, unexpected crash/exit, player join/leave events (with optional player avatar thumbnails), and completed manual or scheduled backups.
 
+### 🔀 Proxy & Multi-Server Networks (Velocity & BungeeCord)
+- **Velocity & BungeeCord Proxy Software**: Added `Velocity Proxy` (via PaperMC Fill API) and `BungeeCord Proxy` (via md-5 Jenkins CI) to both the Android Create Server Wizard and Web UI, including proxy-aware startup/shutdown lifecycle (`end` command) and Modrinth proxy plugin filtering.
+- **Multi-Server Routing & Internal Loopback Binding**: Added `ProxyNetworkManager` and UI controls in **Settings** and the **Web Admin UI** to link backend servers into a proxy network (auto-generating `velocity.toml` + `forwarding.secret` or BungeeCord `config.yml`) and bind backend servers strictly to `127.0.0.1` (`online-mode=false`).
+
 ## [1.5.1] - 2026-11-11
 
 ### ❤️ Community, Supporters & Links

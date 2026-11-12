@@ -28,8 +28,10 @@ object ConsoleOutputParser {
             val line = rawLine.replace(ANSI_COLOR_REGEX, "").trim()
             if (line.isBlank()) continue
 
-            // 1. Done / Running trigger
-            if (line.contains("Done (") || line.contains("For help, type \"help\"") || line.contains("Time elapsed:")) {
+            // 1. Done / Running trigger (includes Velocity/BungeeCord "Listening on /")
+            if (line.contains("Done (") || line.contains("For help, type \"help\"") ||
+                line.contains("Time elapsed:") || line.contains("Listening on /")
+            ) {
                 onUpdateStatus(serverId, ServerStatus.RUNNING)
             }
 
@@ -90,7 +92,9 @@ object ConsoleOutputParser {
             }
 
             // 7. Stopping trigger
-            if (line.contains("Stopping the server") || line.contains("Stopping server")) {
+            if (line.contains("Stopping the server") || line.contains("Stopping server") ||
+                line.contains("Closing listener") || line.contains("Thank you and goodbye")
+            ) {
                 onUpdateStatus(serverId, ServerStatus.STOPPING)
             }
         }

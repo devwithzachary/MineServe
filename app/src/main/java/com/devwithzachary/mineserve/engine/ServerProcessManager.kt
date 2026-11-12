@@ -460,7 +460,7 @@ class ServerProcessManager private constructor(
         val session = sessions[serverId] ?: return
         session.stopRequested = true
         if (session.ptyProcess != null) {
-            sendCommand(serverId, "stop")
+            sendCommand(serverId, if (session.server.type.isProxy) "end" else "stop")
         }
         scope.launch {
             updateStatus(serverId, ServerStatus.STOPPING)

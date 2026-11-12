@@ -35,7 +35,7 @@ class PaperApiClient(
                     versionsObj.values.forEach { arr ->
                         arr.jsonArray.forEach { item ->
                             val ver = item.jsonPrimitive.content
-                            if (!ver.contains("-rc") && !ver.contains("-pre") && !ver.contains("-snapshot")) {
+                            if (project == "velocity" || (!ver.contains("-rc") && !ver.contains("-pre") && !ver.contains("-snapshot"))) {
                                 list.add(ver)
                             }
                         }
@@ -51,11 +51,11 @@ class PaperApiClient(
                     return@withContext versionsArray.map { it.jsonPrimitive.content }.sortedMinecraftVersionsDescending()
                 }
 
-                DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+                if (project == "velocity") listOf("3.4.0-SNAPSHOT", "3.3.0-SNAPSHOT") else DEFAULT_MINECRAFT_FALLBACK_VERSIONS
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to fetch $project versions", e)
-            DEFAULT_MINECRAFT_FALLBACK_VERSIONS
+            if (project == "velocity") listOf("3.4.0-SNAPSHOT", "3.3.0-SNAPSHOT") else DEFAULT_MINECRAFT_FALLBACK_VERSIONS
         }
     }
 

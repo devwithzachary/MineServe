@@ -43,6 +43,7 @@ data class MinecraftServer(
     val cloudBackupConfig: CloudBackupConfig = CloudBackupConfig(),
     val automationConfig: ServerAutomationConfig = ServerAutomationConfig(),
     val discordWebhookConfig: DiscordWebhookConfig = DiscordWebhookConfig(),
+    val proxyConfig: ProxyServerConfig = ProxyServerConfig(),
     val serverBuild: String? = null
 ) {
     val isRunning: Boolean get() = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
@@ -57,6 +58,9 @@ data class ServerBuildInfo(
 )
 
 fun determineJavaVersion(version: String, type: ServerType = ServerType.PAPER): Int {
+    if (type.isProxy) {
+        return type.defaultJavaVersion
+    }
     val clean = version.trim().lowercase()
     if (clean == "26.2" || clean.startsWith("26.") || clean.startsWith("25.") || clean.startsWith("1.22")) {
         return 25

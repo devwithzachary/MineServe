@@ -60,9 +60,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.engine.PRootEngine
+import com.devwithzachary.mineserve.engine.ProxyNetworkManager
 import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.ProxyRoute
+import com.devwithzachary.mineserve.model.ProxyServerConfig
 import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
+import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.model.TunnelProvider
@@ -106,6 +111,7 @@ import com.devwithzachary.mineserve.ui.theme.RedstoneRed
 @Composable
 fun SettingsTab(
     server: MinecraftServer,
+    allServers: List<MinecraftServer> = emptyList(),
     status: ServerStatus = ServerStatus.STOPPED,
     initialProperties: ServerProperties,
     onSaveProperties: (ServerProperties) -> Unit,
@@ -963,6 +969,213 @@ fun SettingsTab(
                                 modifier = Modifier.weight(1f)
                             )
                         }
+                    }
+                }
+            }
+        }
+
+        // Proxy Network Orchestration / Internal Loopback Binding
+        val serverRepo = remember(context) { ServerRepository(context, PRootEngine(context)) }
+
+        if (server.type.isProxy) {
+            val candidateBackends = remember(allServers, server.id) {
+                allServers.filter { it.id != server.id && !it.type.isProxy }
+            }
+            var routes by remember(server.id, server.proxyConfig) {
+                mutableStateOf(server.proxyConfig.routes)
+            }
+            var proxyOnlineMode by remember(server.id, server.proxyConfig) {
+                mutableStateOf(server.proxyConfig.onlineMode)
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Proxy Network & Linked Servers",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Text(
+                        text = "Link backend servers on this device to your ${server.type.displayName}. Applying writes ${if (server.type == ServerType.VELOCITY) "velocity.toml" else "config.yml"}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+
+                    SettingSwitchRow(
+                        title = "Proxy Online Mode (Mojang Auth)",
+                        checked = proxyOnlineMode,
+                        onCheckedChange = { proxyOnlineMode = it }
+                    )
+
+                    if (candidateBackends.isEmpty()) {
+                        Text(
+                            text = "No backend servers found. Create a Paper, Purpur, Fabric, or Vanilla server to link it here.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400
+                        )
+                    } else {
+                        candidateBackends.forEach { backend ->
+                            val isLinked = routes.any { it.targetServerId == backend.id }
+                            val alias = routes.firstOrNull { it.targetServerId == backend.id }?.alias
+                                ?: ProxyNetworkManager.sanitizeAlias(backend.name)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Slate900, RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = backend.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "${backend.type.displayName} | 127.0.0.1:${backend.port} | alias: $alias",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate400
+                                    )
+                                }
+                                Switch(
+                                    checked = isLinked,
+                                    onCheckedChange = { checked ->
+                                        routes = if (checked) {
+                                            routes + ProxyRoute(
+                                                alias = ProxyNetworkManager.sanitizeAlias(backend.name),
+                                                targetServerId = backend.id,
+                                                host = "127.0.0.1",
+                                                port = backend.port
+                                            )
+                                        } else {
+                                            routes.filterNot { it.targetServerId == backend.id }
+                                        }
+                                    },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = EmeraldPrimary,
+                                        checkedTrackColor = EmeraldDark,
+                                        uncheckedTrackColor = Slate800
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                scope.launch {
+                                    val draft = server.copy(
+                                        proxyConfig = server.proxyConfig.copy(
+                                            routes = routes,
+                                            tryOrder = routes.map { it.alias },
+                                            onlineMode = proxyOnlineMode
+                                        )
+                                    )
+                                    val appliedCfg = ProxyNetworkManager.applyProxyConfig(
+                                        proxyServer = draft,
+                                        proxyDir = serverRepo.getServerDirectory(server.id),
+                                        allServers = allServers
+                                    )
+                                    onSaveServer(draft.copy(proxyConfig = appliedCfg))
+                                    Toast.makeText(context, "Proxy config applied", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Apply Config", fontWeight = FontWeight.SemiBold)
+                        }
+
+                        OutlinedButton(
+                            enabled = routes.isNotEmpty(),
+                            onClick = {
+                                scope.launch {
+                                    routes.forEach { r ->
+                                        ProxyNetworkManager.setBackendLoopbackMode(serverRepo, r.targetServerId, true)
+                                    }
+                                    Toast.makeText(
+                                        context,
+                                        "Bound ${routes.size} backend(s) to 127.0.0.1 (online-mode=false)",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                }
+                            },
+                            border = BorderStroke(1.dp, EmeraldPrimary),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Bind Backends 127.0.0.1", color = EmeraldLight)
+                        }
+                    }
+                }
+            }
+        } else {
+            val isLoopbackBound = props.serverIp.trim() == "127.0.0.1"
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Internal Loopback Binding (Proxy Backend)",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Bind server-ip to 127.0.0.1 and set online-mode=false so this server is only reachable through Velocity or BungeeCord.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate400
+                            )
+                        }
+                        Switch(
+                            checked = isLoopbackBound,
+                            onCheckedChange = { enabled ->
+                                val updated = props.copy(
+                                    serverIp = if (enabled) "127.0.0.1" else "",
+                                    onlineMode = !enabled
+                                )
+                                props = updated
+                                onSaveProperties(updated)
+                                Toast.makeText(
+                                    context,
+                                    if (enabled) "Bound to 127.0.0.1 (proxy backend mode)" else "Restored public binding (0.0.0.0)",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = EmeraldPrimary,
+                                checkedTrackColor = EmeraldDark,
+                                uncheckedTrackColor = Slate800
+                            )
+                        )
                     }
                 }
             }

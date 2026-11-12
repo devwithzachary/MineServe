@@ -51,6 +51,12 @@ class ServerSoftwareManager(
             ServerType.FOLIA -> {
                 PaperApiClient().getLatestBuildInfo("folia", version)
             }
+            ServerType.VELOCITY -> {
+                PaperApiClient().getLatestBuildInfo("velocity", version)
+            }
+            ServerType.BUNGEECORD -> {
+                com.devwithzachary.mineserve.api.BungeeCordApiClient().getLatestBuildInfo()
+            }
             ServerType.VANILLA -> {
                 MojangApiClient().getServerJarDownloadUrl(version)?.let { Pair("Release", it) }
             }
@@ -85,6 +91,12 @@ class ServerSoftwareManager(
                 }
                 ServerType.FOLIA -> {
                     PaperApiClient().getProjectVersions("folia")
+                }
+                ServerType.VELOCITY -> {
+                    PaperApiClient().getProjectVersions("velocity")
+                }
+                ServerType.BUNGEECORD -> {
+                    com.devwithzachary.mineserve.api.BungeeCordApiClient().getVersions()
                 }
                 ServerType.VANILLA -> {
                     MojangApiClient().getReleaseVersions()
@@ -390,6 +402,8 @@ class ServerSoftwareManager(
                 ServerType.FABRIC -> "fabric"
                 ServerType.FORGE -> "forge"
                 ServerType.NEOFORGE -> "neoforge"
+                ServerType.VELOCITY -> "velocity"
+                ServerType.BUNGEECORD -> "bungeecord"
                 else -> "paper"
             }
             val modrinth = ModrinthApiClient()

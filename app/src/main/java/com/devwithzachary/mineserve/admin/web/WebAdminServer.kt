@@ -649,6 +649,11 @@ class WebAdminServer(
                 sub == "test" && method == "POST" -> extHandlers.handleTestDiscord(serverId, body)
                 else -> null
             }
+            "proxy" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetProxy(serverId)
+                sub == null && method == "POST" -> extHandlers.handleSaveProxy(serverId, body)
+                else -> null
+            }
             "backups" -> when {
                 sub == null && method == "GET" -> extHandlers.handleListBackups(serverId)
                 sub == "create" && method == "POST" -> extHandlers.handleCreateBackup(serverId, body)

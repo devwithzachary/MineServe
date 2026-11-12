@@ -78,7 +78,12 @@ class ServerRepository(
                         } else {
                             if (server.port in 1..65535) server.port else 25565
                         }
-                        list.add(server.copy(port = actualPort, status = ServerStatus.STOPPED))
+                        val normalizedJava = if (server.type.isProxy && server.javaVersion < server.type.defaultJavaVersion) {
+                            server.type.defaultJavaVersion
+                        } else {
+                            server.javaVersion
+                        }
+                        list.add(server.copy(port = actualPort, javaVersion = normalizedJava, status = ServerStatus.STOPPED))
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed reading server config in ${dir.name}", e)
                     }

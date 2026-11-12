@@ -230,6 +230,7 @@ fun MineServeApp(viewModel: MainViewModel) {
 
                     ServerDetailScreen(
                         server = server,
+                        allServers = servers,
                         status = status,
                         metrics = metrics,
                         emulator = emulator,

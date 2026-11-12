@@ -68,7 +68,9 @@ fun WizardStep2Software(
         ServerType.FABRIC,
         ServerType.FORGE,
         ServerType.NEOFORGE,
-        ServerType.FOLIA
+        ServerType.FOLIA,
+        ServerType.VELOCITY,
+        ServerType.BUNGEECORD
     )
 
     Column(

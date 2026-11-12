@@ -139,6 +139,8 @@ fun PluginsTab(
         ServerType.FABRIC -> "fabric"
         ServerType.FORGE -> "forge"
         ServerType.NEOFORGE -> "neoforge"
+        ServerType.VELOCITY -> "velocity"
+        ServerType.BUNGEECORD -> "bungeecord"
         else -> null
     }
 

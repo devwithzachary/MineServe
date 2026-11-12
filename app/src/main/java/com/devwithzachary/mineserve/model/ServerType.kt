@@ -8,7 +8,8 @@ enum class ServerType(
     val description: String,
     val defaultJavaVersion: Int,
     val supportsPlugins: Boolean,
-    val supportsMods: Boolean
+    val supportsMods: Boolean,
+    val isProxy: Boolean = false
 ) {
     PAPER(
         displayName = "PaperMC",
@@ -65,6 +66,22 @@ enum class ServerType(
         defaultJavaVersion = 21,
         supportsPlugins = true,
         supportsMods = false
+    ),
+    VELOCITY(
+        displayName = "Velocity Proxy",
+        description = "Modern, high-performance Minecraft proxy for linking multiple servers into a network",
+        defaultJavaVersion = 25,
+        supportsPlugins = true,
+        supportsMods = false,
+        isProxy = true
+    ),
+    BUNGEECORD(
+        displayName = "BungeeCord Proxy",
+        description = "Classic Minecraft proxy for connecting Spigot and Paper servers into a network",
+        defaultJavaVersion = 21,
+        supportsPlugins = true,
+        supportsMods = false,
+        isProxy = true
     ),
     CUSTOM(
         displayName = "Custom JAR",

@@ -110,6 +110,7 @@ private enum class DetailTab {
 @Composable
 fun ServerDetailScreen(
     server: MinecraftServer,
+    allServers: List<MinecraftServer> = emptyList(),
     status: ServerStatus,
     metrics: ServerMetrics?,
     emulator: TerminalEmulator,
@@ -204,15 +205,18 @@ fun ServerDetailScreen(
     val playersStr = stringResource(R.string.tab_players)
     val backupsStr = stringResource(R.string.tab_backups)
 
-    val showLiveMapTab = server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
+    val showLiveMapTab = !server.type.isProxy && server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
+    val showWorldTab = !server.type.isProxy
 
-    val tabList = remember(server.type, pluginModTabName, showLiveMapTab) {
+    val tabList = remember(server.type, pluginModTabName, showLiveMapTab, showWorldTab) {
         buildList {
             add(DetailTab.CONSOLE to consoleStr)
             add(DetailTab.PERFORMANCE to perfStr)
             add(DetailTab.AUTOMATION to automationStr)
             add(DetailTab.FILES to filesStr)
-            add(DetailTab.WORLD to worldStr)
+            if (showWorldTab) {
+                add(DetailTab.WORLD to worldStr)
+            }
             if (showLiveMapTab) {
                 add(DetailTab.LIVE_MAP to liveMapStr)
             }
@@ -476,6 +480,7 @@ fun ServerDetailScreen(
                     )
                     DetailTab.SETTINGS -> SettingsTab(
                         server = server,
+                        allServers = allServers,
                         status = status,
                         initialProperties = properties,
                         onSaveProperties = onSaveProperties,

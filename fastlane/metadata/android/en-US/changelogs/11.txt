@@ -1,2 +1,3 @@
 - Full Feature-Parity Web UI: create/delete servers, edit settings, manage Whitelist/Ops/Bans, performance charts, world import/export, backups, Modrinth plugins/mods, tunneling/UPnP, and Squaremap Live Map
-- Discord Webhook Bridge: send server start/stop/crash alerts, player join/leave notices with skins, and backup updates to Discord without plugins
+- Velocity & BungeeCord Proxies: link multiple backend servers into a network with internal 127.0.0.1 loopback binding
+- Discord Webhook Bridge: send start/stop/crash, player join/leave, and backup alerts to Discord

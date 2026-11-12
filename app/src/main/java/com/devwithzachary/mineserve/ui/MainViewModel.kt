@@ -937,6 +937,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     ServerType.FABRIC -> "fabric"
                     ServerType.FORGE -> "forge"
                     ServerType.NEOFORGE -> "neoforge"
+                    ServerType.VELOCITY -> "velocity"
+                    ServerType.BUNGEECORD -> "bungeecord"
                     else -> "paper"
                 }
                 val modrinth = com.devwithzachary.mineserve.api.ModrinthApiClient()

@@ -212,7 +212,7 @@
     else if (state.activeTab === "files") loadFiles(state.currentPath);
     else if (state.activeTab === "world") loadWorld();
     else if (state.activeTab === "livemap") loadLiveMap();
-    else if (state.activeTab === "settings") { loadSettings(); loadNetwork(); loadDiscordWebhook(); }
+    else if (state.activeTab === "settings") { loadSettings(); loadNetwork(); loadDiscordWebhook(); loadProxySettings(); }
     else if (state.activeTab === "players") loadPlayers();
     else if (state.activeTab === "backups") loadBackups();
     else if (state.activeTab === "plugins") loadPlugins();
@@ -855,6 +855,67 @@
       $("discord-leave").checked = d.notifyPlayerLeave !== false;
       $("discord-backup").checked = d.notifyBackupComplete !== false;
       $("discord-skins").checked = d.includePlayerSkins !== false;
+    } catch (_) {}
+  }
+
+  async function loadProxySettings() {
+    if (!state.selectedServerId) return;
+    try {
+      const p = await apiFetch(`/api/servers/${state.selectedServerId}/proxy`);
+      const body = $("proxy-card-body");
+      if (p.isProxy) {
+        $("proxy-card-title").textContent = "Proxy Network & Linked Servers";
+        $("proxy-card-desc").textContent = `Link backend servers to ${p.proxyType}. Applying writes velocity.toml / config.yml.`;
+        const list = p.candidates || [];
+        const rows = list.length === 0
+          ? `<div class="player-sub" style="margin-bottom:10px;">No backend servers found on this device.</div>`
+          : list.map((c) => `
+              <label class="checkbox-label" style="display:flex;margin-bottom:6px;">
+                <input type="checkbox" class="proxy-route-chk" value="${escapeHtml(c.id)}" ${c.linked ? "checked" : ""}>
+                <span>${escapeHtml(c.name)} (${escapeHtml(c.type)} · 127.0.0.1:${c.port} · alias: ${escapeHtml(c.alias)})</span>
+              </label>
+            `).join("");
+        body.innerHTML = `
+          <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="proxy-online-mode" ${p.onlineMode ? "checked" : ""}><span>Proxy Online Mode (Mojang Auth)</span></label>
+          <div style="margin-bottom:10px;">${rows}</div>
+          <div class="player-actions">
+            <button type="button" id="proxy-apply-btn" class="btn btn-primary btn-sm">Apply Proxy Config</button>
+            <button type="button" id="proxy-bind-btn" class="btn btn-secondary btn-sm">Apply &amp; Bind Backends to 127.0.0.1</button>
+          </div>
+        `;
+        const saveProxy = async (bindLoopback) => {
+          const linkedServerIds = Array.from(body.querySelectorAll(".proxy-route-chk:checked")).map((el) => el.value);
+          await apiFetch(`/api/servers/${state.selectedServerId}/proxy`, {
+            method: "POST",
+            body: JSON.stringify({
+              onlineMode: $("proxy-online-mode").checked,
+              linkedServerIds,
+              bindBackendsLoopback: bindLoopback
+            })
+          });
+          showToast(bindLoopback ? "Proxy config applied and backends bound to 127.0.0.1" : "Proxy config applied");
+        };
+        $("proxy-apply-btn").addEventListener("click", () => saveProxy(false).catch((e) => showToast(e.message, "error")));
+        $("proxy-bind-btn").addEventListener("click", () => saveProxy(true).catch((e) => showToast(e.message, "error")));
+      } else {
+        $("proxy-card-title").textContent = "Internal Loopback Binding (Proxy Backend)";
+        $("proxy-card-desc").textContent = "Bind server-ip to 127.0.0.1 and set online-mode=false so only Velocity or BungeeCord can reach this server.";
+        body.innerHTML = `
+          <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="backend-loopback-chk" ${p.loopbackOnly ? "checked" : ""}><span>Bind strictly to 127.0.0.1 (Proxy Backend Mode)</span></label>
+          <button type="button" id="backend-loopback-save" class="btn btn-primary btn-sm">Save Loopback Mode</button>
+        `;
+        $("backend-loopback-save").addEventListener("click", async () => {
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/proxy`, {
+              method: "POST",
+              body: JSON.stringify({ loopbackOnly: $("backend-loopback-chk").checked })
+            });
+            showToast("Loopback binding updated");
+          } catch (e) {
+            showToast(e.message, "error");
+          }
+        });
+      }
     } catch (_) {}
   }
 
