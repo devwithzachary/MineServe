@@ -9,7 +9,8 @@ enum class ServerType(
     val defaultJavaVersion: Int,
     val supportsPlugins: Boolean,
     val supportsMods: Boolean,
-    val isProxy: Boolean = false
+    val isProxy: Boolean = false,
+    val isBedrockNative: Boolean = false
 ) {
     PAPER(
         displayName = "PaperMC",
@@ -82,6 +83,14 @@ enum class ServerType(
         supportsPlugins = true,
         supportsMods = false,
         isProxy = true
+    ),
+    BEDROCK_BDS(
+        displayName = "Bedrock Dedicated Server (Beta)",
+        description = "Official Mojang Minecraft: Bedrock Edition server (Beta: uses qemu-x86_64 on ARM64; issues may occur)",
+        defaultJavaVersion = 21,
+        supportsPlugins = false,
+        supportsMods = false,
+        isBedrockNative = true
     ),
     CUSTOM(
         displayName = "Custom JAR",

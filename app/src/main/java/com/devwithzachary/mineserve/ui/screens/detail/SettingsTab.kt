@@ -177,7 +177,8 @@ fun SettingsTab(
             onUpgradeVersion = onUpgradeVersion
         )
 
-        // Section: Server Memory & RAM Allocation
+        // Section: Server Memory & RAM Allocation (JVM heap only)
+        if (!server.type.isBedrockNative) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -288,6 +289,7 @@ fun SettingsTab(
                     showTitle = false
                 )
             }
+        }
         }
 
         // Section: Server Properties (Visual Editor)
@@ -461,21 +463,23 @@ fun SettingsTab(
                     checked = pvp,
                     onCheckedChange = { pvp = it }
                 )
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_hardcore),
-                    checked = hardcore,
-                    onCheckedChange = { hardcore = it }
-                )
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_allow_flight),
-                    checked = allowFlight,
-                    onCheckedChange = { allowFlight = it }
-                )
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_allow_nether),
-                    checked = allowNether,
-                    onCheckedChange = { allowNether = it }
-                )
+                if (!server.type.isBedrockNative) {
+                    SettingSwitchRow(
+                        title = stringResource(R.string.settings_hardcore),
+                        checked = hardcore,
+                        onCheckedChange = { hardcore = it }
+                    )
+                    SettingSwitchRow(
+                        title = stringResource(R.string.settings_allow_flight),
+                        checked = allowFlight,
+                        onCheckedChange = { allowFlight = it }
+                    )
+                    SettingSwitchRow(
+                        title = stringResource(R.string.settings_allow_nether),
+                        checked = allowNether,
+                        onCheckedChange = { allowNether = it }
+                    )
+                }
             }
         }
 
@@ -1125,7 +1129,7 @@ fun SettingsTab(
                     }
                 }
             }
-        } else {
+        } else if (!server.type.isBedrockNative) {
             val isLoopbackBound = props.serverIp.trim() == "127.0.0.1"
             Card(
                 modifier = Modifier.fillMaxWidth(),

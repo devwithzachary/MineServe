@@ -229,7 +229,7 @@ class ServerProcessManager private constructor(
                 // 3. Ensure legacy files and properties are sanitized for early Minecraft versions
                 LegacyServerSanitizer.sanitize(server, serverDir)
 
-                if (!javaRuntimeManager.isJavaInstalled(server.javaVersion)) {
+                if (!server.type.isBedrockNative && !javaRuntimeManager.isJavaInstalled(server.javaVersion)) {
                     val initMsg = "\u001B[33m[MineServe] OpenJDK is not yet installed. Auto-installing Java ${server.javaVersion}...\u001B[0m\r\n"
                     emulator.appendBytes(initMsg.toByteArray(Charsets.UTF_8), initMsg.length)
                     triggerRefresh(server.id)
@@ -262,6 +262,30 @@ class ServerProcessManager private constructor(
                         updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
                         return@launch
                     }
+                } else if (server.type == ServerType.BEDROCK_BDS) {
+                    val isX86_64 = android.os.Build.SUPPORTED_ABIS.firstOrNull()?.contains("x86_64") == true
+                    val qemuBin = File(pRootEngine.rootfsDir, "usr/bin/qemu-x86_64")
+                    val amd64Libc = File(pRootEngine.rootfsDir, "usr/lib/x86_64-linux-gnu/libc.so.6")
+                    val amd64Stdcpp = File(pRootEngine.rootfsDir, "usr/lib/x86_64-linux-gnu/libstdc++.so.6")
+                    val amd64Curl = File(pRootEngine.rootfsDir, "usr/lib/x86_64-linux-gnu/libcurl.so.4")
+                    if (!isX86_64 && (!qemuBin.exists() || !amd64Libc.exists() || !amd64Stdcpp.exists() || !amd64Curl.exists())) {
+                        val initMsg = "\u001B[33m[MineServe] Installing qemu-x86_64 and x86_64 runtime libraries for Bedrock Dedicated Server on ARM64...\u001B[0m\r\n"
+                        emulator.appendBytes(initMsg.toByteArray(Charsets.UTF_8), initMsg.length)
+                        triggerRefresh(server.id)
+
+                        val installed = installQemuUserInRootfs(emulator, server.id)
+                        if (!installed || !qemuBin.exists() || !amd64Libc.exists()) {
+                            val errMsg = "\r\n\u001B[31m[MineServe] Failed to install qemu-user / x86_64 runtime libraries. Please check your internet connection.\u001B[0m\r\n"
+                            emulator.appendBytes(errMsg.toByteArray(Charsets.UTF_8), errMsg.length)
+                            triggerRefresh(server.id)
+                            sessions.remove(server.id)
+                            updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
+                            return@launch
+                        }
+                        val okMsg = "\u001B[32m[MineServe] qemu-x86_64 and x86_64 libraries installed successfully!\u001B[0m\r\n"
+                        emulator.appendBytes(okMsg.toByteArray(Charsets.UTF_8), okMsg.length)
+                        triggerRefresh(server.id)
+                    }
                 }
 
                 if (sessions[server.id] !== session ||
@@ -284,6 +308,53 @@ class ServerProcessManager private constructor(
         }
     }
 
+    private suspend fun installQemuUserInRootfs(
+        emulator: TerminalEmulator,
+        serverId: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val installScript = buildString {
+                append("unset LD_LIBRARY_PATH; ")
+                append("export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin; ")
+                append("export HOME=/root USER=root LOGNAME=root TMPDIR=/tmp TMP=/tmp TEMP=/tmp; ")
+                append("export DEBIAN_FRONTEND=noninteractive DEBIAN_PRIORITY=critical UCF_FORCE_CONFFOLD=1 NEEDRESTART_MODE=a; ")
+                append("chmod 666 /var/lib/dpkg/status* 2>/dev/null; ")
+                append("dpkg --configure -a --force-confold --force-confdef || true; ")
+                append("if [ -f /etc/apt/sources.list.d/ubuntu.sources ] && ! grep -q '^Architectures:' /etc/apt/sources.list.d/ubuntu.sources; then ")
+                append("  sed -i '/^Types: deb$/a Architectures: arm64' /etc/apt/sources.list.d/ubuntu.sources; ")
+                append("fi; ")
+                append("CODENAME=\$(. /etc/os-release && echo \"\${VERSION_CODENAME:-noble}\"); ")
+                append("printf 'Types: deb\\nURIs: http://archive.ubuntu.com/ubuntu/\\nSuites: %s %s-updates %s-security\\nComponents: main universe\\nArchitectures: amd64\\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\\n' \"\$CODENAME\" \"\$CODENAME\" \"\$CODENAME\" > /etc/apt/sources.list.d/amd64.sources; ")
+                append("dpkg --add-architecture amd64; ")
+                append("apt-get update -y && (apt-get install -y --no-install-recommends qemu-user libc6:amd64 libstdc++6:amd64 libgcc-s1:amd64 zlib1g:amd64 libcurl4t64:amd64 || apt-get install -y --no-install-recommends qemu-user libc6:amd64 libstdc++6:amd64 libgcc-s1:amd64 zlib1g:amd64 libcurl4:amd64)")
+            }
+            val cmd = pRootEngine.buildPRootCommand(
+                command = listOf("/bin/sh", "-c", installScript),
+                loginUser = "root"
+            )
+            val pb = ProcessBuilder(cmd)
+            pb.directory(pRootEngine.rootfsDir)
+            pb.redirectErrorStream(true)
+            val env = pb.environment()
+            env.putAll(pRootEngine.getEnvironmentVariables("root"))
+            env["PROOT_NO_SECCOMP"] = "1"
+
+            val proc = pb.start()
+            proc.inputStream.bufferedReader().use { reader ->
+                var line: String?
+                while (reader.readLine().also { line = it } != null) {
+                    val out = "[QEMU Setup] $line\r\n"
+                    emulator.appendBytes(out.toByteArray(Charsets.UTF_8), out.length)
+                    triggerRefresh(serverId)
+                }
+            }
+            proc.waitFor() == 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to install qemu-user", e)
+            false
+        }
+    }
+
     private fun launchMinecraftProcess(
         server: MinecraftServer,
         serverDir: File,
@@ -301,53 +372,68 @@ class ServerProcessManager private constructor(
 
         val launchCommand = buildString {
             append("export TZ='$deviceTz'; ")
-            append("export PATH=\"$(dirname $javaBin):\$PATH\"; ")
-            if (server.type == ServerType.NEOFORGE || server.type == ServerType.FORGE || jarName.contains("installer")) {
-                append("if [ ! -f run.sh ] && [ -z \"\$(ls forge-*.jar 2>/dev/null | grep -v installer)\" ]; then ")
-                append("  echo -e '\\033[33m[MineServe] Running initial ${server.type.displayName} server installation & library download...\\033[0m'; ")
-                append("  echo -e '\\033[36m[MineServe] Unpacking libraries and applying binary patches. This can take 2 to 4 minutes on Android devices. Please wait...\\033[0m'; ")
-                append("  touch installer.jar.log \"${jarName}.log\"; ")
-                append("  tail -n 0 -q -F installer.jar.log \"${jarName}.log\" 2>/dev/null & ")
-                append("  INSTALL_TAIL_PID=\$!; ")
-                append("  $javaBin $installerMemArg -jar $jarName --installServer; ")
-                append("  INSTALL_EXIT=\$?; ")
-                append("  kill \$INSTALL_TAIL_PID 2>/dev/null || true; ")
-                append("  if [ \$INSTALL_EXIT -ne 0 ]; then ")
-                append("    echo -e '\\033[31m[MineServe] ${server.type.displayName} installation failed with exit code '\$INSTALL_EXIT'!\\033[0m'; ")
-                append("    exit \$INSTALL_EXIT; ")
-                append("  fi; ")
-                append("  echo -e '\\033[32m[MineServe] ${server.type.displayName} installation completed successfully!\\033[0m'; ")
+            if (server.type == ServerType.BEDROCK_BDS) {
+                append("if [ ! -f bedrock_server ]; then ")
+                append("  echo -e '\\033[31m[MineServe] bedrock_server binary not found in server directory.\\033[0m'; exit 1; ")
                 append("fi; ")
-                append("if [ -f run.sh ]; then ")
-                append("  chmod +x run.sh; ")
-                append("  echo '$memArg $flags' > user_jvm_args.txt; ")
-                append("  echo -e '\\033[32m[MineServe] Starting ${server.type.displayName} Server...\\033[0m'; ")
-                append("  exec bash run.sh nogui; ")
+                append("chmod +x bedrock_server; ")
+                append("export LD_LIBRARY_PATH=.; ")
+                append("ARCH=\$(uname -m); ")
+                append("if [ \"\$ARCH\" = \"x86_64\" ]; then ")
+                append("  exec ./bedrock_server; ")
                 append("else ")
-                append("  FORGE_JAR=\$(ls -t forge-*.jar 2>/dev/null | grep -v installer | head -n 1); ")
-                append("  if [ -n \"\$FORGE_JAR\" ] && [ -f \"\$FORGE_JAR\" ]; then ")
-                append("    echo -e '\\033[32m[MineServe] Starting Forge Server via '\$FORGE_JAR'...\\033[0m'; ")
-                append("    exec $javaBin $memArg $flags -jar \"\$FORGE_JAR\" nogui; ")
-                append("  else ")
-                append("    exec $javaBin $memArg $flags -jar $jarName nogui; ")
-                append("  fi; ")
+                append("  exec qemu-x86_64 ./bedrock_server; ")
                 append("fi")
             } else {
-                append("if [ -f run.sh ]; then ")
-                append("  chmod +x run.sh; ")
-                append("  exec bash run.sh nogui; ")
-                append("else ")
-                append("  exec $javaBin $memArg $flags -jar $jarName nogui; ")
-                append("fi")
+                append("export PATH=\"$(dirname $javaBin):\$PATH\"; ")
+                if (server.type == ServerType.NEOFORGE || server.type == ServerType.FORGE || jarName.contains("installer")) {
+                    append("if [ ! -f run.sh ] && [ -z \"\$(ls forge-*.jar 2>/dev/null | grep -v installer)\" ]; then ")
+                    append("  echo -e '\\033[33m[MineServe] Running initial ${server.type.displayName} server installation & library download...\\033[0m'; ")
+                    append("  echo -e '\\033[36m[MineServe] Unpacking libraries and applying binary patches. This can take 2 to 4 minutes on Android devices. Please wait...\\033[0m'; ")
+                    append("  touch installer.jar.log \"${jarName}.log\"; ")
+                    append("  tail -n 0 -q -F installer.jar.log \"${jarName}.log\" 2>/dev/null & ")
+                    append("  INSTALL_TAIL_PID=\$!; ")
+                    append("  $javaBin $installerMemArg -jar $jarName --installServer; ")
+                    append("  INSTALL_EXIT=\$?; ")
+                    append("  kill \$INSTALL_TAIL_PID 2>/dev/null || true; ")
+                    append("  if [ \$INSTALL_EXIT -ne 0 ]; then ")
+                    append("    echo -e '\\033[31m[MineServe] ${server.type.displayName} installation failed with exit code '\$INSTALL_EXIT'!\\033[0m'; ")
+                    append("    exit \$INSTALL_EXIT; ")
+                    append("  fi; ")
+                    append("  echo -e '\\033[32m[MineServe] ${server.type.displayName} installation completed successfully!\\033[0m'; ")
+                    append("fi; ")
+                    append("if [ -f run.sh ]; then ")
+                    append("  chmod +x run.sh; ")
+                    append("  echo '$memArg $flags' > user_jvm_args.txt; ")
+                    append("  echo -e '\\033[32m[MineServe] Starting ${server.type.displayName} Server...\\033[0m'; ")
+                    append("  exec bash run.sh nogui; ")
+                    append("else ")
+                    append("  FORGE_JAR=\$(ls -t forge-*.jar 2>/dev/null | grep -v installer | head -n 1); ")
+                    append("  if [ -n \"\$FORGE_JAR\" ] && [ -f \"\$FORGE_JAR\" ]; then ")
+                    append("    echo -e '\\033[32m[MineServe] Starting Forge Server via '\$FORGE_JAR'...\\033[0m'; ")
+                    append("    exec $javaBin $memArg $flags -jar \"\$FORGE_JAR\" nogui; ")
+                    append("  else ")
+                    append("    exec $javaBin $memArg $flags -jar $jarName nogui; ")
+                    append("  fi; ")
+                    append("fi")
+                } else {
+                    append("if [ -f run.sh ]; then ")
+                    append("  chmod +x run.sh; ")
+                    append("  exec bash run.sh nogui; ")
+                    append("else ")
+                    append("  exec $javaBin $memArg $flags -jar $jarName nogui; ")
+                    append("fi")
+                }
             }
         }
 
         val serverPathInContainer = "/servers/${server.id}"
         val cmd = "cd $serverPathInContainer && $launchCommand"
 
+        val runtimeLabel = if (server.type.isBedrockNative) "Native (Bedrock)" else "Java: ${server.javaVersion}"
         val banner = "\u001B[36m=====================================================\u001B[0m\r\n" +
                 "\u001B[32m MineServe - Booting ${server.name} (${server.type.displayName} ${server.version})\u001B[0m\r\n" +
-                "\u001B[36m Memory: ${server.allocatedRamMb} MB | Port: ${server.port} | Java: ${server.javaVersion}\u001B[0m\r\n" +
+                "\u001B[36m Memory: ${server.allocatedRamMb} MB | Port: ${server.port} | $runtimeLabel\u001B[0m\r\n" +
                 "\u001B[36m=====================================================\u001B[0m\r\n\r\n"
         session.emulator.appendBytes(banner.toByteArray(Charsets.UTF_8), banner.length)
         triggerRefresh(server.id)

@@ -24,6 +24,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -40,6 +41,7 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
@@ -70,7 +72,8 @@ fun WizardStep2Software(
         ServerType.NEOFORGE,
         ServerType.FOLIA,
         ServerType.VELOCITY,
-        ServerType.BUNGEECORD
+        ServerType.BUNGEECORD,
+        ServerType.BEDROCK_BDS
     )
 
     Column(
@@ -105,12 +108,32 @@ fun WizardStep2Software(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = st.displayName,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isSelected) EmeraldLight else Color.White
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = st.displayName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (isSelected) EmeraldLight else Color.White
+                                )
+                                if (st.isBedrockNative) {
+                                    Surface(
+                                        shape = RoundedCornerShape(4.dp),
+                                        color = GoldYellow.copy(alpha = 0.2f),
+                                        border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.6f))
+                                    ) {
+                                        Text(
+                                            text = "BETA",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = GoldYellow,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = st.description,

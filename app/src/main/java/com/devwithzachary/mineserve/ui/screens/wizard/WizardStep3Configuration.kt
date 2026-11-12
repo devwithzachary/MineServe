@@ -49,6 +49,7 @@ fun WizardStep3Configuration(
     port: Int,
     onPortChange: (Int) -> Unit,
     conflictingServerName: String? = null,
+    isBedrockNative: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var portText by remember { mutableStateOf(if (port in 1..65535) port.toString() else "") }
@@ -65,23 +66,45 @@ fun WizardStep3Configuration(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
-        Text(
-            text = stringResource(R.string.wizard_step3_ram_label),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
+        if (!isBedrockNative) {
+            Text(
+                text = stringResource(R.string.wizard_step3_ram_label),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
 
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                RamSlider(
-                    allocatedMb = allocatedRamMb,
-                    onValueChange = onAllocatedRamMbChange
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    RamSlider(
+                        allocatedMb = allocatedRamMb,
+                        onValueChange = onAllocatedRamMbChange
+                    )
+                }
+            }
+        } else {
+            Text(
+                text = "Network & Port",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = "Bedrock Dedicated Server is a native C++ binary and manages memory dynamically without JVM heap (-Xmx) limits.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(16.dp)
                 )
             }
         }

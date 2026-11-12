@@ -57,6 +57,9 @@ class ServerSoftwareManager(
             ServerType.BUNGEECORD -> {
                 com.devwithzachary.mineserve.api.BungeeCordApiClient().getLatestBuildInfo()
             }
+            ServerType.BEDROCK_BDS -> {
+                com.devwithzachary.mineserve.api.BedrockApiClient().getLatestBdsBuild()
+            }
             ServerType.VANILLA -> {
                 MojangApiClient().getServerJarDownloadUrl(version)?.let { Pair("Release", it) }
             }
@@ -97,6 +100,9 @@ class ServerSoftwareManager(
                 }
                 ServerType.BUNGEECORD -> {
                     com.devwithzachary.mineserve.api.BungeeCordApiClient().getVersions()
+                }
+                ServerType.BEDROCK_BDS -> {
+                    com.devwithzachary.mineserve.api.BedrockApiClient().getBdsVersions()
                 }
                 ServerType.VANILLA -> {
                     MojangApiClient().getReleaseVersions()
@@ -141,7 +147,19 @@ class ServerSoftwareManager(
         destFile: File,
         onProgress: (Long, Long) -> Unit
     ) = withContext(Dispatchers.IO) {
-        val request = MineServeHttpClient.newGetRequest(fileUrl)
+        val request = if (fileUrl.contains("minecraft.net", ignoreCase = true)) {
+            okhttp3.Request.Builder()
+                .url(fileUrl)
+                .header(
+                    "User-Agent",
+                    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+                )
+                .header("Accept", "*/*")
+                .header("Accept-Language", "en-US,en;q=0.9")
+                .build()
+        } else {
+            MineServeHttpClient.newGetRequest(fileUrl)
+        }
 
         MineServeHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {

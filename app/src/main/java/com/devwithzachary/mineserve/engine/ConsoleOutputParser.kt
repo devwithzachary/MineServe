@@ -7,7 +7,9 @@ object ConsoleOutputParser {
     private val ANSI_COLOR_REGEX = Regex("\u001B\\[[;\\d]*[ -/]*[@-~]")
     private val PLAYER_JOIN_REGEX_1 = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\s+joined the game""", RegexOption.IGNORE_CASE)
     private val PLAYER_JOIN_REGEX_2 = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\[/.*?\]\s+logged in""", RegexOption.IGNORE_CASE)
-    private val PLAYER_LEAVE_REGEX = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\s+(?:left the game|lost connection)""", RegexOption.IGNORE_CASE)
+    private val BDS_PLAYER_JOIN_REGEX = Regex("""Player connected:\s+([^,]+),""", RegexOption.IGNORE_CASE)
+    private val PLAYER_LEAVE_REGEX = Regex("""(?:\[Server thread/INFO\]:?\s+|INFO\]:\s+|:\s+)?([a-zA-Z0-9_.*+]{1,32})\s+(?:left the game|lost connection|logged out)""", RegexOption.IGNORE_CASE)
+    private val BDS_PLAYER_LEAVE_REGEX = Regex("""Player disconnected:\s+([^,]+),""", RegexOption.IGNORE_CASE)
     private val LAG_WARNING_REGEX = Regex("""Can't keep up!.*?Running\s+(\d+)ms\s+or\s+(\d+)\s+ticks behind""", RegexOption.IGNORE_CASE)
     private val PAPER_TPS_REGEX = Regex("""TPS from last [^:]+:\s*[*§a-f0-9]*([0-9.]+)(?:,\s*[*§a-f0-9]*([0-9.]+))?""", RegexOption.IGNORE_CASE)
     private val TICK_MSPT_REGEX = Regex("""(?:Average tick time|The average tick time is):\s*([0-9.]+)ms""", RegexOption.IGNORE_CASE)
@@ -28,17 +30,24 @@ object ConsoleOutputParser {
             val line = rawLine.replace(ANSI_COLOR_REGEX, "").trim()
             if (line.isBlank()) continue
 
-            // 1. Done / Running trigger (includes Velocity/BungeeCord "Listening on /")
+            // 1. Done / Running trigger (includes Velocity/BungeeCord "Listening on /" and BDS "Server started.")
             if (line.contains("Done (") || line.contains("For help, type \"help\"") ||
-                line.contains("Time elapsed:") || line.contains("Listening on /")
+                line.contains("Time elapsed:") || line.contains("Listening on /") ||
+                line.contains("Server started.")
             ) {
                 onUpdateStatus(serverId, ServerStatus.RUNNING)
             }
 
             // 2. Player joins
-            if (line.contains("joined the game", ignoreCase = true) || line.contains("logged in with entity id", ignoreCase = true)) {
-                val match = PLAYER_JOIN_REGEX_1.find(line) ?: PLAYER_JOIN_REGEX_2.find(line)
-                match?.groupValues?.get(1)?.let { player ->
+            if (line.contains("joined the game", ignoreCase = true) ||
+                line.contains("logged in with entity id", ignoreCase = true) ||
+                line.contains("logged in", ignoreCase = true) ||
+                line.contains("Player connected:", ignoreCase = true)
+            ) {
+                val match = PLAYER_JOIN_REGEX_1.find(line)
+                    ?: PLAYER_JOIN_REGEX_2.find(line)
+                    ?: BDS_PLAYER_JOIN_REGEX.find(line)
+                match?.groupValues?.get(1)?.trim()?.let { player ->
                     val added = session.onlinePlayers.add(player)
                     session.idleStartTimeMillis = null
                     session.isAutoSleeping = false
@@ -47,9 +56,13 @@ object ConsoleOutputParser {
             }
 
             // 3. Player leaves
-            if (line.contains("left the game", ignoreCase = true) || line.contains("lost connection", ignoreCase = true)) {
-                val match = PLAYER_LEAVE_REGEX.find(line)
-                match?.groupValues?.get(1)?.let { player ->
+            if (line.contains("left the game", ignoreCase = true) ||
+                line.contains("lost connection", ignoreCase = true) ||
+                line.contains("logged out", ignoreCase = true) ||
+                line.contains("Player disconnected:", ignoreCase = true)
+            ) {
+                val match = PLAYER_LEAVE_REGEX.find(line) ?: BDS_PLAYER_LEAVE_REGEX.find(line)
+                match?.groupValues?.get(1)?.trim()?.let { player ->
                     val removed = session.onlinePlayers.remove(player)
                     if (session.onlinePlayers.isEmpty()) {
                         session.idleStartTimeMillis = System.currentTimeMillis()
@@ -93,7 +106,8 @@ object ConsoleOutputParser {
 
             // 7. Stopping trigger
             if (line.contains("Stopping the server") || line.contains("Stopping server") ||
-                line.contains("Closing listener") || line.contains("Thank you and goodbye")
+                line.contains("Closing listener") || line.contains("Thank you and goodbye") ||
+                line.contains("Quit correctly") || line.contains("Stopping other threads")
             ) {
                 onUpdateStatus(serverId, ServerStatus.STOPPING)
             }

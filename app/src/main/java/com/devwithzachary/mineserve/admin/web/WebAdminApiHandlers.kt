@@ -90,6 +90,11 @@ internal class WebAdminApiHandlers(
                 creationJobs[jobId] = CreationJob("running", 20, "Creating server directory...")
 
                 val isInstaller = type == ServerType.NEOFORGE || type == ServerType.FORGE
+                val jarFileName = when {
+                    isInstaller -> "installer.jar"
+                    type == ServerType.BEDROCK_BDS -> "bedrock_server"
+                    else -> "server.jar"
+                }
                 val server = serverRepository.createServer(
                     name = name,
                     type = type,
@@ -97,7 +102,7 @@ internal class WebAdminApiHandlers(
                     port = port,
                     ramMb = ramMb,
                     motd = motd,
-                    jarFileName = if (isInstaller) "installer.jar" else "server.jar",
+                    jarFileName = jarFileName,
                     serverBuild = buildInfo?.first,
                     eulaAccepted = true
                 )

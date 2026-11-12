@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCode2
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
 import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
@@ -205,8 +206,9 @@ fun ServerDetailScreen(
     val playersStr = stringResource(R.string.tab_players)
     val backupsStr = stringResource(R.string.tab_backups)
 
-    val showLiveMapTab = !server.type.isProxy && server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
-    val showWorldTab = !server.type.isProxy
+    val showLiveMapTab = !server.type.isProxy && !server.type.isBedrockNative &&
+        server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
+    val showWorldTab = !server.type.isProxy && !server.type.isBedrockNative
 
     val tabList = remember(server.type, pluginModTabName, showLiveMapTab, showWorldTab) {
         buildList {
@@ -385,6 +387,43 @@ fun ServerDetailScreen(
                 onToggleTunnel = onToggleTunnel,
                 onOpenShareDialog = { showShareDialog = true }
             )
+
+            if (server.type.isBedrockNative) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = GoldYellow.copy(alpha = 0.15f),
+                    border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.4f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = LayoutManager.screenHorizontalPadding)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.Top,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = null,
+                            tint = GoldYellow,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = "Bedrock Dedicated Server (Beta)",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = GoldYellow
+                            )
+                            Text(
+                                text = "Native Bedrock hosting is currently experimental. On ARM64 devices, it runs via user-mode qemu-x86_64 emulation. Performance or connection anomalies may occur.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.9f)
+                            )
+                        }
+                    }
+                }
+            }
 
             // Tab Row
             PrimaryScrollableTabRow(

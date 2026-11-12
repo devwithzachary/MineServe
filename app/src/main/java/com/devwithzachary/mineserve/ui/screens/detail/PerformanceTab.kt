@@ -264,12 +264,13 @@ fun PerformanceTab(
             // RAM Tile
             MetricTile(
                 icon = Icons.Default.Memory,
-                iconColor = ramColor,
+                iconColor = if (server.type.isBedrockNative) EmeraldPrimary else ramColor,
                 title = "RAM Memory",
                 value = if (isOnline) "$ramUsedMb MB" else "0 MB",
-                subtitle = "$ramPercentage% of $ramMaxMb MB",
-                progress = animatedRamProgress,
+                subtitle = if (server.type.isBedrockNative) "Native C++ RSS" else "$ramPercentage% of $ramMaxMb MB",
+                progress = if (server.type.isBedrockNative) 0f else animatedRamProgress,
                 progressColor = ramColor,
+                showProgress = !server.type.isBedrockNative,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -362,7 +363,9 @@ fun PerformanceTab(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         LagDiagnosticTipItem(tip = "Reduce view-distance to 6-8 and simulation-distance to 4 in Server Properties.")
                         LagDiagnosticTipItem(tip = "Check for runaway entity breeding or dense animal farms near world spawn.")
-                        LagDiagnosticTipItem(tip = "Apply Aikar's optimized G1GC JVM flags to minimize mobile garbage collection pauses.")
+                        if (!server.type.isBedrockNative) {
+                            LagDiagnosticTipItem(tip = "Apply Aikar's optimized G1GC JVM flags to minimize mobile garbage collection pauses.")
+                        }
                     }
                 }
             }
@@ -515,7 +518,7 @@ fun PerformanceTab(
                         )
                     }
 
-                    if (isOnline) {
+                    if (isOnline && !server.type.isBedrockNative) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
                             color = ramColor.copy(alpha = 0.15f)
@@ -531,33 +534,44 @@ fun PerformanceTab(
                     }
                 }
 
-                LinearProgressIndicator(
-                    progress = { animatedRamProgress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = ramColor,
-                    trackColor = Slate800
-                )
+                if (!server.type.isBedrockNative) {
+                    LinearProgressIndicator(
+                        progress = { animatedRamProgress },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .clip(RoundedCornerShape(4.dp)),
+                        color = ramColor,
+                        trackColor = Slate800
+                    )
+                }
 
                 HorizontalDivider(color = ObsidianCardBorder)
 
-                PerformanceInfoRow(label = "Allocated Max Heap (-Xmx)", value = "$ramMaxMb MB")
-                PerformanceInfoRow(label = "Initial Heap (-Xms)", value = "512 MB")
-                PerformanceInfoRow(
-                    label = "Active Resident Usage",
-                    value = if (isOnline) "$ramUsedMb MB" else "0 MB"
-                )
-                PerformanceInfoRow(
-                    label = "Available Headroom",
-                    value = if (isOnline) "${(ramMaxMb - ramUsedMb).coerceAtLeast(0)} MB" else "$ramMaxMb MB"
-                )
-                PerformanceInfoRow(label = "Garbage Collector", value = "G1GC (ParallelRefProcEnabled)")
+                if (server.type.isBedrockNative) {
+                    PerformanceInfoRow(label = "Memory Management", value = "Native C++ (OS-managed)")
+                    PerformanceInfoRow(
+                        label = "Active Resident Usage (RSS)",
+                        value = if (isOnline) "$ramUsedMb MB" else "0 MB"
+                    )
+                } else {
+                    PerformanceInfoRow(label = "Allocated Max Heap (-Xmx)", value = "$ramMaxMb MB")
+                    PerformanceInfoRow(label = "Initial Heap (-Xms)", value = "512 MB")
+                    PerformanceInfoRow(
+                        label = "Active Resident Usage",
+                        value = if (isOnline) "$ramUsedMb MB" else "0 MB"
+                    )
+                    PerformanceInfoRow(
+                        label = "Available Headroom",
+                        value = if (isOnline) "${(ramMaxMb - ramUsedMb).coerceAtLeast(0)} MB" else "$ramMaxMb MB"
+                    )
+                    PerformanceInfoRow(label = "Garbage Collector", value = "G1GC (ParallelRefProcEnabled)")
+                }
             }
         }
 
-        // JVM Tuning & Aikar's GC Presets Card
+        // JVM Tuning & Aikar's GC Presets Card (Java only)
+        if (!server.type.isBedrockNative) {
         Card(
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(containerColor = ObsidianCard),
@@ -648,6 +662,7 @@ fun PerformanceTab(
                 }
             }
         }
+        }
 
         // CPU & Process Information Card
         Card(
@@ -689,8 +704,13 @@ fun PerformanceTab(
                     value = if (pid > 0) pid.toString() else "None (Stopped)"
                 )
                 PerformanceInfoRow(
-                    label = "Java Runtime",
-                    value = "OpenJDK ${server.javaVersion} (Headless)"
+                    label = if (server.type.isBedrockNative) "Runtime Engine" else "Java Runtime",
+                    value = if (server.type.isBedrockNative) {
+                        val isX86_64 = android.os.Build.SUPPORTED_ABIS.firstOrNull()?.contains("x86_64") == true
+                        if (isX86_64) "Native Linux x86_64" else "Native x86_64 (qemu-x86_64)"
+                    } else {
+                        "OpenJDK ${server.javaVersion} (Headless)"
+                    }
                 )
                 PerformanceInfoRow(
                     label = "Isolation Engine",
@@ -698,7 +718,7 @@ fun PerformanceTab(
                 )
                 PerformanceInfoRow(
                     label = "Server Port",
-                    value = "${server.port} (TCP/UDP)"
+                    value = if (server.type.isBedrockNative) "${server.port} (UDP / RakNet)" else "${server.port} (TCP/UDP)"
                 )
             }
         }

@@ -90,7 +90,9 @@ fun WizardStep4Review(
                 ReviewRow(label = stringResource(R.string.wizard_step4_name), value = serverName)
                 ReviewRow(label = stringResource(R.string.wizard_step4_platform), value = selectedType.displayName, valueColor = EmeraldLight)
                 ReviewRow(label = stringResource(R.string.wizard_step4_version), value = selectedVersion)
-                ReviewRow(label = stringResource(R.string.wizard_step4_ram), value = "$allocatedRamMb MB")
+                if (!selectedType.isBedrockNative) {
+                    ReviewRow(label = stringResource(R.string.wizard_step4_ram), value = "$allocatedRamMb MB")
+                }
                 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -118,7 +120,45 @@ fun WizardStep4Review(
                     }
                 }
 
-                ReviewRow(label = stringResource(R.string.wizard_step4_java), value = "Java $requiredJava")
+                if (!selectedType.isBedrockNative) {
+                    ReviewRow(label = stringResource(R.string.wizard_step4_java), value = "Java $requiredJava")
+                }
+            }
+        }
+
+        // Bedrock Beta Notice on Review Step
+        AnimatedVisibility(visible = selectedType.isBedrockNative) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = GoldYellow.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = GoldYellow,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Experimental Bedrock Support (Beta)",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = GoldYellow
+                        )
+                        Text(
+                            text = "Mojang Bedrock Dedicated Server is in early beta and uses qemu-x86_64 emulation on ARM64 devices. Some features or client connections may experience unexpected behavior.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.9f)
+                        )
+                    }
+                }
             }
         }
 

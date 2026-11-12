@@ -21,6 +21,9 @@ All notable changes to the MineServe project will be documented in this file.
 - **Velocity & BungeeCord Proxy Software**: Added `Velocity Proxy` (via PaperMC Fill API) and `BungeeCord Proxy` (via md-5 Jenkins CI) to both the Android Create Server Wizard and Web UI, including proxy-aware startup/shutdown lifecycle (`end` command) and Modrinth proxy plugin filtering.
 - **Multi-Server Routing & Internal Loopback Binding**: Added `ProxyNetworkManager` and UI controls in **Settings** and the **Web Admin UI** to link backend servers into a proxy network (auto-generating `velocity.toml` + `forwarding.secret` or BungeeCord `config.yml`) and bind backend servers strictly to `127.0.0.1` (`online-mode=false`).
 
+### 🧱 Native Bedrock Dedicated Server (BDS - Beta)
+- **Official Mojang Bedrock Dedicated Server (Beta)**: Added `BEDROCK_BDS` server type with automatic Mojang download link resolution, `.zip` extraction, UDP port `19132` defaulting, Bedrock console/player connect/disconnect parsing, and automatic `qemu-x86_64` user-mode execution on ARM64 devices (native on `x86_64`). Marked as an experimental Beta feature with dedicated in-app badges and advisory notices.
+
 ## [1.5.1] - 2026-11-11
 
 ### ❤️ Community, Supporters & Links

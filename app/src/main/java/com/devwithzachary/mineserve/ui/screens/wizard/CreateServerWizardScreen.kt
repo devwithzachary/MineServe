@@ -136,9 +136,17 @@ fun CreateServerWizardScreen(
     var isCreating by remember { mutableStateOf(false) }
     var creationStatus by remember { mutableStateOf("") }
     var creationProgress by remember { mutableIntStateOf(0) }
+    var creationError by remember { mutableStateOf<String?>(null) }
 
     // Fetch versions when server type changes (Descending order with newest as default)
     LaunchedEffect(selectedType) {
+        if (!userModifiedPort) {
+            port = if (selectedType.isBedrockNative) {
+                com.devwithzachary.mineserve.model.findNextAvailablePort(existingServers, 19132)
+            } else {
+                defaultUnusedPort
+            }
+        }
         isLoadingVersions = true
         try {
             val vList = when (selectedType) {
@@ -156,6 +164,9 @@ fun CreateServerWizardScreen(
                 }
                 ServerType.BUNGEECORD -> {
                     com.devwithzachary.mineserve.api.BungeeCordApiClient().getVersions()
+                }
+                ServerType.BEDROCK_BDS -> {
+                    com.devwithzachary.mineserve.api.BedrockApiClient().getBdsVersions()
                 }
                 ServerType.VANILLA -> {
                     MojangApiClient().getReleaseVersions()
@@ -251,6 +262,7 @@ fun CreateServerWizardScreen(
                             } else {
                                 // Launch server creation
                                 isCreating = true
+                                creationError = null
                                 creationStatus = "Downloading ${selectedType.displayName} $selectedVersion..."
                                 scope.launch {
                                     val created = onDownloadAndCreateServer(
@@ -268,6 +280,8 @@ fun CreateServerWizardScreen(
                                     isCreating = false
                                     if (created != null) {
                                         onServerCreated(created)
+                                    } else {
+                                        creationError = "Failed to download or create ${selectedType.displayName}. Please check your internet connection and try again."
                                     }
                                 }
                             }
@@ -360,7 +374,8 @@ fun CreateServerWizardScreen(
                             userModifiedPort = true
                             port = newPort
                         },
-                        conflictingServerName = conflictingServerName
+                        conflictingServerName = conflictingServerName,
+                        isBedrockNative = selectedType.isBedrockNative
                     )
                     4 -> {
                         Column(verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)) {
@@ -377,6 +392,20 @@ fun CreateServerWizardScreen(
 
                             if (isCreating) {
                                 WizardProgressCard(creationStatus = creationStatus)
+                            }
+                            creationError?.let { err ->
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFF7F1D1D).copy(alpha = 0.4f),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = err,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFFFCA5A5),
+                                        modifier = Modifier.padding(12.dp)
+                                    )
+                                }
                             }
                         }
                     }

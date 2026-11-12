@@ -253,12 +253,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         eulaAccepted: Boolean = false,
         onProgress: (String, Int) -> Unit
     ): MinecraftServer? = withContext(Dispatchers.IO) {
+        var createdServerId: String? = null
         try {
             onProgress("Resolving download URL for ${type.displayName} $version...", 10)
             val buildInfo = serverSoftwareManager.resolveLatestBuild(type, version)
             val jarUrl = buildInfo?.second
 
             val isInstaller = type == ServerType.NEOFORGE || type == ServerType.FORGE
+            val jarFileName = when {
+                isInstaller -> "installer.jar"
+                type == ServerType.BEDROCK_BDS -> "bedrock_server"
+                else -> "server.jar"
+            }
             val server = serverRepository.createServer(
                 name = name,
                 type = type,
@@ -266,10 +272,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 port = port,
                 ramMb = ramMb,
                 motd = motd,
-                jarFileName = if (isInstaller) "installer.jar" else "server.jar",
+                jarFileName = jarFileName,
                 serverBuild = buildInfo?.first,
-                eulaAccepted = eulaAccepted
+                eulaAccepted = eulaAccepted || type.isBedrockNative
             )
+            createdServerId = server.id
 
             val serverDir = serverRepository.getServerDirectory(server.id)
             serverSoftwareManager.provisionServerSoftware(server, serverDir, jarUrl, onProgress)
@@ -279,6 +286,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             server
         } catch (e: Exception) {
             Log.e(TAG, "Error creating server", e)
+            createdServerId?.let { id ->
+                runCatching { serverRepository.deleteServer(id) }
+            }
             null
         }
     }
