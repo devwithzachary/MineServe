@@ -587,6 +587,23 @@
               </form>
               <div id="modrinth-results-list" class="player-list" style="max-height:50vh;"></div>
             </div>
+            <div class="panel-card">
+              <h3>Upload Custom .jar</h3>
+              <p class="player-sub">Upload a custom plugin or mod .jar file directly into this server's plugins/ or mods/ directory.</p>
+              <form id="plugin-upload-form" class="inline-form">
+                <input type="file" id="plugin-upload-file" accept=".jar" required>
+                <button type="submit" id="plugin-upload-btn" class="btn btn-primary btn-sm">Upload .jar</button>
+              </form>
+            </div>
+            <div class="panel-card">
+              <h3>Import Modrinth Modpack (.mrpack)</h3>
+              <p class="player-sub">Upload a Modrinth .mrpack archive to extract overrides and download all server-compatible mods. Stop the server first.</p>
+              <form id="modpack-import-form" class="inline-form">
+                <input type="file" id="modpack-import-file" accept=".mrpack" required>
+                <button type="submit" id="modpack-import-btn" class="btn btn-primary btn-sm">Import .mrpack</button>
+              </form>
+              <div id="modpack-import-status" class="player-sub" style="margin-top:8px;"></div>
+            </div>
           </div>
         </section>
       </div>

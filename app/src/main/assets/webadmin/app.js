@@ -1563,6 +1563,85 @@
       }
     });
 
+    $("plugin-upload-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.selectedServerId) return;
+      const input = $("plugin-upload-file");
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const btn = $("plugin-upload-btn");
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+      try {
+        const res = await fetch(`/api/servers/${state.selectedServerId}/plugins/upload?name=${encodeURIComponent(file.name)}`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: file
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+        showToast(`Uploaded ${data.fileName} to ${data.folder}/`);
+        input.value = "";
+        loadPlugins();
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Upload .jar";
+      }
+    });
+
+    $("modpack-import-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.selectedServerId) return;
+      const input = $("modpack-import-file");
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const btn = $("modpack-import-btn");
+      const statusEl = $("modpack-import-status");
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+      statusEl.textContent = "Uploading .mrpack archive...";
+      try {
+        const serverId = state.selectedServerId;
+        const res = await fetch(`/api/servers/${serverId}/modpack/import`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: file
+        });
+        const startData = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(startData.error || `Import failed (${res.status})`);
+
+        const jobId = startData.jobId;
+        btn.textContent = "Importing...";
+        const pollJob = async () => {
+          const job = await apiFetch(`/api/servers/${serverId}/modpack/jobs/${jobId}`);
+          statusEl.textContent = `${job.message || "Importing..."} ${job.currentFile ? "(" + job.currentFile + ")" : ""} - ${job.progressPercent || 0}%`;
+          if (job.status === "DONE") {
+            showToast(job.message || "Modpack imported!");
+            input.value = "";
+            loadPlugins();
+            btn.disabled = false;
+            btn.textContent = "Import .mrpack";
+          } else if (job.status === "ERROR") {
+            showToast(job.error || "Modpack import failed", "error");
+            btn.disabled = false;
+            btn.textContent = "Import .mrpack";
+          } else {
+            setTimeout(pollJob, 1000);
+          }
+        };
+        setTimeout(pollJob, 800);
+      } catch (err) {
+        statusEl.textContent = err.message;
+        showToast(err.message, "error");
+        btn.disabled = false;
+        btn.textContent = "Import .mrpack";
+      }
+    });
+
     $("modrinth-search-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!state.selectedServerId) return;

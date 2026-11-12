@@ -39,13 +39,33 @@ class ModpackInstaller {
         uri: Uri,
         serverDir: File,
         onProgress: (ModpackInstallProgress) -> Unit
+    ): Result<ModpackIndex> = installModpackFromStream(
+        streamProvider = { context.contentResolver.openInputStream(uri) },
+        serverDir = serverDir,
+        onProgress = onProgress
+    )
+
+    suspend fun installModpackFromFile(
+        mrpackFile: File,
+        serverDir: File,
+        onProgress: (ModpackInstallProgress) -> Unit
+    ): Result<ModpackIndex> = installModpackFromStream(
+        streamProvider = { mrpackFile.inputStream() },
+        serverDir = serverDir,
+        onProgress = onProgress
+    )
+
+    private suspend fun installModpackFromStream(
+        streamProvider: () -> InputStream?,
+        serverDir: File,
+        onProgress: (ModpackInstallProgress) -> Unit
     ): Result<ModpackIndex> = withContext(Dispatchers.IO) {
         try {
             onProgress(ModpackInstallProgress("Reading Modpack Metadata", "modrinth.index.json", 0, 1, 0f))
 
             // 1. First pass: extract modrinth.index.json and apply overrides
             var modpackIndex: ModpackIndex? = null
-            context.contentResolver.openInputStream(uri)?.use { stream ->
+            streamProvider()?.use { stream ->
                 ZipInputStream(stream).use { zipIn ->
                     var entry = zipIn.nextEntry
                     while (entry != null) {

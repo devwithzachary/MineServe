@@ -20,6 +20,7 @@ import com.devwithzachary.mineserve.model.ScheduledTaskType
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.TunnelProvider
 import com.devwithzachary.mineserve.model.WebMapPluginType
+import com.devwithzachary.mineserve.modpack.ModpackInstaller
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.net.portforward.PortForwardProtocol
 import com.devwithzachary.mineserve.net.portforward.PortForwardState
@@ -28,16 +29,29 @@ import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import com.devwithzachary.mineserve.tunnel.TunnelState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
+
+private data class ModpackImportJob(
+    val id: String,
+    @Volatile var status: String = "INSTALLING",
+    @Volatile var message: String = "Starting modpack import...",
+    @Volatile var currentFile: String = "",
+    @Volatile var progressPercent: Int = 0,
+    @Volatile var error: String? = null
+)
 
 /**
  * Handles extended Web Admin API endpoints for Performance, Automation, World,
  * Live Map, Tunneling & Port Forwarding, Backups, and Plugins/Mods.
  */
 internal class WebAdminExtendedHandlers(
+    private val scope: CoroutineScope,
     private val webAdminPort: Int,
     private val serverRepository: ServerRepository,
     private val processManager: ServerProcessManager,
@@ -48,6 +62,7 @@ internal class WebAdminExtendedHandlers(
     private val portForwardManager: PortForwardManager
 ) {
     private val modrinthClient = ModrinthApiClient()
+    private val modpackJobs = ConcurrentHashMap<String, ModpackImportJob>()
 
     // --- Performance ---
 
@@ -769,6 +784,88 @@ internal class WebAdminExtendedHandlers(
         val destFile = File(targetDir, resolved.first)
         val okDownload = serverSoftwareManager.downloadFileWithProgress(resolved.second, destFile) { _, _ -> }
         return ok(JSONObject().put("success", okDownload).put("fileName", resolved.first))
+    }
+
+    fun handleUploadPluginJar(serverId: String, rawFileName: String, uploadedFile: File): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        if (!server.type.supportsPlugins && !server.type.supportsMods) {
+            return badRequest("This server software does not support plugins or mods.")
+        }
+        val cleanName = rawFileName.trim().ifBlank { "uploaded_addon.jar" }
+        if (!cleanName.endsWith(".jar", ignoreCase = true)) {
+            return badRequest("Only .jar files can be uploaded.")
+        }
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val isModServer = server.type.supportsMods && !server.type.supportsPlugins
+        val targetFolderName = if (isModServer) "mods" else "plugins"
+        val targetDir = File(serverDir, targetFolderName).apply { mkdirs() }
+        val destFile = resolveSafeChild(targetDir, cleanName)
+            ?: return badRequest("Invalid file name.")
+        uploadedFile.copyTo(destFile, overwrite = true)
+        return ok(
+            JSONObject()
+                .put("success", true)
+                .put("fileName", destFile.name)
+                .put("folder", targetFolderName)
+        )
+    }
+
+    fun handleStartModpackImport(serverId: String, mrpackFile: File): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: run {
+            mrpackFile.delete()
+            return notFound("Server not found")
+        }
+        if (processManager.isServerRunning(serverId)) {
+            mrpackFile.delete()
+            return badRequest("Stop the server before importing a modpack.")
+        }
+        if (!server.type.supportsMods && !server.type.supportsPlugins) {
+            mrpackFile.delete()
+            return badRequest("This server software does not support modpacks.")
+        }
+        val jobId = UUID.randomUUID().toString()
+        val job = ModpackImportJob(id = jobId)
+        modpackJobs[jobId] = job
+        val serverDir = serverRepository.getServerDirectory(serverId)
+
+        scope.launch {
+            try {
+                val res = ModpackInstaller().installModpackFromFile(mrpackFile, serverDir) { progress ->
+                    job.message = progress.stage
+                    job.currentFile = progress.currentItem
+                    job.progressPercent = (progress.progress * 100f).toInt().coerceIn(0, 100)
+                }
+                res.fold(
+                    onSuccess = { index ->
+                        job.status = "DONE"
+                        job.progressPercent = 100
+                        job.message = "Imported ${index.name} (${index.versionId})"
+                    },
+                    onFailure = { err ->
+                        job.status = "ERROR"
+                        job.error = err.message ?: "Modpack import failed."
+                    }
+                )
+            } catch (e: Exception) {
+                job.status = "ERROR"
+                job.error = e.message ?: "Modpack import failed."
+            } finally {
+                mrpackFile.delete()
+            }
+        }
+        return ok(JSONObject().put("success", true).put("jobId", jobId))
+    }
+
+    fun handleGetModpackJobStatus(jobId: String): WebApiResult {
+        val job = modpackJobs[jobId] ?: return notFound("Modpack import job not found")
+        val obj = JSONObject()
+            .put("jobId", job.id)
+            .put("status", job.status)
+            .put("message", job.message)
+            .put("currentFile", job.currentFile)
+            .put("progressPercent", job.progressPercent)
+        if (job.error != null) obj.put("error", job.error)
+        return ok(obj)
     }
 
     // --- Helpers ---

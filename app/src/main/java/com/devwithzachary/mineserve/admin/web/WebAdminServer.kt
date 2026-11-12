@@ -45,6 +45,7 @@ class WebAdminServer(
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val apiHandlers = WebAdminApiHandlers(scope, serverRepository, processManager, serverSoftwareManager)
     private val extHandlers = WebAdminExtendedHandlers(
+        scope = scope,
         webAdminPort = port,
         serverRepository = serverRepository,
         processManager = processManager,
@@ -148,16 +149,17 @@ class WebAdminServer(
             }
 
             val contentLength = headers["content-length"]?.toLongOrNull() ?: 0L
-            val isWorldImportUpload = method == "POST" &&
-                path.startsWith("/api/servers/") &&
-                path.endsWith("/world/import")
+            val isWorldImportUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/world/import")
+            val isPluginJarUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/plugins/upload")
+            val isModpackUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/modpack/import")
+            val isBinaryUpload = isWorldImportUpload || isPluginJarUpload || isModpackUpload
 
             // Extract Auth Token before reading potentially large bodies
             val authHeader = headers["authorization"]
             val cookieHeader = headers["cookie"]
             val token = extractToken(authHeader, cookieHeader)
 
-            if (isWorldImportUpload) {
+            if (isBinaryUpload) {
                 if (security.validateSession(token) == null) {
                     val errObj = JSONObject().put("error", "Unauthorized. Please log in.")
                     sendResponse(out, 401, "Unauthorized", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
@@ -166,17 +168,32 @@ class WebAdminServer(
                 val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
                 val serverId = segments.getOrNull(0) ?: ""
                 if (contentLength <= 0L || contentLength > 512L * 1024L * 1024L) {
-                    val errObj = JSONObject().put("error", "World archive must be between 1 byte and 512 MB.")
+                    val errObj = JSONObject().put("error", "Upload must be between 1 byte and 512 MB.")
                     sendResponse(out, 400, "Bad Request", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
                     return
                 }
-                val tempFile = File.createTempFile("web_world_import_", ".zip")
+                val tempFile = File.createTempFile("web_upload_", ".bin")
+                var keepTempForAsync = false
                 try {
                     streamFixedBytesToFile(rawIn, contentLength, tempFile)
-                    val createBackup = queryParams["createBackup"]?.toBooleanStrictOrNull() ?: true
-                    sendApiResult(out, extHandlers.handleImportWorld(serverId, tempFile, createBackup))
+                    val result = when {
+                        isWorldImportUpload -> {
+                            val createBackup = queryParams["createBackup"]?.toBooleanStrictOrNull() ?: true
+                            extHandlers.handleImportWorld(serverId, tempFile, createBackup)
+                        }
+                        isPluginJarUpload -> {
+                            extHandlers.handleUploadPluginJar(serverId, queryParams["name"] ?: "", tempFile)
+                        }
+                        else -> {
+                            keepTempForAsync = true
+                            extHandlers.handleStartModpackImport(serverId, tempFile)
+                        }
+                    }
+                    sendApiResult(out, result)
                 } finally {
-                    tempFile.delete()
+                    if (!keepTempForAsync) {
+                        tempFile.delete()
+                    }
                 }
                 return
             }
@@ -677,6 +694,13 @@ class WebAdminServer(
                 sub == "search" && method == "GET" -> extHandlers.handleSearchModrinth(serverId, queryParams["q"] ?: "")
                 sub == "install" && method == "POST" -> extHandlers.handleInstallModrinth(serverId, body)
                 (sub == "toggle" || sub == "delete") && method == "POST" -> extHandlers.handlePluginAction(serverId, sub, body)
+                else -> null
+            }
+            "modpack" -> when {
+                sub == "jobs" && method == "GET" -> {
+                    val jobId = segments.getOrNull(3) ?: ""
+                    extHandlers.handleGetModpackJobStatus(jobId)
+                }
                 else -> null
             }
             else -> null
