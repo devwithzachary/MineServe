@@ -643,6 +643,12 @@ class WebAdminServer(
                 sub == "portforward" && method == "POST" -> extHandlers.handlePortForwardAction(serverId, body)
                 else -> null
             }
+            "discord" -> when {
+                sub == null && method == "GET" -> extHandlers.handleGetDiscord(serverId)
+                sub == null && method == "POST" -> extHandlers.handleSaveDiscord(serverId, body)
+                sub == "test" && method == "POST" -> extHandlers.handleTestDiscord(serverId, body)
+                else -> null
+            }
             "backups" -> when {
                 sub == null && method == "GET" -> extHandlers.handleListBackups(serverId)
                 sub == "create" && method == "POST" -> extHandlers.handleCreateBackup(serverId, body)

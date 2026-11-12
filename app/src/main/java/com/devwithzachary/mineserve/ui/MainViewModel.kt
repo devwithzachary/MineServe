@@ -525,9 +525,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val result = backupRepository.createBackup(serverDir, isWorldOnly)
             if (result != null) {
                 val server = servers.value.firstOrNull { it.id == serverId }
-                if (server != null && server.cloudBackupConfig.enabled && server.cloudBackupConfig.autoSyncOnBackup) {
-                    val backupFile = File(File(serverDir, "backups"), result.fileName)
-                    CloudBackupManager.getInstance(getApplication()).syncBackupAsync(backupFile, server.cloudBackupConfig)
+                if (server != null) {
+                    com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.notifyBackupCompleted(
+                        server,
+                        if (isWorldOnly) "World Backup" else "Full Server Backup",
+                        result.fileName
+                    )
+                    if (server.cloudBackupConfig.enabled && server.cloudBackupConfig.autoSyncOnBackup) {
+                        val backupFile = File(File(serverDir, "backups"), result.fileName)
+                        CloudBackupManager.getInstance(getApplication()).syncBackupAsync(backupFile, server.cloudBackupConfig)
+                    }
                 }
             }
             loadServerDetails(serverId)
@@ -688,6 +695,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun updateServer(server: MinecraftServer) {
         viewModelScope.launch {
             serverRepository.updateServer(server)
+            processManager.updateSessionServerConfig(server)
         }
     }
 

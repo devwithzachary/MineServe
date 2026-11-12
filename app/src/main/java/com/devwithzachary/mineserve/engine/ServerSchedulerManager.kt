@@ -6,6 +6,7 @@ import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ScheduleFrequency
 import com.devwithzachary.mineserve.model.ScheduledTask
 import com.devwithzachary.mineserve.model.ScheduledTaskType
+import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import kotlinx.coroutines.CoroutineScope
@@ -231,6 +232,9 @@ class ServerSchedulerManager private constructor(
                     isWorldOnly = true,
                     customName = "world_backup_auto_${System.currentTimeMillis()}"
                 )
+                if (result != null) {
+                    DiscordWebhookClient.notifyBackupCompleted(server, "World Backup", result.fileName)
+                }
                 val prunedCount = if (result != null && task.backupRetentionCount > 0) {
                     backupRepository.pruneBackups(
                         serverDir = serverDir,
@@ -256,6 +260,9 @@ class ServerSchedulerManager private constructor(
                     isWorldOnly = false,
                     customName = "full_server_backup_auto_${System.currentTimeMillis()}"
                 )
+                if (result != null) {
+                    DiscordWebhookClient.notifyBackupCompleted(server, "Full Server Backup", result.fileName)
+                }
                 val prunedCount = if (result != null && task.backupRetentionCount > 0) {
                     backupRepository.pruneBackups(
                         serverDir = serverDir,

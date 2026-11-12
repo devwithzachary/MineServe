@@ -60,7 +60,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.model.TunnelProvider
@@ -960,6 +962,182 @@ fun SettingsTab(
                                 ),
                                 modifier = Modifier.weight(1f)
                             )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Discord Webhook & Event Bridge
+        var webhookEnabled by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.enabled)
+        }
+        var webhookUrl by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.webhookUrl)
+        }
+        var notifyStart by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.notifyServerStart)
+        }
+        var notifyStop by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.notifyServerStop)
+        }
+        var notifyCrash by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.notifyServerCrash)
+        }
+        var notifyJoin by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.notifyPlayerJoin)
+        }
+        var notifyLeave by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.notifyPlayerLeave)
+        }
+        var notifyBackup by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.notifyBackupComplete)
+        }
+        var includeSkins by remember(server.id, server.discordWebhookConfig) {
+            mutableStateOf(server.discordWebhookConfig.includePlayerSkins)
+        }
+        var isTestingWebhook by remember { mutableStateOf(false) }
+
+        fun buildDiscordConfig() = DiscordWebhookConfig(
+            enabled = webhookEnabled,
+            webhookUrl = webhookUrl.trim(),
+            notifyServerStart = notifyStart,
+            notifyServerStop = notifyStop,
+            notifyServerCrash = notifyCrash,
+            notifyPlayerJoin = notifyJoin,
+            notifyPlayerLeave = notifyLeave,
+            notifyBackupComplete = notifyBackup,
+            includePlayerSkins = includeSkins
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Discord Webhook Bridge",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Broadcast server lifecycle, player join/leave, and backup events to a Discord channel with zero plugins.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400
+                        )
+                    }
+                    Switch(
+                        checked = webhookEnabled,
+                        onCheckedChange = {
+                            webhookEnabled = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = EmeraldPrimary,
+                            checkedTrackColor = EmeraldDark,
+                            uncheckedTrackColor = Slate800
+                        )
+                    )
+                }
+
+                OutlinedTextField(
+                    value = webhookUrl,
+                    onValueChange = { webhookUrl = it },
+                    label = { Text("Discord Webhook URL") },
+                    placeholder = { Text("https://discord.com/api/webhooks/...", color = Slate400) },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = EmeraldPrimary,
+                        unfocusedBorderColor = ObsidianCardBorder,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                AnimatedVisibility(visible = webhookEnabled) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        SettingSwitchRow("Server Online", notifyStart, {
+                            notifyStart = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                        SettingSwitchRow("Server Offline", notifyStop, {
+                            notifyStop = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                        SettingSwitchRow("Crash / Unexpected Exit", notifyCrash, {
+                            notifyCrash = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                        SettingSwitchRow("Player Join", notifyJoin, {
+                            notifyJoin = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                        SettingSwitchRow("Player Leave", notifyLeave, {
+                            notifyLeave = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                        SettingSwitchRow("Backup Completed", notifyBackup, {
+                            notifyBackup = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                        SettingSwitchRow("Include Player Avatar Skins", includeSkins, {
+                            includeSkins = it
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        })
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                            Toast.makeText(context, "Discord webhook settings saved", Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Save", fontWeight = FontWeight.SemiBold)
+                    }
+
+                    OutlinedButton(
+                        enabled = !isTestingWebhook && webhookUrl.isNotBlank(),
+                        onClick = {
+                            isTestingWebhook = true
+                            scope.launch {
+                                val res = DiscordWebhookClient.sendTestMessage(webhookUrl, server.name)
+                                isTestingWebhook = false
+                                val msg = res.fold(
+                                    onSuccess = { "Test message sent to Discord!" },
+                                    onFailure = { err -> err.message ?: "Failed to send test message" }
+                                )
+                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                            }
+                        },
+                        border = BorderStroke(1.dp, EmeraldPrimary),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isTestingWebhook) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = EmeraldPrimary)
+                        } else {
+                            Text("Test Webhook", color = EmeraldLight)
                         }
                     }
                 }

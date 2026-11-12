@@ -42,6 +42,7 @@ data class MinecraftServer(
     val portForwardConfig: PortForwardConfig = PortForwardConfig(),
     val cloudBackupConfig: CloudBackupConfig = CloudBackupConfig(),
     val automationConfig: ServerAutomationConfig = ServerAutomationConfig(),
+    val discordWebhookConfig: DiscordWebhookConfig = DiscordWebhookConfig(),
     val serverBuild: String? = null
 ) {
     val isRunning: Boolean get() = status == ServerStatus.RUNNING || status == ServerStatus.STARTING

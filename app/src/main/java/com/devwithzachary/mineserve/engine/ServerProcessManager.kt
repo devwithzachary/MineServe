@@ -8,6 +8,7 @@ import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.compareMinecraftVersions
+import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
@@ -27,7 +28,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class ActiveServerSession(
-    val server: MinecraftServer,
+    var server: MinecraftServer,
     val emulator: TerminalEmulator,
     var ptyProcess: PtyProcess?,
     var pid: Int = -1,
@@ -40,6 +41,8 @@ data class ActiveServerSession(
     var lastTpsLogTime: Long = 0L,
     var idleStartTimeMillis: Long? = null,
     var isAutoSleeping: Boolean = false,
+    var stopRequested: Boolean = false,
+    var hasNotifiedStarted: Boolean = false,
     val tpsHistory: ArrayDeque<Float> = ArrayDeque(30),
     val msptHistory: ArrayDeque<Float> = ArrayDeque(30)
 )
@@ -89,6 +92,10 @@ class ServerProcessManager private constructor(
 
     init {
         startMetricsMonitor()
+    }
+
+    fun updateSessionServerConfig(server: MinecraftServer) {
+        sessions[server.id]?.let { it.server = server }
     }
 
     fun getEmulator(serverId: String): TerminalEmulator {
@@ -385,15 +392,33 @@ class ServerProcessManager private constructor(
                         val read = inputStream.read(buffer)
                         if (read <= 0) break
                         session.emulator.appendBytes(buffer, read)
-                        ConsoleOutputParser.parseBuffer(server.id, buffer, read, session) { sId, newStatus ->
-                            updateStatus(sId, newStatus, onStatusChanged)
-                        }
+                        ConsoleOutputParser.parseBuffer(
+                            serverId = server.id,
+                            buffer = buffer,
+                            length = read,
+                            session = session,
+                            onPlayerJoined = { player ->
+                                DiscordWebhookClient.notifyPlayerJoin(session.server, player, session.onlinePlayers.size)
+                            },
+                            onPlayerLeft = { player ->
+                                DiscordWebhookClient.notifyPlayerLeave(session.server, player, session.onlinePlayers.size)
+                            },
+                            onUpdateStatus = { sId, newStatus ->
+                                updateStatus(sId, newStatus, onStatusChanged)
+                                if (newStatus == ServerStatus.RUNNING && !session.hasNotifiedStarted) {
+                                    session.hasNotifiedStarted = true
+                                    DiscordWebhookClient.notifyServerStart(session.server)
+                                }
+                            }
+                        )
                         triggerRefresh(server.id)
                     }
                 } catch (e: Exception) {
                     Log.d(TAG, "PTY stream closed for server ${server.id}: ${e.message}")
                 } finally {
                     val wasAutoSleeping = session.isAutoSleeping
+                    val stopWasRequested = session.stopRequested
+                    val statusBeforeExit = _serverStatuses.value[server.id]
                     session.isAutoSleeping = false
                     val autoWakeEnabled = session.server.automationConfig.autoWakeOnPing
                     sessions.remove(server.id)
@@ -401,6 +426,14 @@ class ServerProcessManager private constructor(
                     val stopMsg = "\r\n\u001B[33m[MineServe] Server process terminated.\u001B[0m\r\n"
                     session.emulator.appendBytes(stopMsg.toByteArray(Charsets.UTF_8), stopMsg.length)
                     triggerRefresh(server.id)
+
+                    if (!wasAutoSleeping) {
+                        if (stopWasRequested || statusBeforeExit == ServerStatus.STOPPING) {
+                            DiscordWebhookClient.notifyServerStop(session.server)
+                        } else {
+                            DiscordWebhookClient.notifyServerCrash(session.server)
+                        }
+                    }
 
                     if (autoWakeEnabled || wasAutoSleeping) {
                         enterStandby(session.server)
@@ -419,11 +452,13 @@ class ServerProcessManager private constructor(
             triggerRefresh(server.id)
             sessions.remove(server.id)
             updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
+            DiscordWebhookClient.notifyServerCrash(session.server, e.localizedMessage ?: e.message)
         }
     }
 
     fun stopServer(serverId: String) {
         val session = sessions[serverId] ?: return
+        session.stopRequested = true
         if (session.ptyProcess != null) {
             sendCommand(serverId, "stop")
         }

@@ -1,5 +1,2 @@
-- Full Feature-Parity Web UI: create/delete servers, edit settings, and manage Whitelist, Ops, and Bans from any browser
-- Added Web Performance tab with live CPU, RAM, and TPS telemetry charts over time and Aikar's G1GC flags
-- Added Web World tab with .zip/.mcworld import/export, dimension resets, and chunk pruning options
-- Added Web Automation, Backups, Modrinth Plugins/Mods, Tunneling/UPnP, and Squaremap Live Map tabs with port conflict protection
-
+- Full Feature-Parity Web UI: create/delete servers, edit settings, manage Whitelist/Ops/Bans, performance charts, world import/export, backups, Modrinth plugins/mods, tunneling/UPnP, and Squaremap Live Map
+- Discord Webhook Bridge: send server start/stop/crash alerts, player join/leave notices with skins, and backup updates to Discord without plugins

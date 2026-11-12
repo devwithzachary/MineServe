@@ -8,7 +8,9 @@ import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.engine.WorldManager
 import com.devwithzachary.mineserve.model.ChunkPruneOptions
 import com.devwithzachary.mineserve.model.DimensionType
+import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.InhabitedTimeThreshold
+import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ScheduleFrequency
 import com.devwithzachary.mineserve.model.ScheduledTask
@@ -504,13 +506,67 @@ internal class WebAdminExtendedHandlers(
     }
 
     suspend fun handleCreateBackup(serverId: String, body: String): WebApiResult {
-        serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
         val json = parseJsonObject(body)
         val isWorldOnly = json.optBoolean("isWorldOnly", true)
         val serverDir = serverRepository.getServerDirectory(serverId)
         val entry = backupRepository.createBackup(serverDir, isWorldOnly = isWorldOnly)
             ?: return badRequest("Failed to create backup (ensure world directory exists).")
+        DiscordWebhookClient.notifyBackupCompleted(
+            server,
+            if (isWorldOnly) "World Backup" else "Full Server Backup",
+            entry.fileName
+        )
         return ok(JSONObject().put("success", true).put("fileName", entry.fileName))
+    }
+
+    // --- Discord Webhook Bridge ---
+
+    fun handleGetDiscord(serverId: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val cfg = server.discordWebhookConfig
+        return ok(
+            JSONObject()
+                .put("enabled", cfg.enabled)
+                .put("webhookUrl", cfg.webhookUrl)
+                .put("notifyServerStart", cfg.notifyServerStart)
+                .put("notifyServerStop", cfg.notifyServerStop)
+                .put("notifyServerCrash", cfg.notifyServerCrash)
+                .put("notifyPlayerJoin", cfg.notifyPlayerJoin)
+                .put("notifyPlayerLeave", cfg.notifyPlayerLeave)
+                .put("notifyBackupComplete", cfg.notifyBackupComplete)
+                .put("includePlayerSkins", cfg.includePlayerSkins)
+        )
+    }
+
+    suspend fun handleSaveDiscord(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val json = parseJsonObject(body)
+        val updatedCfg = DiscordWebhookConfig(
+            enabled = json.optBoolean("enabled", server.discordWebhookConfig.enabled),
+            webhookUrl = json.optString("webhookUrl", server.discordWebhookConfig.webhookUrl).trim(),
+            notifyServerStart = json.optBoolean("notifyServerStart", server.discordWebhookConfig.notifyServerStart),
+            notifyServerStop = json.optBoolean("notifyServerStop", server.discordWebhookConfig.notifyServerStop),
+            notifyServerCrash = json.optBoolean("notifyServerCrash", server.discordWebhookConfig.notifyServerCrash),
+            notifyPlayerJoin = json.optBoolean("notifyPlayerJoin", server.discordWebhookConfig.notifyPlayerJoin),
+            notifyPlayerLeave = json.optBoolean("notifyPlayerLeave", server.discordWebhookConfig.notifyPlayerLeave),
+            notifyBackupComplete = json.optBoolean("notifyBackupComplete", server.discordWebhookConfig.notifyBackupComplete),
+            includePlayerSkins = json.optBoolean("includePlayerSkins", server.discordWebhookConfig.includePlayerSkins)
+        )
+        val updatedServer = server.copy(discordWebhookConfig = updatedCfg)
+        serverRepository.updateServer(updatedServer)
+        processManager.updateSessionServerConfig(updatedServer)
+        return ok(JSONObject().put("success", true))
+    }
+
+    suspend fun handleTestDiscord(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val url = parseJsonObject(body).optString("webhookUrl", server.discordWebhookConfig.webhookUrl).trim()
+        val result = DiscordWebhookClient.sendTestMessage(url, server.name)
+        return result.fold(
+            onSuccess = { ok(JSONObject().put("success", true)) },
+            onFailure = { err -> badRequest(err.message ?: "Failed to send Discord test webhook.") }
+        )
     }
 
     suspend fun handleRestoreBackup(serverId: String, body: String): WebApiResult {

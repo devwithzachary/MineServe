@@ -13,6 +13,10 @@ All notable changes to the MineServe project will be documented in this file.
 - **Live Map (Squaremap) Integration**: Added the **Live Map** tab with Squaremap installation/uninstallation via Modrinth, embedded iframe preview, custom Squaremap HTTP port configuration, automatic port-conflict detection against the Web Admin port, and auto-assignment to port `8081` on fresh installs.
 - **Networking, Backups & Plugins/Mods**: Added **Settings & Network** controls for Bore/Playit.gg tunnels and UPnP/NAT-PMP router port forwarding, a **Backups** tab (create, restore, delete, download `.zip`), and a **Plugins / Mods** tab (list, enable/disable, delete, and Modrinth search/install).
 
+### 💬 Discord Webhook & Server Event Bridge
+- **Plugin-Free Discord Event Notifications**: Added pure-OkHttp Discord webhook support per server (`DiscordWebhookClient`) configurable in both **Server Settings** and the **Web Admin UI**, complete with a **Test Webhook** action.
+- **Lifecycle, Player & Backup Broadcasts**: Automatically sends rich Discord embed notifications for server online, clean shutdown, unexpected crash/exit, player join/leave events (with optional player avatar thumbnails), and completed manual or scheduled backups.
+
 ## [1.5.1] - 2026-11-11
 
 ### ❤️ Community, Supporters & Links

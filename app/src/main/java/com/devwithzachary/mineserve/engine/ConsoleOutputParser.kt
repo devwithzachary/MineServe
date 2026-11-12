@@ -17,6 +17,8 @@ object ConsoleOutputParser {
         buffer: ByteArray,
         length: Int,
         session: ActiveServerSession,
+        onPlayerJoined: (String) -> Unit = {},
+        onPlayerLeft: (String) -> Unit = {},
         onUpdateStatus: (String, ServerStatus) -> Unit
     ) {
         val text = String(buffer, 0, length, Charsets.UTF_8)
@@ -35,9 +37,10 @@ object ConsoleOutputParser {
             if (line.contains("joined the game", ignoreCase = true) || line.contains("logged in with entity id", ignoreCase = true)) {
                 val match = PLAYER_JOIN_REGEX_1.find(line) ?: PLAYER_JOIN_REGEX_2.find(line)
                 match?.groupValues?.get(1)?.let { player ->
-                    session.onlinePlayers.add(player)
+                    val added = session.onlinePlayers.add(player)
                     session.idleStartTimeMillis = null
                     session.isAutoSleeping = false
+                    if (added) onPlayerJoined(player)
                 }
             }
 
@@ -45,10 +48,11 @@ object ConsoleOutputParser {
             if (line.contains("left the game", ignoreCase = true) || line.contains("lost connection", ignoreCase = true)) {
                 val match = PLAYER_LEAVE_REGEX.find(line)
                 match?.groupValues?.get(1)?.let { player ->
-                    session.onlinePlayers.remove(player)
+                    val removed = session.onlinePlayers.remove(player)
                     if (session.onlinePlayers.isEmpty()) {
                         session.idleStartTimeMillis = System.currentTimeMillis()
                     }
+                    if (removed) onPlayerLeft(player)
                 }
             }
 

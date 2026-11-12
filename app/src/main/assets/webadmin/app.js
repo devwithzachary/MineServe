@@ -212,7 +212,7 @@
     else if (state.activeTab === "files") loadFiles(state.currentPath);
     else if (state.activeTab === "world") loadWorld();
     else if (state.activeTab === "livemap") loadLiveMap();
-    else if (state.activeTab === "settings") { loadSettings(); loadNetwork(); }
+    else if (state.activeTab === "settings") { loadSettings(); loadNetwork(); loadDiscordWebhook(); }
     else if (state.activeTab === "players") loadPlayers();
     else if (state.activeTab === "backups") loadBackups();
     else if (state.activeTab === "plugins") loadPlugins();
@@ -842,6 +842,22 @@
   }
 
   // Backups
+  async function loadDiscordWebhook() {
+    if (!state.selectedServerId) return;
+    try {
+      const d = await apiFetch(`/api/servers/${state.selectedServerId}/discord`);
+      $("discord-enabled").checked = !!d.enabled;
+      $("discord-url").value = d.webhookUrl || "";
+      $("discord-start").checked = d.notifyServerStart !== false;
+      $("discord-stop").checked = d.notifyServerStop !== false;
+      $("discord-crash").checked = d.notifyServerCrash !== false;
+      $("discord-join").checked = d.notifyPlayerJoin !== false;
+      $("discord-leave").checked = d.notifyPlayerLeave !== false;
+      $("discord-backup").checked = d.notifyBackupComplete !== false;
+      $("discord-skins").checked = d.includePlayerSkins !== false;
+    } catch (_) {}
+  }
+
   async function loadBackups() {
     if (!state.selectedServerId) return;
     try {
@@ -1415,6 +1431,49 @@
     $("pf-start-btn").addEventListener("click", () => sendPfAction("start"));
     $("pf-stop-btn").addEventListener("click", () => sendPfAction("stop"));
     $("pf-save-btn").addEventListener("click", () => sendPfAction("save"));
+
+    $("discord-webhook-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!state.selectedServerId) return;
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/discord`, {
+          method: "POST",
+          body: JSON.stringify({
+            enabled: $("discord-enabled").checked,
+            webhookUrl: $("discord-url").value.trim(),
+            notifyServerStart: $("discord-start").checked,
+            notifyServerStop: $("discord-stop").checked,
+            notifyServerCrash: $("discord-crash").checked,
+            notifyPlayerJoin: $("discord-join").checked,
+            notifyPlayerLeave: $("discord-leave").checked,
+            notifyBackupComplete: $("discord-backup").checked,
+            includePlayerSkins: $("discord-skins").checked
+          })
+        });
+        showToast("Discord webhook settings saved");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+
+    $("discord-test-btn").addEventListener("click", async () => {
+      if (!state.selectedServerId) return;
+      const btn = $("discord-test-btn");
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/discord/test`, {
+          method: "POST",
+          body: JSON.stringify({ webhookUrl: $("discord-url").value.trim() })
+        });
+        showToast("Test message sent to Discord!");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Test Webhook";
+      }
+    });
 
     $("backup-world-btn").addEventListener("click", async () => {
       if (!state.selectedServerId) return;

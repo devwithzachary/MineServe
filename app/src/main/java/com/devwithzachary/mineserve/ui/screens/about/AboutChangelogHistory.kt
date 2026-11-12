@@ -43,7 +43,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         highlights = listOf(
             "Full Feature-Parity Web UI: Create and delete servers, manage players (Whitelist, Ops, Bans), configure automation and scheduled tasks, and edit all server settings directly from your browser.",
             "Web Performance, World & Live Map: Added live CPU/RAM/TPS telemetry charts over time, 1-click Aikar's flags, world import/export, configurable chunk pruning, and Squaremap live map integration with automatic port conflict protection.",
-            "Web Backups, Plugins & Networking: Added browser-based backup creation/restore/download, Modrinth plugin and mod search/install, and Bore/Playit.gg tunnel and UPnP/NAT-PMP port forwarding controls."
+            "Web Backups, Plugins & Networking: Added browser-based backup creation/restore/download, Modrinth plugin and mod search/install, and Bore/Playit.gg tunnel and UPnP/NAT-PMP port forwarding controls.",
+            "Discord Webhook & Event Bridge: Configure Discord webhooks per server in Settings or the Web UI to broadcast server online/offline/crash events, player join/leave notices with skins, and completed backups with zero plugins."
         )
     ),
     ReleaseChangelog(

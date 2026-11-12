@@ -469,6 +469,33 @@
                 <button type="button" id="pf-save-btn" class="btn btn-secondary btn-sm">Save</button>
               </div>
             </div>
+
+            <div class="panel-card">
+              <h3>Discord Webhook &amp; Event Bridge</h3>
+              <p class="player-sub">Broadcast server startup, shutdown, crashes, player join/leave, and backup events to a Discord channel with zero plugins.</p>
+              <form id="discord-webhook-form">
+                <div class="toggle-row" style="margin-bottom:10px;">
+                  <label class="checkbox-label"><input type="checkbox" id="discord-enabled"><span>Enable Discord Webhook Bridge</span></label>
+                </div>
+                <div class="form-group" style="margin-bottom:10px;">
+                  <label for="discord-url">Discord Webhook URL</label>
+                  <input type="url" id="discord-url" placeholder="https://discord.com/api/webhooks/...">
+                </div>
+                <div class="toggle-row" style="margin-bottom:12px;">
+                  <label class="checkbox-label"><input type="checkbox" id="discord-start" checked><span>Server Online</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="discord-stop" checked><span>Server Offline</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="discord-crash" checked><span>Crash / Unexpected Exit</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="discord-join" checked><span>Player Join</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="discord-leave" checked><span>Player Leave</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="discord-backup" checked><span>Backup Completed</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="discord-skins" checked><span>Player Avatar Skins</span></label>
+                </div>
+                <div class="player-actions">
+                  <button type="submit" class="btn btn-primary btn-sm">Save Webhook Settings</button>
+                  <button type="button" id="discord-test-btn" class="btn btn-secondary btn-sm">Test Webhook</button>
+                </div>
+              </form>
+            </div>
           </div>
         </section>
 
