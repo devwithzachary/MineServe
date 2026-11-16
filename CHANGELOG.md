@@ -2,6 +2,11 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.6.1] - 2026-11-16
+
+### 🛡️ Build System & F-Droid Compliance
+- **R8 Code Shrinking & Optimization**: Enabled R8 minification (`isMinifyEnabled = true`) with tailored ProGuard/R8 rules preserving JNI bindings (`PtyNative`), Kotlinx serialization data models, OkHttp/Okio, and Compose runtimes to satisfy F-Droid packaging standards while optimizing APK binary size.
+
 ## [1.6.0] - 2026-11-12
 
 ### 🖥️ Full Feature-Parity Web Remote Admin UI

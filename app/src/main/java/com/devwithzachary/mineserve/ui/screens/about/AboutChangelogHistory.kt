@@ -37,9 +37,18 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.6.1",
+        date = "November 16, 2026",
+        initialExpanded = true,
+        highlights = listOf(
+            "F-Droid Packaging Compliance: Enabled R8 minification and optimizations with comprehensive ProGuard rules for JNI, Kotlinx serialization, and Compose.",
+            "Binary Optimization: Reduced release APK footprint while maintaining complete runtime stability and native execution."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.6.0",
         date = "November 12, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "Full Feature-Parity Web UI: Create and delete servers, manage players (Whitelist, Ops, Bans), configure automation and scheduled tasks, and edit all server settings directly from your browser.",
             "Web Performance, World & Live Map: Added live CPU/RAM/TPS telemetry charts over time, 1-click Aikar's flags, world import/export, configurable chunk pruning, and Squaremap live map integration with automatic port conflict protection.",

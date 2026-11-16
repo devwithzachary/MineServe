@@ -14,8 +14,8 @@ android {
         applicationId = "com.devwithzachary.mineserve"
         minSdk = 23
         targetSdk = 36
-        versionCode = 11
-        versionName = "1.6.0"
+        versionCode = 12
+        versionName = "1.6.1"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
@@ -47,7 +47,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = false
             signingConfigs.findByName("release")?.let { releaseConfig ->
                 if (releaseConfig.storeFile != null && releaseConfig.storeFile!!.exists()) {
                     signingConfig = releaseConfig

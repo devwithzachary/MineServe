@@ -1,0 +1,3 @@
+- F-Droid Packaging: enabled R8 code shrinking and optimizations
+- Performance & Footprint: reduced release binary size with verified JNI and serialization ProGuard rules
+
