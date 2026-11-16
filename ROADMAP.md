@@ -12,8 +12,8 @@ Our goal is to deliver the most reliable, capable, and accessible dedicated Mine
 | :--- | :--- | :--- | :--- |
 | **v1.4.2** | Android x86_64 PRoot Reliability & Codebase Modularity | October 2026 | **Shipped** ✅ |
 | **v1.5.0 / v1.5.1** | Connectivity, Cloud Backups, Web Remote Admin, Telemetry & Community | October / November 2026 | **Shipped** ✅ |
-| **v1.6.0** | Full Feature-Parity Web UI, Bedrock Dedicated Server, Proxies & Discord Bridge | November 2026 | **Shipped** ✅ |
-| **v1.7.0** | `:core` KMP Module Extraction, World Mastery, NBT Editor & Android Integration | Q2 2027 | **Scheduled** 📋 |
+| **v1.6.0 / v1.6.1** | Full Web UI, Bedrock Server, Proxies, Discord Bridge & R8 Optimization | November 2026 | **Shipped** ✅ |
+| **v1.7.0** | `:core` KMP Extraction, Logcat Diagnostics, NBT Editor & System Integration | Q2 2027 | **Scheduled** 📋 |
 | **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Mesh VPN | Mid 2027 | **Scheduled** 📋 |
 | **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Late 2027 | **Scheduled** 📋 |
 | **v2.0.0** | Stable Kotlin Multiplatform Release (Android, Linux, macOS, Windows) | Late 2027 / Early 2028 | **Target Milestone** 🎯 |
@@ -106,9 +106,9 @@ The 1.6.0 milestone upgrades the Web Remote Admin Panel into a complete, standal
 
 ---
 
-## 🌍 Version 1.7.0: Core KMP Architecture Prep, World Mastery & Android Integration
+## 🌍 Version 1.7.0: Core KMP Architecture Prep, Diagnostics, World Mastery & Android Integration
 
-The 1.7.0 milestone lays the architectural foundation for Kotlin Multiplatform by extracting a shared platform-agnostic `:core` module (while still building and releasing exclusively for Android), alongside advanced world editing tools and Android system integration.
+The 1.7.0 milestone lays the architectural foundation for Kotlin Multiplatform by extracting a shared platform-agnostic `:core` module (while still building and releasing exclusively for Android), alongside in-app diagnostic export tools, advanced world editing, and Android system integration.
 
 ### 🧱 1. Core Module Extraction & Multiplatform Preparation
 - **Shared `:core` Module Split**:
@@ -137,6 +137,16 @@ The 1.7.0 milestone lays the architectural foundation for Kotlin Multiplatform b
   - Glanceable home screen widget showing active server status, online player count, memory utilization, and 1-tap start/stop controls.
 - **Battery & Thermal Safeguards**:
   - Configurable auto-shutdown when device battery falls below a defined percentage (e.g. 15%) or when battery temperature exceeds safety thresholds.
+
+### 🩺 5. In-App Diagnostic Tools & Logcat Export
+- **One-Tap App & System Logcat Capture**:
+  - Built-in diagnostic tool under **App Settings** to capture live Android `logcat` buffer logs directly inside the app without requiring ADB or a computer.
+  - Automatically filters for relevant MineServe tags (`PlayitTunnelClient`, `BoreTunnelClient`, `PortForwardManager`, `ServerProcessManager`, `PRootEngine`, `WebAdminServer`, and crash stacktraces).
+- **Redacted Diagnostic Bundle Export**:
+  - Export diagnostic logs as a shareable `.txt` or `.zip` file via Android Share Sheet or save directly to device storage.
+  - Automatic scrubbing of sensitive credentials (Playit Secret keys, WebDAV passwords, Discord webhook tokens, and public IPs) to make sharing safe for Discord support channels and GitHub issues.
+- **Networking & Tunnel Health Self-Test**:
+  - Dedicated connection diagnostic screen testing DNS resolution, UDP/TCP reachability, Playit authentication handshake, and UPnP gateway discovery to quickly pinpoint player connection issues.
 
 ---
 
