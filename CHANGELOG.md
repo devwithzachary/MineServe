@@ -14,6 +14,9 @@ All notable changes to the MineServe project will be documented in this file.
 - **In-App Logcat Capture & Redacted Bundle Export**: Added **Diagnostics & Logcat** in **App Settings** (`DiagnosticManager`, `DiagnosticsScreen`) with tag filtering (`MineServe Tags`, `Errors & Crashes`, `All App Logs`), automatic scrubbing of Bearer/JWT tokens, Discord webhooks, secrets, and public IPv4 addresses, and `.zip` export via Share Sheet or Downloads.
 - **Networking & Tunnel Health Self-Test**: Added one-tap checks for LAN/gateway, DNS resolution (`bore.pub`, `api.mineserve.app`), Bore/Playit TCP reachability, MineServe Cloud `/health`, and UPnP router discovery.
 
+### ⚙️ Runtime Setup & Reliability
+- **Background-Safe Resumable Downloads & Local Import**: `RootfsManager` and `ServerSoftwareManager` now keep Ubuntu rootfs and server JAR/archive downloads alive in the background via `MineServeForegroundService` (with live notification progress, WakeLock, and WiFiLock), support HTTP `Range` resume via `.part` files on interruption, and allow importing local `.tar.gz` rootfs archives or local `.jar`/`.zip` server files directly during setup.
+
 ## [1.6.1] - 2026-11-16
 
 ### 🛡️ Build System & F-Droid Compliance

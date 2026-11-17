@@ -184,7 +184,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                     isRootfsInstalled = isRootfsInstalled,
                     setupState = rootfsSetupState,
                     onStartSetup = { viewModel.startRootfsSetup() },
-                    onContinueToDashboard = { navigateTo(Screen.Dashboard) }
+                    onContinueToDashboard = { navigateTo(Screen.Dashboard) },
+                    onImportLocalRootfs = { uri -> viewModel.importLocalRootfs(uri) }
                 )
             }
 
@@ -244,8 +245,8 @@ fun MineServeApp(viewModel: MainViewModel) {
                     },
                     onCancel = { navigateBack() },
                     existingServers = servers,
-                    onDownloadAndCreateServer = { name, type, version, port, ramMb, motd, eulaAccepted, onProgress ->
-                        viewModel.downloadAndCreateServer(name, type, version, port, ramMb, motd, eulaAccepted, onProgress)
+                    onDownloadAndCreateServer = { name, type, version, port, ramMb, motd, eulaAccepted, localJarUri, onProgress ->
+                        viewModel.downloadAndCreateServer(name, type, version, port, ramMb, motd, eulaAccepted, localJarUri, onProgress)
                     }
                 )
             }

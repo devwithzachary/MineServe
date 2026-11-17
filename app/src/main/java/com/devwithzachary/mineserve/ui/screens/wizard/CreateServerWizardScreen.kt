@@ -1,6 +1,9 @@
 package com.devwithzachary.mineserve.ui.screens.wizard
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -79,6 +82,7 @@ fun CreateServerWizardScreen(
         ramMb: Int,
         motd: String,
         eulaAccepted: Boolean,
+        localJarUri: Uri?,
         onProgress: (String, Int) -> Unit
     ) -> MinecraftServer?,
     modifier: Modifier = Modifier
@@ -109,6 +113,15 @@ fun CreateServerWizardScreen(
     var userModifiedPort by remember { mutableStateOf(false) }
     var port by remember { mutableIntStateOf(defaultUnusedPort) }
     var eulaAccepted by remember { mutableStateOf(false) }
+    var localJarUri by remember { mutableStateOf<Uri?>(null) }
+
+    val localJarPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            localJarUri = uri
+        }
+    }
 
     // Sync calculated unused port if servers load asynchronously, provided user hasn't explicitly set a port
     LaunchedEffect(defaultUnusedPort) {
@@ -272,7 +285,8 @@ fun CreateServerWizardScreen(
                                         port,
                                         allocatedRamMb,
                                         motd,
-                                        eulaAccepted
+                                        eulaAccepted,
+                                        localJarUri
                                     ) { status, progress ->
                                         creationStatus = status
                                         creationProgress = progress
@@ -387,7 +401,12 @@ fun CreateServerWizardScreen(
                                 port = port,
                                 eulaAccepted = eulaAccepted,
                                 onEulaAcceptedChange = { eulaAccepted = it },
-                                conflictingServerName = conflictingServerName
+                                conflictingServerName = conflictingServerName,
+                                localJarUri = localJarUri,
+                                onPickLocalJar = {
+                                    localJarPicker.launch(arrayOf("application/java-archive", "application/zip", "*/*"))
+                                },
+                                onClearLocalJar = { localJarUri = null }
                             )
 
                             if (isCreating) {

@@ -1,5 +1,8 @@
 package com.devwithzachary.mineserve.ui.screens.splash
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +25,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -61,10 +65,18 @@ fun SplashScreen(
     setupState: RootfsSetupState,
     onStartSetup: () -> Unit,
     onContinueToDashboard: () -> Unit,
+    onImportLocalRootfs: (Uri) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
     val scrollState = rememberScrollState()
+    val localRootfsPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            onImportLocalRootfs(uri)
+        }
+    }
 
     LaunchedEffect(setupState) {
         if (setupState is RootfsSetupState.Success) {
@@ -154,6 +166,20 @@ fun SplashScreen(
                                     text = stringResource(R.string.splash_init_btn),
                                     fontWeight = FontWeight.Bold,
                                     color = Color.Black
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { localRootfsPicker.launch(arrayOf("application/gzip", "application/x-gzip", "*/*")) },
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.FolderOpen, contentDescription = null, tint = EmeraldLight)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Import Local Rootfs (.tar.gz)",
+                                    color = EmeraldLight,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
@@ -300,6 +326,20 @@ fun SplashScreen(
                                 text = stringResource(R.string.splash_retry_setup),
                                 color = Color.Black,
                                 fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = { localRootfsPicker.launch(arrayOf("application/gzip", "application/x-gzip", "*/*")) },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.FolderOpen, contentDescription = null, tint = EmeraldLight)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Import Local Rootfs (.tar.gz)",
+                                color = EmeraldLight,
+                                fontWeight = FontWeight.SemiBold
                             )
                         }
                         if (isRootfsInstalled || setupState.logs.isNotEmpty()) {

@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.ui.screens.wizard
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -15,13 +16,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,6 +65,9 @@ fun WizardStep4Review(
     eulaAccepted: Boolean,
     onEulaAcceptedChange: (Boolean) -> Unit,
     conflictingServerName: String? = null,
+    localJarUri: Uri? = null,
+    onPickLocalJar: () -> Unit = {},
+    onClearLocalJar: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val uriHandler = LocalUriHandler.current
@@ -122,6 +130,59 @@ fun WizardStep4Review(
 
                 if (!selectedType.isBedrockNative) {
                     ReviewRow(label = stringResource(R.string.wizard_step4_java), value = "Java $requiredJava")
+                }
+            }
+        }
+
+        // Optional Local Server JAR / Zip Import
+        Card(
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+            border = BorderStroke(1.dp, ObsidianCardBorder),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier.padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = "Server Binary Source",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                if (localJarUri == null) {
+                    Text(
+                        text = "Downloads automatically (resumable in background), or import a local .jar / .zip file.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+                    OutlinedButton(
+                        onClick = onPickLocalJar,
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.FolderOpen, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Import Local Server File (.jar / .zip)", color = EmeraldLight, fontWeight = FontWeight.SemiBold)
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Using local file: ${localJarUri.lastPathSegment ?: "selected"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = EmeraldLight,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = onClearLocalJar, modifier = Modifier.size(28.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear local file", tint = Slate400, modifier = Modifier.size(16.dp))
+                        }
+                    }
                 }
             }
         }

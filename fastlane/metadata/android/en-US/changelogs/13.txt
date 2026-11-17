@@ -1,2 +1,3 @@
-- MineServe Cloud: dedicated Cloud page with optional R2 backups, custom *.play.mineserve.app (and Pro *.playms.uk) tunnels & remote Web Admin
-- In-App Diagnostics & Logcat: run tunnel/DNS network self-tests, capture automatically redacted logs, and export diagnostic .zip bundles from App Settings
+- MineServe Cloud: optional R2 backups, custom *.play.mineserve.app (and Pro *.playms.uk) tunnels & remote Web Admin
+- In-App Diagnostics & Logcat: run tunnel/DNS self-tests, capture redacted logs, and export .zip bundles
+- Reliable Runtime Setup: background-safe resumable rootfs downloads & local .tar.gz rootfs import

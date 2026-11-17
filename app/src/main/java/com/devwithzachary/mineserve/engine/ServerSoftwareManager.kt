@@ -1,5 +1,7 @@
 package com.devwithzachary.mineserve.engine
 
+import android.content.Context
+import android.net.Uri
 import android.util.Log
 import com.devwithzachary.mineserve.api.FabricApiClient
 import com.devwithzachary.mineserve.api.ForgeApiClient
@@ -17,12 +19,15 @@ import com.devwithzachary.mineserve.model.determineJavaVersion
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
+import com.devwithzachary.mineserve.service.MineServeForegroundService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
+import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 
 /**
  * Dedicated manager for Minecraft server software operations:
@@ -34,10 +39,18 @@ import java.io.IOException
 class ServerSoftwareManager(
     private val serverRepository: ServerRepository,
     private val backupRepository: BackupRepository,
-    private val processManager: ServerProcessManager
+    private val processManager: ServerProcessManager,
+    private val context: Context? = null
 ) {
     companion object {
         private const val TAG = "ServerSoftwareManager"
+    }
+
+    private val downloadClient by lazy {
+        MineServeHttpClient.client.newBuilder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .build()
     }
 
     suspend fun resolveLatestBuild(type: ServerType, version: String): Pair<String, String>? = withContext(Dispatchers.IO) {
@@ -147,7 +160,17 @@ class ServerSoftwareManager(
         destFile: File,
         onProgress: (Long, Long) -> Unit
     ) = withContext(Dispatchers.IO) {
-        val request = if (fileUrl.contains("minecraft.net", ignoreCase = true)) {
+        val partDir = context?.let { File(it.cacheDir, "jar_downloads") }
+            ?: destFile.parentFile
+        partDir?.mkdirs()
+        val urlHash = MessageDigest.getInstance("SHA-256")
+            .digest(fileUrl.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+            .take(16)
+        val partFile = File(partDir, "${destFile.name}.$urlHash.part")
+        val existingBytes = if (partFile.exists()) partFile.length() else 0L
+
+        val reqBuilder = if (fileUrl.contains("minecraft.net", ignoreCase = true)) {
             okhttp3.Request.Builder()
                 .url(fileUrl)
                 .header(
@@ -156,31 +179,50 @@ class ServerSoftwareManager(
                 )
                 .header("Accept", "*/*")
                 .header("Accept-Language", "en-US,en;q=0.9")
-                .build()
         } else {
-            MineServeHttpClient.newGetRequest(fileUrl)
+            MineServeHttpClient.newRequestBuilder(fileUrl)
+        }
+        if (existingBytes > 0L) {
+            reqBuilder.header("Range", "bytes=$existingBytes-")
         }
 
-        MineServeHttpClient.newCall(request).execute().use { response ->
+        downloadClient.newCall(reqBuilder.build()).execute().use { response ->
+            if (response.code == 416 && existingBytes > 0L) {
+                if (destFile.exists()) destFile.delete()
+                if (!partFile.renameTo(destFile)) {
+                    partFile.copyTo(destFile, overwrite = true)
+                    partFile.delete()
+                }
+                onProgress(destFile.length(), destFile.length())
+                return@withContext
+            }
             if (!response.isSuccessful) {
                 throw IOException("Server returned HTTP ${response.code} for $fileUrl")
             }
+            val isPartial = response.code == 206 && existingBytes > 0L
             val body = response.body ?: throw IOException("Empty response body from $fileUrl")
-            val contentLength = body.contentLength()
+            val remainingLength = body.contentLength()
+            val startOffset = if (isPartial) existingBytes else 0L
+            val totalLength = if (remainingLength > 0) startOffset + remainingLength else -1L
 
             body.byteStream().use { inputStream ->
-                FileOutputStream(destFile).use { outputStream ->
+                FileOutputStream(partFile, isPartial).use { outputStream ->
                     val buffer = ByteArray(65536)
-                    var totalRead = 0L
+                    var totalRead = startOffset
                     var read: Int
 
                     while (inputStream.read(buffer).also { read = it } != -1) {
                         totalRead += read
                         outputStream.write(buffer, 0, read)
-                        onProgress(totalRead, contentLength)
+                        onProgress(totalRead, totalLength)
                     }
                     outputStream.flush()
                 }
+            }
+            if (destFile.exists()) destFile.delete()
+            if (!partFile.renameTo(destFile)) {
+                partFile.copyTo(destFile, overwrite = true)
+                partFile.delete()
             }
         }
     }
@@ -189,25 +231,65 @@ class ServerSoftwareManager(
         server: MinecraftServer,
         serverDir: File,
         jarUrl: String?,
+        localFileUri: Uri? = null,
         onProgress: (String, Int) -> Unit
     ) {
         val destJar = File(serverDir, server.jarFileName)
+        context?.let {
+            MineServeForegroundService.isRootfsSetupActive = true
+            MineServeForegroundService.rootfsSetupStatusText = "Provisioning ${server.name}..."
+            MineServeForegroundService.start(it)
+        }
+        try {
+            if (localFileUri != null && context != null) {
+                onProgress("Importing local server file...", 35)
+                val mime = context.contentResolver.getType(localFileUri).orEmpty()
+                val isZip = mime.contains("zip", ignoreCase = true) ||
+                    localFileUri.toString().endsWith(".zip", ignoreCase = true)
+                val targetFile = if (isZip) File(serverDir, "server_archive.zip") else destJar
+                withContext(Dispatchers.IO) {
+                    val input = context.contentResolver.openInputStream(localFileUri)
+                        ?: throw IOException("Unable to open selected server file.")
+                    input.use { src ->
+                        FileOutputStream(targetFile).use { dst ->
+                            val buf = ByteArray(65536)
+                            while (true) {
+                                val r = src.read(buf)
+                                if (r == -1) break
+                                dst.write(buf, 0, r)
+                            }
+                            dst.flush()
+                        }
+                    }
+                }
+                if (isZip) {
+                    onProgress("Unpacking server archive...", 85)
+                    ServerRepository.extractZip(targetFile, serverDir, deleteZipAfter = true)
+                }
+                return
+            }
 
-        if (!jarUrl.isNullOrEmpty()) {
-            val isZip = jarUrl.endsWith(".zip", ignoreCase = true)
-            val targetFile = if (isZip) File(serverDir, "server_archive.zip") else destJar
-            onProgress("Downloading ${if (isZip) "archive" else "server.jar"}...", 30)
-            downloadFileWithProgress(jarUrl, targetFile) { bytesRead, totalBytes ->
-                val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 50
-                onProgress("Downloading (${bytesRead / (1024 * 1024)} MB)...", percent)
+            if (!jarUrl.isNullOrEmpty()) {
+                val isZip = jarUrl.endsWith(".zip", ignoreCase = true)
+                val targetFile = if (isZip) File(serverDir, "server_archive.zip") else destJar
+                onProgress("Downloading ${if (isZip) "archive" else "server.jar"}...", 30)
+                downloadFileWithProgress(jarUrl, targetFile) { bytesRead, totalBytes ->
+                    val percent = if (totalBytes > 0) 30 + ((bytesRead * 60) / totalBytes).toInt() else 50
+                    val msg = "Downloading (${bytesRead / (1024 * 1024)} MB)..."
+                    MineServeForegroundService.rootfsSetupStatusText = "$msg ($percent%)"
+                    onProgress(msg, percent)
+                }
+                if (isZip) {
+                    onProgress("Unpacking server archive...", 90)
+                    ServerRepository.extractZip(targetFile, serverDir, deleteZipAfter = true)
+                }
+            } else {
+                // Create dummy/placeholder jar if URL couldn't be resolved
+                destJar.writeBytes(ByteArray(1024))
             }
-            if (isZip) {
-                onProgress("Unpacking server archive...", 90)
-                ServerRepository.extractZip(targetFile, serverDir, deleteZipAfter = true)
-            }
-        } else {
-            // Create dummy/placeholder jar if URL couldn't be resolved
-            destJar.writeBytes(ByteArray(1024))
+        } finally {
+            MineServeForegroundService.isRootfsSetupActive = false
+            MineServeForegroundService.rootfsSetupStatusText = null
         }
 
         // If Geyser cross-play requested, download Geyser plugin

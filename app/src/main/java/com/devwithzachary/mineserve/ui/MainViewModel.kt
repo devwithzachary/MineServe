@@ -62,7 +62,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val serverRepository = ServerRepository(application, pRootEngine)
     val backupRepository = BackupRepository(application)
     val pluginRepository = PluginRepository()
-    val serverSoftwareManager = ServerSoftwareManager(serverRepository, backupRepository, processManager)
+    val serverSoftwareManager = ServerSoftwareManager(serverRepository, backupRepository, processManager, application)
     val tunnelManager = TunnelManager.getInstance(application)
     val cloudManager = com.devwithzachary.mineserve.cloud.MineServeCloudManager(application)
     val updateChecker = GitHubUpdateChecker()
@@ -203,6 +203,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun importLocalRootfs(uri: Uri) {
+        viewModelScope.launch {
+            rootfsManager.importLocalRootfs(uri, javaRuntimeManager) {
+                refreshData()
+            }
+        }
+    }
+
     fun installJava(version: Int = 21) {
         viewModelScope.launch {
             _installingJavaVersion.value = version
@@ -254,12 +262,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ramMb: Int,
         motd: String,
         eulaAccepted: Boolean = false,
+        localJarUri: Uri? = null,
         onProgress: (String, Int) -> Unit
     ): MinecraftServer? = withContext(Dispatchers.IO) {
         var createdServerId: String? = null
         try {
-            onProgress("Resolving download URL for ${type.displayName} $version...", 10)
-            val buildInfo = serverSoftwareManager.resolveLatestBuild(type, version)
+            val buildInfo = if (localJarUri == null) {
+                onProgress("Resolving download URL for ${type.displayName} $version...", 10)
+                serverSoftwareManager.resolveLatestBuild(type, version)
+            } else {
+                onProgress("Preparing local server file...", 10)
+                null
+            }
             val jarUrl = buildInfo?.second
 
             val isInstaller = type == ServerType.NEOFORGE || type == ServerType.FORGE
@@ -282,7 +296,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             createdServerId = server.id
 
             val serverDir = serverRepository.getServerDirectory(server.id)
-            serverSoftwareManager.provisionServerSoftware(server, serverDir, jarUrl, onProgress)
+            serverSoftwareManager.provisionServerSoftware(server, serverDir, jarUrl, localJarUri, onProgress)
 
             onProgress("Server created successfully!", 100)
             loadServerDetails(server.id)

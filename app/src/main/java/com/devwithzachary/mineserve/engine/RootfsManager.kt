@@ -1,15 +1,18 @@
 package com.devwithzachary.mineserve.engine
 
 import android.content.Context
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.devwithzachary.mineserve.api.MineServeHttpClient
+import com.devwithzachary.mineserve.service.MineServeForegroundService
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 import okhttp3.Request
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +36,7 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
 
     companion object {
         private const val TAG = "RootfsManager"
+        private const val KEY_PART_URL = "rootfs_part_url"
 
         // Official Ubuntu 24.04 LTS (Noble) Base images
         private const val UBUNTU_24_ARM64 = "https://cdimage.ubuntu.com/ubuntu-base/releases/24.04/release/ubuntu-base-24.04.4-base-arm64.tar.gz"
@@ -46,6 +50,12 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
     }
 
     private val prefs = context.getSharedPreferences("mineserve_rootfs_prefs", Context.MODE_PRIVATE)
+    private val downloadClient by lazy {
+        MineServeHttpClient.client.newBuilder()
+            .connectTimeout(20, TimeUnit.SECONDS)
+            .readTimeout(5, TimeUnit.MINUTES)
+            .build()
+    }
     val rootfsDir: File get() = pRootEngine.rootfsDir
 
     private val _setupState = MutableStateFlow<RootfsSetupState>(RootfsSetupState.Idle)
@@ -73,38 +83,113 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
         forceReinstall: Boolean = false,
         onSuccess: suspend () -> Unit = {}
     ) {
-        if (!forceReinstall && isBaseRootfsExtracted()) {
-            val setupLogs = mutableListOf(
-                "Ubuntu rootfs is already extracted.",
-                "Configuring DNS resolvers and APT environment..."
-            )
-            _setupState.value = RootfsSetupState.Extracting(
-                message = "Installing OpenJDK 21 runtime...",
-                progressPercent = 96,
-                logs = setupLogs.toList()
-            )
-            withContext(Dispatchers.IO) {
-                configureSystemFiles(isInitialSetup = false)
+        MineServeForegroundService.isRootfsSetupActive = true
+        MineServeForegroundService.rootfsSetupStatusText = "Preparing Ubuntu runtime..."
+        MineServeForegroundService.start(context)
+        try {
+            if (!forceReinstall && isBaseRootfsExtracted()) {
+                val setupLogs = mutableListOf(
+                    "Ubuntu rootfs is already extracted.",
+                    "Configuring DNS resolvers and APT environment..."
+                )
+                _setupState.value = RootfsSetupState.Extracting(
+                    message = "Installing OpenJDK 21 runtime...",
+                    progressPercent = 96,
+                    logs = setupLogs.toList()
+                )
+                MineServeForegroundService.rootfsSetupStatusText = "Installing OpenJDK 21 runtime..."
+                withContext(Dispatchers.IO) {
+                    configureSystemFiles(isInitialSetup = false)
+                }
+                installDefaultJavaDuringSetup(javaRuntimeManager, setupLogs, onSuccess)
+                return
             }
-            installDefaultJavaDuringSetup(javaRuntimeManager, setupLogs, onSuccess)
-            return
-        }
 
-        _isInstalled.value = false
-        setupRootfs().collect { state ->
-            when (state) {
-                is RootfsSetupState.Success -> {
-                    val setupLogs = state.logs.toMutableList()
-                    installDefaultJavaDuringSetup(javaRuntimeManager, setupLogs, onSuccess)
-                }
-                is RootfsSetupState.Error -> {
-                    _isInstalled.value = isInstalled()
-                    _setupState.value = state
-                }
-                else -> {
-                    _setupState.value = state
+            _isInstalled.value = false
+            setupRootfs().collect { state ->
+                when (state) {
+                    is RootfsSetupState.Downloading -> {
+                        MineServeForegroundService.rootfsSetupStatusText = "Downloading Ubuntu runtime: ${state.progressPercent}%"
+                        _setupState.value = state
+                    }
+                    is RootfsSetupState.Extracting -> {
+                        MineServeForegroundService.rootfsSetupStatusText = "${state.message} (${state.progressPercent}%)"
+                        _setupState.value = state
+                    }
+                    is RootfsSetupState.Success -> {
+                        val setupLogs = state.logs.toMutableList()
+                        installDefaultJavaDuringSetup(javaRuntimeManager, setupLogs, onSuccess)
+                    }
+                    is RootfsSetupState.Error -> {
+                        _isInstalled.value = isInstalled()
+                        _setupState.value = state
+                    }
+                    else -> {
+                        _setupState.value = state
+                    }
                 }
             }
+        } finally {
+            MineServeForegroundService.isRootfsSetupActive = false
+            MineServeForegroundService.rootfsSetupStatusText = null
+        }
+    }
+
+    suspend fun importLocalRootfs(
+        uri: Uri,
+        javaRuntimeManager: JavaRuntimeManager,
+        onSuccess: suspend () -> Unit = {}
+    ) {
+        MineServeForegroundService.isRootfsSetupActive = true
+        MineServeForegroundService.rootfsSetupStatusText = "Importing local rootfs archive..."
+        MineServeForegroundService.start(context)
+        _isInstalled.value = false
+        val logList = mutableListOf("Importing local Ubuntu rootfs archive...")
+        try {
+            _setupState.value = RootfsSetupState.Extracting("Copying local rootfs archive...", 5, logList.toList())
+            val archiveFile = File(context.cacheDir, "ubuntu_base_import.tar.gz")
+            withContext(Dispatchers.IO) {
+                val input = context.contentResolver.openInputStream(uri)
+                    ?: throw IOException("Unable to open selected file.")
+                input.use { src ->
+                    FileOutputStream(archiveFile).use { dst ->
+                        val buf = ByteArray(65536)
+                        while (true) {
+                            val r = src.read(buf)
+                            if (r == -1) break
+                            dst.write(buf, 0, r)
+                        }
+                        dst.flush()
+                    }
+                }
+                if (!archiveFile.exists() || archiveFile.length() == 0L) {
+                    throw IOException("Selected file is empty.")
+                }
+                logList.add("Copied archive (${archiveFile.length() / (1024 * 1024)} MB). Extracting...")
+                _setupState.value = RootfsSetupState.Extracting("Extracting local rootfs...", 15, logList.toList())
+                if (rootfsDir.exists()) {
+                    rootfsDir.deleteRecursively()
+                }
+                rootfsDir.mkdirs()
+                extractTarGzInJava(archiveFile, rootfsDir) { status, pct ->
+                    val mapped = (15 + (pct * 0.75f)).toInt().coerceIn(15, 90)
+                    MineServeForegroundService.rootfsSetupStatusText = "$status ($mapped%)"
+                    _setupState.value = RootfsSetupState.Extracting(status, mapped, logList.toList())
+                }
+                archiveFile.delete()
+                logList.add("Configuring DNS resolvers and APT environment...")
+                _setupState.value = RootfsSetupState.Extracting("Configuring system files...", 94, logList.toList())
+                configureSystemFiles(isInitialSetup = true)
+            }
+            installDefaultJavaDuringSetup(javaRuntimeManager, logList, onSuccess)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed importing local rootfs", e)
+            logList.add("ERROR: ${e.message}")
+            _isInstalled.value = isInstalled()
+            _setupState.value = RootfsSetupState.Error(e.localizedMessage ?: "Failed to import local rootfs archive", logList.toList())
+        } finally {
+            MineServeForegroundService.isRootfsSetupActive = false
+            MineServeForegroundService.rootfsSetupStatusText = null
         }
     }
 
@@ -244,6 +329,7 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
     fun setupRootfs(): Flow<RootfsSetupState> = channelFlow {
         send(RootfsSetupState.Downloading(0L, 100L, 0))
         val archiveFile = File(context.cacheDir, "ubuntu_base.tar.gz")
+        val partFile = File(context.cacheDir, "ubuntu_base.tar.gz.part")
         val urlsToTry = getArchRootfsUrls()
 
         val logList = mutableListOf<String>()
@@ -262,18 +348,41 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
 
             for (downloadUrl in urlsToTry) {
                 try {
-                    emitLog("Connecting to Ubuntu mirror: $downloadUrl...")
-                    val request = MineServeHttpClient.newGetRequest(downloadUrl)
+                    val lastUrl = prefs.getString(KEY_PART_URL, null)
+                    if (lastUrl != null && lastUrl != downloadUrl && partFile.exists()) {
+                        partFile.delete()
+                    }
+                    prefs.edit().putString(KEY_PART_URL, downloadUrl).apply()
 
-                    MineServeHttpClient.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
+                    val existingBytes = if (partFile.exists()) partFile.length() else 0L
+                    if (existingBytes > 0L) {
+                        emitLog("Resuming Ubuntu download from ${existingBytes / (1024 * 1024)} MB: $downloadUrl...")
+                    } else {
+                        emitLog("Connecting to Ubuntu mirror: $downloadUrl...")
+                    }
+
+                    val reqBuilder = MineServeHttpClient.newRequestBuilder(downloadUrl)
+                    if (existingBytes > 0L) {
+                        reqBuilder.header("Range", "bytes=$existingBytes-")
+                    }
+
+                    downloadClient.newCall(reqBuilder.build()).execute().use { response ->
+                        if (response.code == 416 && existingBytes > 0L) {
+                            if (archiveFile.exists()) archiveFile.delete()
+                            partFile.renameTo(archiveFile)
+                            downloaded = true
+                            emitLog("Resumed archive already complete (${archiveFile.length() / (1024 * 1024)} MB)")
+                        } else if (response.isSuccessful) {
+                            val isPartial = response.code == 206 && existingBytes > 0L
                             val body = response.body ?: throw IOException("Empty response body from $downloadUrl")
-                            val fileLength = body.contentLength()
+                            val remainingLength = body.contentLength()
+                            val startOffset = if (isPartial) existingBytes else 0L
+                            val totalLength = if (remainingLength > 0) startOffset + remainingLength else -1L
 
                             body.byteStream().use { inputStream ->
-                                FileOutputStream(archiveFile).use { outputStream ->
+                                FileOutputStream(partFile, isPartial).use { outputStream ->
                                     val buffer = ByteArray(65536)
-                                    var totalRead = 0L
+                                    var totalRead = startOffset
                                     var read: Int
                                     var lastProgressUpdate = 0L
 
@@ -282,15 +391,21 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                                         outputStream.write(buffer, 0, read)
 
                                         val now = System.currentTimeMillis()
-                                        if (now - lastProgressUpdate > 100) {
+                                        if (now - lastProgressUpdate > 150) {
                                             lastProgressUpdate = now
-                                            val percent = if (fileLength > 0) ((totalRead * 100) / fileLength).toInt() else 0
-                                            send(RootfsSetupState.Downloading(totalRead, fileLength, percent))
+                                            val percent = if (totalLength > 0) ((totalRead * 100) / totalLength).toInt().coerceIn(0, 100) else 0
+                                            send(RootfsSetupState.Downloading(totalRead, totalLength.coerceAtLeast(1L), percent))
                                         }
                                     }
                                     outputStream.flush()
                                 }
                             }
+                            if (archiveFile.exists()) archiveFile.delete()
+                            if (!partFile.renameTo(archiveFile)) {
+                                partFile.copyTo(archiveFile, overwrite = true)
+                                partFile.delete()
+                            }
+                            prefs.edit().remove(KEY_PART_URL).apply()
                             downloaded = true
                             emitLog("Downloaded Ubuntu rootfs (${archiveFile.length() / (1024 * 1024)} MB)")
                         } else {
@@ -299,7 +414,7 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                     }
                     if (downloaded) break
                 } catch (e: Exception) {
-                    emitLog("Mirror failed: ${e.message}, trying fallback...")
+                    emitLog("Mirror interrupted (${e.message}), partial download preserved for resume...")
                     downloadError = e.message
                 }
             }
