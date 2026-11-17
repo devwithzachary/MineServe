@@ -13,11 +13,11 @@ Our goal is to deliver the most reliable, capable, and accessible dedicated Mine
 | **v1.4.2** | Android x86_64 PRoot Reliability & Codebase Modularity | October 2026 | **Shipped** ✅ |
 | **v1.5.0 / v1.5.1** | Connectivity, Cloud Backups, Web Remote Admin, Telemetry & Community | October / November 2026 | **Shipped** ✅ |
 | **v1.6.0 / v1.6.1** | Full Web UI, Bedrock Server, Proxies, Discord Bridge & R8 Optimization | November 2026 | **Shipped** ✅ |
-| **v1.7.0** | `:core` KMP Extraction, Logcat Diagnostics, NBT Editor & System Integration | Q2 2027 | **Scheduled** 📋 |
-| **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Mesh VPN | Mid 2027 | **Scheduled** 📋 |
-| **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Late 2027 | **Scheduled** 📋 |
-| **v2.0.0** | Stable Kotlin Multiplatform Release (Android, Linux, macOS, Windows) | Late 2027 / Early 2028 | **Target Milestone** 🎯 |
-| **v2.1.0+** | Autonomous Ops, Clustering, Bare-Metal Bionic & Multi-Game Hosting | Future Vision | **Exploration** 🔭 |
+| **v1.7.0** | Optional MineServe Cloud (Account Linking, R2 Backups, Custom Tunnels & Cloud Discovery) | November 2026 (Week of Nov 16) | **In Progress** 🚧 |
+| **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Mesh VPN | November 2026 (Week of Nov 23) | **Scheduled** 📋 |
+| **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Nov / Dec 2026 (Week of Nov 30) | **Scheduled** 📋 |
+| **v2.0.0** | Stable Kotlin Multiplatform Release (Android, Linux, macOS, Windows) | December 2026 (Week of Dec 7) | **Target Milestone** 🎯 |
+| **v2.1.0+** | Autonomous Ops, Clustering, Bare-Metal Bionic & Multi-Game Hosting | December 2026+ | **Exploration** 🔭 |
 
 ---
 

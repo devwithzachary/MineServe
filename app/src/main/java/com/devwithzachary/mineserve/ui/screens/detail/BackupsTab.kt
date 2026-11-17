@@ -12,6 +12,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -58,6 +60,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -81,6 +84,8 @@ import com.devwithzachary.mineserve.backup.cloud.CloudBackupConfig
 import com.devwithzachary.mineserve.backup.cloud.CloudBackupManager
 import com.devwithzachary.mineserve.backup.cloud.CloudProviderType
 import com.devwithzachary.mineserve.backup.cloud.CloudSyncState
+import com.devwithzachary.mineserve.cloud.CloudAccountState
+import com.devwithzachary.mineserve.cloud.CloudBackupItem
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.ui.components.AppAlertDialog
@@ -102,6 +107,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BackupsTab(
     server: MinecraftServer? = null,
@@ -113,6 +119,13 @@ fun BackupsTab(
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
     onSaveServer: ((MinecraftServer) -> Unit)? = null,
     onSyncBackupToCloud: ((BackupEntry, (Result<String>) -> Unit) -> Unit)? = null,
+    cloudAccountState: CloudAccountState = CloudAccountState(),
+    cloudBackups: List<CloudBackupItem> = emptyList(),
+    isCloudBackupsLoading: Boolean = false,
+    onRefreshCloudBackups: () -> Unit = {},
+    onRestoreCloudBackup: (CloudBackupItem, (Result<Unit>) -> Unit) -> Unit = { _, _ -> },
+    onDeleteCloudBackup: (CloudBackupItem, (Result<Unit>) -> Unit) -> Unit = { _, _ -> },
+    onOpenCloudPortal: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -139,6 +152,16 @@ fun BackupsTab(
     }
     var isTestingConnection by remember { mutableStateOf(false) }
     var showPassword by remember { mutableStateOf(false) }
+    var restoringCloudBackupId by remember { mutableStateOf<String?>(null) }
+    var deletingCloudBackupId by remember { mutableStateOf<String?>(null) }
+    var cloudBackupToRestore by remember { mutableStateOf<CloudBackupItem?>(null) }
+    var cloudBackupToDelete by remember { mutableStateOf<CloudBackupItem?>(null) }
+
+    LaunchedEffect(server?.id, cloudAccountState.isLinked, cloudConfig.provider) {
+        if (cloudAccountState.isLinked && cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD) {
+            onRefreshCloudBackups()
+        }
+    }
 
     // SAF folder picker launcher
     val safFolderPickerLauncher = rememberLauncherForActivityResult(
@@ -437,7 +460,12 @@ fun BackupsTab(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Enable Cloud Backup Sync", style = MaterialTheme.typography.bodyMedium, color = Color.White)
+                    Text(
+                        "Enable Cloud Backup Sync",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        modifier = Modifier.weight(1f).padding(end = 12.dp)
+                    )
                     Switch(
                         checked = cloudConfig.enabled,
                         onCheckedChange = {
@@ -464,7 +492,9 @@ fun BackupsTab(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(
+                            modifier = Modifier.weight(1f).padding(end = 12.dp)
+                        ) {
                             Text("Auto-Sync on Backup Creation", style = MaterialTheme.typography.bodyMedium, color = Color.White)
                             Text("Upload automatically when a new world snapshot is zipped", style = MaterialTheme.typography.labelSmall, color = Slate400)
                         }
@@ -487,7 +517,23 @@ fun BackupsTab(
 
                     // Provider Selection Chips
                     Text("Storage Provider:", style = MaterialTheme.typography.labelSmall, color = Slate400)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(
+                            selected = cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD,
+                            onClick = {
+                                val updated = cloudConfig.copy(provider = CloudProviderType.MINESERVE_CLOUD)
+                                cloudConfig = updated
+                                if (server != null && onSaveServer != null) {
+                                    onSaveServer(server.copy(cloudBackupConfig = updated))
+                                }
+                            },
+                            label = { Text("MineServe Cloud") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldDark,
+                                selectedLabelColor = EmeraldLight
+                            )
+                        )
+
                         FilterChip(
                             selected = cloudConfig.provider == CloudProviderType.WEBDAV,
                             onClick = {
@@ -521,7 +567,76 @@ fun BackupsTab(
                         )
                     }
 
-                    if (cloudConfig.provider == CloudProviderType.WEBDAV) {
+                    if (cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD) {
+                        val profile = cloudAccountState.profile
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = Slate900.copy(alpha = 0.5f),
+                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (!cloudAccountState.isLinked) {
+                                    Text(
+                                        text = "MineServe Cloud Not Linked",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = GoldYellow
+                                    )
+                                    Text(
+                                        text = "Sign in to MineServe Cloud in Settings to sync world backups to encrypted Cloudflare R2 storage (10 GB on Plus, 50 GB on Pro).",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Slate400
+                                    )
+                                    OutlinedButton(
+                                        onClick = onOpenCloudPortal,
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Open MineServe Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                    }
+                                } else {
+                                    val tier = profile?.tier?.uppercase() ?: "FREE"
+                                    val usedMb = (profile?.storageUsedBytes ?: 0L) / (1024.0 * 1024.0)
+                                    val quotaGb = (profile?.storageQuotaBytes ?: 0L) / (1024L * 1024L * 1024L)
+                                    Text(
+                                        text = "${profile?.email ?: "Linked Account"} ($tier)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = EmeraldLight
+                                    )
+                                    if (tier == "FREE") {
+                                        Text(
+                                            text = "Cloud Backups require MineServe Plus (\$2.99/mo, 10 GB) or Pro (\$6.99/mo, 50 GB).",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = GoldYellow
+                                        )
+                                        OutlinedButton(
+                                            onClick = onOpenCloudPortal,
+                                            shape = RoundedCornerShape(8.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text("Upgrade in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                        }
+                                    } else {
+                                        Text(
+                                            text = String.format(
+                                                Locale.US,
+                                                "Cloud Storage: %.1f MB / %d GB used",
+                                                usedMb,
+                                                quotaGb
+                                            ),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Slate400
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (cloudConfig.provider == CloudProviderType.WEBDAV) {
                         // WebDAV Inputs
                         OutlinedTextField(
                             value = cloudConfig.webDavUrl,
@@ -915,5 +1030,203 @@ fun BackupsTab(
                 }
             }
         }
+
+        if (cloudAccountState.isLinked && cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Card(
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                border = BorderStroke(1.dp, ObsidianCardBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "MineServe Cloud Snapshots",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        if (isCloudBackupsLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = EmeraldPrimary,
+                                strokeWidth = 2.dp
+                            )
+                        }
+                    }
+
+                    if (cloudBackups.isEmpty() && !isCloudBackupsLoading) {
+                        Text(
+                            text = "No cloud snapshots stored for this server yet. Tap the cloud icon on any local backup above to upload it.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400
+                        )
+                    } else {
+                        val cloudDateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
+                        cloudBackups.forEach { item ->
+                            val isRestoringItem = restoringCloudBackupId == item.backupId
+                            val isDeletingItem = deletingCloudBackupId == item.backupId
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = Slate900.copy(alpha = 0.6f),
+                                border = BorderStroke(1.dp, ObsidianCardBorder),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = item.fileName,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        val sizeMb = item.sizeBytes / (1024.0 * 1024.0)
+                                        Text(
+                                            text = String.format(
+                                                Locale.US,
+                                                "%.1f MB - %s",
+                                                sizeMb,
+                                                cloudDateFormat.format(Date(item.createdAtEpochMs))
+                                            ),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = Slate400
+                                        )
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        OutlinedButton(
+                                            onClick = { cloudBackupToRestore = item },
+                                            enabled = !isRestoringItem && !isDeletingItem,
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                        ) {
+                                            if (isRestoringItem) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    color = EmeraldPrimary,
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Text("Restore", fontSize = 11.sp, color = EmeraldLight)
+                                            }
+                                        }
+                                        OutlinedButton(
+                                            onClick = { cloudBackupToDelete = item },
+                                            enabled = !isRestoringItem && !isDeletingItem,
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
+                                        ) {
+                                            if (isDeletingItem) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    color = RedstoneRed,
+                                                    strokeWidth = 2.dp
+                                                )
+                                            } else {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Delete Cloud Snapshot",
+                                                    modifier = Modifier.size(14.dp),
+                                                    tint = RedstoneRed
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    cloudBackupToRestore?.let { item ->
+        AppAlertDialog(
+            onDismissRequest = { cloudBackupToRestore = null },
+            title = { Text("Restore Cloud Snapshot?") },
+            text = {
+                Text(
+                    "Download ${item.fileName} from MineServe Cloud and restore it over your current server files?",
+                    color = Slate400
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val target = item
+                        cloudBackupToRestore = null
+                        restoringCloudBackupId = target.backupId
+                        onRestoreCloudBackup(target) { res ->
+                            restoringCloudBackupId = null
+                            res.fold(
+                                onSuccess = { showFeedback("Restored ${target.fileName} from MineServe Cloud") },
+                                onFailure = { err -> showFeedback(err.message ?: "Cloud restore failed", isError = true) }
+                            )
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
+                ) {
+                    Text("Restore", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { cloudBackupToRestore = null }) {
+                    Text("Cancel", color = Color.White)
+                }
+            }
+        )
+    }
+
+    cloudBackupToDelete?.let { item ->
+        AppAlertDialog(
+            onDismissRequest = { cloudBackupToDelete = null },
+            title = { Text("Delete Cloud Snapshot?") },
+            text = {
+                Text(
+                    "Permanently delete ${item.fileName} from MineServe Cloud storage? Local backups will remain untouched.",
+                    color = Slate400
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val target = item
+                        cloudBackupToDelete = null
+                        deletingCloudBackupId = target.backupId
+                        onDeleteCloudBackup(target) { res ->
+                            deletingCloudBackupId = null
+                            res.fold(
+                                onSuccess = { showFeedback("Deleted ${target.fileName} from MineServe Cloud") },
+                                onFailure = { err -> showFeedback(err.message ?: "Failed to delete cloud snapshot", isError = true) }
+                            )
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed)
+                ) {
+                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { cloudBackupToDelete = null }) {
+                    Text("Cancel", color = Color.White)
+                }
+            }
+        )
     }
 }

@@ -12,7 +12,12 @@ import java.io.InputStreamReader
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.nio.ByteBuffer
+import java.security.MessageDigest
+import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +34,8 @@ class BoreTunnelClient(
     private val relayPort: Int = 7835,
     private val localPort: Int = 25565,
     private val provider: TunnelProvider = TunnelProvider.BORE,
+    private val requestedRemotePort: Int = 0,
+    private val secret: String = "",
     private val onStateChanged: (TunnelState) -> Unit
 ) {
     companion object {
@@ -54,7 +61,7 @@ class BoreTunnelClient(
         tunnelJob = scope.launch(Dispatchers.IO) {
             val nativeLibDir = context?.applicationInfo?.nativeLibraryDir?.let { File(it) }
             val bundledBore = nativeLibDir?.let { File(it, "libbore.so") }
-            if (bundledBore != null && bundledBore.exists() && bundledBore.canExecute() && relayPort == 7835) {
+            if (bundledBore != null && bundledBore.exists() && bundledBore.canExecute() && relayPort == 7835 && requestedRemotePort == 0) {
                 runNativeBoreLoop(scope, bundledBore)
             } else {
                 runTunnelLoop(scope)
@@ -190,9 +197,13 @@ class BoreTunnelClient(
                 val inputStream = socket.getInputStream()
                 val outputStream = socket.getOutputStream()
 
+                if (secret.isNotBlank()) {
+                    authenticateIfRequired(inputStream, outputStream)
+                }
+
                 // Send Hello Handshake with requested port (0 for random public port)
                 val helloJson = JSONObject().apply {
-                    put("Hello", 0)
+                    put("Hello", requestedRemotePort)
                 }
                 writeNullTerminatedMessage(outputStream, helloJson.toString())
                 Log.d(TAG, "Sent Hello to bore relay: $helloJson")
@@ -308,7 +319,10 @@ class BoreTunnelClient(
                     soTimeout = 0
                 }
 
-                // 2. Send Accept Handshake null-terminated: {"Accept": "uuid"} \0
+                // 2. Authenticate if relay requires secret, then send Accept Handshake
+                if (secret.isNotBlank()) {
+                    authenticateIfRequired(relayProxySocket.getInputStream(), relayProxySocket.getOutputStream())
+                }
                 val acceptJson = JSONObject().apply {
                     put("Accept", connId)
                 }
@@ -367,6 +381,31 @@ class BoreTunnelClient(
                 notifyConnectionCount()
             }
         }
+    }
+
+    private fun authenticateIfRequired(inputStream: InputStream, outputStream: OutputStream) {
+        val challengeLine = readNullTerminatedMessage(inputStream)
+            ?: throw Exception("Relay closed connection before auth challenge")
+        val challengeJson = JSONObject(challengeLine)
+        if (challengeJson.has("Error")) {
+            throw Exception("Relay error: ${challengeJson.getString("Error")}")
+        }
+        val challengeStr = challengeJson.optString("Challenge", "")
+        if (challengeStr.isBlank()) {
+            throw Exception("Expected bore auth challenge, got: $challengeLine")
+        }
+        val uuid = UUID.fromString(challengeStr)
+        val challengeBytes = ByteBuffer.allocate(16)
+            .putLong(uuid.mostSignificantBits)
+            .putLong(uuid.leastSignificantBits)
+            .array()
+        val key = MessageDigest.getInstance("SHA-256").digest(secret.toByteArray(Charsets.UTF_8))
+        val mac = Mac.getInstance("HmacSHA256").apply {
+            init(SecretKeySpec(key, "HmacSHA256"))
+        }
+        val tag = mac.doFinal(challengeBytes).joinToString("") { "%02x".format(it) }
+        val authJson = JSONObject().put("Authenticate", tag)
+        writeNullTerminatedMessage(outputStream, authJson.toString())
     }
 
     private fun readNullTerminatedMessage(inputStream: InputStream): String? {

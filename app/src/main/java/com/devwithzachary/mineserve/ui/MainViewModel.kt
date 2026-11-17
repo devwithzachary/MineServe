@@ -11,6 +11,7 @@ import com.devwithzachary.mineserve.api.GitHubRelease
 import com.devwithzachary.mineserve.api.GitHubUpdateChecker
 import com.devwithzachary.mineserve.api.UpdateCheckResult
 import com.devwithzachary.mineserve.backup.cloud.CloudBackupManager
+import com.devwithzachary.mineserve.cloud.CloudBackupItem
 import com.devwithzachary.mineserve.engine.JavaInstallState
 import com.devwithzachary.mineserve.engine.JavaRuntimeManager
 import com.devwithzachary.mineserve.engine.PRootEngine
@@ -63,6 +64,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val pluginRepository = PluginRepository()
     val serverSoftwareManager = ServerSoftwareManager(serverRepository, backupRepository, processManager)
     val tunnelManager = TunnelManager.getInstance(application)
+    val cloudManager = com.devwithzachary.mineserve.cloud.MineServeCloudManager(application)
     val updateChecker = GitHubUpdateChecker()
     val updatePreferences = UpdatePreferences(application)
     val schedulerManager = ServerSchedulerManager.getInstance(application, serverRepository, backupRepository)
@@ -84,6 +86,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val tunnelStates: StateFlow<Map<String, TunnelState>> = tunnelManager.tunnelStates
     val webAdminState: StateFlow<com.devwithzachary.mineserve.admin.web.WebAdminState> = webAdminManager.state
     val webAdminConfig: StateFlow<com.devwithzachary.mineserve.admin.web.WebAdminConfig> = webAdminManager.config
+    val cloudState: StateFlow<com.devwithzachary.mineserve.cloud.CloudAccountState> = cloudManager.state
 
     private val _isCheckGitHubUpdatesEnabled = MutableStateFlow(updatePreferences.isCheckGitHubUpdatesEnabled)
     val isCheckGitHubUpdatesEnabled: StateFlow<Boolean> = _isCheckGitHubUpdatesEnabled.asStateFlow()
@@ -331,6 +334,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return success
     }
 
+    fun handleCloudAuthUri(uri: Uri?, onResult: (Boolean) -> Unit = {}) {
+        if (uri == null || uri.scheme != "mineserve" || uri.host != "auth") return
+        viewModelScope.launch {
+            val ok = cloudManager.handleAuthDeepLink(uri)
+            onResult(ok)
+        }
+    }
+
+    fun refreshCloudAccount() {
+        viewModelScope.launch {
+            cloudManager.refreshProfile()
+        }
+    }
+
+    fun signOutCloudAccount() {
+        cloudManager.signOut()
+    }
+
     fun deleteServer(serverId: String, onDeleted: () -> Unit = {}) {
         viewModelScope.launch {
             processManager.forceStopAndCleanup(serverId)
@@ -543,7 +564,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     )
                     if (server.cloudBackupConfig.enabled && server.cloudBackupConfig.autoSyncOnBackup) {
                         val backupFile = File(File(serverDir, "backups"), result.fileName)
-                        CloudBackupManager.getInstance(getApplication()).syncBackupAsync(backupFile, server.cloudBackupConfig)
+                        CloudBackupManager.getInstance(getApplication()).syncBackupAsync(
+                            backupFile,
+                            server.cloudBackupConfig,
+                            server.id
+                        ) { res ->
+                            if (res.isSuccess && server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.MINESERVE_CLOUD) {
+                                loadCloudBackups(serverId)
+                                viewModelScope.launch { cloudManager.refreshProfile() }
+                            }
+                        }
                     }
                 }
             }
@@ -554,13 +584,82 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val _cloudBackups = MutableStateFlow<List<CloudBackupItem>>(emptyList())
+    val cloudBackups: StateFlow<List<CloudBackupItem>> = _cloudBackups.asStateFlow()
+
+    private val _cloudBackupsLoading = MutableStateFlow(false)
+    val cloudBackupsLoading: StateFlow<Boolean> = _cloudBackupsLoading.asStateFlow()
+
+    fun loadCloudBackups(serverId: String) {
+        if (!cloudManager.state.value.isLinked) {
+            _cloudBackups.value = emptyList()
+            return
+        }
+        viewModelScope.launch {
+            _cloudBackupsLoading.value = true
+            val result = cloudManager.listCloudBackups(serverId)
+            result.onSuccess { items ->
+                _cloudBackups.value = items
+            }
+            _cloudBackupsLoading.value = false
+        }
+    }
+
+    fun restoreCloudBackup(
+        serverId: String,
+        item: CloudBackupItem,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val serverDir = serverRepository.getServerDirectory(serverId)
+            val destFile = File(File(serverDir, "backups"), item.fileName)
+            val dlResult = cloudManager.downloadCloudBackup(item.backupId, destFile)
+            val finalResult = dlResult.fold(
+                onSuccess = { file ->
+                    val ok = backupRepository.restoreBackup(serverDir, file)
+                    loadServerDetails(serverId)
+                    if (ok) Result.success(Unit)
+                    else Result.failure(IllegalStateException("Failed to extract downloaded backup."))
+                },
+                onFailure = { err -> Result.failure(err) }
+            )
+            withContext(Dispatchers.Main) {
+                onResult(finalResult)
+            }
+        }
+    }
+
+    fun deleteCloudBackup(
+        serverId: String,
+        backupId: String,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val res = cloudManager.deleteCloudBackup(backupId)
+            if (res.isSuccess) {
+                loadCloudBackups(serverId)
+            }
+            withContext(Dispatchers.Main) {
+                onResult(res)
+            }
+        }
+    }
+
     fun syncBackupToCloud(serverId: String, backup: BackupEntry, onResult: (Result<String>) -> Unit = {}) {
         viewModelScope.launch {
             val serverDir = serverRepository.getServerDirectory(serverId)
             val backupFile = File(File(serverDir, "backups"), backup.fileName)
             val server = servers.value.firstOrNull { it.id == serverId }
             if (server != null) {
-                CloudBackupManager.getInstance(getApplication()).syncBackupAsync(backupFile, server.cloudBackupConfig) { res ->
+                CloudBackupManager.getInstance(getApplication()).syncBackupAsync(
+                    backupFile,
+                    server.cloudBackupConfig,
+                    server.id
+                ) { res ->
+                    if (res.isSuccess && server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.MINESERVE_CLOUD) {
+                        loadCloudBackups(serverId)
+                        viewModelScope.launch { cloudManager.refreshProfile() }
+                    }
                     viewModelScope.launch(Dispatchers.Main) {
                         onResult(res)
                     }

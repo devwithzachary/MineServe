@@ -39,6 +39,7 @@ import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.ui.MainViewModel
 import com.devwithzachary.mineserve.ui.components.GitHubUpdateDialog
 import com.devwithzachary.mineserve.ui.screens.about.AboutScreen
+import com.devwithzachary.mineserve.ui.screens.cloud.MineServeCloudScreen
 import com.devwithzachary.mineserve.ui.screens.credits.CreditsScreen
 import com.devwithzachary.mineserve.ui.screens.dashboard.DashboardScreen
 import com.devwithzachary.mineserve.ui.screens.detail.ServerDetailScreen
@@ -55,6 +56,7 @@ sealed class Screen {
     data object Wizard : Screen()
     data class Detail(val serverId: String) : Screen()
     data object Settings : Screen()
+    data object Cloud : Screen()
     data object RemoteAdmin : Screen()
     data object About : Screen()
     data object Credits : Screen()
@@ -67,6 +69,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIncomingDeepLink(intent)
 
         setContent {
             MineServeTheme {
@@ -76,6 +79,32 @@ class MainActivity : ComponentActivity() {
                 ) {
                     MineServeApp(viewModel = viewModel)
                 }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIncomingDeepLink(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (viewModel.cloudState.value.isLinked) {
+            viewModel.refreshCloudAccount()
+        }
+    }
+
+    private fun handleIncomingDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        viewModel.handleCloudAuthUri(uri) { ok ->
+            if (ok) {
+                android.widget.Toast.makeText(
+                    this,
+                    "MineServe Cloud account linked!",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
             }
         }
     }
@@ -93,6 +122,9 @@ fun MineServeApp(viewModel: MainViewModel) {
     val isRootfsInstalled by viewModel.isRootfsInstalled.collectAsStateWithLifecycle()
     val rootfsSetupState by viewModel.rootfsSetupState.collectAsStateWithLifecycle()
     val storageUsedMb by viewModel.storageUsedMb.collectAsStateWithLifecycle()
+    val cloudState by viewModel.cloudState.collectAsStateWithLifecycle()
+    val cloudBackups by viewModel.cloudBackups.collectAsStateWithLifecycle()
+    val isCloudBackupsLoading by viewModel.cloudBackupsLoading.collectAsStateWithLifecycle()
     val serverPropertiesMap by viewModel.serverPropertiesMap.collectAsStateWithLifecycle()
     val serverBackupsMap by viewModel.serverBackupsMap.collectAsStateWithLifecycle()
     val serverPluginsMap by viewModel.serverPluginsMap.collectAsStateWithLifecycle()
@@ -187,7 +219,9 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onAboutClick = { navigateTo(Screen.About) },
                     onCreditsClick = { navigateTo(Screen.Credits) },
                     webAdminEnabled = webAdminConfig.enabled,
-                    onRemoteAdminClick = { navigateTo(Screen.RemoteAdmin) }
+                    onRemoteAdminClick = { navigateTo(Screen.RemoteAdmin) },
+                    isCloudLinked = cloudState.isLinked,
+                    onCloudClick = { navigateTo(Screen.Cloud) }
                 )
             }
 
@@ -275,6 +309,20 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onDeleteBackup = { b, onResult -> viewModel.deleteBackup(server.id, b, onResult) },
                         onGetShareIntent = { b -> viewModel.getBackupShareIntent(b) },
                         onSyncBackupToCloud = { b, onResult -> viewModel.syncBackupToCloud(server.id, b, onResult) },
+                        cloudAccountState = cloudState,
+                        cloudBackups = cloudBackups,
+                        isCloudBackupsLoading = isCloudBackupsLoading,
+                        onRefreshCloudBackups = { viewModel.loadCloudBackups(server.id) },
+                        onRestoreCloudBackup = { item, onResult -> viewModel.restoreCloudBackup(server.id, item, onResult) },
+                        onDeleteCloudBackup = { item, onResult -> viewModel.deleteCloudBackup(server.id, item.backupId, onResult) },
+                        onOpenCloudPortal = {
+                            val intent = android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                android.net.Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
+                            )
+                            context.startActivity(intent)
+                        },
+                        onRefreshCloudAccount = { viewModel.refreshCloudAccount() },
                         onTogglePlugin = { p -> viewModel.togglePlugin(server.id, p) },
                         onDeletePlugin = { p -> viewModel.deletePlugin(server.id, p) },
                         onInstallPluginOrMod = { fileName, url, isMod, onResult ->
@@ -370,6 +418,19 @@ fun MineServeApp(viewModel: MainViewModel) {
                     webAdminEnabled = webAdminConfig.enabled,
                     webAdminLocalUrl = webAdminState.localUrl,
                     onRemoteAdminClick = { navigateTo(Screen.RemoteAdmin) },
+                    cloudState = cloudState,
+                    onOpenCloudPortal = {
+                        runCatching {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
+                            )
+                            context.startActivity(intent)
+                        }
+                    },
+                    onRefreshCloud = { viewModel.refreshCloudAccount() },
+                    onSignOutCloud = { viewModel.signOutCloudAccount() },
+                    onOpenCloudPage = { navigateTo(Screen.Cloud) },
                     onBack = { navigateBack() },
                     onAboutClick = { navigateTo(Screen.About) }
                 )
@@ -394,6 +455,24 @@ fun MineServeApp(viewModel: MainViewModel) {
             is Screen.Credits -> {
                 CreditsScreen(
                     onBack = { navigateBack() }
+                )
+            }
+
+            is Screen.Cloud -> {
+                MineServeCloudScreen(
+                    cloudState = cloudState,
+                    onBack = { navigateBack() },
+                    onOpenCloudPortal = {
+                        runCatching {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
+                            )
+                            context.startActivity(intent)
+                        }
+                    },
+                    onRefreshCloud = { viewModel.refreshCloudAccount() },
+                    onSignOutCloud = { viewModel.signOutCloudAccount() }
                 )
             }
         }

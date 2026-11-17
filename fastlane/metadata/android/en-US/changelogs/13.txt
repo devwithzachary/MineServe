@@ -1,0 +1,3 @@
+- MineServe Cloud: dedicated Cloud page from the Dashboard and top of App Settings with plan & quota overview
+- MineServe Cloud Backups: sync, restore, and delete world backups via encrypted R2 storage in the Backups tab
+- MineServe Cloud Tunnels: connect custom *.play.mineserve.app (and Pro *.playms.uk) addresses & remote Web Admin

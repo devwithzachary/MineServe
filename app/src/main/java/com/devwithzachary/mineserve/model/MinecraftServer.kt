@@ -8,7 +8,8 @@ import kotlinx.serialization.Serializable
 enum class TunnelProvider(val displayName: String) {
     BORE("Instant Free Tunnel (bore.pub)"),
     PLAYIT("Playit.gg"),
-    CUSTOM_BORE("Custom Bore Relay")
+    CUSTOM_BORE("Custom Bore Relay"),
+    MINESERVE_CLOUD("MineServe Cloud")
 }
 
 @Serializable
@@ -18,7 +19,10 @@ data class TunnelConfig(
     val autoStart: Boolean = false,
     val customRelayHost: String = "bore.pub",
     val customRelayPort: Int = 7835,
-    val playitSecret: String = ""
+    val playitSecret: String = "",
+    val cloudSubdomain: String = "",
+    val cloudRegion: String = "us-east",
+    val cloudDomain: String = "play.mineserve.app"
 )
 
 @Serializable

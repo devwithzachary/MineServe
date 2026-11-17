@@ -102,6 +102,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devwithzachary.mineserve.cloud.CloudAccountState
+import com.devwithzachary.mineserve.cloud.MineServeCloudManager
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.net.portforward.PortForwardState
 import com.devwithzachary.mineserve.ui.theme.RedstoneLight
@@ -120,6 +122,9 @@ fun SettingsTab(
     onFetchVersions: suspend (ServerType) -> List<String> = { emptyList() },
     onUpdateBuild: (createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
+    cloudAccountState: CloudAccountState = CloudAccountState(),
+    onOpenCloudPortal: () -> Unit = {},
+    onRefreshCloudAccount: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -148,6 +153,11 @@ fun SettingsTab(
     var customRelayHost by remember(server.tunnelConfig.customRelayHost) { mutableStateOf(server.tunnelConfig.customRelayHost) }
     var customRelayPort by remember(server.tunnelConfig.customRelayPort) { mutableIntStateOf(server.tunnelConfig.customRelayPort) }
     var playitSecret by remember(server.tunnelConfig.playitSecret) { mutableStateOf(server.tunnelConfig.playitSecret) }
+    var cloudSubdomain by remember(server.tunnelConfig.cloudSubdomain) { mutableStateOf(server.tunnelConfig.cloudSubdomain) }
+    var cloudRegion by remember(server.tunnelConfig.cloudRegion) { mutableStateOf(server.tunnelConfig.cloudRegion.ifBlank { "us-east" }) }
+    var cloudDomain by remember(server.tunnelConfig.cloudDomain) { mutableStateOf(server.tunnelConfig.cloudDomain.ifBlank { "play.mineserve.app" }) }
+    var isReservingSubdomain by remember { mutableStateOf(false) }
+    var cloudTunnelFeedback by remember { mutableStateOf<String?>(null) }
 
     // Port forwarding config state
     var portForwardAutoForward by remember(server.portForwardConfig.autoForward) { mutableStateOf(server.portForwardConfig.autoForward) }
@@ -893,6 +903,272 @@ fun SettingsTab(
                                 labelColor = Color.White
                             )
                         )
+
+                        FilterChip(
+                            selected = tunnelProvider == TunnelProvider.MINESERVE_CLOUD,
+                            onClick = {
+                                tunnelProvider = TunnelProvider.MINESERVE_CLOUD
+                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.MINESERVE_CLOUD)
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            },
+                            label = { Text("MineServe Cloud") },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = EmeraldPrimary,
+                                selectedLabelColor = Color.Black,
+                                containerColor = Slate800,
+                                labelColor = Color.White
+                            )
+                        )
+                    }
+                }
+
+                // MineServe Cloud Tunnel configuration
+                if (tunnelProvider == TunnelProvider.MINESERVE_CLOUD) {
+                    val profile = cloudAccountState.profile
+                    val tier = profile?.tier?.uppercase() ?: "FREE"
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = Slate900.copy(alpha = 0.6f),
+                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            if (!cloudAccountState.isLinked) {
+                                Text(
+                                    text = "Link your MineServe Cloud account in Settings to use custom *.play.mineserve.app addresses and remote panel access.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate400
+                                )
+                                OutlinedButton(
+                                    onClick = onOpenCloudPortal,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Open MineServe Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                }
+                            } else if (tier == "FREE") {
+                                Text(
+                                    text = "Custom *.play.mineserve.app tunnels require MineServe Plus (\$2.99/mo, 1 address) or Pro (\$6.99/mo, 3 addresses).",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = GoldYellow
+                                )
+                                OutlinedButton(
+                                    onClick = onOpenCloudPortal,
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("Upgrade in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                }
+                            } else {
+                                val existingSubs = profile?.activeSubdomains.orEmpty()
+                                val subDetails = profile?.activeSubdomainDetails.orEmpty()
+                                val matchedCloudRegion = subDetails.firstOrNull {
+                                    it.subdomain.equals(cloudSubdomain, ignoreCase = true)
+                                }?.region
+                                androidx.compose.runtime.LaunchedEffect(matchedCloudRegion) {
+                                    if (!matchedCloudRegion.isNullOrBlank() && matchedCloudRegion != cloudRegion) {
+                                        cloudRegion = matchedCloudRegion
+                                        onSaveServer(
+                                            server.copy(
+                                                tunnelConfig = server.tunnelConfig.copy(
+                                                    provider = TunnelProvider.MINESERVE_CLOUD,
+                                                    cloudSubdomain = cloudSubdomain,
+                                                    cloudRegion = matchedCloudRegion
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+                                if (existingSubs.isNotEmpty()) {
+                                    Text("Your Claimed Addresses:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        existingSubs.forEach { sub ->
+                                            val subInfo = subDetails.firstOrNull { it.subdomain.equals(sub, ignoreCase = true) }
+                                            val subRegion = subInfo?.region
+                                            val subDomain = subInfo?.domain?.ifBlank { "play.mineserve.app" } ?: "play.mineserve.app"
+                                            val regionTag = when (subRegion) {
+                                                "us-east" -> "US East"
+                                                "eu-west" -> "EU West"
+                                                "eu-central" -> "EU Central"
+                                                "ap-southeast" -> "Asia Pacific"
+                                                else -> subRegion
+                                            }
+                                            FilterChip(
+                                                selected = cloudSubdomain.equals(sub, ignoreCase = true),
+                                                onClick = {
+                                                    val nextRegion = subRegion ?: cloudRegion
+                                                    cloudSubdomain = sub
+                                                    cloudRegion = nextRegion
+                                                    cloudDomain = subDomain
+                                                    onSaveServer(
+                                                        server.copy(
+                                                            tunnelConfig = server.tunnelConfig.copy(
+                                                                provider = TunnelProvider.MINESERVE_CLOUD,
+                                                                cloudSubdomain = sub,
+                                                                cloudRegion = nextRegion,
+                                                                cloudDomain = subDomain
+                                                            )
+                                                        )
+                                                    )
+                                                },
+                                                label = {
+                                                    val text = if (!regionTag.isNullOrBlank()) {
+                                                        "$sub.$subDomain ($regionTag)"
+                                                    } else {
+                                                        "$sub.$subDomain"
+                                                    }
+                                                    Text(text, fontSize = 11.sp)
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                val effectiveDomain = if (tier == "PRO") cloudDomain else "play.mineserve.app"
+                                androidx.compose.runtime.LaunchedEffect(tier, cloudDomain) {
+                                    if (tier != "PRO" && cloudDomain != "play.mineserve.app") {
+                                        cloudDomain = "play.mineserve.app"
+                                        onSaveServer(
+                                            server.copy(
+                                                tunnelConfig = server.tunnelConfig.copy(
+                                                    provider = TunnelProvider.MINESERVE_CLOUD,
+                                                    cloudDomain = "play.mineserve.app"
+                                                )
+                                            )
+                                        )
+                                    }
+                                }
+
+                                OutlinedTextField(
+                                    value = cloudSubdomain,
+                                    onValueChange = { raw ->
+                                        val clean = raw.lowercase().filter { it.isLetterOrDigit() || it == '-' }.take(32)
+                                        cloudSubdomain = clean
+                                        onSaveServer(
+                                            server.copy(
+                                                tunnelConfig = server.tunnelConfig.copy(
+                                                    provider = TunnelProvider.MINESERVE_CLOUD,
+                                                    cloudSubdomain = clean,
+                                                    cloudRegion = cloudRegion,
+                                                    cloudDomain = effectiveDomain
+                                                )
+                                            )
+                                        )
+                                    },
+                                    label = { Text("Subdomain") },
+                                    placeholder = { Text("my-smp", color = Slate400) },
+                                    suffix = { Text(".$effectiveDomain", color = EmeraldLight, fontSize = 12.sp) },
+                                    singleLine = true,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = EmeraldPrimary,
+                                        unfocusedBorderColor = ObsidianCardBorder,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                if (tier == "PRO") {
+                                    Text("Domain Suffix (Pro):", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        listOf("play.mineserve.app" to ".play.mineserve.app", "playms.uk" to ".playms.uk (Short)").forEach { (dom, label) ->
+                                            FilterChip(
+                                                selected = cloudDomain == dom,
+                                                onClick = {
+                                                    cloudDomain = dom
+                                                    onSaveServer(
+                                                        server.copy(
+                                                            tunnelConfig = server.tunnelConfig.copy(
+                                                                provider = TunnelProvider.MINESERVE_CLOUD,
+                                                                cloudSubdomain = cloudSubdomain,
+                                                                cloudRegion = cloudRegion,
+                                                                cloudDomain = dom
+                                                            )
+                                                        )
+                                                    )
+                                                },
+                                                label = { Text(label, fontSize = 11.sp) }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Text("Relay Region:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    listOf(
+                                        "us-east" to "US East",
+                                        "eu-west" to "EU West (London)",
+                                        "eu-central" to "EU Central",
+                                        "ap-southeast" to "Asia Pacific"
+                                    ).forEach { (id, label) ->
+                                        FilterChip(
+                                            selected = cloudRegion == id,
+                                            onClick = {
+                                                cloudRegion = id
+                                                onSaveServer(
+                                                    server.copy(
+                                                        tunnelConfig = server.tunnelConfig.copy(
+                                                            provider = TunnelProvider.MINESERVE_CLOUD,
+                                                            cloudSubdomain = cloudSubdomain,
+                                                            cloudRegion = id
+                                                        )
+                                                    )
+                                                )
+                                            },
+                                            label = { Text(label, fontSize = 11.sp) }
+                                        )
+                                    }
+                                }
+
+                                Button(
+                                    onClick = {
+                                        isReservingSubdomain = true
+                                        cloudTunnelFeedback = null
+                                        scope.launch {
+                                            val res = MineServeCloudManager(context).allocateCloudTunnel(
+                                                serverId = server.id,
+                                                subdomain = cloudSubdomain,
+                                                region = cloudRegion,
+                                                domain = if (tier == "PRO") cloudDomain else "play.mineserve.app"
+                                            )
+                                            isReservingSubdomain = false
+                                            res.fold(
+                                                onSuccess = { alloc ->
+                                                    cloudTunnelFeedback = "Reserved ${alloc.hostname} (Panel: ${alloc.panelHostname})"
+                                                    onRefreshCloudAccount()
+                                                },
+                                                onFailure = { err ->
+                                                    cloudTunnelFeedback = err.message ?: "Failed to reserve address"
+                                                }
+                                            )
+                                        }
+                                    },
+                                    enabled = !isReservingSubdomain && cloudSubdomain.length >= 3,
+                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    if (isReservingSubdomain) {
+                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Reserving Address...", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    } else {
+                                        Text("Reserve Cloud Address", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                }
+
+                                cloudTunnelFeedback?.let { msg ->
+                                    Text(
+                                        text = msg,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (msg.startsWith("Reserved")) EmeraldLight else RedstoneLight
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 

@@ -72,6 +72,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.cloud.CloudAccountState
+import com.devwithzachary.mineserve.cloud.CloudBackupItem
 import com.devwithzachary.mineserve.engine.TerminalEmulator
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.CrashDiagnosticReport
@@ -149,6 +151,14 @@ fun ServerDetailScreen(
     onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
     onSyncBackupToCloud: ((BackupEntry, (Result<String>) -> Unit) -> Unit)? = null,
+    cloudAccountState: CloudAccountState = CloudAccountState(),
+    cloudBackups: List<CloudBackupItem> = emptyList(),
+    isCloudBackupsLoading: Boolean = false,
+    onRefreshCloudBackups: () -> Unit = {},
+    onRestoreCloudBackup: (CloudBackupItem, (Result<Unit>) -> Unit) -> Unit = { _, _ -> },
+    onDeleteCloudBackup: (CloudBackupItem, (Result<Unit>) -> Unit) -> Unit = { _, _ -> },
+    onOpenCloudPortal: () -> Unit = {},
+    onRefreshCloudAccount: () -> Unit = {},
     onTogglePlugin: (PluginModEntry) -> Unit,
     onDeletePlugin: (PluginModEntry) -> Unit,
     onInstallPluginOrMod: (fileName: String, downloadUrl: String, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
@@ -527,7 +537,10 @@ fun ServerDetailScreen(
                         onCheckForUpdate = onCheckForUpdate,
                         onFetchVersions = onFetchVersions,
                         onUpdateBuild = onUpdateBuild,
-                        onUpgradeVersion = onUpgradeVersion
+                        onUpgradeVersion = onUpgradeVersion,
+                        cloudAccountState = cloudAccountState,
+                        onOpenCloudPortal = onOpenCloudPortal,
+                        onRefreshCloudAccount = onRefreshCloudAccount
                     )
                     DetailTab.PLAYERS -> PlayersTab(
                         server = server,
@@ -553,7 +566,14 @@ fun ServerDetailScreen(
                         onDeleteBackup = onDeleteBackup,
                         onGetShareIntent = onGetShareIntent,
                         onSaveServer = onSaveServer,
-                        onSyncBackupToCloud = onSyncBackupToCloud
+                        onSyncBackupToCloud = onSyncBackupToCloud,
+                        cloudAccountState = cloudAccountState,
+                        cloudBackups = cloudBackups,
+                        isCloudBackupsLoading = isCloudBackupsLoading,
+                        onRefreshCloudBackups = onRefreshCloudBackups,
+                        onRestoreCloudBackup = onRestoreCloudBackup,
+                        onDeleteCloudBackup = onDeleteCloudBackup,
+                        onOpenCloudPortal = onOpenCloudPortal
                     )
                     DetailTab.PLUGINS_MODS -> {
                         if (showPluginsOrModsTab) {
@@ -786,7 +806,7 @@ fun NetworkAddressCard(
                                 is TunnelState.Error -> RedstoneLight
                                 is TunnelState.Disconnected -> Slate400
                             },
-                            maxLines = 1
+                            maxLines = if (tunnelState is TunnelState.Error) 3 else 1
                         )
                     }
                 }

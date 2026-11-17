@@ -2,6 +2,7 @@ package com.devwithzachary.mineserve.backup.cloud
 
 import android.content.Context
 import android.util.Log
+import com.devwithzachary.mineserve.cloud.MineServeCloudManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -30,6 +31,7 @@ class CloudBackupManager private constructor(
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val webDavClient = WebDavClient()
     private val safStorage = SafBackupStorage(context)
+    private val mineServeCloudManager = MineServeCloudManager(context)
 
     private val _syncState = MutableStateFlow<CloudSyncState>(CloudSyncState.Idle)
     val syncState: StateFlow<CloudSyncState> = _syncState.asStateFlow()
@@ -41,6 +43,7 @@ class CloudBackupManager private constructor(
     fun syncBackupAsync(
         backupFile: File,
         config: CloudBackupConfig,
+        serverId: String? = null,
         onComplete: ((Result<String>) -> Unit)? = null
     ) {
         if (!config.enabled) {
@@ -50,9 +53,18 @@ class CloudBackupManager private constructor(
             return
         }
 
+        val resolvedServerId = serverId?.takeIf { it.isNotBlank() }
+            ?: backupFile.parentFile?.parentFile?.name
+            ?: "default"
+
         _syncState.value = CloudSyncState.Syncing(backupFile.name, 0)
         scope.launch {
             val result = when (config.provider) {
+                CloudProviderType.MINESERVE_CLOUD -> {
+                    mineServeCloudManager.uploadBackupToCloud(resolvedServerId, backupFile) { pct ->
+                        _syncState.value = CloudSyncState.Syncing(backupFile.name, pct)
+                    }
+                }
                 CloudProviderType.WEBDAV -> {
                     webDavClient.uploadBackup(backupFile, config) { pct ->
                         _syncState.value = CloudSyncState.Syncing(backupFile.name, pct)

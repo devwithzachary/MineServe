@@ -2,6 +2,8 @@ package com.devwithzachary.mineserve.tunnel
 
 import android.content.Context
 import android.util.Log
+import com.devwithzachary.mineserve.admin.web.WebAdminPreferences
+import com.devwithzachary.mineserve.cloud.MineServeCloudManager
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.TunnelProvider
 import java.util.concurrent.ConcurrentHashMap
@@ -11,6 +13,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class TunnelManager private constructor(
     private val context: Context
@@ -30,7 +33,10 @@ class TunnelManager private constructor(
 
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val activeBoreClients = ConcurrentHashMap<String, BoreTunnelClient>()
+    private val activePanelBoreClients = ConcurrentHashMap<String, BoreTunnelClient>()
     private val activePlayitClients = ConcurrentHashMap<String, PlayitTunnelClient>()
+    private val activeCloudJobs = ConcurrentHashMap<String, Job>()
+    private val mineServeCloudManager = MineServeCloudManager(context)
 
     private val _tunnelStates = MutableStateFlow<Map<String, TunnelState>>(emptyMap())
     val tunnelStates: StateFlow<Map<String, TunnelState>> = _tunnelStates.asStateFlow()
@@ -100,12 +106,110 @@ class TunnelManager private constructor(
                 activeBoreClients[tunnelId] = client
                 client.start(scope)
             }
+            TunnelProvider.MINESERVE_CLOUD -> {
+                val subdomain = config.cloudSubdomain.trim().lowercase()
+                if (subdomain.isBlank()) {
+                    updateTunnelState(
+                        tunnelId,
+                        TunnelState.Error("Enter a MineServe Cloud subdomain in Server Settings first.")
+                    )
+                    return
+                }
+                updateTunnelState(
+                    tunnelId,
+                    TunnelState.Connecting("Provisioning $subdomain.play.mineserve.app...")
+                )
+                val job = scope.launch {
+                    mineServeCloudManager.refreshProfile()
+                    val matchedInfo = mineServeCloudManager.state.value.profile
+                        ?.activeSubdomainDetails
+                        ?.firstOrNull { it.subdomain.equals(subdomain, ignoreCase = true) }
+                    val effectiveRegion = matchedInfo?.region?.takeIf { it.isNotBlank() }
+                        ?: config.cloudRegion.ifBlank { "us-east" }
+                    val effectiveDomain = matchedInfo?.domain?.takeIf { it.isNotBlank() }
+                        ?: config.cloudDomain.ifBlank { "play.mineserve.app" }
+
+                    val allocResult = mineServeCloudManager.allocateCloudTunnel(
+                        serverId = tunnelId,
+                        subdomain = subdomain,
+                        region = effectiveRegion,
+                        protocol = "tcp",
+                        domain = effectiveDomain
+                    )
+                    allocResult.fold(
+                        onSuccess = { allocation ->
+                            if (allocation.relayHost.isBlank() || allocation.relayHost == "198.51.100.10") {
+                                updateTunnelState(
+                                    tunnelId,
+                                    TunnelState.Error(
+                                        "Reserved ${allocation.hostname}, but no MineServe Cloud relay node is online in ${allocation.region} yet."
+                                    )
+                                )
+                                return@fold
+                            }
+                            lateinit var client: BoreTunnelClient
+                            client = BoreTunnelClient(
+                                context = context,
+                                relayHost = allocation.relayHost,
+                                relayPort = 7835,
+                                localPort = localPort,
+                                provider = TunnelProvider.MINESERVE_CLOUD,
+                                requestedRemotePort = allocation.relayPort,
+                                secret = allocation.clientToken,
+                                onStateChanged = { newState ->
+                                    if (activeBoreClients[tunnelId] === client || newState is TunnelState.Disconnected) {
+                                        val mapped = when (newState) {
+                                            is TunnelState.Connected -> newState.copy(
+                                                publicHost = allocation.hostname,
+                                                fullAddress = allocation.hostname,
+                                                provider = TunnelProvider.MINESERVE_CLOUD
+                                            )
+                                            else -> newState
+                                        }
+                                        updateTunnelState(tunnelId, mapped)
+                                    }
+                                }
+                            )
+                            activeBoreClients[tunnelId] = client
+                            client.start(scope)
+
+                            if (tunnelId != "web_admin" && allocation.relayPort in 20000..39999) {
+                                val webAdminPort = WebAdminPreferences(context).loadConfig().port
+                                val panelClient = BoreTunnelClient(
+                                    context = context,
+                                    relayHost = allocation.relayHost,
+                                    relayPort = 7835,
+                                    localPort = webAdminPort,
+                                    provider = TunnelProvider.MINESERVE_CLOUD,
+                                    requestedRemotePort = allocation.relayPort + 20000,
+                                    secret = allocation.clientToken,
+                                    onStateChanged = {}
+                                )
+                                activePanelBoreClients[tunnelId] = panelClient
+                                panelClient.start(scope)
+                            }
+                        },
+                        onFailure = { err ->
+                            updateTunnelState(
+                                tunnelId,
+                                TunnelState.Error(err.message ?: "Failed to allocate MineServe Cloud tunnel")
+                            )
+                        }
+                    )
+                }
+                activeCloudJobs[tunnelId] = job
+            }
         }
     }
 
     fun stopTunnel(serverId: String) {
+        activeCloudJobs.remove(serverId)?.cancel()
+
         val boreClient = activeBoreClients.remove(serverId)
         boreClient?.stop()
+
+        val panelBoreClient = activePanelBoreClients.remove(serverId)
+        panelBoreClient?.stop()
 
         val playitClient = activePlayitClients.remove(serverId)
         playitClient?.stop()

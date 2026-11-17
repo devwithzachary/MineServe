@@ -1,43 +1,59 @@
 package com.devwithzachary.mineserve.ui.screens.dashboard
 
+import android.content.Context
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
@@ -45,9 +61,12 @@ import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.tunnel.TunnelState
 import com.devwithzachary.mineserve.ui.components.NotificationPermissionCard
 import com.devwithzachary.mineserve.ui.components.ServerCard
+import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
+import com.devwithzachary.mineserve.ui.theme.ObsidianCard
+import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
 import com.devwithzachary.mineserve.ui.theme.Slate400
 import com.devwithzachary.mineserve.ui.theme.Slate950
 
@@ -69,8 +88,15 @@ fun DashboardScreen(
     onCreditsClick: () -> Unit,
     webAdminEnabled: Boolean = false,
     onRemoteAdminClick: (() -> Unit)? = null,
+    isCloudLinked: Boolean = false,
+    onCloudClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val uiPrefs = remember { context.getSharedPreferences("mineserve_ui_prefs", Context.MODE_PRIVATE) }
+    var cloudIntroDismissed by remember {
+        mutableStateOf(uiPrefs.getBoolean("dismissed_cloud_intro_1_7_0", false))
+    }
     val runningCount = serverStatuses.count {
         it.value == ServerStatus.RUNNING || it.value == ServerStatus.STARTING
     }
@@ -117,6 +143,16 @@ fun DashboardScreen(
                         )
                     }
 
+                    if (onCloudClick != null) {
+                        IconButton(onClick = onCloudClick) {
+                            Icon(
+                                imageVector = Icons.Default.Cloud,
+                                contentDescription = "MineServe Cloud",
+                                tint = if (isCloudLinked) EmeraldLight else Slate400
+                            )
+                        }
+                    }
+
                     if (onRemoteAdminClick != null) {
                         IconButton(onClick = onRemoteAdminClick) {
                             Icon(
@@ -125,14 +161,6 @@ fun DashboardScreen(
                                 tint = if (webAdminEnabled) EmeraldLight else Slate400
                             )
                         }
-                    }
-
-                    IconButton(onClick = onAboutClick) {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = stringResource(R.string.about_page_title),
-                            tint = EmeraldLight
-                        )
                     }
 
                     IconButton(onClick = onSettingsClick) {
@@ -179,6 +207,77 @@ fun DashboardScreen(
                     runningCount = runningCount,
                     totalRamAllocatedMb = displayActiveRamMb
                 )
+            }
+
+            // Dismissible one-time MineServe Cloud discovery card (shown only when not linked & not dismissed)
+            if (onCloudClick != null && !isCloudLinked && !cloudIntroDismissed) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.45f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = EmeraldDark.copy(alpha = 0.4f),
+                                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                                    ) {
+                                        Text(
+                                            text = "NEW",
+                                            color = EmeraldLight,
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                        )
+                                    }
+                                    Text(
+                                        text = "Optional MineServe Cloud",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        cloudIntroDismissed = true
+                                        uiPrefs.edit().putBoolean("dismissed_cloud_intro_1_7_0", true).apply()
+                                    },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Slate400, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                            Text(
+                                text = "Need custom *.play.mineserve.app addresses, remote Web Admin, or encrypted cloud backups? Plus is £2.99/mo & Pro is £6.99/mo. Local hosting stays 100% free.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Slate400
+                            )
+                            Button(
+                                onClick = onCloudClick,
+                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                                shape = RoundedCornerShape(8.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Text("Explore Plans", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
             }
 
             // Server Cards or Empty State

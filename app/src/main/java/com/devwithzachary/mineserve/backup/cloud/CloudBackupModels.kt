@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class CloudProviderType(val displayName: String) {
+    MINESERVE_CLOUD("MineServe Cloud"),
     WEBDAV("Nextcloud / WebDAV"),
     SAF_FOLDER("Android Cloud / Storage Folder")
 }

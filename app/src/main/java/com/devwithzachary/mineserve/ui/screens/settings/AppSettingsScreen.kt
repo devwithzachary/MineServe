@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
@@ -31,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -81,6 +83,11 @@ fun AppSettingsScreen(
     webAdminEnabled: Boolean = false,
     webAdminLocalUrl: String? = null,
     onRemoteAdminClick: (() -> Unit)? = null,
+    cloudState: com.devwithzachary.mineserve.cloud.CloudAccountState = com.devwithzachary.mineserve.cloud.CloudAccountState(),
+    onOpenCloudPortal: () -> Unit = {},
+    onRefreshCloud: () -> Unit = {},
+    onSignOutCloud: () -> Unit = {},
+    onOpenCloudPage: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onAboutClick: (() -> Unit)? = null
 ) {
@@ -122,6 +129,15 @@ fun AppSettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
         ) {
+            // MineServe Cloud Account Card (top of Settings)
+            MineServeCloudCard(
+                cloudState = cloudState,
+                onOpenCloudPortal = onOpenCloudPortal,
+                onRefreshCloud = onRefreshCloud,
+                onSignOutCloud = onSignOutCloud,
+                onOpenCloudPage = onOpenCloudPage
+            )
+
             // Notification Permission Card
             NotificationPermissionCard()
 
@@ -414,6 +430,170 @@ fun AppSettingsScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MineServeCloudCard(
+    cloudState: com.devwithzachary.mineserve.cloud.CloudAccountState,
+    onOpenCloudPortal: () -> Unit,
+    onRefreshCloud: () -> Unit,
+    onSignOutCloud: () -> Unit,
+    onOpenCloudPage: (() -> Unit)? = null
+) {
+    androidx.compose.runtime.LaunchedEffect(cloudState.isLinked) {
+        while (cloudState.isLinked) {
+            onRefreshCloud()
+            kotlinx.coroutines.delay(15_000L)
+        }
+    }
+
+    val profile = cloudState.profile
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+        border = BorderStroke(1.dp, ObsidianCardBorder),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Cloud,
+                        contentDescription = null,
+                        tint = EmeraldLight,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Text(
+                        text = "MineServe Cloud",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+
+                if (cloudState.isLinked && profile != null) {
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = EmeraldDark.copy(alpha = 0.35f),
+                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = profile.tier,
+                            color = EmeraldLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+
+            if (!cloudState.isLinked) {
+                Text(
+                    text = "Optional cloud account for custom *.play.mineserve.app addresses, remote Web Admin access, and encrypted off-device backups.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Slate400
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                    if (onOpenCloudPage != null) {
+                        OutlinedButton(
+                            onClick = onOpenCloudPage,
+                            shape = RoundedCornerShape(10.dp),
+                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Plans & Details", color = EmeraldLight)
+                        }
+                    }
+                    Button(
+                        onClick = onOpenCloudPortal,
+                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            tint = Color.Black,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Link Account", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                }
+            } else {
+                if (profile != null) {
+                    Text(
+                        text = profile.email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                    val usedMb = profile.storageUsedBytes / (1024.0 * 1024.0)
+                    val quotaGb = profile.storageQuotaBytes / (1024L * 1024L * 1024L)
+                    Text(
+                        text = "Storage: ${String.format(java.util.Locale.US, "%.1f", usedMb)} MB / $quotaGb GB  |  Addresses: ${profile.activeSubdomains.size} / ${profile.maxSubdomains}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+                } else {
+                    Text(
+                        text = "Account linked. Tap Refresh to sync profile.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Slate400
+                    )
+                }
+
+                cloudState.errorMessage?.let { err ->
+                    Text(
+                        text = err,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFFFCA5A5)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onOpenCloudPortal,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                            contentDescription = null,
+                            tint = EmeraldLight,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Open Portal", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    }
+
+                    OutlinedButton(
+                        onClick = onSignOutCloud,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Sign Out", color = Slate400, fontSize = 12.sp, maxLines = 1)
                     }
                 }
             }

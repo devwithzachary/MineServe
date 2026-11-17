@@ -2,6 +2,14 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.7.0] - Unreleased
+
+### ☁️ MineServe Cloud Integration (Optional)
+- **Cloud Account Linking (`mineserve://auth`)**: Added `MineServeCloudManager`, deep-link authentication handling in `MainActivity`, and a **MineServe Cloud** card in **App Settings** to sign in via `cloud.mineserve.app`, view your active tier, storage quota, and custom server addresses, or sign out.
+- **MineServe Cloud Backups (R2)**: Added **MineServe Cloud** as a storage provider in **Backups -> Cloud Backup Sync** (`CloudProviderType.MINESERVE_CLOUD`), supporting direct streaming uploads to Cloudflare R2, automatic post-backup sync, and an in-app **MineServe Cloud Snapshots** browser with one-tap download & restore or deletion.
+- **MineServe Cloud Tunnels (`*.play.mineserve.app` & `*.playms.uk`)**: Added **MineServe Cloud** as a tunnel provider in **Server Settings -> Public Multiplayer Tunneling** (`TunnelProvider.MINESERVE_CLOUD`), allowing Plus and Pro users to reserve custom `*.play.mineserve.app` (and Pro `*.playms.uk`) subdomains, select a relay region (`US East`, `EU West`, `EU Central`, `Asia Pacific`), and connect both game and remote Web Admin panel tunnels directly from the app.
+- **Dedicated MineServe Cloud Page & Discovery**: Added `MineServeCloudScreen` accessible from the Dashboard top bar (plus a one-time dismissible discovery card) and moved the **MineServe Cloud** card to the top of **App Settings**, clearly presenting Free, Plus, and Pro features and pricing without intrusive popups.
+
 ## [1.6.1] - 2026-11-16
 
 ### 🛡️ Build System & F-Droid Compliance
