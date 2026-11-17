@@ -10,6 +10,10 @@ All notable changes to the MineServe project will be documented in this file.
 - **MineServe Cloud Tunnels (`*.play.mineserve.app` & `*.playms.uk`)**: Added **MineServe Cloud** as a tunnel provider in **Server Settings -> Public Multiplayer Tunneling** (`TunnelProvider.MINESERVE_CLOUD`), allowing Plus and Pro users to reserve custom `*.play.mineserve.app` (and Pro `*.playms.uk`) subdomains, select a relay region (`US East`, `EU West`, `EU Central`, `Asia Pacific`), and connect both game and remote Web Admin panel tunnels directly from the app.
 - **Dedicated MineServe Cloud Page & Discovery**: Added `MineServeCloudScreen` accessible from the Dashboard top bar (plus a one-time dismissible discovery card) and moved the **MineServe Cloud** card to the top of **App Settings**, clearly presenting Free, Plus, and Pro features and pricing without intrusive popups.
 
+### 🩺 Diagnostics & Support Tools
+- **In-App Logcat Capture & Redacted Bundle Export**: Added **Diagnostics & Logcat** in **App Settings** (`DiagnosticManager`, `DiagnosticsScreen`) with tag filtering (`MineServe Tags`, `Errors & Crashes`, `All App Logs`), automatic scrubbing of Bearer/JWT tokens, Discord webhooks, secrets, and public IPv4 addresses, and `.zip` export via Share Sheet or Downloads.
+- **Networking & Tunnel Health Self-Test**: Added one-tap checks for LAN/gateway, DNS resolution (`bore.pub`, `api.mineserve.app`), Bore/Playit TCP reachability, MineServe Cloud `/health`, and UPnP router discovery.
+
 ## [1.6.1] - 2026-11-16
 
 ### 🛡️ Build System & F-Droid Compliance

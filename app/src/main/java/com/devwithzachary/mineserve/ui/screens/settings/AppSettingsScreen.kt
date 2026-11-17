@@ -88,6 +88,7 @@ fun AppSettingsScreen(
     onRefreshCloud: () -> Unit = {},
     onSignOutCloud: () -> Unit = {},
     onOpenCloudPage: (() -> Unit)? = null,
+    onOpenDiagnostics: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onAboutClick: (() -> Unit)? = null
 ) {
@@ -269,6 +270,40 @@ fun AppSettingsScreen(
                                     checkedTrackColor = EmeraldDark
                                 )
                             )
+                        }
+                    }
+                }
+            }
+
+            if (onOpenDiagnostics != null) {
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            text = "Diagnostics & Logcat",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Capture redacted app/engine logs, run tunnel & DNS self-tests, and export a diagnostic bundle.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400
+                        )
+                        OutlinedButton(
+                            onClick = onOpenDiagnostics,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Open Diagnostics & Logcat", color = EmeraldLight, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }

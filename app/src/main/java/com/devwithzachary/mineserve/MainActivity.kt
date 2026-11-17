@@ -41,6 +41,7 @@ import com.devwithzachary.mineserve.ui.components.GitHubUpdateDialog
 import com.devwithzachary.mineserve.ui.screens.about.AboutScreen
 import com.devwithzachary.mineserve.ui.screens.cloud.MineServeCloudScreen
 import com.devwithzachary.mineserve.ui.screens.credits.CreditsScreen
+import com.devwithzachary.mineserve.ui.screens.diagnostics.DiagnosticsScreen
 import com.devwithzachary.mineserve.ui.screens.dashboard.DashboardScreen
 import com.devwithzachary.mineserve.ui.screens.detail.ServerDetailScreen
 import com.devwithzachary.mineserve.ui.screens.settings.AppSettingsScreen
@@ -57,6 +58,7 @@ sealed class Screen {
     data class Detail(val serverId: String) : Screen()
     data object Settings : Screen()
     data object Cloud : Screen()
+    data object Diagnostics : Screen()
     data object RemoteAdmin : Screen()
     data object About : Screen()
     data object Credits : Screen()
@@ -431,6 +433,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onRefreshCloud = { viewModel.refreshCloudAccount() },
                     onSignOutCloud = { viewModel.signOutCloudAccount() },
                     onOpenCloudPage = { navigateTo(Screen.Cloud) },
+                    onOpenDiagnostics = { navigateTo(Screen.Diagnostics) },
                     onBack = { navigateBack() },
                     onAboutClick = { navigateTo(Screen.About) }
                 )
@@ -473,6 +476,12 @@ fun MineServeApp(viewModel: MainViewModel) {
                     },
                     onRefreshCloud = { viewModel.refreshCloudAccount() },
                     onSignOutCloud = { viewModel.signOutCloudAccount() }
+                )
+            }
+
+            is Screen.Diagnostics -> {
+                DiagnosticsScreen(
+                    onBack = { navigateBack() }
                 )
             }
         }
