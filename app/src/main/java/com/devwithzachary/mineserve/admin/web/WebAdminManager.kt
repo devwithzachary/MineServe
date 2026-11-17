@@ -113,6 +113,7 @@ class WebAdminManager private constructor(
 
         Log.i(TAG, "Starting Web Remote Admin on port ${cfg.port}...")
         val s = WebAdminServer(
+            context = context,
             port = cfg.port,
             security = security,
             configProvider = { _config.value },

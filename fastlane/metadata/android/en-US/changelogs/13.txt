@@ -1,4 +1,4 @@
-- MineServe Cloud: optional R2 backups, custom *.play.mineserve.app tunnels & remote Web Admin
+- MineServe Cloud: optional R2 backups, custom *.play.mineserve.app tunnels & Web UI parity
 - Home Screen Widget & Quick Settings Tile: 1-tap primary server start/stop & live status
 - Battery & Thermal Safeguards: auto-stop servers on low battery or high device temperature
-- Diagnostics & Resumable Setup: redacted logcat bundles, background-safe downloads & local import
+- Diagnostics & Resumable Setup: redacted logcat bundles, Web UI self-tests & local import

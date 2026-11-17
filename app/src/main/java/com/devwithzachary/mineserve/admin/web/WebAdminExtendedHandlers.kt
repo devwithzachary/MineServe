@@ -1,6 +1,10 @@
 package com.devwithzachary.mineserve.admin.web
 
+import android.content.Context
 import com.devwithzachary.mineserve.api.ModrinthApiClient
+import com.devwithzachary.mineserve.cloud.MineServeCloudManager
+import com.devwithzachary.mineserve.diagnostics.DiagnosticManager
+import com.devwithzachary.mineserve.diagnostics.LogFilterMode
 import com.devwithzachary.mineserve.engine.ChunkOptimizer
 import com.devwithzachary.mineserve.engine.ProxyNetworkManager
 import com.devwithzachary.mineserve.engine.ServerProcessManager
@@ -27,6 +31,8 @@ import com.devwithzachary.mineserve.net.portforward.PortForwardState
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
+import com.devwithzachary.mineserve.system.SafeguardConfig
+import com.devwithzachary.mineserve.system.SafeguardPreferences
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import com.devwithzachary.mineserve.tunnel.TunnelState
 import kotlinx.coroutines.CoroutineScope
@@ -51,6 +57,7 @@ private data class ModpackImportJob(
  * Live Map, Tunneling & Port Forwarding, Backups, and Plugins/Mods.
  */
 internal class WebAdminExtendedHandlers(
+    private val context: Context,
     private val scope: CoroutineScope,
     private val webAdminPort: Int,
     private val serverRepository: ServerRepository,
@@ -63,6 +70,8 @@ internal class WebAdminExtendedHandlers(
 ) {
     private val modrinthClient = ModrinthApiClient()
     private val modpackJobs = ConcurrentHashMap<String, ModpackImportJob>()
+    private val cloudManager by lazy { MineServeCloudManager(context) }
+    private val safeguardPrefs by lazy { SafeguardPreferences(context) }
 
     // --- Performance ---
 
@@ -445,7 +454,10 @@ internal class WebAdminExtendedHandlers(
                     .put("autoStart", tCfg.autoStart)
                     .put("customRelayHost", tCfg.customRelayHost)
                     .put("customRelayPort", tCfg.customRelayPort)
-                    .put("playitSecretSet", tCfg.playitSecret.isNotBlank()))
+                    .put("playitSecretSet", tCfg.playitSecret.isNotBlank())
+                    .put("cloudSubdomain", tCfg.cloudSubdomain)
+                    .put("cloudRegion", tCfg.cloudRegion)
+                    .put("cloudDomain", tCfg.cloudDomain))
                 .put("tunnelState", tStateObj)
                 .put("portForwardConfig", JSONObject()
                     .put("autoForward", pfCfg.autoForward)
@@ -467,7 +479,10 @@ internal class WebAdminExtendedHandlers(
             autoStart = json.optBoolean("autoStart", server.tunnelConfig.autoStart),
             customRelayHost = json.optString("customRelayHost", server.tunnelConfig.customRelayHost).trim().ifBlank { "bore.pub" },
             customRelayPort = json.optInt("customRelayPort", server.tunnelConfig.customRelayPort).coerceIn(1, 65535),
-            playitSecret = json.optString("playitSecret", "").takeIf { it.isNotBlank() } ?: server.tunnelConfig.playitSecret
+            playitSecret = json.optString("playitSecret", "").takeIf { it.isNotBlank() } ?: server.tunnelConfig.playitSecret,
+            cloudSubdomain = json.optString("cloudSubdomain", server.tunnelConfig.cloudSubdomain).trim().lowercase(),
+            cloudRegion = json.optString("cloudRegion", server.tunnelConfig.cloudRegion).trim().ifBlank { "us-east" },
+            cloudDomain = json.optString("cloudDomain", server.tunnelConfig.cloudDomain).trim().ifBlank { "play.mineserve.app" }
         )
         val updatedServer = server.copy(tunnelConfig = updatedTunnelCfg)
         serverRepository.updateServer(updatedServer)
@@ -924,6 +939,190 @@ internal class WebAdminExtendedHandlers(
                 bind: 0.0.0.0
                 port: $port
             """.trimIndent() + "\n"
+        )
+    }
+
+    // --- MineServe Cloud, Safeguards, Diagnostics & Cloud Backups (v1.7.0) ---
+
+    fun handleGetCloudStatus(): WebApiResult {
+        val st = cloudManager.state.value
+        val p = st.profile
+        val subArr = JSONArray()
+        p?.activeSubdomainDetails?.forEach { d ->
+            subArr.put(
+                JSONObject()
+                    .put("subdomain", d.subdomain)
+                    .put("domain", d.domain)
+                    .put("region", d.region)
+                    .put("hostname", "${d.subdomain}.${d.domain}")
+            )
+        }
+        val obj = JSONObject()
+            .put("isLinked", st.isLinked)
+            .put("email", p?.email ?: "")
+            .put("tier", p?.tier ?: "FREE")
+            .put("storageUsedBytes", p?.storageUsedBytes ?: 0L)
+            .put("storageQuotaBytes", p?.storageQuotaBytes ?: 0L)
+            .put("activeSubdomains", JSONArray(p?.activeSubdomains ?: emptyList<String>()))
+            .put("subdomainDetails", subArr)
+        return ok(obj)
+    }
+
+    suspend fun handleRefreshCloudStatus(): WebApiResult {
+        val okRefresh = cloudManager.refreshProfile()
+        val res = handleGetCloudStatus()
+        res.body.put("refreshed", okRefresh)
+        return res
+    }
+
+    fun handleGetSafeguards(): WebApiResult {
+        val cfg = safeguardPrefs.load()
+        return ok(
+            JSONObject()
+                .put("batteryAutoStopEnabled", cfg.batteryAutoStopEnabled)
+                .put("minBatteryPercent", cfg.minBatteryPercent)
+                .put("thermalAutoStopEnabled", cfg.thermalAutoStopEnabled)
+                .put("maxBatteryTempC", cfg.maxBatteryTempC)
+        )
+    }
+
+    fun handleSaveSafeguards(body: String): WebApiResult {
+        val current = safeguardPrefs.load()
+        val json = parseJsonObject(body)
+        val updated = SafeguardConfig(
+            batteryAutoStopEnabled = json.optBoolean("batteryAutoStopEnabled", current.batteryAutoStopEnabled),
+            minBatteryPercent = json.optInt("minBatteryPercent", current.minBatteryPercent).coerceIn(5, 50),
+            thermalAutoStopEnabled = json.optBoolean("thermalAutoStopEnabled", current.thermalAutoStopEnabled),
+            maxBatteryTempC = json.optInt("maxBatteryTempC", current.maxBatteryTempC).coerceIn(35, 60)
+        )
+        safeguardPrefs.save(updated)
+        return ok(
+            JSONObject()
+                .put("success", true)
+                .put("batteryAutoStopEnabled", updated.batteryAutoStopEnabled)
+                .put("minBatteryPercent", updated.minBatteryPercent)
+                .put("thermalAutoStopEnabled", updated.thermalAutoStopEnabled)
+                .put("maxBatteryTempC", updated.maxBatteryTempC)
+        )
+    }
+
+    suspend fun handleCaptureLogcat(filterName: String?): WebApiResult {
+        val mode = runCatching { LogFilterMode.valueOf((filterName ?: "").uppercase()) }
+            .getOrDefault(LogFilterMode.MINESERVE_TAGS)
+        val logs = DiagnosticManager.captureLogcat(mode, 600)
+        return ok(
+            JSONObject()
+                .put("filter", mode.name)
+                .put("logs", logs)
+        )
+    }
+
+    suspend fun handleRunSelfTest(): WebApiResult {
+        val results = DiagnosticManager.runNetworkSelfTest(context)
+        val arr = JSONArray()
+        for (r in results) {
+            arr.put(
+                JSONObject()
+                    .put("name", r.name)
+                    .put("passed", r.passed)
+                    .put("detail", r.detail)
+            )
+        }
+        return ok(JSONObject().put("checks", arr))
+    }
+
+    suspend fun exportDiagnosticZip(filterName: String?): Pair<File?, WebApiResult?> {
+        val mode = runCatching { LogFilterMode.valueOf((filterName ?: "").uppercase()) }
+            .getOrDefault(LogFilterMode.MINESERVE_TAGS)
+        val logs = DiagnosticManager.captureLogcat(mode, 600)
+        val checks = DiagnosticManager.runNetworkSelfTest(context)
+        val zipFile = DiagnosticManager.exportDiagnosticBundle(context, logs, checks)
+            ?: return Pair(null, WebApiResult(500, "Internal Server Error", JSONObject().put("error", "Failed to export diagnostic bundle.")))
+        return Pair(zipFile, null)
+    }
+
+    suspend fun handleListCloudBackups(serverId: String): WebApiResult {
+        serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val res = cloudManager.listCloudBackups(serverId)
+        return res.fold(
+            onSuccess = { items ->
+                val arr = JSONArray()
+                for (item in items) {
+                    arr.put(
+                        JSONObject()
+                            .put("backupId", item.backupId)
+                            .put("serverId", item.serverId)
+                            .put("fileName", item.fileName)
+                            .put("sizeBytes", item.sizeBytes)
+                            .put("status", item.status)
+                            .put("createdAtEpochMs", item.createdAtEpochMs)
+                    )
+                }
+                ok(JSONObject().put("backups", arr))
+            },
+            onFailure = { err ->
+                WebApiResult(400, "Bad Request", JSONObject().put("error", err.message ?: "Failed to list cloud backups"))
+            }
+        )
+    }
+
+    suspend fun handleUploadCloudBackup(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val serverDir = serverRepository.getServerDirectory(server.id)
+        val json = parseJsonObject(body)
+        val fileName = json.optString("fileName", "").trim()
+        val backupsDir = File(serverDir, "backups")
+        val file = resolveSafeChild(backupsDir, fileName)
+            ?: return badRequest("Invalid backup file name.")
+        if (!file.exists()) return notFound("Local backup file not found.")
+
+        val res = cloudManager.uploadBackupToCloud(server.id, file)
+        return res.fold(
+            onSuccess = { msg -> ok(JSONObject().put("success", true).put("message", msg)) },
+            onFailure = { err -> badRequest(err.message ?: "Cloud upload failed.") }
+        )
+    }
+
+    suspend fun handleRestoreCloudBackup(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val serverDir = serverRepository.getServerDirectory(server.id)
+        val json = parseJsonObject(body)
+        val backupId = json.optString("backupId", "").trim()
+        val rawName = json.optString("fileName", "cloud_backup.zip").trim()
+        val safeName = File(rawName).name.ifBlank { "cloud_backup.zip" }
+        if (backupId.isBlank()) return badRequest("backupId is required.")
+
+        val tempDir = File(context.cacheDir, "cloud_restore_tmp").apply { mkdirs() }
+        val tempFile = File(tempDir, safeName)
+        return try {
+            val dlRes = cloudManager.downloadCloudBackup(backupId, tempFile)
+            dlRes.fold(
+                onSuccess = { downloaded ->
+                    val okRestore = backupRepository.restoreBackup(serverDir, downloaded)
+                    if (okRestore) {
+                        ok(JSONObject().put("success", true).put("message", "Cloud snapshot restored."))
+                    } else {
+                        badRequest("Failed to extract cloud snapshot.")
+                    }
+                },
+                onFailure = { err ->
+                    badRequest(err.message ?: "Failed to download cloud snapshot.")
+                }
+            )
+        } finally {
+            tempFile.delete()
+        }
+    }
+
+    suspend fun handleDeleteCloudBackup(serverId: String, body: String): WebApiResult {
+        serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val json = parseJsonObject(body)
+        val backupId = json.optString("backupId", "").trim()
+        if (backupId.isBlank()) return badRequest("backupId is required.")
+        val res = cloudManager.deleteCloudBackup(backupId)
+        return res.fold(
+            onSuccess = { ok(JSONObject().put("success", true)) },
+            onFailure = { err -> badRequest(err.message ?: "Failed to delete cloud snapshot.") }
         )
     }
 

@@ -229,7 +229,7 @@
     } else if (state.activeTab === "performance") {
       await loadPerformance();
     } else if (state.activeTab === "settings") {
-      await loadNetwork();
+      await loadNetwork(false);
     } else if (state.activeTab === "players") {
       await loadPlayers();
     }
@@ -802,16 +802,29 @@
   }
 
   // Network (Tunnels & Port Forwarding)
-  async function loadNetwork() {
+  function updateTunnelProviderFields() {
+    const provider = $("net-tunnel-provider").value;
+    document.querySelectorAll("[data-tunnel-provider]").forEach((el) => {
+      el.classList.toggle("hidden", el.dataset.tunnelProvider !== provider);
+    });
+  }
+
+  async function loadNetwork(syncForm = true) {
     if (!state.selectedServerId) return;
     try {
       const n = await apiFetch(`/api/servers/${state.selectedServerId}/network`);
       const tc = n.tunnelConfig || {};
       const ts = n.tunnelState || {};
-      $("net-tunnel-provider").value = tc.provider || "BORE";
-      $("net-bore-host").value = tc.customRelayHost || "bore.pub";
-      $("net-bore-port").value = tc.customRelayPort || 7835;
-      $("net-tunnel-autostart").checked = !!tc.autoStart;
+      if (syncForm) {
+        $("net-tunnel-provider").value = tc.provider || "BORE";
+        $("net-bore-host").value = tc.customRelayHost || "bore.pub";
+        $("net-bore-port").value = tc.customRelayPort || 7835;
+        $("net-cloud-subdomain").value = tc.cloudSubdomain || "";
+        $("net-cloud-region").value = tc.cloudRegion || "us-east";
+        $("net-cloud-domain").value = tc.cloudDomain || "play.mineserve.app";
+        $("net-tunnel-autostart").checked = !!tc.autoStart;
+        updateTunnelProviderFields();
+      }
 
       if (ts.status === "connected") {
         $("tunnel-status-text").textContent = `Connected: ${ts.fullAddress}`;
@@ -825,9 +838,11 @@
 
       const pc = n.portForwardConfig || {};
       const ps = n.portForwardState || {};
-      $("net-pf-protocol").value = pc.protocol || "BOTH";
-      $("net-pf-lease").value = pc.leaseDurationSeconds || 0;
-      $("net-pf-auto").checked = !!pc.autoForward;
+      if (syncForm) {
+        $("net-pf-protocol").value = pc.protocol || "BOTH";
+        $("net-pf-lease").value = pc.leaseDurationSeconds || 0;
+        $("net-pf-auto").checked = !!pc.autoForward;
+      }
 
       if (ps.status === "mapped") {
         $("pf-status-text").textContent = `Mapped: ${ps.directAddress} (${ps.gatewayName})`;
@@ -937,11 +952,31 @@
           </div>
           <div class="player-actions">
             <a class="btn btn-secondary btn-sm" href="/api/servers/${state.selectedServerId}/backups/download?file=${encodeURIComponent(b.fileName)}" download>Download</a>
+            <button class="btn btn-secondary btn-sm backup-cloud-upload-btn" data-file="${escapeHtml(b.fileName)}">Cloud Sync</button>
             <button class="btn btn-ghost btn-sm backup-restore-btn" data-file="${escapeHtml(b.fileName)}">Restore</button>
             <button class="btn btn-danger btn-sm backup-del-btn" data-file="${escapeHtml(b.fileName)}">Delete</button>
           </div>
         </div>
       `).join("");
+
+      list.querySelectorAll(".backup-cloud-upload-btn").forEach((b) => {
+        b.addEventListener("click", async () => {
+          b.disabled = true;
+          b.textContent = "Uploading...";
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud/upload`, {
+              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+            });
+            showToast("Uploaded to MineServe Cloud");
+            loadCloudBackups();
+          } catch (err) {
+            showToast(err.message, "error");
+          } finally {
+            b.disabled = false;
+            b.textContent = "Cloud Sync";
+          }
+        });
+      });
 
       list.querySelectorAll(".backup-restore-btn").forEach((b) => {
         b.addEventListener("click", async () => {
@@ -968,6 +1003,71 @@
       });
     } catch (e) {
       showToast(e.message, "error");
+    }
+    loadCloudBackups();
+  }
+
+  async function loadCloudBackups() {
+    if (!state.selectedServerId) return;
+    const list = $("cloud-backups-list");
+    const statusEl = $("cloud-backups-status");
+    try {
+      const data = await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud`);
+      const items = data.backups || [];
+      statusEl.textContent = "Remote encrypted snapshots stored in MineServe Cloud (R2).";
+      if (items.length === 0) {
+        list.innerHTML = `<div class="player-sub">No cloud snapshots for this server yet.</div>`;
+        return;
+      }
+      list.innerHTML = items.map((b) => `
+        <div class="player-row">
+          <div>
+            <div>${escapeHtml(b.fileName)}</div>
+            <div class="player-sub">${formatSize(b.sizeBytes)} · ${b.createdAtEpochMs ? new Date(b.createdAtEpochMs).toLocaleString() : b.status}</div>
+          </div>
+          <div class="player-actions">
+            <button class="btn btn-secondary btn-sm cloud-restore-btn" data-id="${escapeHtml(b.backupId)}" data-file="${escapeHtml(b.fileName)}">Restore</button>
+            <button class="btn btn-danger btn-sm cloud-del-btn" data-id="${escapeHtml(b.backupId)}">Delete</button>
+          </div>
+        </div>
+      `).join("");
+
+      list.querySelectorAll(".cloud-restore-btn").forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm(`Download & restore cloud snapshot "${b.dataset.file}"? Stop the server first.`)) return;
+          b.disabled = true;
+          b.textContent = "Restoring...";
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud/restore`, {
+              method: "POST", body: JSON.stringify({ backupId: b.dataset.id, fileName: b.dataset.file })
+            });
+            showToast("Cloud snapshot restored");
+          } catch (err) {
+            showToast(err.message, "error");
+          } finally {
+            b.disabled = false;
+            b.textContent = "Restore";
+          }
+        });
+      });
+
+      list.querySelectorAll(".cloud-del-btn").forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm("Delete this cloud snapshot?")) return;
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud/delete`, {
+              method: "POST", body: JSON.stringify({ backupId: b.dataset.id })
+            });
+            showToast("Cloud snapshot deleted");
+            loadCloudBackups();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        });
+      });
+    } catch (err) {
+      statusEl.textContent = err.message || "Sign in to MineServe Cloud in the Android app to view remote snapshots.";
+      list.innerHTML = `<div class="player-sub">MineServe Cloud snapshots unavailable.</div>`;
     }
   }
 
@@ -1465,12 +1565,16 @@
           autoStart: $("net-tunnel-autostart").checked,
           customRelayHost: $("net-bore-host").value.trim(),
           customRelayPort: parseInt($("net-bore-port").value, 10) || 7835,
-          playitSecret: $("net-playit-secret").value.trim()
+          playitSecret: $("net-playit-secret").value.trim(),
+          cloudSubdomain: $("net-cloud-subdomain").value.trim().toLowerCase(),
+          cloudRegion: $("net-cloud-region").value,
+          cloudDomain: $("net-cloud-domain").value
         })
       });
       showToast(action === "start" ? "Tunnel starting..." : (action === "stop" ? "Tunnel stopped" : "Tunnel settings saved"));
       setTimeout(loadNetwork, 400);
     };
+    $("net-tunnel-provider").addEventListener("change", updateTunnelProviderFields);
     $("tunnel-start-btn").addEventListener("click", () => sendTunnelAction("start"));
     $("tunnel-stop-btn").addEventListener("click", () => sendTunnelAction("stop"));
     $("tunnel-save-btn").addEventListener("click", () => sendTunnelAction("save"));
@@ -1730,6 +1834,94 @@
         $("submit-create-btn").disabled = false;
       }
     });
+
+    // Host Tools (Cloud, Safeguards, Diagnostics)
+    const loadHostTools = async () => {
+      try {
+        const c = await apiFetch("/api/cloud/status");
+        if (c.isLinked) {
+          const usedMb = ((c.storageUsedBytes || 0) / (1024 * 1024)).toFixed(1);
+          const quotaGb = ((c.storageQuotaBytes || 0) / (1024 * 1024 * 1024)).toFixed(0);
+          $("cloud-status-summary").textContent = `Signed in as ${c.email || "user"} · Tier: ${c.tier} · Storage: ${usedMb} MB / ${quotaGb} GB · Subdomains: ${(c.activeSubdomains || []).join(", ") || "none"}`;
+        } else {
+          $("cloud-status-summary").textContent = "Not signed in. Link your MineServe Cloud account in App Settings on Android to enable R2 backups and custom subdomains.";
+        }
+      } catch (err) {
+        $("cloud-status-summary").textContent = err.message || "Unable to load cloud status.";
+      }
+
+      try {
+        const sg = await apiFetch("/api/safeguards");
+        $("sg-battery-enabled").checked = !!sg.batteryAutoStopEnabled;
+        $("sg-battery-pct").value = String(sg.minBatteryPercent || 15);
+        $("sg-thermal-enabled").checked = !!sg.thermalAutoStopEnabled;
+        $("sg-thermal-c").value = String(sg.maxBatteryTempC || 45);
+      } catch (_) {}
+    };
+
+    $("open-host-tools-btn").addEventListener("click", () => {
+      $("host-tools-modal").classList.remove("hidden");
+      loadHostTools();
+    });
+    $("close-host-tools-modal").addEventListener("click", () => $("host-tools-modal").classList.add("hidden"));
+    $("cloud-refresh-btn").addEventListener("click", async () => {
+      try {
+        await apiFetch("/api/cloud/refresh", { method: "POST" });
+        await loadHostTools();
+        showToast("Cloud profile refreshed");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+    $("sg-save-btn").addEventListener("click", async () => {
+      try {
+        await apiFetch("/api/safeguards", {
+          method: "POST",
+          body: JSON.stringify({
+            batteryAutoStopEnabled: $("sg-battery-enabled").checked,
+            minBatteryPercent: parseInt($("sg-battery-pct").value, 10) || 15,
+            thermalAutoStopEnabled: $("sg-thermal-enabled").checked,
+            maxBatteryTempC: parseInt($("sg-thermal-c").value, 10) || 45
+          })
+        });
+        showToast("Safeguards saved");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+    $("diag-logcat-btn").addEventListener("click", async () => {
+      const mode = $("diag-filter-mode").value;
+      $("diag-logcat-output").textContent = "Capturing redacted logcat...";
+      try {
+        const res = await apiFetch(`/api/diagnostics/logcat?filter=${encodeURIComponent(mode)}`);
+        $("diag-logcat-output").textContent = res.logs || "(No matching log lines)";
+      } catch (err) {
+        $("diag-logcat-output").textContent = err.message;
+      }
+    });
+    $("diag-selftest-btn").addEventListener("click", async () => {
+      const list = $("diag-selftest-list");
+      list.innerHTML = `<div class="player-sub">Running network & tunnel self-tests...</div>`;
+      try {
+        const res = await apiFetch("/api/diagnostics/selftest");
+        const checks = res.checks || [];
+        list.innerHTML = checks.map((c) => `
+          <div class="player-row">
+            <div>
+              <div>${c.passed ? "✅" : "❌"} ${escapeHtml(c.name)}</div>
+              <div class="player-sub">${escapeHtml(c.detail)}</div>
+            </div>
+          </div>
+        `).join("");
+      } catch (err) {
+        list.innerHTML = `<div class="player-sub">${escapeHtml(err.message)}</div>`;
+      }
+    });
+    $("diag-bundle-btn").addEventListener("click", () => {
+      const mode = $("diag-filter-mode").value;
+      window.location.href = `/api/diagnostics/bundle?filter=${encodeURIComponent(mode)}`;
+    });
+    $("cloud-backups-refresh-btn").addEventListener("click", () => loadCloudBackups());
   }
 
   bindEvents();

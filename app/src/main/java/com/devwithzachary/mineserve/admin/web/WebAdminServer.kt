@@ -1,5 +1,6 @@
 package com.devwithzachary.mineserve.admin.web
 
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.devwithzachary.mineserve.engine.ServerProcessManager
@@ -26,6 +27,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class WebAdminServer(
+    private val context: Context,
     val port: Int,
     private val security: WebAdminSecurity,
     private val configProvider: () -> WebAdminConfig,
@@ -45,6 +47,7 @@ class WebAdminServer(
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val apiHandlers = WebAdminApiHandlers(scope, serverRepository, processManager, serverSoftwareManager)
     private val extHandlers = WebAdminExtendedHandlers(
+        context = context,
         scope = scope,
         webAdminPort = port,
         serverRepository = serverRepository,
@@ -245,6 +248,55 @@ class WebAdminServer(
                     .put("totalRamMb", totalRam)
                     .put("freeRamMb", freeRam)
                 sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+
+            // MineServe Cloud Status
+            if (path == "/api/cloud/status" && method == "GET") {
+                sendApiResult(out, extHandlers.handleGetCloudStatus())
+                return
+            }
+            if (path == "/api/cloud/refresh" && method == "POST") {
+                sendApiResult(out, extHandlers.handleRefreshCloudStatus())
+                return
+            }
+
+            // Battery & Thermal Safeguards
+            if (path == "/api/safeguards") {
+                if (method == "GET") {
+                    sendApiResult(out, extHandlers.handleGetSafeguards())
+                    return
+                } else if (method == "POST") {
+                    sendApiResult(out, extHandlers.handleSaveSafeguards(body))
+                    return
+                }
+            }
+
+            // Diagnostics & Logcat
+            if (path == "/api/diagnostics/logcat" && method == "GET") {
+                sendApiResult(out, extHandlers.handleCaptureLogcat(queryParams["filter"]))
+                return
+            }
+            if (path == "/api/diagnostics/selftest" && method == "GET") {
+                sendApiResult(out, extHandlers.handleRunSelfTest())
+                return
+            }
+            if (path == "/api/diagnostics/bundle" && method == "GET") {
+                val (zipFile, errResult) = extHandlers.exportDiagnosticZip(queryParams["filter"])
+                if (errResult != null) {
+                    sendApiResult(out, errResult)
+                } else if (zipFile != null) {
+                    try {
+                        sendFileStreamResponse(
+                            out = out,
+                            contentType = "application/zip",
+                            file = zipFile,
+                            extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"${zipFile.name}\"")
+                        )
+                    } finally {
+                        zipFile.delete()
+                    }
+                }
                 return
             }
 
@@ -676,6 +728,16 @@ class WebAdminServer(
                 sub == "create" && method == "POST" -> extHandlers.handleCreateBackup(serverId, body)
                 sub == "restore" && method == "POST" -> extHandlers.handleRestoreBackup(serverId, body)
                 sub == "delete" && method == "POST" -> extHandlers.handleDeleteBackup(serverId, body)
+                sub == "cloud" -> {
+                    val cloudAction = segments.getOrNull(3)
+                    when {
+                        cloudAction == null && method == "GET" -> extHandlers.handleListCloudBackups(serverId)
+                        cloudAction == "upload" && method == "POST" -> extHandlers.handleUploadCloudBackup(serverId, body)
+                        cloudAction == "restore" && method == "POST" -> extHandlers.handleRestoreCloudBackup(serverId, body)
+                        cloudAction == "delete" && method == "POST" -> extHandlers.handleDeleteCloudBackup(serverId, body)
+                        else -> null
+                    }
+                }
                 sub == "download" && method == "GET" -> {
                     val file = extHandlers.getBackupFile(serverId, queryParams["file"] ?: "")
                     if (file != null) {

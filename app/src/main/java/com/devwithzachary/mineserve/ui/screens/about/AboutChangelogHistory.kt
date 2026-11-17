@@ -48,7 +48,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "In-App Diagnostics & Logcat Export: Capture redacted app/engine logs, run a one-tap tunnel & DNS network self-test, and share or save diagnostic .zip bundles from App Settings.",
             "Resumable Background Downloads & Local Import: Initial Ubuntu rootfs and server JAR downloads now continue safely in the background via foreground service, resume from partial downloads, and support importing local .tar.gz / .jar / .zip files.",
             "Android Home Screen Widget & Quick Settings Tile: Monitor your primary server's status and start or stop it with one tap from your home screen or Quick Settings panel.",
-            "Battery & Thermal Safeguards: Configure automatic server shutdown in App Settings when battery drops below a chosen percentage (while unplugged) or device temperature exceeds a safe threshold."
+            "Battery & Thermal Safeguards: Configure automatic server shutdown in App Settings when battery drops below a chosen percentage (while unplugged) or device temperature exceeds a safe threshold.",
+            "Web Remote Admin v1.7.0 Parity: Manage MineServe Cloud tunnels and R2 snapshots, configure Battery & Thermal Safeguards, capture redacted logcat, and run network self-tests directly from the Web UI."
         )
     ),
     ReleaseChangelog(

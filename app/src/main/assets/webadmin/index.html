@@ -52,6 +52,7 @@
 
       <div class="sidebar-footer">
         <div id="system-info" class="system-info">Loading host info...</div>
+        <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">Cloud, Safeguards &amp; Diagnostics</button>
         <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
       </div>
     </aside>
@@ -413,7 +414,7 @@
 
           <div class="players-grid" style="margin-top: 14px;">
             <div class="panel-card">
-              <h3>Public Tunnel (Bore / Playit.gg)</h3>
+              <h3>Public Multiplayer Tunnel</h3>
               <p id="tunnel-status-text" class="player-sub">Disconnected</p>
               <div class="form-grid">
                 <div class="form-group">
@@ -422,17 +423,38 @@
                     <option value="BORE">Instant Free Tunnel (bore.pub)</option>
                     <option value="PLAYIT">Playit.gg</option>
                     <option value="CUSTOM_BORE">Custom Bore Relay</option>
+                    <option value="MINESERVE_CLOUD">MineServe Cloud (*.play.mineserve.app)</option>
                   </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
+                  <label for="net-cloud-subdomain">Cloud Subdomain</label>
+                  <input type="text" id="net-cloud-subdomain" placeholder="myserver">
+                </div>
+                <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
+                  <label for="net-cloud-region">Cloud Relay Region</label>
+                  <select id="net-cloud-region">
+                    <option value="us-east">US East</option>
+                    <option value="eu-west">EU West</option>
+                    <option value="eu-central">EU Central</option>
+                    <option value="ap-southeast">Asia Pacific</option>
+                  </select>
+                </div>
+                <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
+                  <label for="net-cloud-domain">Cloud Domain</label>
+                  <select id="net-cloud-domain">
+                    <option value="play.mineserve.app">play.mineserve.app</option>
+                    <option value="playms.uk">playms.uk (Pro)</option>
+                  </select>
+                </div>
+                <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
                   <label for="net-bore-host">Custom Relay Host</label>
                   <input type="text" id="net-bore-host" value="bore.pub">
                 </div>
-                <div class="form-group">
+                <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
                   <label for="net-bore-port">Custom Relay Port</label>
                   <input type="number" id="net-bore-port" value="7835">
                 </div>
-                <div class="form-group">
+                <div class="form-group hidden" data-tunnel-provider="PLAYIT">
                   <label for="net-playit-secret">Playit Secret (optional)</label>
                   <input type="password" id="net-playit-secret" placeholder="Leave blank to keep existing">
                 </div>
@@ -568,7 +590,16 @@
                 <button type="button" id="backup-full-btn" class="btn btn-secondary btn-sm">+ Full Backup</button>
               </div>
             </div>
-            <div id="backups-list" class="player-list" style="max-height:55vh;"></div>
+            <div id="backups-list" class="player-list" style="max-height:42vh;"></div>
+          </div>
+
+          <div class="panel-card" style="margin-top:14px;">
+            <div class="files-toolbar">
+              <h3 style="margin:0;">MineServe Cloud Snapshots</h3>
+              <button type="button" id="cloud-backups-refresh-btn" class="btn btn-secondary btn-sm">Refresh Cloud</button>
+            </div>
+            <p id="cloud-backups-status" class="player-sub">Remote encrypted snapshots stored in MineServe Cloud (R2).</p>
+            <div id="cloud-backups-list" class="player-list" style="max-height:38vh;"></div>
           </div>
         </section>
 
@@ -667,6 +698,72 @@
           <button type="submit" id="submit-create-btn" class="btn btn-primary">Create &amp; Download</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Host, Cloud, Safeguards & Diagnostics Modal -->
+  <div id="host-tools-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <h3>Host, Cloud, Safeguards &amp; Diagnostics</h3>
+        <button id="close-host-tools-modal" class="btn-icon">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
+        <div class="panel-card">
+          <div class="files-toolbar">
+            <h3 style="margin:0;">MineServe Cloud Account</h3>
+            <button type="button" id="cloud-refresh-btn" class="btn btn-secondary btn-sm">Refresh Profile</button>
+          </div>
+          <div id="cloud-status-summary" class="player-sub" style="margin-top:6px;">Loading cloud account...</div>
+        </div>
+
+        <div class="panel-card">
+          <h3>Battery &amp; Thermal Safeguards</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="checkbox-label"><input type="checkbox" id="sg-battery-enabled"><span>Low Battery Auto-Stop (when unplugged)</span></label>
+            </div>
+            <div class="form-group">
+              <label for="sg-battery-pct">Minimum Battery (%)</label>
+              <select id="sg-battery-pct">
+                <option value="10">10%</option>
+                <option value="15">15%</option>
+                <option value="20">20%</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label"><input type="checkbox" id="sg-thermal-enabled"><span>Thermal Auto-Stop</span></label>
+            </div>
+            <div class="form-group">
+              <label for="sg-thermal-c">Max Battery Temp (°C)</label>
+              <select id="sg-thermal-c">
+                <option value="42">42°C</option>
+                <option value="45">45°C</option>
+                <option value="48">48°C</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" id="sg-save-btn" class="btn btn-primary btn-sm" style="margin-top:8px;">Save Safeguards</button>
+        </div>
+
+        <div class="panel-card">
+          <div class="files-toolbar">
+            <h3 style="margin:0;">Diagnostics &amp; Logcat</h3>
+            <div class="player-actions">
+              <select id="diag-filter-mode" style="padding:4px 8px;">
+                <option value="MINESERVE_TAGS">MineServe Tags</option>
+                <option value="ERRORS_ONLY">Errors &amp; Crashes</option>
+                <option value="ALL_APP_LOGS">All App Logs</option>
+              </select>
+              <button type="button" id="diag-logcat-btn" class="btn btn-secondary btn-sm">Capture Logcat</button>
+              <button type="button" id="diag-selftest-btn" class="btn btn-secondary btn-sm">Run Self-Test</button>
+              <button type="button" id="diag-bundle-btn" class="btn btn-primary btn-sm">Download .zip</button>
+            </div>
+          </div>
+          <div id="diag-selftest-list" class="player-list" style="margin-top:8px;"></div>
+          <pre id="diag-logcat-output" class="console-output" style="max-height:220px;margin-top:8px;font-size:11px;">Click "Capture Logcat" to inspect redacted app &amp; engine logs.</pre>
+        </div>
+      </div>
     </div>
   </div>
 

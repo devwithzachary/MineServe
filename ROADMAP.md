@@ -117,20 +117,13 @@ The 1.7.0 milestone lays the architectural foundation for Kotlin Multiplatform b
 - **Android-Only Shipping**:
   - Keep release builds focused strictly on Android while validating the new `:core` boundaries with platform-independent unit tests.
 
-### 🛠️ 2. In-App NBT Editor & Level.dat Modifier
-- **Direct `level.dat` Inspector & Editor**:
-  - View and modify world seed, game type, difficulty, hardcore mode, and world time directly within the UI without external desktop tools.
-  - 1-tap toggles for common gamerules (`keepInventory`, `doDaylightCycle`, `mobGriefing`, `doWeatherCycle`, `spawnRadius`).
-- **Player NBT & Inventory Inspector**:
-  - View offline player inventories, ender chest contents, experience levels, and coordinates.
-
-### 🗺️ 3. World Pre-Generation & Chunk Tools
+### 🗺️ 2. World Pre-Generation & Chunk Tools
 - **Chunk Pre-Generator Tool**:
   - Integrated radius pre-generation tool to generate surrounding chunks while the server is empty, eliminating lag caused by player exploration.
 - **Visual Region File Inspector**:
   - Interactive storage map showing individual `.mca` region files by dimension and size to identify bloated regions.
 
-### 📱 4. Android System Widgets & Quick Settings Tile
+### 📱 3. Android System Widgets & Quick Settings Tile
 - **Quick Settings Start/Stop Tile**:
   - Start, stop, or view status of your primary server directly from Android's pull-down Quick Settings panel.
 - **Home Screen Widget**:
@@ -138,7 +131,7 @@ The 1.7.0 milestone lays the architectural foundation for Kotlin Multiplatform b
 - **Battery & Thermal Safeguards**:
   - Configurable auto-shutdown when device battery falls below a defined percentage (e.g. 15%) or when battery temperature exceeds safety thresholds.
 
-### 🩺 5. In-App Diagnostic Tools & Logcat Export
+### 🩺 4. In-App Diagnostic Tools & Logcat Export
 - **One-Tap App & System Logcat Capture**:
   - Built-in diagnostic tool under **App Settings** to capture live Android `logcat` buffer logs directly inside the app without requiring ADB or a computer.
   - Automatically filters for relevant MineServe tags (`PlayitTunnelClient`, `BoreTunnelClient`, `PortForwardManager`, `ServerProcessManager`, `PRootEngine`, `WebAdminServer`, and crash stacktraces).
