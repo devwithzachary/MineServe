@@ -1,6 +1,6 @@
 package com.devwithzachary.mineserve.api
 
-import android.util.Log
+import com.devwithzachary.mineserve.core.CoreLog as Log
 import com.devwithzachary.mineserve.model.DEFAULT_MINECRAFT_FALLBACK_VERSIONS
 import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
 import kotlinx.coroutines.Dispatchers

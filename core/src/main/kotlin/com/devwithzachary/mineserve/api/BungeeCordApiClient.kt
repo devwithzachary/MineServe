@@ -1,6 +1,6 @@
 package com.devwithzachary.mineserve.api
 
-import android.util.Log
+import com.devwithzachary.mineserve.core.CoreLog as Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json

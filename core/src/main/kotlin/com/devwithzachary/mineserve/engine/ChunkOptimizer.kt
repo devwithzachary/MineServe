@@ -1,6 +1,6 @@
 package com.devwithzachary.mineserve.engine
 
-import android.util.Log
+import com.devwithzachary.mineserve.core.CoreLog as Log
 import com.devwithzachary.mineserve.model.ChunkPruneOptions
 import com.devwithzachary.mineserve.model.ChunkPruneResult
 import com.devwithzachary.mineserve.model.DimensionType

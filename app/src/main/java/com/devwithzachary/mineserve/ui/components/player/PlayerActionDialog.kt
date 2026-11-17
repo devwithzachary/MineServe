@@ -197,9 +197,9 @@ fun PlayerActionDialog(
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
-                                if (!target.uuid.isNullOrBlank()) {
+                                target.uuid?.takeIf { it.isNotBlank() }?.let { uuid ->
                                     Text(
-                                        text = target.uuid,
+                                        text = uuid,
                                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                                         color = Slate400,
                                         fontSize = 11.sp,

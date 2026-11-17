@@ -6,6 +6,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.util.FileStorageUtils
+import com.devwithzachary.mineserve.util.exportFileToDownloads
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File

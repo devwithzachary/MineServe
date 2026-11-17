@@ -50,7 +50,8 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "Android Home Screen Widget & Quick Settings Tile: Monitor your primary server's status and start or stop it with one tap from your home screen or Quick Settings panel.",
             "Battery & Thermal Safeguards: Configure automatic server shutdown in App Settings when battery drops below a chosen percentage (while unplugged) or device temperature exceeds a safe threshold.",
             "Web Remote Admin v1.7.0 Parity: Manage MineServe Cloud tunnels and R2 snapshots, configure Battery & Thermal Safeguards, capture redacted logcat, and run network self-tests directly from the Web UI.",
-            "World Pre-Generation & Region Inspector: Pre-generate chunks around spawn via Chunky or native /forceload stepping and inspect or delete bloated .mca region files in both the app and Web UI."
+            "World Pre-Generation & Region Inspector: Pre-generate chunks around spawn via Chunky or native /forceload stepping and inspect or delete bloated .mca region files in both the app and Web UI.",
+            "Core Module Architecture Prep: Extracted shared models, API clients, UPnP/NAT-PMP networking, WebDAV sync, and chunk optimizer into a platform-agnostic :core module."
         )
     ),
     ReleaseChangelog(

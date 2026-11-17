@@ -1,6 +1,6 @@
 package com.devwithzachary.mineserve.net.portforward
 
-import android.util.Log
+import com.devwithzachary.mineserve.core.CoreLog as Log
 import com.devwithzachary.mineserve.api.MineServeHttpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

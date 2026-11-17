@@ -135,9 +135,9 @@ fun UpdateBuildModal(
                                     color = Color.White,
                                     fontSize = 13.sp
                                 )
-                                if (buildInfo.currentBuild != null) {
+                                buildInfo.currentBuild?.let { currentBuild ->
                                     Text(
-                                        text = stringResource(R.string.software_installed_build, buildInfo.currentBuild),
+                                        text = stringResource(R.string.software_installed_build, currentBuild),
                                         color = Slate400,
                                         fontSize = 11.sp
                                     )

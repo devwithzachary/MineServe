@@ -33,6 +33,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import com.devwithzachary.mineserve.core.CoreLog
+import com.devwithzachary.mineserve.core.Logger
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
@@ -70,6 +72,16 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CoreLog.sink = object : Logger {
+            override fun d(tag: String, message: String) { Log.d(tag, message) }
+            override fun i(tag: String, message: String) { Log.i(tag, message) }
+            override fun w(tag: String, message: String, throwable: Throwable?) {
+                if (throwable != null) Log.w(tag, message, throwable) else Log.w(tag, message)
+            }
+            override fun e(tag: String, message: String, throwable: Throwable?) {
+                if (throwable != null) Log.e(tag, message, throwable) else Log.e(tag, message)
+            }
+        }
         enableEdgeToEdge()
         handleIncomingDeepLink(intent)
 

@@ -17,6 +17,10 @@ All notable changes to the MineServe project will be documented in this file.
 ### ⚙️ Runtime Setup & Reliability
 - **Background-Safe Resumable Downloads & Local Import**: `RootfsManager` and `ServerSoftwareManager` now keep Ubuntu rootfs and server JAR/archive downloads alive in the background via `MineServeForegroundService` (with live notification progress, WakeLock, and WiFiLock), support HTTP `Range` resume via `.part` files on interruption, and allow importing local `.tar.gz` rootfs archives or local `.jar`/`.zip` server files directly during setup.
 
+### 🧱 Core KMP Architecture Preparation (`:core` Module)
+- **Platform-Agnostic `:core` Module**: Extracted pure-Kotlin models, API clients (`MojangApiClient`, `PaperApiClient`, `PurpurApiClient`, `FabricApiClient`, `ForgeApiClient`, `NeoForgeApiClient`, `BungeeCordApiClient`, `BedrockApiClient`, `ModrinthApiClient`, `GitHubUpdateChecker`, `MineServeHttpClient`), `WebDavClient`, `UpnpClient`, `NatPmpClient`, `ChunkOptimizer`, and `FileStorageUtils` out of `:app` into a standalone `:core` JVM module.
+- **Cross-Platform Contracts & Unit Tests**: Added `CoreLog` (routed to `android.util.Log` on Android), `PlatformStorage`, `SettingsStore`, `RuntimeExecutor`, `JavaProvisioner`, and `NetworkInterfaceProvider` interfaces in `:core`, validated by platform-independent JUnit tests (`CoreModuleTest`).
+
 ### 🗺️ World Pre-Generation & Chunk Tools
 - **Chunk Pre-Generator (`WorldPregenManager`)**: Added a Chunk Pre-Generator tool in the **World** tab and **Web Remote Admin** to pre-generate chunks around spawn (`0, 0`) across Overworld, Nether, or End (`250m` to `2000m` radius) using Chunky if installed or native `/forceload` batch stepping, with live progress and cancellation.
 - **Visual Region File Inspector (`.mca`)**: Added an Anvil `.mca` region inspector in `WorldManager`, **World** tab, and **Web Remote Admin** showing individual region files sorted by size with chunk counts (`X/1024`), relative storage bars, dimension filtering, and safe deletion while stopped.
