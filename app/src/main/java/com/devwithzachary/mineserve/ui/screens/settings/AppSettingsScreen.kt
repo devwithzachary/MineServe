@@ -28,6 +28,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -48,11 +50,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.system.SafeguardPreferences
 import com.devwithzachary.mineserve.ui.components.NotificationPermissionCard
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
@@ -304,6 +308,155 @@ fun AppSettingsScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Open Diagnostics & Logcat", color = EmeraldLight, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+
+            // Battery & Thermal Safeguards Card
+            run {
+                val context = LocalContext.current
+                val safeguardPrefs = remember { SafeguardPreferences(context) }
+                var safeguardConfig by remember { mutableStateOf(safeguardPrefs.load()) }
+
+                Card(
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Battery & Thermal Safeguards",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Text(
+                            text = "Automatically stop running servers if battery runs low while unplugged or if device temperature gets too high.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Slate400
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp)
+                            ) {
+                                Text(
+                                    text = "Low Battery Auto-Stop",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Stop servers when unplugged at or below ${safeguardConfig.minBatteryPercent}%",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate400
+                                )
+                            }
+                            Switch(
+                                checked = safeguardConfig.batteryAutoStopEnabled,
+                                onCheckedChange = { enabled ->
+                                    safeguardConfig = safeguardConfig.copy(batteryAutoStopEnabled = enabled)
+                                    safeguardPrefs.save(safeguardConfig)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = EmeraldPrimary,
+                                    checkedTrackColor = Slate800,
+                                    checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f)
+                                )
+                            )
+                        }
+
+                        if (safeguardConfig.batteryAutoStopEnabled) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(10, 15, 20).forEach { pct ->
+                                    val selected = safeguardConfig.minBatteryPercent == pct
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = {
+                                            safeguardConfig = safeguardConfig.copy(minBatteryPercent = pct)
+                                            safeguardPrefs.save(safeguardConfig)
+                                        },
+                                        label = { Text("$pct%") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = EmeraldDark,
+                                            selectedLabelColor = EmeraldLight
+                                        )
+                                    )
+                                }
+                            }
+                        }
+
+                        HorizontalDivider(color = ObsidianCardBorder)
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp)
+                            ) {
+                                Text(
+                                    text = "Thermal Auto-Stop",
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Stop servers when battery reaches ${safeguardConfig.maxBatteryTempC}°C",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate400
+                                )
+                            }
+                            Switch(
+                                checked = safeguardConfig.thermalAutoStopEnabled,
+                                onCheckedChange = { enabled ->
+                                    safeguardConfig = safeguardConfig.copy(thermalAutoStopEnabled = enabled)
+                                    safeguardPrefs.save(safeguardConfig)
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = EmeraldPrimary,
+                                    checkedTrackColor = Slate800,
+                                    checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f)
+                                )
+                            )
+                        }
+
+                        if (safeguardConfig.thermalAutoStopEnabled) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                listOf(42, 45, 48).forEach { tempC ->
+                                    val selected = safeguardConfig.maxBatteryTempC == tempC
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = {
+                                            safeguardConfig = safeguardConfig.copy(maxBatteryTempC = tempC)
+                                            safeguardPrefs.save(safeguardConfig)
+                                        },
+                                        label = { Text("${tempC}°C") },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = EmeraldDark,
+                                            selectedLabelColor = EmeraldLight
+                                        )
+                                    )
+                                }
+                            }
                         }
                     }
                 }

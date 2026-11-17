@@ -46,7 +46,9 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "MineServe Cloud Tunnels: Reserve and connect custom *.play.mineserve.app (and Pro *.playms.uk) server addresses and regional relays directly from Server Settings.",
             "Dedicated MineServe Cloud Page: Access your MineServe Cloud account, storage usage, and transparent plan pricing directly from the Dashboard or top of App Settings.",
             "In-App Diagnostics & Logcat Export: Capture redacted app/engine logs, run a one-tap tunnel & DNS network self-test, and share or save diagnostic .zip bundles from App Settings.",
-            "Resumable Background Downloads & Local Import: Initial Ubuntu rootfs and server JAR downloads now continue safely in the background via foreground service, resume from partial downloads, and support importing local .tar.gz / .jar / .zip files."
+            "Resumable Background Downloads & Local Import: Initial Ubuntu rootfs and server JAR downloads now continue safely in the background via foreground service, resume from partial downloads, and support importing local .tar.gz / .jar / .zip files.",
+            "Android Home Screen Widget & Quick Settings Tile: Monitor your primary server's status and start or stop it with one tap from your home screen or Quick Settings panel.",
+            "Battery & Thermal Safeguards: Configure automatic server shutdown in App Settings when battery drops below a chosen percentage (while unplugged) or device temperature exceeds a safe threshold."
         )
     ),
     ReleaseChangelog(

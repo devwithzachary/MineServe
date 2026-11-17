@@ -7,8 +7,10 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.net.wifi.WifiManager
+import android.os.BatteryManager
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
@@ -20,6 +22,8 @@ import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.engine.JavaRuntimeManager
 import com.devwithzachary.mineserve.engine.PRootEngine
 import com.devwithzachary.mineserve.engine.ServerProcessManager
+import com.devwithzachary.mineserve.system.MineServeWidgetProvider
+import com.devwithzachary.mineserve.system.SafeguardPreferences
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -194,9 +198,73 @@ class MineServeForegroundService : Service() {
                 }
                 val info = rootfsSetupStatusText ?: processManager.getActiveSummaryText()
                 updateNotification(info)
+                MineServeWidgetProvider.updateAllWidgets(applicationContext)
+                if (runningCount > 0) {
+                    checkBatteryAndThermalSafeguards()
+                }
                 delay(2000)
             }
         }
+    }
+
+    private fun checkBatteryAndThermalSafeguards() {
+        val config = SafeguardPreferences(applicationContext).load()
+        if (!config.batteryAutoStopEnabled && !config.thermalAutoStopEnabled) return
+
+        val batteryIntent = registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return
+        val level = batteryIntent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = batteryIntent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        val status = batteryIntent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+        val tempTenths = batteryIntent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)
+
+        val isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
+            status == BatteryManager.BATTERY_STATUS_FULL
+        val batteryPct = if (level >= 0 && scale > 0) (level * 100) / scale else -1
+        val tempC = tempTenths / 10f
+
+        if (config.batteryAutoStopEnabled && !isCharging && batteryPct in 0..config.minBatteryPercent) {
+            Log.w(TAG, "Low battery safeguard triggered ($batteryPct% <= ${config.minBatteryPercent}%). Stopping servers.")
+            processManager.stopAllServers()
+            MineServeWidgetProvider.updateAllWidgets(applicationContext)
+            postSafeguardAlertNotification(
+                title = "Low Battery Safeguard",
+                message = "Servers stopped at $batteryPct% battery (threshold: ${config.minBatteryPercent}%)."
+            )
+            return
+        }
+
+        if (config.thermalAutoStopEnabled && tempC >= config.maxBatteryTempC) {
+            Log.w(TAG, "Thermal safeguard triggered (${tempC}C >= ${config.maxBatteryTempC}C). Stopping servers.")
+            processManager.stopAllServers()
+            MineServeWidgetProvider.updateAllWidgets(applicationContext)
+            postSafeguardAlertNotification(
+                title = "Thermal Safeguard",
+                message = "Servers stopped at ${"%.1f".format(tempC)}°C (threshold: ${config.maxBatteryTempC}°C)."
+            )
+        }
+    }
+
+    private fun postSafeguardAlertNotification(title: String, message: String) {
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            2,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
+            .setContentIntent(openPendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .build()
+        val nm = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        nm?.notify(NOTIFICATION_ID + 1, notification)
     }
 
     private fun updateNotification(contentText: String) {
@@ -257,6 +325,7 @@ class MineServeForegroundService : Service() {
 
     private fun stopForegroundAndSelf() {
         _isServiceRunning.value = false
+        MineServeWidgetProvider.updateAllWidgets(applicationContext)
         monitorJob?.cancel()
         serviceJob.cancel()
         releaseLocks()

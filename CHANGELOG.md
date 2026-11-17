@@ -17,6 +17,11 @@ All notable changes to the MineServe project will be documented in this file.
 ### ⚙️ Runtime Setup & Reliability
 - **Background-Safe Resumable Downloads & Local Import**: `RootfsManager` and `ServerSoftwareManager` now keep Ubuntu rootfs and server JAR/archive downloads alive in the background via `MineServeForegroundService` (with live notification progress, WakeLock, and WiFiLock), support HTTP `Range` resume via `.part` files on interruption, and allow importing local `.tar.gz` rootfs archives or local `.jar`/`.zip` server files directly during setup.
 
+### 📱 Android System Integration & Safeguards
+- **Quick Settings Start/Stop Tile (`MineServeTileService`)**: Added an Android Quick Settings tile in the notification shade to view the primary server's live state and start or stop it with a single tap.
+- **Home Screen Server Widget (`MineServeWidgetProvider`)**: Added a resizable home screen widget displaying the primary server's name, type/port, running status, a 1-tap Start/Stop button, and tap-to-open-app navigation.
+- **Battery & Thermal Safeguards (`SafeguardPreferences`)**: Added configurable **Low Battery Auto-Stop** (10%, 15%, or 20% while unplugged) and **Thermal Auto-Stop** (42°C, 45°C, or 48°C) options in **App Settings**, monitored by `MineServeForegroundService` with alert notifications when triggered.
+
 ## [1.6.1] - 2026-11-16
 
 ### 🛡️ Build System & F-Droid Compliance

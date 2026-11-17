@@ -52,6 +52,30 @@
                 android:value="Running local dedicated Minecraft game server background process and real-time console communication" />
         </service>
 
+        <service
+            android:name=".system.MineServeTileService"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_foreground"
+            android:label="MineServe"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <receiver
+            android:name=".system.MineServeWidgetProvider"
+            android:exported="true"
+            android:label="MineServe Server">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.devwithzachary.mineserve.widget.TOGGLE_PRIMARY" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/mineserve_widget_info" />
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
