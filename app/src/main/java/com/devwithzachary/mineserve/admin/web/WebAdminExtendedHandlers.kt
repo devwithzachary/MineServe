@@ -11,6 +11,7 @@ import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSchedulerManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.engine.WorldManager
+import com.devwithzachary.mineserve.engine.WorldPregenManager
 import com.devwithzachary.mineserve.model.ChunkPruneOptions
 import com.devwithzachary.mineserve.model.DimensionType
 import com.devwithzachary.mineserve.model.DiscordWebhookConfig
@@ -1124,6 +1125,86 @@ internal class WebAdminExtendedHandlers(
             onSuccess = { ok(JSONObject().put("success", true)) },
             onFailure = { err -> badRequest(err.message ?: "Failed to delete cloud snapshot.") }
         )
+    }
+
+    // --- World Pre-Generation & Region Inspector ---
+
+    suspend fun handleListRegions(serverId: String): WebApiResult {
+        serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val regions = WorldManager.inspectRegions(serverDir)
+        val arr = JSONArray()
+        for (r in regions.take(50)) {
+            arr.put(
+                JSONObject()
+                    .put("dimension", r.dimension.name)
+                    .put("dimensionName", r.dimension.displayName)
+                    .put("fileName", r.fileName)
+                    .put("regionX", r.regionX)
+                    .put("regionZ", r.regionZ)
+                    .put("sizeBytes", r.sizeBytes)
+                    .put("chunkCount", r.chunkCount)
+            )
+        }
+        return ok(JSONObject().put("regions", arr).put("totalCount", regions.size))
+    }
+
+    suspend fun handleDeleteRegion(serverId: String, body: String): WebApiResult {
+        serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        if (processManager.getServerStatus(serverId).name == "RUNNING") {
+            return badRequest("Stop the server before deleting a region file.")
+        }
+        val json = parseJsonObject(body)
+        val dim = runCatching { DimensionType.valueOf(json.optString("dimension", "")) }.getOrNull()
+            ?: return badRequest("Invalid dimension.")
+        val fileName = json.optString("fileName", "").trim()
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val deleted = WorldManager.deleteRegionFile(serverDir, dim, fileName)
+        return if (deleted) ok(JSONObject().put("success", true)) else badRequest("Failed to delete region file.")
+    }
+
+    fun handleGetPregenStatus(serverId: String): WebApiResult {
+        serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val st = WorldPregenManager.getState(serverId)
+        return ok(
+            JSONObject()
+                .put("isRunning", st.isRunning)
+                .put("dimension", st.dimension.name)
+                .put("radiusBlocks", st.radiusBlocks)
+                .put("completedBatches", st.completedBatches)
+                .put("totalBatches", st.totalBatches)
+                .put("percent", st.percent)
+                .put("statusMessage", st.statusMessage)
+        )
+    }
+
+    fun handlePregenAction(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        if (server.type.isProxy || server.type.isBedrockNative) {
+            return badRequest("Chunk pre-generation is only supported on Java Edition servers.")
+        }
+        val json = parseJsonObject(body)
+        val action = json.optString("action", "start").lowercase()
+        if (action == "stop") {
+            WorldPregenManager.stopPregen(serverId) { cmd -> processManager.sendCommand(serverId, cmd) }
+            return handleGetPregenStatus(serverId)
+        }
+        if (processManager.getServerStatus(serverId).name != "RUNNING") {
+            return badRequest("Start the server first to pre-generate chunks.")
+        }
+        val dim = runCatching { DimensionType.valueOf(json.optString("dimension", "OVERWORLD")) }
+            .getOrDefault(DimensionType.OVERWORLD)
+        val radius = json.optInt("radiusBlocks", 500)
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        WorldPregenManager.startPregen(
+            serverId = serverId,
+            serverDir = serverDir,
+            dimension = dim,
+            centerX = 0,
+            centerZ = 0,
+            radiusBlocks = radius
+        ) { cmd -> processManager.sendCommand(serverId, cmd) }
+        return handleGetPregenStatus(serverId)
     }
 
     private fun resolveSafeChild(parentDir: File, fileName: String): File? {

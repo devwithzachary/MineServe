@@ -511,6 +511,7 @@ fun ServerDetailScreen(
                         onExportWorld = onExportWorld,
                         onResetDimension = onResetDimension,
                         onPruneChunks = onPruneChunks,
+                        onSendCommand = onSendCommand,
                         onNavigateToLiveMap = {
                             val mapIdx = tabList.indexOfFirst { it.first == DetailTab.LIVE_MAP }
                             if (mapIdx >= 0) selectedTab = mapIdx

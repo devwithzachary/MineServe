@@ -272,6 +272,42 @@
               <button type="button" id="optimize-world-btn" class="btn btn-primary btn-sm">Run Chunk Pruner</button>
               <p class="player-sub" id="prune-last-result" style="margin-top:8px;"></p>
             </div>
+            <div class="panel-card">
+              <h3>Chunk Pre-Generator</h3>
+              <p class="player-sub">Pre-generate chunks around spawn (0, 0) while the server is running to eliminate exploration lag.</p>
+              <div class="form-grid" style="margin-bottom:10px;">
+                <div class="form-group">
+                  <label for="pregen-dim">Dimension</label>
+                  <select id="pregen-dim">
+                    <option value="OVERWORLD">Overworld</option>
+                    <option value="NETHER">The Nether</option>
+                    <option value="THE_END">The End</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="pregen-radius">Radius (blocks)</label>
+                  <select id="pregen-radius">
+                    <option value="250">250m</option>
+                    <option value="500" selected>500m</option>
+                    <option value="1000">1000m</option>
+                    <option value="2000">2000m</option>
+                  </select>
+                </div>
+              </div>
+              <div id="pregen-status-text" class="player-sub" style="margin-bottom:8px;">Idle</div>
+              <div class="player-actions">
+                <button type="button" id="pregen-start-btn" class="btn btn-primary btn-sm">Start Pre-Generation</button>
+                <button type="button" id="pregen-stop-btn" class="btn btn-danger btn-sm hidden">Stop Pre-Generation</button>
+              </div>
+            </div>
+            <div class="panel-card">
+              <div class="files-toolbar">
+                <h3 style="margin:0;">Region File Inspector (.mca)</h3>
+                <button type="button" id="regions-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+              </div>
+              <p class="player-sub">Top .mca region files sorted by size. Stop the server to delete a region.</p>
+              <div id="regions-list" class="player-list" style="max-height:320px;"></div>
+            </div>
           </div>
         </section>
 

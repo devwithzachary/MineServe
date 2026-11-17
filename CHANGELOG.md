@@ -17,6 +17,10 @@ All notable changes to the MineServe project will be documented in this file.
 ### ⚙️ Runtime Setup & Reliability
 - **Background-Safe Resumable Downloads & Local Import**: `RootfsManager` and `ServerSoftwareManager` now keep Ubuntu rootfs and server JAR/archive downloads alive in the background via `MineServeForegroundService` (with live notification progress, WakeLock, and WiFiLock), support HTTP `Range` resume via `.part` files on interruption, and allow importing local `.tar.gz` rootfs archives or local `.jar`/`.zip` server files directly during setup.
 
+### 🗺️ World Pre-Generation & Chunk Tools
+- **Chunk Pre-Generator (`WorldPregenManager`)**: Added a Chunk Pre-Generator tool in the **World** tab and **Web Remote Admin** to pre-generate chunks around spawn (`0, 0`) across Overworld, Nether, or End (`250m` to `2000m` radius) using Chunky if installed or native `/forceload` batch stepping, with live progress and cancellation.
+- **Visual Region File Inspector (`.mca`)**: Added an Anvil `.mca` region inspector in `WorldManager`, **World** tab, and **Web Remote Admin** showing individual region files sorted by size with chunk counts (`X/1024`), relative storage bars, dimension filtering, and safe deletion while stopped.
+
 ### 🌐 Web Remote Admin Parity (v1.7.0 Features)
 - **Cloud, Safeguards & Diagnostics in Web UI**: Added a **Cloud, Safeguards & Diagnostics** panel in the Web Remote Admin UI (`WebAdminServer`, `WebAdminExtendedHandlers`) to inspect/refresh MineServe Cloud account status, configure Battery & Thermal Safeguards, capture redacted logcat, run network & tunnel self-tests, and download `.zip` diagnostic bundles from a browser.
 - **MineServe Cloud Tunnels & Snapshots in Web UI**: Added `MINESERVE_CLOUD` tunnel configuration (`cloudSubdomain`, `cloudRegion`, `cloudDomain`) under **Settings & Network** and a **MineServe Cloud Snapshots** browser under **Backups** with upload, restore, and delete actions.

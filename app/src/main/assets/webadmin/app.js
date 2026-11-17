@@ -232,6 +232,8 @@
       await loadNetwork(false);
     } else if (state.activeTab === "players") {
       await loadPlayers();
+    } else if (state.activeTab === "world") {
+      await loadPregenStatus();
     }
   }
 
@@ -723,6 +725,56 @@
       });
     } catch (e) {
       showToast(e.message, "error");
+    }
+    loadPregenStatus();
+    loadRegions();
+  }
+
+  async function loadPregenStatus() {
+    if (!state.selectedServerId) return;
+    try {
+      const p = await apiFetch(`/api/servers/${state.selectedServerId}/world/pregen`);
+      $("pregen-status-text").textContent = p.isRunning ? `${p.statusMessage} (${p.percent}%)` : (p.statusMessage || "Idle");
+      $("pregen-start-btn").classList.toggle("hidden", !!p.isRunning);
+      $("pregen-stop-btn").classList.toggle("hidden", !p.isRunning);
+    } catch (_) {}
+  }
+
+  async function loadRegions() {
+    if (!state.selectedServerId) return;
+    const list = $("regions-list");
+    try {
+      const data = await apiFetch(`/api/servers/${state.selectedServerId}/world/regions`);
+      const regions = data.regions || [];
+      if (regions.length === 0) {
+        list.innerHTML = `<div class="player-sub">No .mca region files found.</div>`;
+        return;
+      }
+      list.innerHTML = regions.map((r) => `
+        <div class="player-row">
+          <div>
+            <div class="mono">${escapeHtml(r.fileName)}</div>
+            <div class="player-sub">${escapeHtml(r.dimensionName)} · ${r.chunkCount}/1024 chunks · ${formatSize(r.sizeBytes)}</div>
+          </div>
+          <button class="btn btn-danger btn-sm region-del-btn" data-dim="${escapeHtml(r.dimension)}" data-file="${escapeHtml(r.fileName)}">Delete</button>
+        </div>
+      `).join("");
+      list.querySelectorAll(".region-del-btn").forEach((b) => {
+        b.addEventListener("click", async () => {
+          if (!confirm(`Delete ${b.dataset.file}? Stop the server first.`)) return;
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/world/regions/delete`, {
+              method: "POST", body: JSON.stringify({ dimension: b.dataset.dim, fileName: b.dataset.file })
+            });
+            showToast(`Deleted ${b.dataset.file}`);
+            loadWorld();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        });
+      });
+    } catch (err) {
+      list.innerHTML = `<div class="player-sub">${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -1922,6 +1974,37 @@
       window.location.href = `/api/diagnostics/bundle?filter=${encodeURIComponent(mode)}`;
     });
     $("cloud-backups-refresh-btn").addEventListener("click", () => loadCloudBackups());
+    $("regions-refresh-btn").addEventListener("click", () => loadRegions());
+    $("pregen-start-btn").addEventListener("click", async () => {
+      if (!state.selectedServerId) return;
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/world/pregen`, {
+          method: "POST",
+          body: JSON.stringify({
+            action: "start",
+            dimension: $("pregen-dim").value,
+            radiusBlocks: parseInt($("pregen-radius").value, 10) || 500
+          })
+        });
+        showToast("Chunk pre-generation started");
+        loadPregenStatus();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+    $("pregen-stop-btn").addEventListener("click", async () => {
+      if (!state.selectedServerId) return;
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/world/pregen`, {
+          method: "POST",
+          body: JSON.stringify({ action: "stop" })
+        });
+        showToast("Chunk pre-generation stopped");
+        loadPregenStatus();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
   }
 
   bindEvents();

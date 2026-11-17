@@ -21,25 +21,33 @@ enum class DimensionType(
                 if (custom.exists()) custom else File(serverDir, "world")
             }
             NETHER -> {
-                // Check Paper/Purpur layout first
+                // Check Paper/Purpur legacy layout first
                 val paperNether = File(serverDir, "${levelName}_nether")
                 if (paperNether.exists()) return paperNether
                 val defaultPaperNether = File(serverDir, "world_nether")
                 if (defaultPaperNether.exists()) return defaultPaperNether
 
-                // Vanilla/Fabric layout inside Overworld/DIM-1
+                // Check Minecraft 26.x+ unified dimensions layout
                 val overworld = OVERWORLD.getDimensionDir(serverDir, levelName)
+                val modernNether = File(overworld, "dimensions/minecraft/the_nether")
+                if (modernNether.exists()) return modernNether
+
+                // Vanilla/Fabric layout inside Overworld/DIM-1
                 File(overworld, "DIM-1")
             }
             THE_END -> {
-                // Check Paper/Purpur layout first
+                // Check Paper/Purpur legacy layout first
                 val paperEnd = File(serverDir, "${levelName}_the_end")
                 if (paperEnd.exists()) return paperEnd
                 val defaultPaperEnd = File(serverDir, "world_the_end")
                 if (defaultPaperEnd.exists()) return defaultPaperEnd
 
-                // Vanilla/Fabric layout inside Overworld/DIM1
+                // Check Minecraft 26.x+ unified dimensions layout
                 val overworld = OVERWORLD.getDimensionDir(serverDir, levelName)
+                val modernEnd = File(overworld, "dimensions/minecraft/the_end")
+                if (modernEnd.exists()) return modernEnd
+
+                // Vanilla/Fabric layout inside Overworld/DIM1
                 File(overworld, "DIM1")
             }
         }

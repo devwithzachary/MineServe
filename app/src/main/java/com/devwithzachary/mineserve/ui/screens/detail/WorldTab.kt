@@ -79,10 +79,12 @@ import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.WorldDimensionInfo
 import com.devwithzachary.mineserve.model.WorldSummary
+import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPreGenCard
 import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPruneDialog
 import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPruneResultDialog
 import com.devwithzachary.mineserve.ui.screens.detail.world.DimensionResetDialog
 import com.devwithzachary.mineserve.ui.screens.detail.world.DimensionRowCard
+import com.devwithzachary.mineserve.ui.screens.detail.world.RegionInspectorCard
 import com.devwithzachary.mineserve.ui.screens.detail.world.WorldImportDialog
 import com.devwithzachary.mineserve.ui.screens.detail.world.formatWorldFileSize
 import com.devwithzachary.mineserve.ui.theme.DiamondCyan
@@ -116,6 +118,7 @@ fun WorldTab(
     onExportWorld: suspend (OutputStream, (String, Int) -> Unit) -> Boolean,
     onResetDimension: suspend (DimensionType, Boolean) -> Boolean,
     onPruneChunks: suspend (ChunkPruneOptions, (String, Int) -> Unit) -> ChunkPruneResult,
+    onSendCommand: (String) -> Unit = {},
     onNavigateToLiveMap: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -596,6 +599,20 @@ fun WorldTab(
                 }
             }
         }
+
+        ChunkPreGenCard(
+            server = server,
+            isRunning = isRunning,
+            onSendCommand = onSendCommand
+        )
+
+        RegionInspectorCard(
+            server = server,
+            isRunning = isRunning,
+            levelName = worldSummary?.levelName ?: "world",
+            refreshKey = worldSummary?.totalSizeBytes ?: 0L,
+            onWorldMutated = { refreshSummary() }
+        )
     }
 
     // Modal: Dimension Reset Confirmation

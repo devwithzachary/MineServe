@@ -677,6 +677,19 @@ class WebAdminServer(
                 sub == null && method == "GET" -> extHandlers.handleGetWorld(serverId)
                 sub == "reset" && method == "POST" -> extHandlers.handleResetDimension(serverId, body)
                 sub == "optimize" && method == "POST" -> extHandlers.handleOptimizeWorld(serverId, body)
+                sub == "regions" -> {
+                    val regAction = segments.getOrNull(3)
+                    when {
+                        regAction == null && method == "GET" -> extHandlers.handleListRegions(serverId)
+                        regAction == "delete" && method == "POST" -> extHandlers.handleDeleteRegion(serverId, body)
+                        else -> null
+                    }
+                }
+                sub == "pregen" -> when {
+                    method == "GET" -> extHandlers.handleGetPregenStatus(serverId)
+                    method == "POST" -> extHandlers.handlePregenAction(serverId, body)
+                    else -> null
+                }
                 sub == "export" && method == "GET" -> {
                     val (tempFile, errResult) = extHandlers.exportWorldToTempZip(serverId)
                     if (errResult != null) {

@@ -18,18 +18,40 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
+data class RegionFileInfo(
+    val dimension: DimensionType,
+    val fileName: String,
+    val regionX: Int,
+    val regionZ: Int,
+    val sizeBytes: Long,
+    val chunkCount: Int,
+    val lastModifiedMs: Long
+)
+
 /**
  * High-level World Manager for Minecraft Servers.
- * Handles world summaries, .zip/.mcworld imports, world exports, and dimension resets.
+ * Handles world summaries, .zip/.mcworld imports, world exports, region inspection, and dimension resets.
  */
 object WorldManager {
 
     private const val TAG = "WorldManager"
 
+    fun resolveLevelName(serverDir: File): String {
+        val propsFile = File(serverDir, "server.properties")
+        if (!propsFile.isFile) return "world"
+        return runCatching {
+            propsFile.readLines()
+                .firstOrNull { it.trimStart().startsWith("level-name=") }
+                ?.substringAfter("level-name=")
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+        }.getOrNull() ?: "world"
+    }
+
     /**
      * Calculates storage footprint and dimension details for a server.
      */
-    suspend fun getWorldSummary(serverDir: File, levelName: String = "world"): WorldSummary = withContext(Dispatchers.IO) {
+    suspend fun getWorldSummary(serverDir: File, levelName: String = resolveLevelName(serverDir)): WorldSummary = withContext(Dispatchers.IO) {
         val dimensions = mutableListOf<WorldDimensionInfo>()
         var totalBytes = 0L
 
@@ -44,12 +66,7 @@ object WorldManager {
                 sizeBytes = calculateDirSize(dir)
                 totalBytes += sizeBytes
 
-                val regionDir = when {
-                    File(dir, "region").exists() -> File(dir, "region")
-                    File(dir, "DIM-1/region").exists() -> File(dir, "DIM-1/region")
-                    File(dir, "DIM1/region").exists() -> File(dir, "DIM1/region")
-                    else -> null
-                }
+                val regionDir = resolveRegionDir(dir)
 
                 if (regionDir != null && regionDir.exists()) {
                     val mcaFiles = regionDir.listFiles { f -> f.isFile && f.name.endsWith(".mca") } ?: emptyArray()
@@ -359,6 +376,59 @@ object WorldManager {
         }
     }
 
+    suspend fun inspectRegions(serverDir: File, levelName: String = resolveLevelName(serverDir)): List<RegionFileInfo> = withContext(Dispatchers.IO) {
+        val result = mutableListOf<RegionFileInfo>()
+        val buffer = ByteArray(4096)
+        for (dim in DimensionType.values()) {
+            val dimDir = dim.getDimensionDir(serverDir, levelName)
+            val regionDir = resolveRegionDir(dimDir) ?: continue
+            val mcaFiles = regionDir.listFiles { f -> f.isFile && f.name.endsWith(".mca") } ?: continue
+            for (file in mcaFiles) {
+                val parts = file.name.removePrefix("r.").removeSuffix(".mca").split(".")
+                val rx = parts.getOrNull(0)?.toIntOrNull() ?: 0
+                val rz = parts.getOrNull(1)?.toIntOrNull() ?: 0
+                result.add(
+                    RegionFileInfo(
+                        dimension = dim,
+                        fileName = file.name,
+                        regionX = rx,
+                        regionZ = rz,
+                        sizeBytes = file.length(),
+                        chunkCount = countChunksInMcaFile(file, buffer),
+                        lastModifiedMs = file.lastModified()
+                    )
+                )
+            }
+        }
+        result.sortedByDescending { it.sizeBytes }
+    }
+
+    suspend fun deleteRegionFile(
+        serverDir: File,
+        dimension: DimensionType,
+        fileName: String,
+        levelName: String = resolveLevelName(serverDir)
+    ): Boolean = withContext(Dispatchers.IO) {
+        if (!fileName.endsWith(".mca") || fileName.contains("..") || fileName.contains("/") || fileName.contains("\\")) {
+            return@withContext false
+        }
+        val dimDir = dimension.getDimensionDir(serverDir, levelName)
+        val regionDir = resolveRegionDir(dimDir) ?: return@withContext false
+        val target = File(regionDir, fileName)
+        if (!target.canonicalPath.startsWith(regionDir.canonicalPath) || !target.isFile) {
+            return@withContext false
+        }
+        target.delete()
+    }
+
+    private fun resolveRegionDir(dimDir: File): File? = when {
+        File(dimDir, "dimensions/minecraft/overworld/region").exists() -> File(dimDir, "dimensions/minecraft/overworld/region")
+        File(dimDir, "region").exists() -> File(dimDir, "region")
+        File(dimDir, "DIM-1/region").exists() -> File(dimDir, "DIM-1/region")
+        File(dimDir, "DIM1/region").exists() -> File(dimDir, "DIM1/region")
+        else -> null
+    }
+
     private fun calculateDirSize(dir: File): Long {
         var size = 0L
         dir.walkTopDown().forEach { file ->
@@ -373,25 +443,31 @@ object WorldManager {
         var count = 0
         val buffer = ByteArray(4096)
         for (file in mcaFiles) {
-            try {
-                if (file.length() >= 4096) {
-                    FileInputStream(file).use { fis ->
-                        val read = fis.read(buffer)
-                        if (read == 4096) {
-                            for (i in 0 until 1024) {
-                                val off = ((buffer[i * 4].toInt() and 0xFF) shl 16) or
-                                        ((buffer[i * 4 + 1].toInt() and 0xFF) shl 8) or
-                                        (buffer[i * 4 + 2].toInt() and 0xFF)
-                                if (off != 0) {
-                                    count++
-                                }
+            count += countChunksInMcaFile(file, buffer)
+        }
+        return count
+    }
+
+    private fun countChunksInMcaFile(file: File, buffer: ByteArray): Int {
+        var count = 0
+        try {
+            if (file.length() >= 4096) {
+                FileInputStream(file).use { fis ->
+                    val read = fis.read(buffer)
+                    if (read == 4096) {
+                        for (i in 0 until 1024) {
+                            val off = ((buffer[i * 4].toInt() and 0xFF) shl 16) or
+                                    ((buffer[i * 4 + 1].toInt() and 0xFF) shl 8) or
+                                    (buffer[i * 4 + 2].toInt() and 0xFF)
+                            if (off != 0) {
+                                count++
                             }
                         }
                     }
                 }
-            } catch (e: Exception) {
-                // Ignore corrupt individual region header
             }
+        } catch (_: Exception) {
+            // Ignore corrupt individual region header
         }
         return count
     }
