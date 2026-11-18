@@ -1,6 +1,8 @@
 AntiFeatures:
-  - NonFreeDep
-  - NonFreeNet
+  NonFreeDep:
+    en-US: Downloads and runs official proprietary Minecraft server binaries from Mojang when hosting Vanilla or Bedrock servers.
+  NonFreeNet:
+    en-US: Connects to external services such as Mojang, PaperMC, Modrinth, Playit.gg, and optional MineServe Cloud relays to download server software and expose multiplayer tunnels.
 Categories:
   - Game Helper
   - System
@@ -20,7 +22,7 @@ Binaries:
 Builds:
   - versionName: 1.6.1
     versionCode: 12
-    commit: 1.6.1
+    commit: 66adbe4844cb11991d9e28ec505b49f5a265bf7c
     subdir: app
     submodules: true
     sudo:

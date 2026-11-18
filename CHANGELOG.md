@@ -28,6 +28,7 @@ All notable changes to the MineServe project will be documented in this file.
 ### 🌐 Web Remote Admin Parity (v1.7.0 Features)
 - **Cloud, Safeguards & Diagnostics in Web UI**: Added a **Cloud, Safeguards & Diagnostics** panel in the Web Remote Admin UI (`WebAdminServer`, `WebAdminExtendedHandlers`) to inspect/refresh MineServe Cloud account status, configure Battery & Thermal Safeguards, capture redacted logcat, run network & tunnel self-tests, and download `.zip` diagnostic bundles from a browser.
 - **MineServe Cloud Tunnels & Snapshots in Web UI**: Added `MINESERVE_CLOUD` tunnel configuration (`cloudSubdomain`, `cloudRegion`, `cloudDomain`) under **Settings & Network** and a **MineServe Cloud Snapshots** browser under **Backups** with upload, restore, and delete actions.
+- **Full-Width Web & Mobile Terminal Line Reflow (`TerminalEmulator`)**: Added soft-wrap row tracking and dynamic terminal line reflow in `TerminalEmulator` so the Web Remote Admin console receives full unwrapped logical lines that span the entire browser terminal width while the phone console dynamically reflows historical and live log lines to fill the exact phone screen width.
 
 ### 📱 Android System Integration & Safeguards
 - **Quick Settings Start/Stop Tile (`MineServeTileService`)**: Added an Android Quick Settings tile in the notification shade to view the primary server's live state and start or stop it with a single tap.

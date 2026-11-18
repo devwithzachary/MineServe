@@ -457,8 +457,8 @@ class ServerProcessManager private constructor(
                 args = fullCmd.toTypedArray(),
                 env = envArray,
                 cwdPath = serverDir.absolutePath,
-                cols = 80,
-                rows = 24,
+                cols = 240,
+                rows = 40,
                 outPid = outPid
             )
 
@@ -724,9 +724,14 @@ class ServerProcessManager private constructor(
     }
 
     fun resizeTerminal(serverId: String, cols: Int, rows: Int) {
-        val session = sessions[serverId] ?: return
-        session.emulator.resize(cols, rows)
-        session.ptyProcess?.updateWindowSize(cols, rows)
+        val emulator = getEmulator(serverId)
+        if (emulator.cols != cols || emulator.rows != rows) {
+            emulator.resize(cols, rows)
+            triggerRefresh(serverId)
+        }
+        // Keep the underlying Linux PTY window width wide (at least 240 columns) so child CLI tools
+        // inside PRoot never inject hard line breaks at the phone's narrow screen width.
+        sessions[serverId]?.ptyProcess?.updateWindowSize(cols.coerceAtLeast(240), rows.coerceAtLeast(40))
     }
 
     private fun triggerRefresh(serverId: String) {

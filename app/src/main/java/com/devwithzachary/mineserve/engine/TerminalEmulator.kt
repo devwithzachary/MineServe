@@ -68,11 +68,13 @@ class TerminalEmulator(
     val maxScrollback: Int = 2000
 ) {
     private var primaryGrid = Array(rows) { Array(cols) { TerminalChar() } }
+    private var primaryWrapped = BooleanArray(rows)
     private var altGrid = Array(rows) { Array(cols) { TerminalChar() } }
     var grid = primaryGrid
         private set
 
     val scrollback = ArrayDeque<Array<TerminalChar>>()
+    private val scrollbackWrapped = ArrayDeque<Boolean>()
     var scrollOffset = 0
         private set
 
@@ -90,26 +92,47 @@ class TerminalEmulator(
         scrollOffset = 0
     }
 
+    @Synchronized
     fun getRecentLines(maxLines: Int = 100): List<String> {
-        val lines = mutableListOf<String>()
-        val scrollbackCount = scrollback.size
-        val neededFromScrollback = (maxLines - grid.size).coerceAtLeast(0).coerceAtMost(scrollbackCount)
-        if (neededFromScrollback > 0) {
-            val startIdx = scrollbackCount - neededFromScrollback
-            for (i in startIdx until scrollbackCount) {
-                val row = scrollback[i]
-                val str = row.map { it.ch }.joinToString("").trimEnd()
-                lines.add(str)
+        val logicalLines = mutableListOf<String>()
+        val currentLine = StringBuilder()
+
+        fun processRow(row: Array<TerminalChar>, isWrapped: Boolean) {
+            if (isWrapped) {
+                for (cell in row) {
+                    currentLine.append(cell.ch)
+                }
+            } else {
+                var end = row.size - 1
+                while (end >= 0 && row[end].ch == ' ') {
+                    end--
+                }
+                for (i in 0..end) {
+                    currentLine.append(row[i].ch)
+                }
+                logicalLines.add(currentLine.toString())
+                currentLine.setLength(0)
             }
         }
-        for (row in grid) {
-            val str = row.map { it.ch }.joinToString("").trimEnd()
-            lines.add(str)
+
+        for (i in 0 until scrollback.size) {
+            val row = scrollback[i]
+            val wrapped = if (i < scrollbackWrapped.size) scrollbackWrapped[i] else false
+            processRow(row, wrapped)
         }
-        while (lines.isNotEmpty() && lines.last().isBlank()) {
-            lines.removeAt(lines.size - 1)
+        for (r in 0 until primaryGrid.size) {
+            val row = primaryGrid[r]
+            val wrapped = if (r < primaryWrapped.size) primaryWrapped[r] else false
+            processRow(row, wrapped)
         }
-        return if (lines.size > maxLines) lines.takeLast(maxLines) else lines
+        if (currentLine.isNotEmpty()) {
+            logicalLines.add(currentLine.toString().trimEnd())
+        }
+
+        while (logicalLines.isNotEmpty() && logicalLines.last().isBlank()) {
+            logicalLines.removeAt(logicalLines.size - 1)
+        }
+        return if (logicalLines.size > maxLines) logicalLines.takeLast(maxLines) else logicalLines
     }
 
     fun getRenderRow(r: Int): Array<TerminalChar> {
@@ -160,26 +183,135 @@ class TerminalEmulator(
     private val csiParams = StringBuilder()
     private val ansiColors = Array(16) { i -> theme.ansiColors.getOrElse(i) { Color.White } }
 
+    @Synchronized
     fun resize(newCols: Int, newRows: Int) {
         if (newCols <= 0 || newRows <= 0) return
-        val oldCols = cols
-        val oldRows = rows
+        if (newCols == cols && newRows == rows) return
+
+        // Find last active row in primaryGrid so trailing blank screen rows aren't turned into history
+        var lastActiveGridRow = -1
+        for (r in primaryGrid.indices.reversed()) {
+            val hasContent = primaryWrapped.getOrElse(r) { false } ||
+                primaryGrid[r].any { it.ch != ' ' || it.bgColor != Color.Transparent }
+            if (hasContent || (r == cursorY && cursorX > 0)) {
+                lastActiveGridRow = r
+                break
+            }
+        }
+
+        // Reconstruct logical lines of TerminalChar cells
+        val logicalLines = ArrayList<ArrayList<TerminalChar>>()
+        var currentLine = ArrayList<TerminalChar>()
+
+        fun appendRowToLogical(row: Array<TerminalChar>, isWrapped: Boolean) {
+            if (isWrapped) {
+                currentLine.ensureCapacity(currentLine.size + row.size)
+                for (cell in row) {
+                    currentLine.add(cell)
+                }
+            } else {
+                var end = row.size - 1
+                while (end >= 0 && row[end].ch == ' ' && row[end].bgColor == Color.Transparent) {
+                    end--
+                }
+                for (i in 0..end) {
+                    currentLine.add(row[i])
+                }
+                logicalLines.add(currentLine)
+                currentLine = ArrayList()
+            }
+        }
+
+        for (i in 0 until scrollback.size) {
+            val row = scrollback[i]
+            val wrapped = if (i < scrollbackWrapped.size) scrollbackWrapped[i] else false
+            appendRowToLogical(row, wrapped)
+        }
+        if (lastActiveGridRow >= 0) {
+            for (r in 0..lastActiveGridRow) {
+                val row = primaryGrid[r]
+                val wrapped = if (r < primaryWrapped.size) primaryWrapped[r] else false
+                appendRowToLogical(row, wrapped)
+            }
+        }
+        if (currentLine.isNotEmpty()) {
+            logicalLines.add(currentLine)
+        }
+
+        // Reflow logical lines into newCols
+        val reflowedRows = ArrayList<Pair<Array<TerminalChar>, Boolean>>()
+        for (line in logicalLines) {
+            if (line.isEmpty()) {
+                reflowedRows.add(Array(newCols) { TerminalChar() } to false)
+            } else {
+                var offset = 0
+                while (offset < line.size) {
+                    val end = (offset + newCols).coerceAtMost(line.size)
+                    val isMore = end < line.size
+                    val rowArr = Array(newCols) { idx ->
+                        val srcIdx = offset + idx
+                        if (srcIdx < end) line[srcIdx] else TerminalChar()
+                    }
+                    reflowedRows.add(rowArr to isMore)
+                    offset += newCols
+                }
+            }
+        }
+
         cols = newCols
         rows = newRows
 
-        primaryGrid = Array(rows) { r ->
-            Array(cols) { c ->
-                if (r < oldRows && c < oldCols) grid[r][c] else TerminalChar()
+        scrollback.clear()
+        scrollbackWrapped.clear()
+        primaryGrid = Array(rows) { Array(cols) { TerminalChar() } }
+        primaryWrapped = BooleanArray(rows)
+
+        if (reflowedRows.isEmpty()) {
+            cursorX = 0
+            cursorY = 0
+        } else if (reflowedRows.size <= rows) {
+            for (r in reflowedRows.indices) {
+                primaryGrid[r] = reflowedRows[r].first
+                primaryWrapped[r] = reflowedRows[r].second
             }
+            val lastLineLen = logicalLines.lastOrNull()?.size ?: 0
+            val rem = lastLineLen % cols
+            if (lastLineLen > 0 && rem == 0) {
+                if (reflowedRows.size < rows) {
+                    cursorY = reflowedRows.size
+                    cursorX = 0
+                } else {
+                    cursorY = rows - 1
+                    cursorX = cols - 1
+                }
+            } else {
+                cursorY = (reflowedRows.size - 1).coerceIn(0, rows - 1)
+                cursorX = rem.coerceIn(0, cols - 1)
+            }
+        } else {
+            val gridStart = reflowedRows.size - rows
+            val sbStart = (gridStart - maxScrollback).coerceAtLeast(0)
+            for (i in sbStart until gridStart) {
+                scrollback.addLast(reflowedRows[i].first)
+                scrollbackWrapped.addLast(reflowedRows[i].second)
+            }
+            for (r in 0 until rows) {
+                val pair = reflowedRows[gridStart + r]
+                primaryGrid[r] = pair.first
+                primaryWrapped[r] = pair.second
+            }
+            val lastLineLen = logicalLines.lastOrNull()?.size ?: 0
+            val rem = lastLineLen % cols
+            cursorY = rows - 1
+            cursorX = if (lastLineLen > 0 && rem == 0) (cols - 1) else rem.coerceIn(0, cols - 1)
         }
+
         altGrid = Array(rows) { Array(cols) { TerminalChar() } }
         grid = if (inAltBuffer) altGrid else primaryGrid
 
         scrollTop = 0
         scrollBottom = rows - 1
-
-        cursorX = cursorX.coerceIn(0, cols - 1)
-        cursorY = cursorY.coerceIn(0, rows - 1)
+        scrollOffset = scrollOffset.coerceIn(0, scrollback.size)
     }
 
     @Synchronized
@@ -195,14 +327,27 @@ class TerminalEmulator(
             State.NORMAL -> {
                 when (ch) {
                     '\u001B' -> state = State.ESCAPE
-                    '\r' -> cursorX = 0
-                    '\n' -> lineFeed()
+                    '\r' -> {
+                        cursorX = 0
+                        if (!inAltBuffer && cursorY in 0 until rows) {
+                            primaryWrapped[cursorY] = false
+                        }
+                    }
+                    '\n' -> {
+                        if (!inAltBuffer && cursorY in 0 until rows) {
+                            primaryWrapped[cursorY] = false
+                        }
+                        lineFeed()
+                    }
                     '\b' -> if (cursorX > 0) cursorX--
                     '\t' -> cursorX = (((cursorX / 8) + 1) * 8).coerceAtMost(cols - 1)
                     '\u0007' -> {}
                     else -> {
                         if (ch >= ' ') {
                             if (cursorX >= cols) {
+                                if (!inAltBuffer && cursorY in 0 until rows) {
+                                    primaryWrapped[cursorY] = true
+                                }
                                 cursorX = 0
                                 lineFeed()
                             }
@@ -276,22 +421,38 @@ class TerminalEmulator(
         if (scrollTop == 0 && scrollBottom == rows - 1) {
             if (!inAltBuffer) {
                 scrollback.addLast(grid[0].copyOf())
+                scrollbackWrapped.addLast(primaryWrapped[0])
                 if (scrollback.size > maxScrollback) {
                     scrollback.removeFirst()
+                    if (scrollbackWrapped.isNotEmpty()) {
+                        scrollbackWrapped.removeFirst()
+                    }
                 }
             }
         }
         for (r in scrollTop until scrollBottom) {
             grid[r] = grid[r + 1]
+            if (!inAltBuffer) {
+                primaryWrapped[r] = primaryWrapped[r + 1]
+            }
         }
         grid[scrollBottom] = Array(cols) { TerminalChar() }
+        if (!inAltBuffer) {
+            primaryWrapped[scrollBottom] = false
+        }
     }
 
     private fun scrollDownGrid() {
         for (r in scrollBottom downTo scrollTop + 1) {
             grid[r] = grid[r - 1]
+            if (!inAltBuffer) {
+                primaryWrapped[r] = primaryWrapped[r - 1]
+            }
         }
         grid[scrollTop] = Array(cols) { TerminalChar() }
+        if (!inAltBuffer) {
+            primaryWrapped[scrollTop] = false
+        }
     }
 
     private fun executeCsi(command: Char) {
@@ -316,24 +477,43 @@ class TerminalEmulator(
                 when (mode) {
                     0 -> {
                         for (c in cursorX until cols) grid[cursorY][c] = TerminalChar()
-                        for (r in cursorY + 1 until rows) grid[r] = Array(cols) { TerminalChar() }
+                        if (!inAltBuffer && cursorY in 0 until rows) primaryWrapped[cursorY] = false
+                        for (r in cursorY + 1 until rows) {
+                            grid[r] = Array(cols) { TerminalChar() }
+                            if (!inAltBuffer) primaryWrapped[r] = false
+                        }
                     }
                     1 -> {
-                        for (r in 0 until cursorY) grid[r] = Array(cols) { TerminalChar() }
+                        for (r in 0 until cursorY) {
+                            grid[r] = Array(cols) { TerminalChar() }
+                            if (!inAltBuffer) primaryWrapped[r] = false
+                        }
                         for (c in 0..cursorX) grid[cursorY][c] = TerminalChar()
                     }
                     2, 3 -> {
-                        for (r in 0 until rows) grid[r] = Array(cols) { TerminalChar() }
-                        if (mode == 3) scrollback.clear()
+                        for (r in 0 until rows) {
+                            grid[r] = Array(cols) { TerminalChar() }
+                            if (!inAltBuffer) primaryWrapped[r] = false
+                        }
+                        if (mode == 3) {
+                            scrollback.clear()
+                            scrollbackWrapped.clear()
+                        }
                     }
                 }
             }
             'K' -> {
                 val mode = parts.getOrElse(0) { 0 }
                 when (mode) {
-                    0 -> for (c in cursorX until cols) grid[cursorY][c] = TerminalChar()
+                    0 -> {
+                        for (c in cursorX until cols) grid[cursorY][c] = TerminalChar()
+                        if (!inAltBuffer && cursorY in 0 until rows) primaryWrapped[cursorY] = false
+                    }
                     1 -> for (c in 0..cursorX) grid[cursorY][c] = TerminalChar()
-                    2 -> grid[cursorY] = Array(cols) { TerminalChar() }
+                    2 -> {
+                        grid[cursorY] = Array(cols) { TerminalChar() }
+                        if (!inAltBuffer && cursorY in 0 until rows) primaryWrapped[cursorY] = false
+                    }
                 }
             }
             'm' -> {

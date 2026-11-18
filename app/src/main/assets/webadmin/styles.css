@@ -295,6 +295,7 @@ input:focus, select:focus, textarea:focus {
 
 /* Console */
 .console-output {
+  width: 100%;
   flex: 1;
   min-height: 360px;
   max-height: 58vh;
