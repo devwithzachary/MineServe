@@ -91,6 +91,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isCheckGitHubUpdatesEnabled = MutableStateFlow(updatePreferences.isCheckGitHubUpdatesEnabled)
     val isCheckGitHubUpdatesEnabled: StateFlow<Boolean> = _isCheckGitHubUpdatesEnabled.asStateFlow()
 
+    private val _isShowWhatsNewOnUpdateEnabled = MutableStateFlow(updatePreferences.isShowWhatsNewOnUpdateEnabled)
+    val isShowWhatsNewOnUpdateEnabled: StateFlow<Boolean> = _isShowWhatsNewOnUpdateEnabled.asStateFlow()
+
     private val _availableUpdate = MutableStateFlow<GitHubRelease?>(null)
     val availableUpdate: StateFlow<GitHubRelease?> = _availableUpdate.asStateFlow()
 
@@ -828,6 +831,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (!enabled) {
             _availableUpdate.value = null
         }
+    }
+
+    fun toggleShowWhatsNewOnUpdate(enabled: Boolean) {
+        updatePreferences.isShowWhatsNewOnUpdateEnabled = enabled
+        _isShowWhatsNewOnUpdateEnabled.value = enabled
+    }
+
+    fun shouldAutoShowWhatsNew(): Boolean {
+        val currentMajor = UpdatePreferences.extractMajorReleaseKey(BuildConfig.VERSION_NAME)
+        val targetMajor = com.devwithzachary.mineserve.ui.screens.whatsnew.CURRENT_WHATS_NEW_RELEASE.majorVersion
+            .ifBlank { currentMajor }
+        return updatePreferences.shouldAutoShowWhatsNew(targetMajor)
+    }
+
+    fun markWhatsNewSeen() {
+        val currentMajor = UpdatePreferences.extractMajorReleaseKey(BuildConfig.VERSION_NAME)
+        val targetMajor = com.devwithzachary.mineserve.ui.screens.whatsnew.CURRENT_WHATS_NEW_RELEASE.majorVersion
+            .ifBlank { currentMajor }
+        updatePreferences.lastSeenWhatsNewVersion = targetMajor
     }
 
     fun checkForGitHubUpdates(isManual: Boolean = false) {

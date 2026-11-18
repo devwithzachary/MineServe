@@ -49,6 +49,7 @@ import com.devwithzachary.mineserve.ui.screens.detail.ServerDetailScreen
 import com.devwithzachary.mineserve.ui.screens.settings.AppSettingsScreen
 import com.devwithzachary.mineserve.ui.screens.settings.RemoteAdminScreen
 import com.devwithzachary.mineserve.ui.screens.splash.SplashScreen
+import com.devwithzachary.mineserve.ui.screens.whatsnew.WhatsNewScreen
 import com.devwithzachary.mineserve.ui.screens.wizard.CreateServerWizardScreen
 import com.devwithzachary.mineserve.ui.theme.MineServeTheme
 import com.devwithzachary.mineserve.ui.theme.Slate950
@@ -64,6 +65,7 @@ sealed class Screen {
     data object RemoteAdmin : Screen()
     data object About : Screen()
     data object Credits : Screen()
+    data object WhatsNew : Screen()
 }
 
 class MainActivity : ComponentActivity() {
@@ -145,6 +147,7 @@ fun MineServeApp(viewModel: MainViewModel) {
     val serverStorageMap by viewModel.serverStorageMap.collectAsStateWithLifecycle()
     val tunnelStates by viewModel.tunnelStates.collectAsStateWithLifecycle()
     val isCheckGitHubUpdatesEnabled by viewModel.isCheckGitHubUpdatesEnabled.collectAsStateWithLifecycle()
+    val isShowWhatsNewOnUpdateEnabled by viewModel.isShowWhatsNewOnUpdateEnabled.collectAsStateWithLifecycle()
     val availableUpdate by viewModel.availableUpdate.collectAsStateWithLifecycle()
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     val updateCheckStatus by viewModel.updateCheckStatus.collectAsStateWithLifecycle()
@@ -153,10 +156,17 @@ fun MineServeApp(viewModel: MainViewModel) {
     val webAdminState by viewModel.webAdminState.collectAsStateWithLifecycle()
     val webAdminConfig by viewModel.webAdminConfig.collectAsStateWithLifecycle()
 
-    val initialScreen = remember {
-        if (viewModel.rootfsManager.isInstalled()) Screen.Dashboard else Screen.Splash
+    val backStack = remember {
+        if (!viewModel.rootfsManager.isInstalled()) {
+            // First-time app install: mark current version as seen so What's New doesn't open on fresh install
+            viewModel.markWhatsNewSeen()
+            mutableStateListOf<Screen>(Screen.Splash)
+        } else if (viewModel.shouldAutoShowWhatsNew()) {
+            mutableStateListOf<Screen>(Screen.Dashboard, Screen.WhatsNew)
+        } else {
+            mutableStateListOf<Screen>(Screen.Dashboard)
+        }
     }
-    val backStack = remember { mutableStateListOf<Screen>(initialScreen) }
     val currentScreen = backStack.lastOrNull() ?: Screen.Dashboard
 
     fun navigateTo(screen: Screen) {
@@ -196,7 +206,10 @@ fun MineServeApp(viewModel: MainViewModel) {
                     isRootfsInstalled = isRootfsInstalled,
                     setupState = rootfsSetupState,
                     onStartSetup = { viewModel.startRootfsSetup() },
-                    onContinueToDashboard = { navigateTo(Screen.Dashboard) },
+                    onContinueToDashboard = {
+                        viewModel.markWhatsNewSeen()
+                        navigateTo(Screen.Dashboard)
+                    },
                     onImportLocalRootfs = { uri -> viewModel.importLocalRootfs(uri) }
                 )
             }
@@ -447,6 +460,9 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onSignOutCloud = { viewModel.signOutCloudAccount() },
                     onOpenCloudPage = { navigateTo(Screen.Cloud) },
                     onOpenDiagnostics = { navigateTo(Screen.Diagnostics) },
+                    isShowWhatsNewOnUpdateEnabled = isShowWhatsNewOnUpdateEnabled,
+                    onToggleShowWhatsNewOnUpdate = { viewModel.toggleShowWhatsNewOnUpdate(it) },
+                    onOpenWhatsNew = { navigateTo(Screen.WhatsNew) },
                     onBack = { navigateBack() },
                     onAboutClick = { navigateTo(Screen.About) }
                 )
@@ -495,6 +511,17 @@ fun MineServeApp(viewModel: MainViewModel) {
             is Screen.Diagnostics -> {
                 DiagnosticsScreen(
                     onBack = { navigateBack() }
+                )
+            }
+
+            is Screen.WhatsNew -> {
+                LaunchedEffect(Unit) {
+                    viewModel.markWhatsNewSeen()
+                }
+                WhatsNewScreen(
+                    isShowWhatsNewOnUpdateEnabled = isShowWhatsNewOnUpdateEnabled,
+                    onToggleShowWhatsNewOnUpdate = { viewModel.toggleShowWhatsNewOnUpdate(it) },
+                    onDismiss = { navigateBack() }
                 )
             }
         }

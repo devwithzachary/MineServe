@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Refresh
@@ -93,6 +94,9 @@ fun AppSettingsScreen(
     onSignOutCloud: () -> Unit = {},
     onOpenCloudPage: (() -> Unit)? = null,
     onOpenDiagnostics: (() -> Unit)? = null,
+    isShowWhatsNewOnUpdateEnabled: Boolean = true,
+    onToggleShowWhatsNewOnUpdate: (Boolean) -> Unit = {},
+    onOpenWhatsNew: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onAboutClick: (() -> Unit)? = null
 ) {
@@ -480,6 +484,60 @@ fun AppSettingsScreen(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Show What's New After Updates",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Automatically open the What's New feature guide when launching a new major (1.x) update.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Slate400
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Switch(
+                                checked = isShowWhatsNewOnUpdateEnabled,
+                                onCheckedChange = onToggleShowWhatsNewOnUpdate,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = EmeraldPrimary,
+                                    checkedTrackColor = Slate800,
+                                    checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f)
+                                )
+                            )
+                        }
+
+                        if (onOpenWhatsNew != null) {
+                            OutlinedButton(
+                                onClick = onOpenWhatsNew,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.AutoAwesome,
+                                    contentDescription = null,
+                                    tint = EmeraldLight,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Review What's New in ${com.devwithzachary.mineserve.ui.screens.whatsnew.CURRENT_WHATS_NEW_RELEASE.displayVersion}",
+                                    color = EmeraldLight,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(color = ObsidianCardBorder)
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,

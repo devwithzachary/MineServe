@@ -33,6 +33,7 @@ All notable changes to the MineServe project will be documented in this file.
 - **Quick Settings Start/Stop Tile (`MineServeTileService`)**: Added an Android Quick Settings tile in the notification shade to view the primary server's live state and start or stop it with a single tap.
 - **Home Screen Server Widget (`MineServeWidgetProvider`)**: Added a resizable home screen widget displaying the primary server's name, type/port, running status, a 1-tap Start/Stop button, and tap-to-open-app navigation.
 - **Battery & Thermal Safeguards (`SafeguardPreferences`)**: Added configurable **Low Battery Auto-Stop** (10%, 15%, or 20% while unplugged) and **Thermal Auto-Stop** (42°C, 45°C, or 48°C) options in **App Settings**, monitored by `MineServeForegroundService` with alert notifications when triggered.
+- **"What's New" Release Feature Guide (`WhatsNewScreen` & `WhatsNewData`)**: Added a first-launch "What's New" screen for major (`1.x`) updates presenting new features in friendly, non-technical language with step-by-step instructions on where to find them in the app, complete with a bottom option to disable automatic display on future updates and settings controls in **App Settings -> App Updates & Releases** to toggle auto-display or re-open the current version's guide at any time.
 
 ## [1.6.1] - 2026-11-16
 
