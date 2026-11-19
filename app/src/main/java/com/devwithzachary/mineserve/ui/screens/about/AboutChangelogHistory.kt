@@ -38,7 +38,7 @@ data class ReleaseChangelog(
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
         version = "v1.7.0",
-        date = "Unreleased",
+        date = "November 19, 2026",
         initialExpanded = true,
         highlights = listOf(
             "MineServe Cloud Account Linking: Link your optional MineServe Cloud account in App Settings via browser magic link to view your plan, backup quota, and custom server addresses.",
@@ -52,7 +52,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
             "What's New Feature Guide: Added a friendly What's New screen on first launch of major (1.x) updates with step-by-step guides on where to find new features, plus controls in App Settings to review it anytime or disable future update prompts.",
             "Web Remote Admin v1.7.0 Parity: Manage MineServe Cloud tunnels and R2 snapshots, configure Battery & Thermal Safeguards, capture redacted logcat, and run network self-tests directly from the Web UI.",
             "World Pre-Generation & Region Inspector: Pre-generate chunks around spawn via Chunky or native /forceload stepping and inspect or delete bloated .mca region files in both the app and Web UI.",
-            "Core Module Architecture Prep: Extracted shared models, API clients, UPnP/NAT-PMP networking, WebDAV sync, and chunk optimizer into a platform-agnostic :core module."
+            "Performance & Architecture: Added full-width responsive terminal line reflow across the phone and Web UI consoles and extracted shared core networking and engine models into a dedicated :core module."
         )
     ),
     ReleaseChangelog(

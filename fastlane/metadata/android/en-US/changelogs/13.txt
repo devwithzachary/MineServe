@@ -1,4 +1,4 @@
-- MineServe Cloud: optional R2 backups, custom *.play.mineserve.app tunnels & Web UI parity
+- MineServe Cloud: optional R2 backups, custom *.play.mineserve.app & *.playms.uk tunnels & Web UI parity
 - World Pre-Gen & Region Inspector: pre-generate chunks & inspect/delete .mca region files
 - Home Screen Widget, Quick Settings Tile & Safeguards: 1-tap control & battery/thermal auto-stop
-- Diagnostics, Resumable Setup & Core Prep: logcat bundles, local import & shared :core module
+- Diagnostics, Resumable Setup & What's New Guide: logcat bundles, local file import & interactive feature guide

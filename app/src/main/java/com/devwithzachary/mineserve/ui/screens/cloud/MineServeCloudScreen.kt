@@ -340,7 +340,7 @@ fun MineServeCloudScreen(
                     features = listOf(
                         "Up to 3 custom addresses",
                         "Short *.playms.uk addresses (e.g. smp.playms.uk)",
-                        "50 GB encrypted R2 backups & 30-day history",
+                        "50 GB encrypted Cloudflare R2 backups",
                         "Custom domain CNAME / SRV support"
                     )
                 )

@@ -55,11 +55,16 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
 * **🌐 Universal Router Port Forwarding (UPnP & NAT-PMP)**:
   * **Automatic Router Port Forwarding**: Zero-config UPnP (SSDP/SOAP) and RFC 6886 NAT-PMP client for automatic router port mapping. Friends can connect directly to your residential public WAN IP without third-party tunnel proxies.
   * **Dynamic WAN Connection Card**: Server Settings and status cards display mapped public WAN IP and port with live mapping health, local IP mapping, and a 1-tap copy button for direct server invites.
-* **🌐 Zero-Port-Forwarding Public Tunneling**:
+* **🌐 Zero-Port-Forwarding Public Tunneling & Optional MineServe Cloud**:
   * **High-Speed Native Android Tunnels**: Both **bore (`bore.pub`)** and **Playit.gg** agents run directly as native Android binaries outside PRoot virtualization, eliminating ptrace emulation overhead to reduce network latency by 30+ ms.
-  * **Dual Tunnel Providers**: Instant free TCP tunneling with **bore (`bore.pub`)** or persistent vanity subdomains (`*.ply.gg`, `*.joinmc.link`) with **Playit.gg**.
+  * **Dual Free Tunnel Providers**: Instant free TCP tunneling with **bore (`bore.pub`)** or persistent vanity subdomains (`*.ply.gg`, `*.joinmc.link`) with **Playit.gg**.
+  * **Optional MineServe Cloud (`*.play.mineserve.app` & `*.playms.uk`)**: Optional add-on subscription for custom `*.play.mineserve.app` (and Pro `*.playms.uk`) addresses across regional relays (`US East`, `EU West`, `EU Central`, `Asia Pacific`), remote Web Admin panel access (`*.panel.mineserve.app`), and encrypted Cloudflare R2 cloud backups.
   * **Play Anywhere**: Host servers over mobile cellular data (4G/5G) or restrictive home Wi-Fi behind CGNAT without configuring router port forwarding.
   * **1-Tap Browser Claiming**: Interactive claim banners and direct Playit Secret key support with automatic reconnection.
+* **📱 Android Widgets, Quick Settings Tile & Device Safeguards**:
+  * **Home Screen Widget & Quick Settings Tile**: Monitor your primary server's status and start or stop it with a single tap from your Android home screen or Quick Settings notification shade.
+  * **Battery & Thermal Auto-Stop Safeguards**: Automatically save and stop running servers if battery drops below 10%, 15%, or 20% while unplugged or if device temperature reaches 42°C, 45°C, or 48°C.
+  * **Background-Safe Resumable Downloads & Local Import**: Initial Ubuntu rootfs and server JAR downloads run via foreground service, resume interrupted downloads via HTTP `Range`, and support importing local `.tar.gz`, `.jar`, or `.zip` files.
 * **📱 Dynamic QR Code & Cross-Play Deep-Link Sharing**:
   * Dynamic QR codes for both Public Online Link (Tunnel) and Local Wi-Fi (LAN) connections.
   * 1-tap Bedrock `minecraft://?addExternalServer=` deep links so friends can tap or scan to open Bedrock and import the server instantly.
@@ -77,18 +82,21 @@ Powered by a native **PRoot** virtualization engine, a JNI-backed **PTY pseudo-t
 * **👥 Visual Player & Whitelist Management**:
   * Full file-backed management tables for Whitelisted Players, Server Operators, Banned Players, and Banned IPs with 3D Minotar skin avatars.
   * Dedicated full-screen player administration page for real-time kicking, banning, teleportation, gamemode switching, and item granting.
-* **🌍 Advanced World Management & Chunk Storage Optimizer**:
+* **🌍 Advanced World Management, Chunk Pre-Generator & Storage Optimizer**:
   * **World Importer**: Direct `.zip` and `.mcworld` import from device storage or Google Drive with automated format detection, Java Anvil verification, and pre-import safety backups.
   * **World Archive Exporter**: Export complete world saves (Overworld, Nether, End) with Save to Storage and Android Share Sheet support.
+  * **Chunk Pre-Generator**: Pre-generate chunks around spawn (`250m` to `2000m` radius) across Overworld, Nether, or End using Chunky or native `/forceload` stepping with live progress.
+  * **Visual `.mca` Region File Inspector**: Inspect individual Anvil `.mca` region files sorted by storage size and chunk count (`X/1024`), and safely delete bloated regions while stopped.
   * **1-Tap Nether & End Dimension Reset**: Wipe and regenerate `world_nether` or `world_the_end` (`DIM-1` / `DIM1`) without affecting Overworld builds.
   * **Chunk Pruning & Storage Optimizer**: Pure Kotlin Anvil (`.mca`) region analyzer that deletes uninhabited chunks (`InhabitedTime == 0`) and purges empty region files to reclaim storage space.
 * **📁 In-App File Explorer & Monospace Code Editor**:
   * Full interactive directory navigation for `/servers/{serverId}/` with search, upload, create, delete, rename, and duplicate operations.
   * **In-App Zip Extraction & Batch Import**: Unpack `.zip` archives directly within the file explorer into the active directory or a custom subfolder with optional automatic archive deletion. Import multiple plugins, mods, or config files simultaneously with multi-file selection.
   * Syntax-highlighted code editor for `.yml`, `.json`, `.properties`, `.toml`, and `.txt` files with line numbering, search and replace with match counters, and cursor position tracking.
-* **🩺 Automated Crash Log Analyzer & Quick Fix Diagnostics**:
+* **🩺 Automated Crash Log Analyzer, Network Self-Test & Diagnostics**:
   * Automatically parses `crash-reports/` and `logs/latest.log` upon failure to diagnose root causes (Java version mismatch, Out of Memory / OOM, mod ID conflicts, port conflicts, unaccepted EULA).
   * Interactive diagnostic sheet providing 1-tap quick fixes to accept the EULA, switch Java runtimes, allocate RAM, or assign open ports.
+  * **In-App Logcat & Network Self-Test**: Capture redacted app/engine logs (automatically scrubbing tokens, webhooks, secrets, and public IPs), run 1-tap LAN/DNS/tunnel/UPnP connectivity self-tests, and export `.zip` diagnostic support bundles.
 * **🔄 Upstream Build Updates & In-Place Minecraft Version Upgrades**:
   * 1-tap checking and updating for PaperMC and Purpur upstream server builds while preserving worlds and configs.
   * In-place Minecraft version upgrades from Server Settings with automated pre-upgrade safety backups, automatic Java runtime requirement alignment, and automated live web map upgrades.

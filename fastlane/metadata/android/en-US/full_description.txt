@@ -1,37 +1,41 @@
 MineServe is a free and open-source Android application designed to download, configure, run, and manage full-featured dedicated Minecraft servers natively on Android devices without requiring root permissions.
 
-Powered by a native PRoot virtualization engine, a JNI-backed PTY pseudo-terminal, multi-version OpenJDK runtime isolation (Java 8, 17, 21, 25), live telemetry monitoring, and a modern Jetpack Compose Material 3 interface, MineServe turns your phone or tablet into a portable, high-performance dedicated Minecraft server.
+Powered by a native PRoot virtualization engine, a JNI-backed PTY pseudo-terminal, multi-version OpenJDK runtime isolation (Java 8, 17, 21, 25), live telemetry monitoring, a built-in Web Remote Admin panel, and a modern Jetpack Compose Material 3 interface, MineServe turns your phone or tablet into a portable, high-performance dedicated Minecraft server.
 
 Key Features:
 
-• 100% Rootless Operation: Executes entirely in Android user-space using PRoot ptrace system call interception. No root access, Magisk, or bootloader unlocking required.
+• 100% Rootless Operation: Executes entirely in Android user-space using PRoot system call translation. No root access, Magisk, or bootloader unlocking required.
 
-• Comprehensive Server Engine Support:
-  - PaperMC: High-performance, stable Minecraft server software with plugin support.
+• Comprehensive Server & Proxy Engine Support:
+  - PaperMC: High-performance Minecraft server software with Bukkit/Spigot/Paper plugin support.
   - PurpurMC: Drop-in Paper replacement with extensive gameplay configurability.
-  - Folia: Cutting-edge multithreading server software for high player concurrency.
+  - Folia: Regionized multithreading server software for high player concurrency.
   - FabricMC: Lightweight, modular modding framework and server platform.
-  - NeoForged: Modern community-driven modding API and server platform.
-  - Forge: Traditional modding API for classic mods.
-  - Vanilla: Official standalone Mojang server software.
-  - Bedrock Cross-Play: Bedrock Edition players can connect via PaperMC servers configured with the GeyserMC plugin.
+  - NeoForge & Minecraft Forge: Full modding platforms for modern and classic modpacks (1.1 to 1.21+).
+  - Mojang Vanilla: Official standalone Java Edition server software (1.0 to 1.21+).
+  - Bedrock Cross-Play (Geyser + Floodgate): Let Bedrock players connect to your Java server.
+  - Bedrock Dedicated Server (Beta): Official Mojang Bedrock server (native on x86_64, qemu-user on ARM64).
+  - Velocity & BungeeCord Proxies: Link multiple backend servers into a unified network.
 
-• Multi-Version Isolated Java Environments: Automatically downloads and manages isolated OpenJDK runtimes (Java 8, Java 17, Java 21, and Java 25) to run any Minecraft version.
+• Multi-Version Isolated Java Environments: Automatically downloads and manages isolated OpenJDK runtimes (Java 8, 17, 21, and 25) with resumable background downloads and local .jar / .tar.gz file import.
 
-• Interactive Live PTY Console: Full-featured terminal console supporting interactive commands, ANSI color rendering, auto-scrolling, command history, and instant server management.
+• Built-In Web Remote Admin Panel: Manage console, files, players, backups, plugins/mods, world tools, live Squaremap, and telemetry from any desktop or tablet browser over Wi-Fi or public tunnels.
 
-• Zero-Port-Forwarding Public Tunneling: Share your server with friends across the Internet without configuring router ports using built-in high-speed native tunneling tools:
-  - bore (libbore): Fast, lightweight open-source TCP tunnel for instant public access.
-  - Playit.gg: Global tunnel network with custom domains and QR code connection sharing.
+• Zero-Config Multiplayer Networking:
+  - UPnP & NAT-PMP: Automatic router port forwarding for direct WAN IP connections.
+  - bore (libbore) & Playit.gg: High-speed native Android tunnel agents requiring zero router configuration.
+  - MineServe Cloud (Optional): Optional add-on for custom *.play.mineserve.app (and Pro *.playms.uk) addresses, remote Web Admin relays, and encrypted Cloudflare R2 backups.
 
-• Automated World & Server Backups: One-click snapshots and full archive backups to safeguard world progress.
+• Advanced World & Backup Tools: Import/export .zip and .mcworld saves, pre-generate spawn chunks, inspect .mca region files, prune uninhabited chunks, reset Nether/End dimensions, and sync backups to local storage, Nextcloud/WebDAV, Android SAF folders, or optional MineServe Cloud R2.
 
-• Built-in Mod & Plugin Management: Browse, search, download, and manage plugins and mods directly from Modrinth within the app.
+• Modrinth Browser & .mrpack Modpacks: Search and install plugins and mods from Modrinth, import .mrpack modpacks with dependency resolution, or upload custom .jar files.
+
+• Smart Automation & Device Safeguards: Idle auto-shutdown, auto-wake on player ping (Java TCP & Bedrock RakNet), cron-scheduled tasks, low-battery and thermal auto-stop safeguards, Discord webhooks, and an Android Home Screen widget & Quick Settings tile.
 
 Network Access & External Downloads:
-To run dedicated Minecraft servers natively on Android, MineServe connects to external services to download required components:
-• Server Software: Downloads official Mojang server manifests and JARs, as well as server distributions from PaperMC, Purpur, Fabric, Forge, and NeoForge APIs.
-• Container Environment: Downloads a minimal Ubuntu root filesystem (rootfs) and isolated OpenJDK runtimes (Java 8, 17, 21, 25) required for execution under PRoot.
-• Tunnel Agents: Uses bundled native binaries on 64-bit devices, or downloads the official playit agent binary on 32-bit ARM (armeabi-v7a) architectures.
-• Community Content: Connects to Modrinth REST APIs to search and install plugins and mods.
-• Application Updates: Optional version checks against GitHub Releases API (disabled by default; can be enabled in App Settings).
+To run dedicated Minecraft servers on Android, MineServe connects to external services:
+• Server Software: Downloads official Mojang server manifests and binaries, plus distributions from PaperMC, Purpur, Fabric, Forge, NeoForge, and BungeeCord APIs.
+• Container Environment: Downloads a minimal Ubuntu rootfs and OpenJDK runtimes (Java 8, 17, 21, 25).
+• Tunnel & Cloud Services: Connects to bore.pub, Playit.gg, or optional MineServe Cloud (api.mineserve.app and Cloudflare R2) when enabled by the user.
+• Community Content: Connects to Modrinth REST APIs for plugins, mods, and modpacks, and Minotar for player avatars.
+• Application Updates: Optional version checks against GitHub Releases API (disabled by default; configurable in App Settings).

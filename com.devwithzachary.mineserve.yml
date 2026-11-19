@@ -20,9 +20,9 @@ Binaries:
   https://github.com/devwithzachary/MineServe/releases/download/%v/MineServe-%v-release.apk
 
 Builds:
-  - versionName: 1.6.1
-    versionCode: 12
-    commit: 66adbe4844cb11991d9e28ec505b49f5a265bf7c
+  - versionName: 1.7.0
+    versionCode: 13
+    commit: 1.7.0
     subdir: app
     submodules: true
     sudo:
@@ -43,5 +43,5 @@ AllowedAPKSigningKeys: c532d763fd4ec838fa118005d9eb51ec13ce72167d2b0a1a8452ce36f
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.6.1
-CurrentVersionCode: 12
+CurrentVersion: 1.7.0
+CurrentVersionCode: 13

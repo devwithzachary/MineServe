@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.7.0] - Unreleased
+## [1.7.0] - 2026-11-19
 
 ### ☁️ MineServe Cloud Integration (Optional)
 - **Cloud Account Linking (`mineserve://auth`)**: Added `MineServeCloudManager`, deep-link authentication handling in `MainActivity`, and a **MineServe Cloud** card in **App Settings** to sign in via `cloud.mineserve.app`, view your active tier, storage quota, and custom server addresses, or sign out.

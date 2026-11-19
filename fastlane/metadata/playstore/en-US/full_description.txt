@@ -1,0 +1,68 @@
+Host dedicated, high-performance Minecraft servers directly on your Android phone or tablet! MineServe brings desktop-grade server software to mobile with zero root permissions required.
+
+Whether you want to play survival with friends over Wi-Fi, host a custom modpack on the go, or run a 24/7 community server with plugins and web administration, MineServe gives you complete control in your pocket.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ WHY CHOOSE MINESERVE?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔒 100% ROOTLESS SANDBOX
+Runs entirely in Android user space using native PRoot virtualization. No root access, Magisk, or unlocked bootloaders required. Resumable background downloads and local .jar / .tar.gz imports make setup effortless.
+
+🎮 11 SUPPORTED SERVER & PROXY ENGINES
+Choose the right software for your world with 1-tap automated installation:
+• PaperMC: High-performance, low-latency engine with rich plugin support
+• PurpurMC: Feature-packed Paper drop-in with extensive customization
+• Folia: Regionized multithreading server software by PaperMC
+• Fabric: Lightweight, modern modular modding toolchain
+• Minecraft Forge: Classic and modern modding platform (1.1 to 1.20+)
+• NeoForge: Community-driven modding platform for modern modpacks
+• Vanilla: Official standalone Java server software from Mojang (1.0 to 1.21+)
+• Bedrock Cross-Play (Geyser + Floodgate): Let friends on iOS, Android, Xbox, PlayStation, and Switch join your Java server!
+• Bedrock Dedicated Server (Beta): Official Mojang native Bedrock server
+• Velocity & BungeeCord Proxies: Link multiple servers into one network
+
+☕ MULTI-VERSION OPENJDK ISOLATION
+MineServe manages isolated Java runtimes to run any Minecraft release:
+• OpenJDK 25 & 21 (Minecraft 1.20.5+ & modern releases)
+• OpenJDK 17 (Minecraft 1.17 - 1.20.4)
+• OpenJDK 8 (Legacy 1.16.5 down to 1.0)
+
+🖥️ DESKTOP & TABLET WEB REMOTE ADMIN
+Manage your servers from any computer or tablet browser! View live console logs, edit config files, manage players, install plugins/mods, view rolling CPU/RAM/TPS charts, and control backups over Wi-Fi or public tunnels.
+
+🌐 ZERO-CONFIG MULTIPLAYER & OPTIONAL CLOUD
+• Automatic UPnP & NAT-PMP router port forwarding for direct WAN play
+• Built-in high-speed native bore.pub and Playit.gg public tunnels (works over 4G/5G and CGNAT without port forwarding)
+• Optional MineServe Cloud add-on for custom *.play.mineserve.app (and *.playms.uk) addresses, remote Web Admin access, and encrypted Cloudflare R2 cloud backups
+
+🧩 MODRINTH BROWSER & .MRPACK MODPACKS
+Search thousands of plugins and mods from Modrinth with 1-tap install, import full Modrinth .mrpack modpacks with automatic dependency setup, or import custom .jar files from device storage.
+
+🌍 ADVANCED WORLD, MAP & BACKUP TOOLS
+• Import/export .zip and .mcworld saves and reset Nether or End dimensions
+• Pre-generate spawn chunks, inspect .mca region files, and prune uninhabited chunks to save storage
+• Built-in 2D Squaremap live web map viewer
+• 1-tap local zip backups with automated cloud sync to Nextcloud, WebDAV, Google Drive (SAF), or MineServe Cloud
+
+💤 SMART AUTOMATION, WIDGETS & SAFEGUARDS
+• Smart Idle Auto-Shutdown and Auto-Wake on player ping
+• Cron-scheduled backups, restarts, and broadcasts
+• Low-Battery and Thermal Auto-Stop safeguards to protect your phone
+• Android Home Screen Widget and Quick Settings Tile for 1-tap control
+• Native Discord webhook notifications and Crash Log Analyzer
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌐 COMMUNITY & OPEN SOURCE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MineServe is 100% free, ad-free, open-source software licensed under the GNU General Public License v3.0 (GPL-3.0).
+
+• Website: https://mineserve.app
+• Discord Community: https://discord.gg/QdT9yCrKmV
+• Source Code: https://github.com/devwithzachary/MineServe
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ DISCLAIMER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
+Minecraft is a trademark of Mojang Synergies AB.
