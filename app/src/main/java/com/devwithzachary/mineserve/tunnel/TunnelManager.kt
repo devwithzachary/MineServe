@@ -232,6 +232,11 @@ class TunnelManager private constructor(
         }
         activeBoreClients.clear()
 
+        for ((_, client) in activePanelBoreClients) {
+            client.stop()
+        }
+        activePanelBoreClients.clear()
+
         for ((_, client) in activePlayitClients) {
             client.stop()
         }

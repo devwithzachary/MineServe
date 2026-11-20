@@ -210,7 +210,12 @@ class WebAdminServer(
 
             // Public Endpoint: Login
             if (path == "/api/login" && method == "POST") {
-                handleLogin(out, clientIp, body)
+                val effectiveIp = if (clientIp == "127.0.0.1" || clientIp == "::1") {
+                    headers["x-forwarded-for"]?.substringBefore(",")?.trim()?.takeIf { it.isNotBlank() } ?: clientIp
+                } else {
+                    clientIp
+                }
+                handleLogin(out, effectiveIp, body)
                 return
             }
 

@@ -10,12 +10,15 @@ android {
     namespace = "com.devwithzachary.mineserve"
     compileSdk = 36
     ndkVersion = "28.2.13676358"
+    val isPlayStoreBuild = (project.findProperty("playStoreBuild") as? String)?.toBoolean() ?: false
+
     defaultConfig {
         applicationId = "com.devwithzachary.mineserve"
         minSdk = 23
         targetSdk = 36
         versionCode = 13
         versionName = "1.7.0"
+        buildConfigField("boolean", "IS_PLAY_STORE", isPlayStoreBuild.toString())
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")

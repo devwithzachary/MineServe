@@ -751,35 +751,50 @@ private fun MineServeCloudCard(
 
             if (!cloudState.isLinked) {
                 Text(
-                    text = "Optional cloud account for custom *.play.mineserve.app addresses, remote Web Admin access, and encrypted off-device backups.",
+                    text = if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
+                        "Sign in with an existing MineServe Cloud account to sync custom *.play.mineserve.app addresses, remote Web Admin access, and encrypted off-device backups."
+                    } else {
+                        "Optional cloud account for custom *.play.mineserve.app addresses, remote Web Admin access, and encrypted off-device backups."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = Slate400
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    if (onOpenCloudPage != null) {
-                        OutlinedButton(
-                            onClick = onOpenCloudPage,
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, ObsidianCardBorder),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Plans & Details", color = EmeraldLight)
-                        }
-                    }
+                if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
                     Button(
-                        onClick = onOpenCloudPortal,
+                        onClick = { onOpenCloudPage?.invoke() },
                         colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
                         shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            tint = Color.Black,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Link Account", color = Color.Black, fontWeight = FontWeight.Bold)
+                        Text("Sign In", color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+                } else {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        if (onOpenCloudPage != null) {
+                            OutlinedButton(
+                                onClick = onOpenCloudPage,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, ObsidianCardBorder),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Plans & Details", color = EmeraldLight)
+                            }
+                        }
+                        Button(
+                            onClick = onOpenCloudPortal,
+                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Link Account", color = Color.Black, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             } else {
@@ -817,20 +832,33 @@ private fun MineServeCloudCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = onOpenCloudPortal,
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            tint = EmeraldLight,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Open Portal", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
+                        if (onOpenCloudPage != null) {
+                            OutlinedButton(
+                                onClick = onOpenCloudPage,
+                                shape = RoundedCornerShape(8.dp),
+                                border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Account Details", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                            }
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = onOpenCloudPortal,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                contentDescription = null,
+                                tint = EmeraldLight,
+                                modifier = Modifier.size(15.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open Portal", color = EmeraldLight, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                        }
                     }
 
                     OutlinedButton(

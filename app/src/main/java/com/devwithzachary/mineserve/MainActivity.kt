@@ -344,11 +344,15 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onRestoreCloudBackup = { item, onResult -> viewModel.restoreCloudBackup(server.id, item, onResult) },
                         onDeleteCloudBackup = { item, onResult -> viewModel.deleteCloudBackup(server.id, item.backupId, onResult) },
                         onOpenCloudPortal = {
-                            val intent = android.content.Intent(
-                                android.content.Intent.ACTION_VIEW,
-                                android.net.Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
-                            )
-                            context.startActivity(intent)
+                            if (BuildConfig.IS_PLAY_STORE) {
+                                navigateTo(Screen.Cloud)
+                            } else {
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
+                                )
+                                context.startActivity(intent)
+                            }
                         },
                         onRefreshCloudAccount = { viewModel.refreshCloudAccount() },
                         onTogglePlugin = { p -> viewModel.togglePlugin(server.id, p) },
@@ -448,12 +452,16 @@ fun MineServeApp(viewModel: MainViewModel) {
                     onRemoteAdminClick = { navigateTo(Screen.RemoteAdmin) },
                     cloudState = cloudState,
                     onOpenCloudPortal = {
-                        runCatching {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
-                            )
-                            context.startActivity(intent)
+                        if (BuildConfig.IS_PLAY_STORE) {
+                            navigateTo(Screen.Cloud)
+                        } else {
+                            runCatching {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
+                                )
+                                context.startActivity(intent)
+                            }
                         }
                     },
                     onRefreshCloud = { viewModel.refreshCloudAccount() },
@@ -495,16 +503,20 @@ fun MineServeApp(viewModel: MainViewModel) {
                     cloudState = cloudState,
                     onBack = { navigateBack() },
                     onOpenCloudPortal = {
-                        runCatching {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
-                            )
-                            context.startActivity(intent)
+                        if (!BuildConfig.IS_PLAY_STORE) {
+                            runCatching {
+                                val intent = Intent(
+                                    Intent.ACTION_VIEW,
+                                    Uri.parse(com.devwithzachary.mineserve.cloud.MineServeCloudManager.portalBaseUrl)
+                                )
+                                context.startActivity(intent)
+                            }
                         }
                     },
                     onRefreshCloud = { viewModel.refreshCloudAccount() },
-                    onSignOutCloud = { viewModel.signOutCloudAccount() }
+                    onSignOutCloud = { viewModel.signOutCloudAccount() },
+                    onRequestCloudOtp = { email, onResult -> viewModel.requestCloudOtp(email, onResult) },
+                    onVerifyCloudOtp = { email, code, onResult -> viewModel.verifyCloudOtp(email, code, onResult) }
                 )
             }
 

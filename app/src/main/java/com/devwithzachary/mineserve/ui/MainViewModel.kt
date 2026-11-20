@@ -369,6 +369,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         cloudManager.signOut()
     }
 
+    fun requestCloudOtp(email: String, onResult: (Result<Unit>) -> Unit) {
+        viewModelScope.launch {
+            val result = cloudManager.requestEmailOtp(email)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
+        }
+    }
+
+    fun verifyCloudOtp(email: String, code: String, onResult: (Result<com.devwithzachary.mineserve.cloud.CloudAccountProfile>) -> Unit) {
+        viewModelScope.launch {
+            val result = cloudManager.verifyEmailOtp(email, code)
+            withContext(Dispatchers.Main) {
+                onResult(result)
+            }
+        }
+    }
+
     fun deleteServer(serverId: String, onDeleted: () -> Unit = {}) {
         viewModelScope.launch {
             processManager.forceStopAndCleanup(serverId)

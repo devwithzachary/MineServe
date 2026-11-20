@@ -112,6 +112,17 @@ private data class DeviceLinkResponse(
 )
 
 @Serializable
+private data class OtpRequestPayload(
+    val email: String
+)
+
+@Serializable
+private data class OtpVerifyPayload(
+    val email: String,
+    val code: String
+)
+
+@Serializable
 data class CloudTunnelAllocation(
     val tunnelId: String = "",
     val hostname: String = "",
@@ -220,6 +231,82 @@ class MineServeCloudManager(context: Context) {
         }.getOrDefault(false)
 
         if (linked) true else refreshProfile()
+    }
+
+    suspend fun requestEmailOtp(email: String): Result<Unit> = withContext(Dispatchers.IO) {
+        val normalized = email.trim().lowercase()
+        if (normalized.isBlank() || !normalized.contains("@")) {
+            return@withContext Result.failure(IllegalArgumentException("Please enter a valid email address."))
+        }
+        try {
+            val reqJson = json.encodeToString(OtpRequestPayload(email = normalized))
+            val req = MineServeHttpClient.newRequestBuilder("$apiBaseUrl/v1/auth/otp/request")
+                .post(reqJson.toRequestBody(jsonMediaType))
+                .build()
+            MineServeHttpClient.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    val err = parseErrorMessage(resp.body?.string().orEmpty(), resp.code)
+                    return@withContext Result.failure(IllegalStateException(err))
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to request MineServe Cloud OTP", e)
+            Result.failure(IllegalStateException("Unable to reach MineServe Cloud. Please check your connection."))
+        }
+    }
+
+    suspend fun verifyEmailOtp(email: String, code: String): Result<CloudAccountProfile> = withContext(Dispatchers.IO) {
+        val normalizedEmail = email.trim().lowercase()
+        val normalizedCode = code.filter { it.isDigit() }
+        if (normalizedCode.length != 6) {
+            return@withContext Result.failure(IllegalArgumentException("Enter the 6-digit verification code from your email."))
+        }
+        try {
+            val reqJson = json.encodeToString(OtpVerifyPayload(email = normalizedEmail, code = normalizedCode))
+            val req = MineServeHttpClient.newRequestBuilder("$apiBaseUrl/v1/auth/otp/verify")
+                .post(reqJson.toRequestBody(jsonMediaType))
+                .build()
+            val authRes = MineServeHttpClient.newCall(req).execute().use { resp ->
+                val body = resp.body?.string().orEmpty()
+                if (!resp.isSuccessful) {
+                    val err = parseErrorMessage(body, resp.code)
+                    return@withContext Result.failure(IllegalStateException(err))
+                }
+                json.decodeFromString<DeviceLinkResponse>(body)
+            }
+
+            // Exchange temporary session JWT for a dedicated per-device token
+            val finalRes = runCatching {
+                val linkReqJson = json.encodeToString(DeviceLinkRequest(deviceName = formatDeviceName()))
+                val linkReq = MineServeHttpClient.newRequestBuilder("$apiBaseUrl/v1/devices/link")
+                    .header("Authorization", "Bearer ${authRes.token}")
+                    .post(linkReqJson.toRequestBody(jsonMediaType))
+                    .build()
+                MineServeHttpClient.newCall(linkReq).execute().use { linkResp ->
+                    if (linkResp.isSuccessful) {
+                        json.decodeFromString<DeviceLinkResponse>(linkResp.body?.string().orEmpty())
+                    } else {
+                        authRes
+                    }
+                }
+            }.getOrDefault(authRes)
+
+            prefs.edit()
+                .putString(KEY_AUTH_TOKEN, finalRes.token)
+                .putString(KEY_CACHED_PROFILE, json.encodeToString(finalRes.user))
+                .apply()
+            _state.value = CloudAccountState(
+                isLinked = true,
+                isLoading = false,
+                profile = finalRes.user,
+                errorMessage = null
+            )
+            Result.success(finalRes.user)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to verify MineServe Cloud OTP", e)
+            Result.failure(IllegalStateException("Unable to verify code. Please check your connection and try again."))
+        }
     }
 
     private fun formatDeviceName(): String {

@@ -155,8 +155,9 @@ docker run --rm \
             --max-workers=2 \
             -Dorg.gradle.jvmargs="-Xmx4096m -Dfile.encoding=UTF-8"
 
-        echo "📦 Compiling Play Store App Bundle (AAB) with Gradle..."
+        echo "📦 Compiling Play Store App Bundle (AAB) with Gradle (IS_PLAY_STORE=true)..."
         ./gradlew bundleRelease \
+            -PplayStoreBuild=true \
             --no-daemon \
             --no-configuration-cache \
             --max-workers=2 \

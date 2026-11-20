@@ -209,8 +209,8 @@ fun DashboardScreen(
                 )
             }
 
-            // Dismissible one-time MineServe Cloud discovery card (shown only when not linked & not dismissed)
-            if (onCloudClick != null && !isCloudLinked && !cloudIntroDismissed) {
+            // Dismissible one-time MineServe Cloud discovery card (shown only on non-Play Store builds when not linked & not dismissed)
+            if (!com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE && onCloudClick != null && !isCloudLinked && !cloudIntroDismissed) {
                 item {
                     Card(
                         shape = RoundedCornerShape(14.dp),

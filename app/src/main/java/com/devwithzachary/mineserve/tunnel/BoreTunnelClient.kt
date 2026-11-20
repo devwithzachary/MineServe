@@ -75,6 +75,9 @@ class BoreTunnelClient(
         tunnelJob = null
         clientScope = null
         try {
+            controlSocket?.setSoLinger(true, 0)
+        } catch (_: Exception) {}
+        try {
             controlSocket?.close()
         } catch (_: Exception) {}
         controlSocket = null
@@ -284,7 +287,13 @@ class BoreTunnelClient(
                     break
                 }
                 Log.e(TAG, "Tunnel connection failed: ${e.message}", e)
-                onStateChanged(TunnelState.Error(e.message ?: "Tunnel connection lost"))
+                val isPortReclaim = e.message?.contains("port already in use", ignoreCase = true) == true
+                if (isPortReclaim) {
+                    retryDelayMs = 2000L
+                    onStateChanged(TunnelState.Connecting("Reclaiming relay port..."))
+                } else {
+                    onStateChanged(TunnelState.Error(e.message ?: "Tunnel connection lost"))
+                }
             } finally {
                 try {
                     socket?.close()

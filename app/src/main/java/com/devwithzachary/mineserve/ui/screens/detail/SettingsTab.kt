@@ -947,20 +947,32 @@ fun SettingsTab(
                                     shape = RoundedCornerShape(8.dp),
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("Open MineServe Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                    Text(
+                                        text = if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) "Sign In to MineServe Cloud" else "Open MineServe Cloud Portal",
+                                        color = Color.White,
+                                        fontSize = 12.sp
+                                    )
                                 }
                             } else if (tier == "FREE") {
-                                Text(
-                                    text = "Custom *.play.mineserve.app tunnels require MineServe Plus (\$2.99/mo, 1 address) or Pro (\$6.99/mo, 3 addresses).",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = GoldYellow
-                                )
-                                OutlinedButton(
-                                    onClick = onOpenCloudPortal,
-                                    shape = RoundedCornerShape(8.dp),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text("Upgrade in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
+                                    Text(
+                                        text = "Custom *.play.mineserve.app tunnels require an active MineServe Plus or Pro membership. Plan changes and purchases are not available in this app.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = GoldYellow
+                                    )
+                                } else {
+                                    Text(
+                                        text = "Custom *.play.mineserve.app tunnels require MineServe Plus (\$2.99/mo, 1 address) or Pro (\$6.99/mo, 3 addresses).",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = GoldYellow
+                                    )
+                                    OutlinedButton(
+                                        onClick = onOpenCloudPortal,
+                                        shape = RoundedCornerShape(8.dp),
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Upgrade in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                    }
                                 }
                             } else {
                                 val existingSubs = profile?.activeSubdomains.orEmpty()

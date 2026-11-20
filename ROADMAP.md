@@ -238,6 +238,20 @@ Long-term research initiatives exploring autonomous operations, clustering, bare
 
 ---
 
+## 🐛 Known Bugs & UX Polish Backlog (v1.8.0+)
+
+Tracking known bugs, rough edges, and quality-of-life fixes planned for **v1.8.0** and upcoming releases.
+
+| Target | Area | Issue & Planned Fix | Status |
+| :--- | :--- | :--- | :--- |
+| **v1.8.0** | First-Run Runtime Setup (`SplashScreen` / `RootfsManager`) | **Progress bar stalls at 98% for >95% of setup time**: Download and tarball extraction complete quickly, while the subsequent `apt-get` / OpenJDK installation inside PRoot takes the vast majority of total setup duration. Re-weight setup progress stages (e.g. Download ~10%, Extract ~15%, APT & OpenJDK install ~75%) and parse live `apt` / `dpkg` package steps so the progress bar moves smoothly and communicates real progress to users. | **Open** 📋 |
+| **v1.8.0** | Live Map & Web Remote Admin (`LiveMapManager` / `WebAdminServer`) | **Port 8080 collision between Live Map and Web Remote Admin**: If a user starts a server and enables Squaremap Live Map before setting up Web Remote Admin, Squaremap binds to port `8080` first and blocks the Web Remote Admin portal. Change Live Map's default port to `8081` (leaving `8080` reserved for Web Remote Admin by default). | **Open** 📋 |
+| **v1.8.0** | Live Map (`LiveMapTab` / `LiveMapManager`) | **Stale installed state after deleting Squaremap**: Pressing the trash icon on the Live Map tab removes the Squaremap `.jar` (and removes it from the Plugins tab), but the Live Map tab keeps showing the installed view instead of refreshing to the uninstalled state; tapping delete again then shows "failed to uninstall". Refresh/reset `LiveMapState` immediately after uninstall succeeds. | **Open** 📋 |
+| **v1.8.0** | Web Remote Admin (`WebAdminServer` / Web UI) | **Restart button only stops the server**: Clicking Restart in the Web UI stops the Minecraft server process without starting it back up. Ensure the restart endpoint awaits clean shutdown and then invokes server start. | **Open** 📋 |
+| **v1.8.0** | Web Remote Admin (`WebAdminServer` / Web UI) | **Public forwarding / tunnel status and address missing in Web UI**: The Web UI does not display whether public port forwarding / tunneling (Bore, Playit.gg, UPnP, or MineServe Cloud) is active or show the active public join URL/address. Expose live tunnel/forwarding state and public address in the Web UI header/dashboard. | **Open** 📋 |
+
+---
+
 ## 🤝 Community Feedback & Feature Requests
 
 Have a feature request or suggestion that should be on our roadmap?
