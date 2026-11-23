@@ -4,6 +4,7 @@ import com.devwithzachary.mineserve.auth.PanelUser
 import com.devwithzachary.mineserve.auth.Permission
 import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.core.CoreLog
+import com.devwithzachary.mineserve.model.MineServeAboutData
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.net.http.WebHttpUtils
@@ -73,6 +74,7 @@ internal class LinuxWebCoreHandlers(
             .put("defaultRamMb", mem.defaultRamMb)
             .put("minRamMb", 512)
             .put("ramStepMb", 256)
+            .put("version", MineServeAboutData.APP_VERSION)
             .put("isPlayStore", false)
         sendJson(out, 200, "OK", resp)
     }

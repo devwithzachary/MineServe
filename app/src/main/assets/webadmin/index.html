@@ -60,7 +60,8 @@
         <button id="open-cloud-modal-btn" class="btn btn-primary btn-sm btn-full hidden" style="margin-bottom:6px;">MineServe Cloud</button>
         <button id="open-users-modal-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Users &amp; Sessions</button>
         <button id="open-audit-view-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Audit Log</button>
-        <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">Host Tools</button>
+        <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">App Settings</button>
+        <button id="open-about-modal-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">About &amp; Credits</button>
         <button id="open-password-modal-btn" class="btn btn-ghost btn-sm btn-full" style="margin-bottom:6px;">Change Password</button>
         <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
       </div>
@@ -923,11 +924,11 @@
     </div>
   </div>
 
-  <!-- Host Tools Modal -->
+  <!-- App Settings & Host Tools Modal -->
   <div id="host-tools-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:760px;">
+    <div class="modal-card" style="max-width:780px;">
       <div class="modal-header">
-        <h3>Host Tools (Java, Safeguards &amp; Diagnostics)</h3>
+        <h3>App Settings, Java Runtimes &amp; Diagnostics</h3>
         <button id="close-host-tools-modal" class="btn-icon">✕</button>
       </div>
       <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
@@ -941,6 +942,20 @@
         </div>
 
         <div class="panel-card">
+          <div class="files-toolbar">
+            <div>
+              <h3 style="margin:0;">App Updates &amp; Releases</h3>
+              <div id="web-update-status" class="player-sub" style="margin-top:4px;">Check GitHub Releases for new MineServe versions.</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button type="button" id="web-update-check-btn" class="btn btn-primary btn-sm">Check for Updates</button>
+              <a id="web-update-link-btn" href="https://github.com/devwithzachary/MineServe/releases" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">GitHub Releases ↗</a>
+            </div>
+          </div>
+          <pre id="web-update-notes" class="console-output hidden" style="max-height:140px;margin-top:8px;font-size:11px;white-space:pre-wrap;"></pre>
+        </div>
+
+        <div id="safeguards-card" class="panel-card">
           <h3>Battery &amp; Thermal Safeguards</h3>
           <div class="form-grid">
             <div class="form-group">
@@ -971,20 +986,84 @@
 
         <div class="panel-card">
           <div class="files-toolbar">
-            <h3 style="margin:0;">Diagnostics &amp; Logcat</h3>
+            <h3 style="margin:0;">Diagnostics &amp; Error Logs</h3>
             <div class="player-actions">
               <select id="diag-filter-mode" style="padding:4px 8px;">
                 <option value="MINESERVE_TAGS">MineServe Tags</option>
                 <option value="ERRORS_ONLY">Errors &amp; Crashes</option>
                 <option value="ALL_APP_LOGS">All App Logs</option>
               </select>
-              <button type="button" id="diag-logcat-btn" class="btn btn-secondary btn-sm">Capture Logcat</button>
+              <button type="button" id="diag-logcat-btn" class="btn btn-secondary btn-sm">Capture Logs</button>
               <button type="button" id="diag-selftest-btn" class="btn btn-secondary btn-sm">Run Self-Test</button>
               <button type="button" id="diag-bundle-btn" class="btn btn-primary btn-sm">Download .zip</button>
             </div>
           </div>
           <div id="diag-selftest-list" class="player-list" style="margin-top:8px;"></div>
-          <pre id="diag-logcat-output" class="console-output" style="max-height:220px;margin-top:8px;font-size:11px;">Click "Capture Logcat" to inspect redacted app &amp; engine logs.</pre>
+          <pre id="diag-logcat-output" class="console-output" style="max-height:220px;margin-top:8px;font-size:11px;">Click "Capture Logs" to inspect redacted app &amp; engine logs.</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- About, Changelog & Open-Source Credits Modal -->
+  <div id="about-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:860px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="/logo.png" alt="MineServe" style="width:28px;height:28px;border-radius:6px;">
+          <h3 style="margin:0;">About MineServe, Changelog &amp; Open-Source Credits</h3>
+        </div>
+        <button id="close-about-modal" class="btn-icon">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;max-height:78vh;overflow-y:auto;padding-right:4px;">
+        <div class="panel-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="font-size:18px;">MineServe</strong>
+                <span id="about-version-badge" class="status-badge RUNNING">v1.8.0</span>
+                <span id="about-platform-badge" class="role-badge OWNER">LINUX</span>
+                <span class="role-badge VIEWER">GPL-3.0</span>
+              </div>
+              <div class="player-sub" style="margin-top:4px;">Open-Source Minecraft Java, Modded, Proxy &amp; Bedrock Server Manager</div>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <a id="about-link-website" href="https://mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Website ↗</a>
+              <a id="about-link-github" href="https://github.com/devwithzachary/MineServe" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">GitHub ↗</a>
+              <a id="about-link-issues" href="https://github.com/devwithzachary/MineServe/issues" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Report Issue ↗</a>
+              <a id="about-link-discord" href="https://discord.gg/QdT9yCrKmV" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Discord ↗</a>
+              <a id="about-link-patreon" href="https://patreon.com/devwithzachary" target="_blank" rel="noopener" class="btn btn-primary btn-sm" style="text-decoration:none;">Patreon ↗</a>
+              <a id="about-link-bmac" href="https://www.buymeacoffee.com/devwithzachary" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Buy Me a Coffee ↗</a>
+            </div>
+          </div>
+          <div id="about-supporters-box" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle);">
+            <div style="font-size:12px;font-weight:700;color:var(--emerald);margin-bottom:6px;">Project Supporters</div>
+            <div id="about-supporters-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button type="button" id="about-tab-changelog-btn" class="btn btn-primary btn-sm">Release Changelog</button>
+          <button type="button" id="about-tab-credits-btn" class="btn btn-secondary btn-sm">Software &amp; Open-Source Credits</button>
+        </div>
+
+        <div id="about-changelog-section" class="panel-card">
+          <h3 style="margin-top:0;">Platform Release History</h3>
+          <div id="about-changelog-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+        </div>
+
+        <div id="about-credits-section" class="panel-card hidden">
+          <div class="files-toolbar" style="margin-bottom:10px;">
+            <h3 style="margin:0;">Software &amp; Open-Source Credits</h3>
+            <div id="about-credits-filters" style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" data-credit-cat="ALL">All</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="SERVERS">Server Software</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="SYSTEM">Runtime &amp; Linux</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="TUNNELING">Tunneling</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="LIBRARIES">APIs &amp; Libraries</button>
+            </div>
+          </div>
+          <div id="about-credits-list" class="player-list"></div>
         </div>
       </div>
     </div>

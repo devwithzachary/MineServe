@@ -62,6 +62,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.model.ChangelogPlatform
+import com.devwithzachary.mineserve.model.MineServeAboutData
+import com.devwithzachary.mineserve.model.SharedCreditCategory
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
@@ -81,40 +84,8 @@ data class PatreonSupporter(
     val tier: String = "Patreon Supporter"
 )
 
-val PATREON_SUPPORTERS: List<PatreonSupporter> = listOf(
-    PatreonSupporter(
-        name = "Alen",
-        tier = "Tinkerer (BuyMeACoffee)"
-    ),
-    PatreonSupporter(
-        name = "Many Fun Adventures",
-        tier = "Supporter (BuyMeACoffee)"
-    ),
-    PatreonSupporter(
-        name = "Old PC Gunk (and stuff)",
-        tier = "Supporter (Patreon)"
-    ),
-    PatreonSupporter(
-        name = "ShoaffSquatch",
-        tier = "Supporter (YouTube)"
-    ),
-    PatreonSupporter(
-        name = "Swamp Gaming Network",
-        tier = "Supporter (Patreon)"
-    ),
-    PatreonSupporter(
-        name = "насэр Хорр",
-        tier = "Supporter (Patreon)"
-    ),
-    PatreonSupporter(
-        name = "Alcove Electronics Workshop",
-        tier = "Tipper (YouTube)"
-    ),
-    PatreonSupporter(
-        name = "Ian Scales",
-        tier = "Tipper (YouTube)"
-    )
-)
+val PATREON_SUPPORTERS: List<PatreonSupporter> =
+    MineServeAboutData.SUPPORTERS.map { PatreonSupporter(name = it.name, tier = it.tier) }
 
 enum class CreditCategory(val label: String) {
     ALL("All"),
@@ -133,144 +104,24 @@ data class SoftwareCredit(
     val tag: String
 )
 
-val SOFTWARE_CREDITS: List<SoftwareCredit> = listOf(
-    SoftwareCredit(
-        name = "PaperMC",
-        category = CreditCategory.SERVERS,
-        description = "High-performance, secure Minecraft server engine designed for speed and extensive plugin API support.",
-        url = "https://papermc.io",
-        license = "GPL-3.0",
-        tag = "Core Engine"
-    ),
-    SoftwareCredit(
-        name = "PurpurMC",
-        category = CreditCategory.SERVERS,
-        description = "Drop-in replacement for Paper with extensive gameplay customization and performance optimizations.",
-        url = "https://purpurmc.org",
-        license = "MIT",
-        tag = "Configurable"
-    ),
-    SoftwareCredit(
-        name = "Folia",
-        category = CreditCategory.SERVERS,
-        description = "Regionized multithreading Minecraft server software by the PaperMC team for high player counts.",
-        url = "https://papermc.io/software/folia",
-        license = "GPL-3.0",
-        tag = "Multithreaded"
-    ),
-    SoftwareCredit(
-        name = "Mojang Vanilla Server",
-        category = CreditCategory.SERVERS,
-        description = "Official standalone Minecraft server software developed by Mojang Studios / Microsoft.",
-        url = "https://www.minecraft.net",
-        license = "Proprietary",
-        tag = "Official"
-    ),
-    SoftwareCredit(
-        name = "FabricMC",
-        category = CreditCategory.SERVERS,
-        description = "Lightweight, modular modding toolchain and server environment for fast snapshots and releases.",
-        url = "https://fabricmc.net",
-        license = "Apache-2.0",
-        tag = "Modular Modding"
-    ),
-    SoftwareCredit(
-        name = "NeoForged",
-        category = CreditCategory.SERVERS,
-        description = "Community-driven, modern modding API and server platform for modern Minecraft editions.",
-        url = "https://neoforged.net",
-        license = "LGPL-2.1",
-        tag = "Modding Platform"
-    ),
-    SoftwareCredit(
-        name = "GeyserMC & Floodgate",
-        category = CreditCategory.SERVERS,
-        description = "Protocol translation proxy enabling Bedrock edition players to connect seamlessly to Java servers.",
-        url = "https://geysermc.org",
-        license = "MIT",
-        tag = "Cross-Play"
-    ),
-    SoftwareCredit(
-        name = "Squaremap",
-        category = CreditCategory.SERVERS,
-        description = "Lightweight, ultra-fast 2D live web map for Minecraft servers with real-time Leaflet player tracking and minimal resource overhead.",
-        url = "https://github.com/jpenilla/squaremap",
-        license = "MIT",
-        tag = "Live Web Map"
-    ),
-    SoftwareCredit(
-        name = "Ubuntu Rootfs",
-        category = CreditCategory.SYSTEM,
-        description = "Official Ubuntu base root filesystem providing the isolated Linux user-space container and APT package ecosystem.",
-        url = "https://ubuntu.com",
-        license = "Canonical",
-        tag = "Linux Environment"
-    ),
-    SoftwareCredit(
-        name = "LinuxOnAndroid Project",
-        category = CreditCategory.SYSTEM,
-        description = "PRoot virtualization engine, terminal emulator architecture, and Android compatibility foundation.",
-        url = "https://github.com/devwithzachary/LinuxOnAndroid",
-        license = "GPL-3.0",
-        tag = "Virtualization Runtime"
-    ),
-    SoftwareCredit(
-        name = "PRoot",
-        category = CreditCategory.SYSTEM,
-        description = "User-space implementation of chroot, mount --bind, and binfmt_misc without requiring root privileges.",
-        url = "https://proot-me.github.io",
-        license = "GPL-2.0",
-        tag = "Rootless Sandbox"
-    ),
-    SoftwareCredit(
-        name = "bore (bore.pub)",
-        category = CreditCategory.TUNNELING,
-        description = "Modern, simple TCP tunnel that exposes local Minecraft server ports to the Internet with zero configuration.",
-        url = "https://github.com/ekzhang/bore",
-        license = "MIT",
-        tag = "TCP Tunnel"
-    ),
-    SoftwareCredit(
-        name = "Playit.gg",
-        category = CreditCategory.TUNNELING,
-        description = "Global tunneling proxy network enabling persistent subdomains and zero-port-forwarding multiplayer.",
-        url = "https://playit.gg",
-        license = "MIT / AGPL-3.0",
-        tag = "Global Proxy"
-    ),
-    SoftwareCredit(
-        name = "Modrinth",
-        category = CreditCategory.LIBRARIES,
-        description = "Open-source community platform and public REST API for discovering and downloading Minecraft plugins and mods.",
-        url = "https://modrinth.com",
-        license = "AGPL-3.0",
-        tag = "Plugin Directory"
-    ),
-    SoftwareCredit(
-        name = "OkHttp",
-        category = CreditCategory.LIBRARIES,
-        description = "HTTP and HTTP/2 client for Android and Java applications by Square.",
-        url = "https://square.github.io/okhttp",
-        license = "Apache-2.0",
-        tag = "Networking"
-    ),
-    SoftwareCredit(
-        name = "Coil Compose",
-        category = CreditCategory.LIBRARIES,
-        description = "Fast, lightweight image loading library for Android and Jetpack Compose.",
-        url = "https://coil-kt.github.io/coil",
-        license = "Apache-2.0",
-        tag = "Image Loading"
-    ),
-    SoftwareCredit(
-        name = "KotlinX Coroutines & Serialization",
-        category = CreditCategory.LIBRARIES,
-        description = "Asynchronous concurrency libraries and multiplatform JSON serialization for Kotlin by JetBrains.",
-        url = "https://github.com/Kotlin",
-        license = "Apache-2.0",
-        tag = "Kotlin Ecosystem"
-    )
-)
+val SOFTWARE_CREDITS: List<SoftwareCredit> =
+    MineServeAboutData.getCreditsForPlatform(ChangelogPlatform.ANDROID).map { c ->
+        val cat = when (c.category) {
+            SharedCreditCategory.ALL -> CreditCategory.ALL
+            SharedCreditCategory.SERVERS -> CreditCategory.SERVERS
+            SharedCreditCategory.SYSTEM -> CreditCategory.SYSTEM
+            SharedCreditCategory.TUNNELING -> CreditCategory.TUNNELING
+            SharedCreditCategory.LIBRARIES -> CreditCategory.LIBRARIES
+        }
+        SoftwareCredit(
+            name = c.name,
+            category = cat,
+            description = c.description,
+            url = c.url,
+            license = c.license,
+            tag = c.tag
+        )
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

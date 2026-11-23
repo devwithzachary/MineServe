@@ -481,6 +481,8 @@ class WebAdminServer(
                 val resp = JSONObject()
                     .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
                     .put("android", Build.VERSION.RELEASE)
+                    .put("platform", "android")
+                    .put("version", com.devwithzachary.mineserve.BuildConfig.VERSION_NAME)
                     .put("totalRamMb", totalRam)
                     .put("freeRamMb", freeRam)
                     .put("deviceTotalRamMb", deviceTotalRamMb)
@@ -489,6 +491,93 @@ class WebAdminServer(
                     .put("minRamMb", 512)
                     .put("ramStepMb", 256)
                     .put("isPlayStore", com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE)
+                sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+
+            // About, Platform-Filtered Changelog & Open-Source Credits
+            if (path == "/api/about" && method == "GET") {
+                val isPlayStore = com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE
+                val platform = com.devwithzachary.mineserve.model.ChangelogPlatform.ANDROID
+                val aboutData = com.devwithzachary.mineserve.model.MineServeAboutData
+                val links = JSONObject()
+                    .put("website", aboutData.WEBSITE_URL)
+                    .put("githubRepo", aboutData.GITHUB_REPO_URL)
+                    .put("githubIssues", aboutData.GITHUB_ISSUES_URL)
+                    .put("githubReleases", aboutData.GITHUB_RELEASES_URL)
+                    .put("discord", aboutData.DISCORD_URL)
+                    .put("privacy", aboutData.PRIVACY_URL)
+                    .put("license", aboutData.LICENSE_NAME)
+                if (!isPlayStore) {
+                    links.put("patreon", aboutData.PATREON_URL)
+                    links.put("buyMeACoffee", aboutData.BUYMEACOFFEE_URL)
+                }
+                val supportersArr = JSONArray()
+                if (!isPlayStore) {
+                    aboutData.SUPPORTERS.forEach { s ->
+                        supportersArr.put(JSONObject().put("name", s.name).put("tier", s.tier))
+                    }
+                }
+                val creditsArr = JSONArray()
+                aboutData.getCreditsForPlatform(platform).forEach { c ->
+                    creditsArr.put(
+                        JSONObject()
+                            .put("name", c.name)
+                            .put("category", c.category.name)
+                            .put("categoryLabel", c.category.label)
+                            .put("description", c.description)
+                            .put("url", c.url)
+                            .put("license", c.license)
+                            .put("tag", c.tag)
+                    )
+                }
+                val changelogArr = JSONArray()
+                aboutData.getChangelogForPlatform(platform).forEach { entry ->
+                    changelogArr.put(
+                        JSONObject()
+                            .put("version", entry.version)
+                            .put("date", entry.date)
+                            .put("initialExpanded", entry.initialExpanded)
+                            .put("highlights", JSONArray(entry.highlights))
+                    )
+                }
+                val resp = JSONObject()
+                    .put("version", com.devwithzachary.mineserve.BuildConfig.VERSION_NAME)
+                    .put("versionCode", com.devwithzachary.mineserve.BuildConfig.VERSION_CODE)
+                    .put("platform", "android")
+                    .put("isPlayStore", isPlayStore)
+                    .put("links", links)
+                    .put("supporters", supportersArr)
+                    .put("credits", creditsArr)
+                    .put("changelog", changelogArr)
+                sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+
+            // GitHub Release Update Checker
+            if (path == "/api/updates/check" && method == "GET") {
+                val currentVer = com.devwithzachary.mineserve.BuildConfig.VERSION_NAME
+                val checker = com.devwithzachary.mineserve.api.GitHubUpdateChecker()
+                val resp = when (val res = checker.checkLatestRelease(currentVer)) {
+                    is com.devwithzachary.mineserve.api.UpdateCheckResult.UpToDate -> JSONObject()
+                        .put("status", "UP_TO_DATE")
+                        .put("currentVersion", currentVer)
+                        .put("latestTag", res.latestTag.ifBlank { "v$currentVer" })
+                        .put("htmlUrl", com.devwithzachary.mineserve.model.MineServeAboutData.GITHUB_RELEASES_URL)
+                    is com.devwithzachary.mineserve.api.UpdateCheckResult.UpdateAvailable -> JSONObject()
+                        .put("status", "UPDATE_AVAILABLE")
+                        .put("currentVersion", currentVer)
+                        .put("latestTag", res.release.tagName)
+                        .put("releaseName", res.release.name)
+                        .put("releaseNotes", res.release.body)
+                        .put("htmlUrl", res.release.htmlUrl)
+                        .put("publishedAt", res.release.publishedAt)
+                    is com.devwithzachary.mineserve.api.UpdateCheckResult.Error -> JSONObject()
+                        .put("status", "ERROR")
+                        .put("currentVersion", currentVer)
+                        .put("error", res.message)
+                        .put("htmlUrl", com.devwithzachary.mineserve.model.MineServeAboutData.GITHUB_RELEASES_URL)
+                }
                 sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                 return
             }

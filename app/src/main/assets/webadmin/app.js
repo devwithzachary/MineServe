@@ -2336,11 +2336,150 @@
 
     const openHostToolsModal = () => {
       $("host-tools-modal").classList.remove("hidden");
+      if (state.systemInfo && state.systemInfo.platform === "linux") {
+        $("safeguards-card")?.classList.add("hidden");
+      }
       loadHostTools();
       loadJavaRuntimes();
     };
     $("open-host-tools-btn")?.addEventListener("click", openHostToolsModal);
     loadCloudAccount();
+
+    // App Updates Checker in App Settings
+    $("web-update-check-btn")?.addEventListener("click", async () => {
+      const btn = $("web-update-check-btn");
+      const statusEl = $("web-update-status");
+      const notesEl = $("web-update-notes");
+      btn.disabled = true;
+      btn.textContent = "Checking...";
+      statusEl.textContent = "Contacting GitHub Releases API...";
+      notesEl?.classList.add("hidden");
+      try {
+        const res = await apiFetch("/api/updates/check");
+        if (res.status === "UPDATE_AVAILABLE") {
+          statusEl.textContent = `Update Available: ${res.latestTag} (Current: v${res.currentVersion})`;
+          if (res.htmlUrl && $("web-update-link-btn")) {
+            $("web-update-link-btn").href = res.htmlUrl;
+          }
+          if (res.releaseNotes && notesEl) {
+            notesEl.textContent = res.releaseNotes;
+            notesEl.classList.remove("hidden");
+          }
+          showToast(`New update available: ${res.latestTag}`);
+        } else if (res.status === "UP_TO_DATE") {
+          statusEl.textContent = `You are running the latest version (v${res.currentVersion}).`;
+          showToast("MineServe is up to date!");
+        } else {
+          statusEl.textContent = res.error || "Unable to check for updates.";
+        }
+      } catch (err) {
+        statusEl.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Check for Updates";
+      }
+    });
+
+    // About, Platform Changelog & Open-Source Credits Modal
+    let cachedAboutData = null;
+    let selectedCreditCategory = "ALL";
+
+    const renderAboutCredits = () => {
+      const listEl = $("about-credits-list");
+      if (!listEl || !cachedAboutData) return;
+      const credits = (cachedAboutData.credits || []).filter((c) =>
+        selectedCreditCategory === "ALL" || c.category === selectedCreditCategory
+      );
+      listEl.innerHTML = credits.map((c) => `
+        <div class="player-row" style="align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong>${escapeHtml(c.name)}</strong>
+              <span class="role-badge VIEWER">${escapeHtml(c.tag || c.categoryLabel || "")}</span>
+              <span class="role-badge">${escapeHtml(c.license || "")}</span>
+            </div>
+            <div class="player-sub" style="margin-top:4px;">${escapeHtml(c.description || "")}</div>
+          </div>
+          <a href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;white-space:nowrap;">Project ↗</a>
+        </div>
+      `).join("");
+    };
+
+    const loadAboutModal = async () => {
+      try {
+        const data = await apiFetch("/api/about");
+        cachedAboutData = data;
+        if ($("about-version-badge")) $("about-version-badge").textContent = `v${data.version || "1.8.0"}`;
+        if ($("about-platform-badge")) $("about-platform-badge").textContent = String(data.platform || "linux").toUpperCase();
+
+        const links = data.links || {};
+        if (links.website && $("about-link-website")) $("about-link-website").href = links.website;
+        if (links.githubRepo && $("about-link-github")) $("about-link-github").href = links.githubRepo;
+        if (links.githubIssues && $("about-link-issues")) $("about-link-issues").href = links.githubIssues;
+        if (links.discord && $("about-link-discord")) $("about-link-discord").href = links.discord;
+        if (links.patreon && $("about-link-patreon")) $("about-link-patreon").href = links.patreon;
+        if (links.buyMeACoffee && $("about-link-bmac")) $("about-link-bmac").href = links.buyMeACoffee;
+
+        const isPlay = !!data.isPlayStore;
+        $("about-link-patreon")?.classList.toggle("hidden", isPlay);
+        $("about-link-bmac")?.classList.toggle("hidden", isPlay);
+        $("about-supporters-box")?.classList.toggle("hidden", isPlay);
+
+        const supporters = data.supporters || [];
+        if ($("about-supporters-list")) {
+          $("about-supporters-list").innerHTML = supporters.map((s) => `
+            <span class="role-badge VIEWER" title="${escapeHtml(s.tier || "")}">${escapeHtml(s.name)} · ${escapeHtml(s.tier || "")}</span>
+          `).join("");
+        }
+
+        const changelog = data.changelog || [];
+        if ($("about-changelog-list")) {
+          $("about-changelog-list").innerHTML = changelog.map((rel) => `
+            <div style="padding:12px;border:1px solid var(--border-subtle);border-radius:10px;background:rgba(15,23,42,0.55);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                <strong style="color:var(--emerald);font-size:14px;">${escapeHtml(rel.version)}</strong>
+                <span class="player-sub">${escapeHtml(rel.date)}</span>
+              </div>
+              <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-primary);line-height:1.65;">
+                ${(rel.highlights || []).map((h) => `<li>${escapeHtml(h)}</li>`).join("")}
+              </ul>
+            </div>
+          `).join("");
+        }
+        renderAboutCredits();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
+    $("open-about-modal-btn")?.addEventListener("click", () => {
+      $("about-modal")?.classList.remove("hidden");
+      loadAboutModal();
+    });
+    $("close-about-modal")?.addEventListener("click", () => $("about-modal")?.classList.add("hidden"));
+
+    $("about-tab-changelog-btn")?.addEventListener("click", () => {
+      $("about-changelog-section")?.classList.remove("hidden");
+      $("about-credits-section")?.classList.add("hidden");
+      $("about-tab-changelog-btn").className = "btn btn-primary btn-sm";
+      $("about-tab-credits-btn").className = "btn btn-secondary btn-sm";
+    });
+    $("about-tab-credits-btn")?.addEventListener("click", () => {
+      $("about-changelog-section")?.classList.add("hidden");
+      $("about-credits-section")?.classList.remove("hidden");
+      $("about-tab-credits-btn").className = "btn btn-primary btn-sm";
+      $("about-tab-changelog-btn").className = "btn btn-secondary btn-sm";
+    });
+
+    document.querySelectorAll("#about-credits-filters [data-credit-cat]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        selectedCreditCategory = btn.dataset.creditCat || "ALL";
+        document.querySelectorAll("#about-credits-filters [data-credit-cat]").forEach((b) => {
+          b.className = b === btn ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm";
+        });
+        renderAboutCredits();
+      });
+    });
     $("btn-copy-console")?.addEventListener("click", async () => {
       const text = ($("console-output")?.textContent || "").trim();
       if (!text) {

@@ -23,6 +23,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.model.ChangelogPlatform
+import com.devwithzachary.mineserve.model.MineServeAboutData
 import com.devwithzachary.mineserve.ui.components.ChangelogItem
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.ObsidianCard
@@ -35,206 +37,15 @@ data class ReleaseChangelog(
     val highlights: List<String>
 )
 
-val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
-    ReleaseChangelog(
-        version = "v1.8.0",
-        date = "In Development",
-        initialExpanded = true,
-        highlights = listOf(
-            "MineServe for Linux (Headless Beta): Added a native Linux server engine (:desktop) with portable Adoptium OpenJDK 8/17/21/25 provisioning, /proc telemetry, Crash Watchdog auto-restart, systemd unit generation, and the full MineServe Web Admin panel.",
-            "Multi-User Web Admin, RBAC & Audit Log: Create and manage multiple panel user accounts with Owner, Admin, Moderator, or Viewer roles, restrict users to specific servers, view and revoke active sessions, change passwords, and inspect the live audit log from both the Android app (Web Remote Admin settings) and the Web UI.",
-            "In-App Cloud Sign-In & Localized Pricing: Sign in to MineServe Cloud directly inside the app with a 6-digit email code, with regional currency pricing estimates on direct builds.",
-            "Smooth First-Run Setup Progress: Re-weighted initial runtime setup across download, extraction, and live OpenJDK package installation steps so the progress bar moves steadily instead of stalling at 98%.",
-            "End-to-End Web Remote Admin Upgrades: Added real-time SSE live console streaming (2,000-line scrollback), full-screen searchable Audit Log with CSV export, drag-and-drop File Manager (upload, download, create, rename, unzip), Java Runtime Manager (8/17/21/25), in-place Server Version Upgrader, Import Existing Server (.zip), live public join address bar, device-aware RAM sliders, and fixed Restart.",
-            "Networking & Reliability Fixes: Changed Squaremap Live Map's default port to 8081 so it never collides with Web Remote Admin on port 8080, fixed Squaremap uninstall state refresh, prevented already-connected MineServe Cloud tunnels from reconnecting on server boot with clean port-reclaim retry limits, improved Web Admin login rate limiting behind reverse proxies, and ensured panel tunnels shut down cleanly."
+val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> =
+    MineServeAboutData.getChangelogForPlatform(ChangelogPlatform.ANDROID).map { entry ->
+        ReleaseChangelog(
+            version = entry.version,
+            date = entry.date,
+            initialExpanded = entry.initialExpanded,
+            highlights = entry.highlights
         )
-    ),
-    ReleaseChangelog(
-        version = "v1.7.0",
-        date = "November 19, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "MineServe Cloud Account Linking: Link your optional MineServe Cloud account in App Settings via browser magic link to view your plan, backup quota, and custom server addresses.",
-            "MineServe Cloud Backups: Select MineServe Cloud in a server's Backups tab to upload world backups to encrypted cloud storage, auto-sync new backups, and restore or delete cloud snapshots.",
-            "MineServe Cloud Tunnels: Reserve and connect custom *.play.mineserve.app (and Pro *.playms.uk) server addresses and regional relays directly from Server Settings.",
-            "Dedicated MineServe Cloud Page: Access your MineServe Cloud account, storage usage, and transparent plan pricing directly from the Dashboard or top of App Settings.",
-            "In-App Diagnostics & Logcat Export: Capture redacted app/engine logs, run a one-tap tunnel & DNS network self-test, and share or save diagnostic .zip bundles from App Settings.",
-            "Resumable Background Downloads & Local Import: Initial Ubuntu rootfs and server JAR downloads now continue safely in the background via foreground service, resume from partial downloads, and support importing local .tar.gz / .jar / .zip files.",
-            "Android Home Screen Widget & Quick Settings Tile: Monitor your primary server's status and start or stop it with one tap from your home screen or Quick Settings panel.",
-            "Battery & Thermal Safeguards: Configure automatic server shutdown in App Settings when battery drops below a chosen percentage (while unplugged) or device temperature exceeds a safe threshold.",
-            "What's New Feature Guide: Added a friendly What's New screen on first launch of major (1.x) updates with step-by-step guides on where to find new features, plus controls in App Settings to review it anytime or disable future update prompts.",
-            "Web Remote Admin v1.7.0 Parity: Manage MineServe Cloud tunnels and R2 snapshots, configure Battery & Thermal Safeguards, capture redacted logcat, and run network self-tests directly from the Web UI.",
-            "World Pre-Generation & Region Inspector: Pre-generate chunks around spawn via Chunky or native /forceload stepping and inspect or delete bloated .mca region files in both the app and Web UI.",
-            "Performance & Architecture: Added full-width responsive terminal line reflow across the phone and Web UI consoles and extracted shared core networking and engine models into a dedicated :core module."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.6.1",
-        date = "November 16, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "F-Droid Packaging Compliance: Enabled R8 minification and optimizations with comprehensive ProGuard rules for JNI, Kotlinx serialization, and Compose.",
-            "Binary Optimization: Reduced release APK footprint while maintaining complete runtime stability and native execution."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.6.0",
-        date = "November 12, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Full Feature-Parity Web UI: Create and delete servers, manage players (Whitelist, Ops, Bans), configure automation and scheduled tasks, and edit all server settings directly from your browser.",
-            "Web Performance, World & Live Map: Added live CPU/RAM/TPS telemetry charts over time, 1-click Aikar's flags, world import/export, configurable chunk pruning, and Squaremap live map integration with automatic port conflict protection.",
-            "Web Backups, Plugins & Networking: Added browser-based backup creation/restore/download, Modrinth plugin/mod search and install, custom .jar upload, .mrpack modpack importer, and Bore/Playit.gg tunnel and UPnP/NAT-PMP port forwarding controls.",
-            "Discord Webhook & Event Bridge: Configure Discord webhooks per server in Settings or the Web UI to broadcast server online/offline/crash events, player join/leave notices with skins, and completed backups with zero plugins.",
-            "Proxy & Multi-Server Networks (Velocity & BungeeCord): Create Velocity or BungeeCord proxies, link multiple backend servers into a unified network, and bind backends strictly to 127.0.0.1.",
-            "Native Bedrock Dedicated Server (BDS - Beta): Experimental support for Mojang's official Bedrock Dedicated Server (native on x86_64, qemu-x86_64 on ARM64) with Bedrock-tailored diagnostics.",
-            "NeoForge Java Runtime Fix: Correctly maps NeoForge 21.x to Java 21 and added a manual Java version selector (8, 17, 21, 25) in Server Settings."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.5.1",
-        date = "November 11, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Project Supporters & Community Links: Updated Project Supporters recognition across Credits and About for Patreon, YouTube, and Buy Me a Coffee members, added a direct Buy Me a Coffee button on Credits, and unified Discord community invite links.",
-            "UI & Layout Polish: Updated the About screen supporters section to wrap chips cleanly across rows and refined support button spacing."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.5.0",
-        date = "October 29, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Universal Port Forwarding: Zero-config UPnP and NAT-PMP router port mapping so friends can connect directly via WAN IP without third-party tunnel proxies.",
-            "Web Remote Admin Panel: Manage your servers, terminal console, and files from a desktop browser or tablet over Wi-Fi or public tunnels with secure authentication.",
-            "Cloud Backup Sync (F-Droid Compliant): Automated off-device world backup sync to Nextcloud, ownCloud, WebDAV, or any Android SAF cloud folder with zero proprietary SDKs.",
-            "Modrinth Modpack Importer: 1-tap download and installation of official Modrinth .mrpack modpacks with automatic dependency resolution and config extraction.",
-            "Live Telemetry & Diagnostics: Real-time rolling Canvas TPS and MSPT performance charts, proactive lag diagnostics, and 1-tap Aikar's optimized G1GC flags.",
-            "UI & Layout Polish: Enhanced wizard EULA responsiveness on small displays, high-contrast mod toggles, and dynamic telemetry chart colors."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.4.2",
-        date = "October 29, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "x86_64 Emulator & PRoot Reliability: Fixed OpenJDK installation failures and eliminated SELinux permission denial floods under PRoot on Android x86_64 emulators and devices.",
-            "Runtime Setup & Console Diagnostics: First-time setup now streams live OpenJDK installation logs and surfaces any installation errors with retry controls, while server console buffers persist across startups and errors.",
-            "Device-Aware RAM Allocation: Server creation wizard now automatically scales default and maximum RAM preselection on 2 GB to 3 GB devices to leave memory headroom for Android.",
-            "Architecture & Performance: Streamlined codebase modularity across large composables and repositories, eliminated dead code paths, and optimized live console parsing."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.4.1",
-        date = "October 20, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Minecraft EULA Opt-In: Server creation wizard now requires explicit opt-in to the Minecraft End User License Agreement before creating a server, with automated opt-in overrides removed on process startup.",
-            "Security & Backup Protection: Android automatic cloud backup is explicitly disabled and extraction rules configured to prevent server world data and sensitive credentials from being backed up.",
-            "Network & Startup Privacy: Automatic GitHub release update check at startup is now disabled by default with on-demand user toggle in App Settings.",
-            "Native Tunnel Submodules: Integrated Playit and Bore native Rust source repositories as pinned git submodules for enhanced build reproducibility.",
-            "F-Droid Review Compliance: Dropped unofficial archive mirror fallbacks in Mojang version resolution and standardized repository licensing under GPL-3.0."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.4.0",
-        date = "October 2, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "High-Performance Native Tunneling: Playit.gg and Bore tunnel agents now run directly as native Android processes outside PRoot, eliminating syscall emulation overhead to reduce public tunnel latency by 30+ ms.",
-            "Minecraft Forge & Legacy Support: Run Forge modded servers with automatic installer execution, alongside full support for historical Minecraft releases down to version 1.0 with automated Java 8 runtime mapping.",
-            "In-App Zip Extraction & Batch Import: Unpack zip archives directly in the file manager with subfolder routing and optional archive cleanup, plus multi-file batch imports for plugins and mods.",
-            "Visual Player & Whitelist Management: Full player management for Whitelists, Operators, Banned Players, and Banned IPs with 3D Minotar skin avatars and a dedicated full-screen administration page (kick, ban, teleport, gamemode, give items).",
-            "Server Settings & RAM Reallocation: Adjust allocated RAM memory on existing servers directly within Settings with live memory guidance, alongside automatic port collision detection in the setup wizard.",
-            "Engine Reliability & Architecture: Modular ServerSoftwareManager and RootfsManager lifecycle, automated live map upgrades, unified OkHttp networking, and background memory safety safeguards."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.3.1",
-        date = "September 17, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Standby Auto-Wake on Ping: Servers now automatically start up on player ping across both Java Edition (TCP) and Bedrock Edition (RakNet) with dynamic port binding and reliable reconnection.",
-            "World Backup Deletion & Retention: Delete individual backups directly in the app and set automatic retention limits on scheduled backup tasks to automatically prune older backups.",
-            "Live Web Map Full World Render: Render complete world map tiles across all dimensions (Overworld, Nether, and The End) with hardware performance safeguards and cancel controls.",
-            "Server Setup Wizard Enhancements: Added safe numeric input handling and port stabilization to prevent flickering on the review step when creating servers on custom ports.",
-            "Performance & Reliability: Centralized network clients, O(1) terminal scrollback memory buffers, scoped file descriptors, and Android backwards compatibility safeguards down to API 23.",
-            "UI & Layout Polish: Added bottom dashboard scroll clearance for server cards, full-width console macro bar, unified telemetry card heights with live device storage progress, and compact popup dialog margins."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.3.0",
-        date = "September 10, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Smart Idle Auto-Shutdown: Automatically stops running Minecraft servers after N minutes of 0 connected players (configurable to 5m, 10m, 15m, 30m, 60m) to preserve battery and prevent thermal throttling.",
-            "Auto-Wake on Ping: Standby socket listener on the server port (TCP for Java, UDP RakNet for Bedrock). When a player queries or joins from their Minecraft server list, the server spins up automatically.",
-            "Dedicated Automation Tab: New tab in Server Details providing 1-tap configuration for Smart Sleep, Auto-Wake on Ping, manual standby arming, and active scheduler management.",
-            "Flexible Scheduled Tasks & Cron Engine: Automated background timer engine supporting arbitrary intervals (minutes or hours), daily or every N days at specific times, weekly on selected days of the week with N-week intervals, and advanced 5-field cron syntax.",
-            "Customizable Console Macro Bar: Fully customizable quick-command hotbar chips above the live terminal with built-in macro editor to add, edit, delete, or reset 1-tap command shortcuts.",
-            "Interactive Command Auto-Completion: Context-aware auto-completion ribbon displayed when typing /, suggesting root Minecraft commands and subcommands (/time set ..., /weather ..., /gamemode ...).",
-            "Command History Recall: Memory history with Up and Down navigation buttons next to the console input bar to recall previous commands.",
-            "Upstream Server Build Updates: 1-tap checking and updating for PaperMC and Purpur server builds to easily update server.jar while preserving existing worlds, player data, and configurations.",
-            "In-Place Minecraft Version Upgrades: Upgrade existing servers to newer Minecraft versions directly from Settings with automated safety backups, automatic Java runtime requirement alignment, and intact world data.",
-            "World Import & Export: Direct .zip and .mcworld importing from device storage or Google Drive, and full world archive exporting with Android share sheet support.",
-            "1-Tap Nether & End Dimension Reset: Wipe and regenerate world_nether or world_the_end without touching the Overworld to refresh resource harvesting.",
-            "Chunk Pruning & Storage Optimizer: Pure Kotlin Anvil (.mca) optimizer that deletes uninhabited chunks (InhabitedTime == 0) to shrink world storage footprint on mobile.",
-            "Embedded Live Web Map (Squaremap): Dedicated Live Map tab hosting an embedded Compose WebView with 1-tap Squaremap installation, uninstall support, and automatic gating for plugin/mod capable servers.",
-            "Dashboard & Settings UI Polish: Converted server RAM values over 1000MB to dynamic GB representations (e.g. 1327MB to 1.3GB) to prevent card text wrapping, resolved Container Runtime online badge wrapping, and added Squaremap to Software Credits."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.2.0",
-        date = "September 2, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Full In-App File Explorer: Complete directory tree and list navigation for server folders with breadcrumb path bar, search, and operations for creating, deleting, renaming, duplicating, and importing/exporting files and folders.",
-            "Syntax-Highlighted Code Editor: Built-in code editor with syntax highlighting for YAML, JSON, TOML, and properties files, accompanied by line numbering, search & replace, live line/column indicators, and auto-scrolling when tapping text or opening the keyboard. Server Settings is streamlined to visual properties and public tunneling.",
-            "Crash Log Analyzer & Diagnostic Engine: Automated root cause detection for unexpected server shutdowns (Java runtime incompatibility, OOM heap exhaustion, mod ID conflicts, port conflicts, corrupted chunks) with 1-tap quick fixes.",
-            "System Back Gesture Navigation: Integrated BackHandler and backstack management across all screens (About, Credits, Settings, Server Details, Create Server Wizard) so edge swipes return to previous views instead of closing the app.",
-            "Local Timezone Console Synchronization: Synced container environment (/etc/timezone, /etc/localtime, TZ variable) and JVM system properties with the host device's local timezone for accurate console timestamps.",
-            "Real-Time TPS & Engine Health Diagnostics: Replaced static TPS with live engine telemetry combining real-time CPU core utilization, tick duration (MSPT), tick budget headroom, and passive overload detection.",
-            "Performance Tab TPS Diagnostics Card: Added dedicated diagnostics card with live TPS gauge, MSPT processing time, tick budget headroom, and overload warning tracking.",
-            "Playit.gg Claim & Connection Reliability: Automatic claim banner dismissal upon account authorization, ANSI escape code filtering, and reliable public address resolution for all Playit domain and IP mappings.",
-            "Tunneling Services Recognition: Added dedicated Tunneling category to the in-app Credits screen recognizing bore (bore.pub) and Playit.gg for zero-port-forwarding multiplayer."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.1.0",
-        date = "August 28, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Public Tunneling & Zero-Port-Forwarding: Support for both instant free tunnels (bore.pub) and persistent Playit.gg tunnels. Host multiplayer servers over 4G/5G mobile data or remote Wi-Fi bypassing Carrier-Grade NAT (CGNAT) without port forwarding.",
-            "Playit.gg Integration: Automatic agent execution supporting 1-tap browser claim setup and custom secret keys with persistent subdomains.",
-            "Graceful Disconnection: Seamless 1-tap tunnel shutdown transitioning to Offline without throwing false socket closure error messages.",
-            "Dismissable Security Notice: 1-tap dismissable security warning banners reminding server hosts to enable whitelisting in Server Properties to safeguard worlds against griefers.",
-            "Dynamic Bedrock & Java QR Code Sharing: Dynamic QR code and share sheet generation with Bedrock 1-tap import links (minecraft://) and Java quick connection addresses.",
-            "Smooth Terminal Scrollback Navigation: Drag up and down on the live terminal canvas to review historical Minecraft server startup logs and execution output with smooth scrolling.",
-            "Scroll to Bottom Indicator: Floating jump-to-bottom badge displaying the current scroll depth offset with 1-tap return to real-time logs.",
-            "Native Touch Word Detection & Selection: Long-press on any log output or command argument to automatically select word boundaries with tactile haptic feedback.",
-            "Draggable Teardrop Selection Handles: Fine-tune multi-line text selection ranges using interactive teardrop touch handles with live haptic tick feedback.",
-            "Visual Character Highlighting: High-contrast theme-aware text highlight overlays across single-line and multi-line selection bounding boxes.",
-            "Floating Action Toolbar: 1-tap floating toolbar supporting Copy, Select All, Share, and Clear selection.",
-            "GitHub Release Update Checker: Real-time update checks against GitHub Releases with Play Store certificate transition guidance and in-app settings controls.",
-            "Patreon Supporters Recognition: Added dedicated supporters recognition on the Credits and About screens honoring Patreon supporters (Old PC Gunk (and stuff), насэр Хорр)."
-        )
-    ),
-    ReleaseChangelog(
-        version = "v1.0.0",
-        date = "August 26, 2026",
-        initialExpanded = false,
-        highlights = listOf(
-            "Multi-Engine Minecraft Server Creation & Management: Full support for PaperMC, PurpurMC, Folia, FabricMC, NeoForged, Mojang Vanilla, and Bedrock Geyser / Floodgate.",
-            "Smart 4-Step Server Wizard: Server type, dynamic version querying, hardware & RAM allocation, and automated initialization.",
-            "Rootless PRoot Virtualization & Container Architecture: 100% rootless operation on unrooted Android devices using minimal Ubuntu 24.04 LTS rootfs container.",
-            "Multi-Version OpenJDK Isolation: Automatic 1-tap installation and binding of Java 25, 21, 17, and 8.",
-            "Context-Aware Plugins & Mods Management: Modrinth API integration with search, filters, metadata details, and direct .jar installation/importing.",
-            "Interactive Live Terminal & Command Console: Live colored output stream with standard input command prompt and terminal controls.",
-            "Performance Monitoring & Live Telemetry: Real-time CPU %, Resident RAM (RSS in MB via /proc), active player counts, and disk footprints.",
-            "Persistent Foreground Execution & WakeLock: 24/7 background uptime holding CPU WakeLock with interactive notification shade controls."
-        )
-    )
-)
+    }
 
 @Composable
 fun AboutChangelogSection(modifier: Modifier = Modifier) {

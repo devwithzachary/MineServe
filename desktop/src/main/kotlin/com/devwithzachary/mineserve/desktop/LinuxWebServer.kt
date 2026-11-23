@@ -245,6 +245,59 @@ class LinuxWebServer(
                 coreHandlers.handleGetSystem(out)
                 return
             }
+            if (path == "/api/about" && method == "GET") {
+                sendJson(
+                    out,
+                    200,
+                    "OK",
+                    LinuxDiagnosticsManager.buildAboutJson(
+                        platform = com.devwithzachary.mineserve.model.ChangelogPlatform.LINUX,
+                        isPlayStore = false
+                    )
+                )
+                return
+            }
+            if (path == "/api/updates/check" && method == "GET") {
+                sendJson(out, 200, "OK", LinuxDiagnosticsManager.checkGitHubUpdatesJson())
+                return
+            }
+            if (path == "/api/diagnostics/logcat" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                val filter = queryParams["filter"]
+                val logs = LinuxDiagnosticsManager.captureLogs(filter, serverRepository, processManager)
+                sendJson(out, 200, "OK", JSONObject().put("filter", filter ?: "MINESERVE_TAGS").put("logs", logs))
+                return
+            }
+            if (path == "/api/diagnostics/selftest" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                val checks = LinuxDiagnosticsManager.runNetworkSelfTest()
+                val arr = JSONArray()
+                checks.forEach { c ->
+                    arr.put(JSONObject().put("name", c.name).put("passed", c.passed).put("detail", c.detail))
+                }
+                sendJson(out, 200, "OK", JSONObject().put("checks", arr))
+                return
+            }
+            if (path == "/api/diagnostics/bundle" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                val zipFile = LinuxDiagnosticsManager.exportDiagnosticZip(
+                    paths = paths,
+                    filterMode = queryParams["filter"],
+                    serverRepository = serverRepository,
+                    processManager = processManager
+                )
+                try {
+                    WebHttpUtils.sendFileStreamResponse(
+                        out = out,
+                        contentType = "application/zip",
+                        file = zipFile,
+                        extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"${zipFile.name}\"")
+                    )
+                } finally {
+                    zipFile.delete()
+                }
+                return
+            }
             if (path == "/api/java" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 coreHandlers.handleGetJavaStatus(out)

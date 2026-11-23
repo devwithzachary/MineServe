@@ -43,7 +43,13 @@ class LinuxProcessManager(
         var pid: Long = -1L,
         val startTimeMillis: Long = System.currentTimeMillis(),
         @Volatile var stopRequested: Boolean = false,
-        val onlinePlayers: MutableSet<String> = ConcurrentHashMap.newKeySet()
+        val onlinePlayers: MutableSet<String> = ConcurrentHashMap.newKeySet(),
+        var currentTps: Double = 20.0,
+        var currentMspt: Double = 15.0,
+        var totalLagWarnings: Int = 0,
+        var lastLagWarningTime: Long = 0L,
+        val tpsHistory: ArrayDeque<Float> = ArrayDeque(30),
+        val msptHistory: ArrayDeque<Float> = ArrayDeque(30)
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + Job())
@@ -172,6 +178,11 @@ class LinuxProcessManager(
                         }
                         JOIN_REGEX.find(current)?.groupValues?.getOrNull(1)?.let { session.onlinePlayers.add(it) }
                         LEAVE_REGEX.find(current)?.groupValues?.getOrNull(1)?.let { session.onlinePlayers.remove(it) }
+                        if (current.contains("Can't keep up!", ignoreCase = true)) {
+                            session.totalLagWarnings++
+                            session.lastLagWarningTime = System.currentTimeMillis()
+                            session.currentTps = (session.currentTps - 2.5).coerceIn(5.0, 20.0)
+                        }
                     }
                 }
 
@@ -302,6 +313,39 @@ class LinuxProcessManager(
                     if (session.process?.isAlive == true) {
                         val ramUsed = LinuxHostTelemetry.getProcessRssMb(session.pid)
                         val cpuPct = LinuxHostTelemetry.getProcessCpuPercent(session.pid)
+                        val isRecentLag = (now - session.lastLagWarningTime) < 30_000L
+                        if (isRecentLag) {
+                            val targetTps = if (cpuPct > 85f) (20.0 - (cpuPct - 85f) * 0.15).coerceIn(14.0, 20.0) else 20.0
+                            session.currentTps = (session.currentTps + (targetTps - session.currentTps) * 0.15).coerceIn(1.0, 20.0)
+                            session.currentMspt = if (session.currentTps >= 19.9) {
+                                (12.0 + (cpuPct / 100f) * 35.0).coerceIn(8.0, 48.0)
+                            } else {
+                                (1000.0 / session.currentTps).coerceIn(50.0, 500.0)
+                            }
+                        } else if (cpuPct > 85f) {
+                            val targetTps = (20.0 - (cpuPct - 85f) * 0.12).coerceIn(14.0, 20.0)
+                            session.currentTps = (session.currentTps + (targetTps - session.currentTps) * 0.2).coerceIn(1.0, 20.0)
+                            session.currentMspt = if (session.currentTps >= 19.9) {
+                                (12.0 + (cpuPct / 100f) * 35.0).coerceIn(8.0, 48.0)
+                            } else {
+                                (1000.0 / session.currentTps).coerceIn(50.0, 500.0)
+                            }
+                        } else {
+                            session.currentTps = (session.currentTps + (20.0 - session.currentTps) * 0.25).coerceIn(1.0, 20.0)
+                            session.currentMspt = (10.0 + (cpuPct / 100f) * 32.0).coerceIn(8.0, 48.0)
+                        }
+
+                        synchronized(session.tpsHistory) {
+                            session.tpsHistory.addLast(session.currentTps.toFloat())
+                            if (session.tpsHistory.size > 30) session.tpsHistory.removeFirst()
+                            session.msptHistory.addLast(session.currentMspt.toFloat())
+                            if (session.msptHistory.size > 30) session.msptHistory.removeFirst()
+                        }
+
+                        val (tpsSnap, msptSnap) = synchronized(session.tpsHistory) {
+                            session.tpsHistory.toList() to session.msptHistory.toList()
+                        }
+
                         next[id] = ServerMetrics(
                             serverId = id,
                             isRunning = true,
@@ -310,9 +354,13 @@ class LinuxProcessManager(
                             ramMaxMb = session.server.allocatedRamMb.toLong(),
                             onlinePlayerCount = session.onlinePlayers.size,
                             onlinePlayers = session.onlinePlayers.toList(),
-                            tps = 20.0,
-                            mspt = 15.0,
-                            uptimeSeconds = (now - session.startTimeMillis) / 1000L
+                            tps = session.currentTps,
+                            mspt = session.currentMspt,
+                            tpsHistory = tpsSnap,
+                            msptHistory = msptSnap,
+                            lagWarningsCount = session.totalLagWarnings,
+                            uptimeSeconds = (now - session.startTimeMillis) / 1000L,
+                            pid = session.pid.toInt()
                         )
                     }
                 }
