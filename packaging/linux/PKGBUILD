@@ -18,6 +18,7 @@ sha256sums=('SKIP')
 package() {
     install -d "${pkgdir}/opt/mineserve"
     cp -r "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/"* "${pkgdir}/opt/mineserve/"
+    chmod 755 "${pkgdir}/opt/mineserve/bin/mineserve" "${pkgdir}/opt/mineserve/bin/desktop"
 
     install -d "${pkgdir}/usr/bin"
     ln -sf "/opt/mineserve/bin/mineserve" "${pkgdir}/usr/bin/mineserve"
@@ -25,7 +26,9 @@ package() {
     install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.desktop" \
         "${pkgdir}/usr/share/applications/mineserve.desktop"
     install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.png" \
-        "${pkgdir}/usr/share/icons/hicolor/256x256/apps/mineserve.png"
+        "${pkgdir}/usr/share/icons/hicolor/512x512/apps/mineserve.png"
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.png" \
+        "${pkgdir}/usr/share/pixmaps/mineserve.png"
     install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.service" \
         "${pkgdir}/usr/lib/systemd/system/mineserve.service"
 }

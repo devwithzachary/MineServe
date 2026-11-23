@@ -61,18 +61,21 @@ if [ "$(id -u)" -eq 0 ]; then
     mkdir -p /opt/mineserve
     cp -a "$SRC_DIR"/* /opt/mineserve/
     ln -sf /opt/mineserve/bin/mineserve /usr/bin/mineserve
+    chmod 755 /opt/mineserve/bin/mineserve 2>/dev/null || true
     install -Dm644 "$SRC_DIR/share/mineserve.desktop" /usr/share/applications/mineserve.desktop
-    install -Dm644 "$SRC_DIR/share/mineserve.png" /usr/share/icons/hicolor/256x256/apps/mineserve.png
+    install -Dm644 "$SRC_DIR/share/mineserve.png" /usr/share/icons/hicolor/512x512/apps/mineserve.png
+    install -Dm644 "$SRC_DIR/share/mineserve.png" /usr/share/pixmaps/mineserve.png
     install -Dm644 "$SRC_DIR/share/mineserve.service" /lib/systemd/system/mineserve.service
     echo "Installed! Launch 'mineserve' from your application menu or terminal, or run 'mineserve --headless'."
 else
     echo "Installing MineServe for current user to ~/.local/opt/mineserve..."
     rm -rf "$HOME/.local/opt/mineserve"
-    mkdir -p "$HOME/.local/opt/mineserve" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/256x256/apps"
+    mkdir -p "$HOME/.local/opt/mineserve" "$HOME/.local/bin" "$HOME/.local/share/applications" "$HOME/.local/share/icons/hicolor/512x512/apps"
     cp -a "$SRC_DIR"/* "$HOME/.local/opt/mineserve/"
+    chmod 755 "$HOME/.local/opt/mineserve/bin/mineserve" 2>/dev/null || true
     ln -sf "$HOME/.local/opt/mineserve/bin/mineserve" "$HOME/.local/bin/mineserve"
     sed "s|Exec=/usr/bin/mineserve|Exec=$HOME/.local/bin/mineserve|g" "$SRC_DIR/share/mineserve.desktop" > "$HOME/.local/share/applications/mineserve.desktop"
-    cp "$SRC_DIR/share/mineserve.png" "$HOME/.local/share/icons/hicolor/256x256/apps/mineserve.png"
+    cp "$SRC_DIR/share/mineserve.png" "$HOME/.local/share/icons/hicolor/512x512/apps/mineserve.png"
     echo "Installed! Launch MineServe from your application launcher or run '$HOME/.local/bin/mineserve'."
 fi
 EOF
@@ -125,13 +128,16 @@ mkdir -p "$DEB_ROOT/DEBIAN" \
          "$DEB_ROOT/opt/mineserve" \
          "$DEB_ROOT/usr/bin" \
          "$DEB_ROOT/usr/share/applications" \
-         "$DEB_ROOT/usr/share/icons/hicolor/256x256/apps" \
+         "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps" \
+         "$DEB_ROOT/usr/share/pixmaps" \
          "$DEB_ROOT/lib/systemd/system"
 
 cp -a "$SELF_CONTAINED_STAGE/"* "$DEB_ROOT/opt/mineserve/"
+chmod 755 "$DEB_ROOT/opt/mineserve/bin/mineserve" 2>/dev/null || true
 ln -sf /opt/mineserve/bin/mineserve "$DEB_ROOT/usr/bin/mineserve"
 cp "$DESKTOP_ENTRY_SRC" "$DEB_ROOT/usr/share/applications/mineserve.desktop"
-cp "$ICON_SRC" "$DEB_ROOT/usr/share/icons/hicolor/256x256/apps/mineserve.png"
+cp "$ICON_SRC" "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps/mineserve.png"
+cp "$ICON_SRC" "$DEB_ROOT/usr/share/pixmaps/mineserve.png"
 cp "$SYSTEMD_UNIT_SRC" "$DEB_ROOT/lib/systemd/system/mineserve.service"
 
 INSTALLED_KB=$(du -sk "$DEB_ROOT/opt/mineserve" | awk '{print $1}')

@@ -2,6 +2,11 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.8.1] - Unreleased
+
+### 🐛 Bug Fixes
+- **Linux Package Binary Permissions & Desktop Icon (`desktop/build.gradle.kts`, `packaging/linux/PKGBUILD`, `scripts/build_linux_packages.sh`)**: Fixed `InstallDesktopDistTask` calling single-arg `setExecutable(true)` (which created `0744` `rwxr--r--` binaries that non-root users could not execute via `/usr/bin/mineserve`) to `setExecutable(true, false)` (`0755`), added explicit `chmod 755` in packaging scripts, and installed the `512x512` `mineserve.png` icon into both `hicolor/512x512/apps` and `/usr/share/pixmaps` so the desktop launcher icon renders properly on Arch/CachyOS and Debian/Ubuntu.
+
 ## [1.8.0] - 2026-11-23
 
 ### 🐧 Native Linux Desktop GUI & Headless Engine (Beta)

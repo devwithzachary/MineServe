@@ -64,8 +64,8 @@ object MineServeAboutData {
      * Unified release version shared across Android, Linux Desktop, and Web Remote Admin.
      * Always kept in lockstep with `versionName` in `app/build.gradle.kts`.
      */
-    const val APP_VERSION = "1.8.0"
-    const val VERSION_CODE = 14
+    const val APP_VERSION = "1.8.1"
+    const val VERSION_CODE = 15
 
     const val WEBSITE_URL = "https://mineserve.app"
     const val GITHUB_REPO_URL = "https://github.com/devwithzachary/MineServe"
@@ -265,9 +265,20 @@ object MineServeAboutData {
 
     val FULL_CHANGELOG_HISTORY: List<PlatformReleaseChangelog> = listOf(
         PlatformReleaseChangelog(
+            version = "v1.8.1",
+            date = "In Development",
+            initialExpanded = true,
+            highlights = listOf(
+                PlatformChangelogHighlight(
+                    text = "Linux Package Permissions & Desktop Icon Fix: Fixed world-executable permissions (0755) on /opt/mineserve/bin/mineserve and installed the 512x512 app icon into hicolor/512x512/apps and /usr/share/pixmaps so the desktop menu icon and launcher work cleanly on Arch/CachyOS and Debian/Ubuntu.",
+                    platform = ChangelogPlatform.LINUX
+                )
+            )
+        ),
+        PlatformReleaseChangelog(
             version = "v1.8.0",
             date = "November 23, 2026",
-            initialExpanded = true,
+            initialExpanded = false,
             highlights = listOf(
                 PlatformChangelogHighlight(
                     text = "MineServe for Linux (Desktop GUI & Headless Beta): Added a native Linux server engine and adaptive multi-pane Compose Desktop GUI (:desktop) with Linux System Tray integration, HiDPI UI scaling, portable Adoptium OpenJDK 8/17/21/25 provisioning, /proc telemetry, active firewall detection, client-only modpack filtering, Crash Watchdog auto-restart, systemd unit generation, and the embedded Web Admin panel.",

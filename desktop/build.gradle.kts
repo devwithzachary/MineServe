@@ -57,14 +57,15 @@ abstract class InstallDesktopDistTask : DefaultTask() {
         val script = """
             #!/usr/bin/env bash
             set -e
-            APP_HOME="${'$'}(cd "${'$'}(dirname "${'$'}0")/.." && pwd)"
+            SCRIPT_PATH="${'$'}(readlink -f "${'$'}0" 2>/dev/null || realpath "${'$'}0" 2>/dev/null || printf '%s' "${'$'}0")"
+            APP_HOME="${'$'}(cd "${'$'}(dirname "${'$'}SCRIPT_PATH")/.." && pwd)"
             exec java -cp "${'$'}APP_HOME/lib/*" com.devwithzachary.mineserve.desktop.MainKt "${'$'}@"
         """.trimIndent() + "\n"
 
         listOf("desktop", "mineserve").forEach { name ->
             val bin = File(binDir, name)
             bin.writeText(script)
-            bin.setExecutable(true)
+            bin.setExecutable(true, false)
         }
     }
 }
