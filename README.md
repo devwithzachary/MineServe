@@ -34,16 +34,16 @@
 ## 📱 Screenshots
 
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/1.png" width="23%" alt="MineServe Dashboard" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/2.png" width="23%" alt="Server Console & Terminal" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/3.png" width="23%" alt="Real-Time Telemetry & Performance" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/4.png" width="23%" alt="Server Creation Wizard" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01_dashboard.png" width="23%" alt="MineServe Dashboard" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02_server_detail.png" width="23%" alt="Server Detail &amp; Telemetry" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/03_console.png" width="23%" alt="Server Console &amp; Terminal" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/06_wizard_step1.png" width="23%" alt="Server Creation Wizard" />
 </p>
 <p align="center">
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/5.png" width="23%" alt="Plugins & Modrinth Browser" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/6.png" width="23%" alt="World Management & Tools" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/7.png" width="23%" alt="Settings & Java Runtime Manager" />
-  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/8.png" width="23%" alt="Automation & Backups" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/04_plugins_tab.png" width="23%" alt="Plugins &amp; Mods Management" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/05_plugins_search.png" width="23%" alt="Modrinth Browser" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/10_settings_tab.png" width="23%" alt="Server Settings &amp; Tunneling" />
+  <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/11_settings.png" width="23%" alt="App Settings &amp; Java Runtimes" />
 </p>
 
 ---
