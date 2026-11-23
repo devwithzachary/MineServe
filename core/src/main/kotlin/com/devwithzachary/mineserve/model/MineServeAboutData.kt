@@ -266,7 +266,7 @@ object MineServeAboutData {
     val FULL_CHANGELOG_HISTORY: List<PlatformReleaseChangelog> = listOf(
         PlatformReleaseChangelog(
             version = "v1.8.0",
-            date = "In Development",
+            date = "November 23, 2026",
             initialExpanded = true,
             highlights = listOf(
                 PlatformChangelogHighlight(

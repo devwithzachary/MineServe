@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.8.0] - Unreleased
+## [1.8.0] - 2026-11-23
 
 ### 🐧 Native Linux Desktop GUI & Headless Engine (Beta)
 - **Standalone `:desktop` Linux Engine (`LinuxProcessManager`, `LinuxServerRepository`, `LinuxServerSoftwareManager`, `LinuxHostTelemetry`, `LinuxFirewallChecker`)**: Built a native Linux server runtime running directly via `ProcessBuilder` with zero PRoot overhead, real-time `/proc` per-core CPU/RAM telemetry, 2,000-line console ring buffer, Crash Watchdog auto-restart with crash-loop protection (max 3 restarts in 5 minutes), automatic backup retention policies, client-only mod filtering (`ServerModFilter`), and active Linux firewall detection (`ufw`, `firewalld`, `nftables`).
