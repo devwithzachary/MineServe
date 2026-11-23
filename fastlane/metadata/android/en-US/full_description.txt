@@ -17,25 +17,25 @@ Key Features:
   - Bedrock Dedicated Server (Beta): Official Mojang Bedrock server (native on x86_64, qemu-user on ARM64).
   - Velocity & BungeeCord Proxies: Link multiple backend servers into a unified network.
 
-• Multi-Version Isolated Java Environments: Automatically downloads and manages isolated OpenJDK runtimes (Java 8, 17, 21, and 25) with resumable background downloads and local .jar / .tar.gz file import.
+• Multi-Version Isolated Java Environments: Automatically downloads and manages isolated OpenJDK runtimes (Java 8, 17, 21, 25) with resumable downloads and local .jar / .tar.gz file import.
 
-• Built-In Web Remote Admin Panel: Manage console, files, players, backups, plugins/mods, world tools, live Squaremap, and telemetry from any desktop or tablet browser over Wi-Fi or public tunnels.
+• Built-In Multi-User Web Remote Admin Panel: Manage live SSE console logs, files (drag-and-drop upload & .zip extraction), team accounts (Owner, Admin, Moderator, Viewer RBAC & Audit Log), players, backups, plugins/mods, world tools, live Squaremap, and telemetry from any browser over Wi-Fi or public tunnels.
 
 • Zero-Config Multiplayer Networking:
   - UPnP & NAT-PMP: Automatic router port forwarding for direct WAN IP connections.
   - bore (libbore) & Playit.gg: High-speed native Android tunnel agents requiring zero router configuration.
-  - MineServe Cloud (Optional): Optional add-on for custom *.play.mineserve.app (and Pro *.playms.uk) addresses, remote Web Admin relays, and encrypted Cloudflare R2 backups.
+  - MineServe Cloud (Optional): Optional add-on with 6-digit email code sign-in for custom *.play.mineserve.app (and Pro *.playms.uk) addresses, remote Web Admin relays, and encrypted Cloudflare R2 backups.
 
-• Advanced World & Backup Tools: Import/export .zip and .mcworld saves, pre-generate spawn chunks, inspect .mca region files, prune uninhabited chunks, reset Nether/End dimensions, and sync backups to local storage, Nextcloud/WebDAV, Android SAF folders, or optional MineServe Cloud R2.
+• Advanced World & Backup Tools: Import/export .zip and .mcworld saves, pre-generate spawn chunks, inspect .mca regions, prune uninhabited chunks, reset Nether/End dimensions, and sync backups to local storage, Nextcloud/WebDAV, Android SAF folders, or optional MineServe Cloud R2.
 
-• Modrinth Browser & .mrpack Modpacks: Search and install plugins and mods from Modrinth, import .mrpack modpacks with dependency resolution, or upload custom .jar files.
+• Modrinth Browser & .mrpack Modpacks: Search and install plugins and mods from Modrinth, import .mrpack modpacks or server .zip archives with automatic client-only mod filtering, or upload custom .jar files.
 
-• Smart Automation & Device Safeguards: Idle auto-shutdown, auto-wake on player ping (Java TCP & Bedrock RakNet), cron-scheduled tasks, low-battery and thermal auto-stop safeguards, Discord webhooks, and an Android Home Screen widget & Quick Settings tile.
+• Smart Automation & Safeguards: Idle auto-shutdown, auto-wake on player ping (Java TCP & Bedrock RakNet), cron tasks, low-battery/thermal auto-stop, Discord webhooks, Home Screen widget, and Quick Settings tile.
 
 Network Access & External Downloads:
 To run dedicated Minecraft servers on Android, MineServe connects to external services:
-• Server Software: Downloads official Mojang server manifests and binaries, plus distributions from PaperMC, Purpur, Fabric, Forge, NeoForge, and BungeeCord APIs.
+• Server Software: Downloads official Mojang manifests and binaries, plus PaperMC, Purpur, Fabric, Forge, NeoForge, and BungeeCord builds.
 • Container Environment: Downloads a minimal Ubuntu rootfs and OpenJDK runtimes (Java 8, 17, 21, 25).
-• Tunnel & Cloud Services: Connects to bore.pub, Playit.gg, or optional MineServe Cloud (api.mineserve.app and Cloudflare R2) when enabled by the user.
-• Community Content: Connects to Modrinth REST APIs for plugins, mods, and modpacks, and Minotar for player avatars.
-• Application Updates: Optional version checks against GitHub Releases API (disabled by default; configurable in App Settings).
+• Tunnel & Cloud Services: Connects to bore.pub, Playit.gg, or optional MineServe Cloud (api.mineserve.app & Cloudflare R2) when enabled.
+• Community Content: Connects to Modrinth REST APIs for plugins, mods, and modpacks, and Minotar for avatars.
+• Application Updates: Optional version checks against GitHub Releases API (disabled by default; configurable in Settings).
