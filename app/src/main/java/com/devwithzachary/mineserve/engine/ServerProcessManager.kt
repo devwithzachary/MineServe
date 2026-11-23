@@ -710,16 +710,39 @@ class ServerProcessManager private constructor(
         return _serverStatuses.value[serverId] ?: ServerStatus.STOPPED
     }
 
+    private val restartingServers = ConcurrentHashMap.newKeySet<String>()
+
     fun restartServer(server: MinecraftServer, serverDir: java.io.File, onStateChange: ((ServerStatus) -> Unit)? = null) {
+        if (!restartingServers.add(server.id)) {
+            Log.d(TAG, "Restart already in progress for server ${server.id}")
+            return
+        }
+        val notice = "\r\n\u001B[33m[MineServe] Restarting server...\u001B[0m\r\n"
+        getEmulator(server.id).appendBytes(notice.toByteArray(Charsets.UTF_8), notice.length)
+        triggerRefresh(server.id)
+
         stopServer(server.id)
         scope.launch(Dispatchers.IO) {
-            var waited = 0
-            while (isServerRunning(server.id) && waited < 10000) {
+            try {
+                // Wait until the server is fully stopped AND its session has been removed
+                // (stopServer allows up to 15s for graceful shutdown before force-killing).
+                var waited = 0L
+                while ((!isServerFullyStopped(server.id) || sessions.containsKey(server.id)) && waited < 25_000L) {
+                    delay(250)
+                    waited += 250
+                }
+                if (sessions.containsKey(server.id) || isProcessActive(server.id)) {
+                    val stale = sessions.remove(server.id)
+                    try { stale?.ptyProcess?.destroy() } catch (_: Exception) {}
+                    if (stale != null) {
+                        killProcessesForServer(server.id, stale.pid)
+                    }
+                }
                 delay(500)
-                waited += 500
+                startServer(server, serverDir, onStateChange)
+            } finally {
+                restartingServers.remove(server.id)
             }
-            delay(1000)
-            startServer(server, serverDir, onStateChange)
         }
     }
 
