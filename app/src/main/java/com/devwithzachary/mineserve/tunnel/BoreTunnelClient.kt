@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import android.util.Log
 import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.net.tunnel.BoreProtocolSupport
 import java.io.BufferedReader
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -374,26 +375,12 @@ class BoreTunnelClient(
                 val localOut = localServerSocket.getOutputStream()
 
                 val relayToLocal = launch {
-                    try {
-                        val buffer = ByteArray(BUFFER_SIZE)
-                        var bytes: Int
-                        while (relayIn.read(buffer).also { bytes = it } != -1) {
-                            localOut.write(buffer, 0, bytes)
-                            localOut.flush()
-                        }
-                    } catch (_: Exception) {}
+                    BoreProtocolSupport.pipeStreams(relayIn, localOut, BUFFER_SIZE)
                     try { localServerSocket.shutdownOutput() } catch (_: Exception) {}
                 }
 
                 val localToRelay = launch {
-                    try {
-                        val buffer = ByteArray(BUFFER_SIZE)
-                        var bytes: Int
-                        while (localIn.read(buffer).also { bytes = it } != -1) {
-                            relayOut.write(buffer, 0, bytes)
-                            relayOut.flush()
-                        }
-                    } catch (_: Exception) {}
+                    BoreProtocolSupport.pipeStreams(localIn, relayOut, BUFFER_SIZE)
                     try { relayProxySocket.shutdownOutput() } catch (_: Exception) {}
                 }
 
@@ -424,43 +411,20 @@ class BoreTunnelClient(
         if (challengeStr.isBlank()) {
             throw Exception("Expected bore auth challenge, got: $challengeLine")
         }
-        val uuid = UUID.fromString(challengeStr)
-        val challengeBytes = ByteBuffer.allocate(16)
-            .putLong(uuid.mostSignificantBits)
-            .putLong(uuid.leastSignificantBits)
-            .array()
-        val key = MessageDigest.getInstance("SHA-256").digest(secret.toByteArray(Charsets.UTF_8))
-        val mac = Mac.getInstance("HmacSHA256").apply {
-            init(SecretKeySpec(key, "HmacSHA256"))
-        }
-        val tag = mac.doFinal(challengeBytes).joinToString("") { "%02x".format(it) }
+        val tag = BoreProtocolSupport.computeChallengeHmacTag(challengeStr, secret)
         val authJson = JSONObject().put("Authenticate", tag)
         writeNullTerminatedMessage(outputStream, authJson.toString())
     }
 
-    private fun readNullTerminatedMessage(inputStream: InputStream): String? {
-        val baos = ByteArrayOutputStream()
-        while (true) {
-            val b = try {
-                inputStream.read()
-            } catch (e: Exception) {
-                if (isExplicitlyStopped.get()) return null
-                throw e
-            }
-            if (b == -1) {
-                return if (baos.size() > 0) baos.toString(Charsets.UTF_8.name()) else null
-            }
-            if (b == 0) break
-            baos.write(b)
+    private fun readNullTerminatedMessage(inputStream: InputStream): String? =
+        try {
+            BoreProtocolSupport.readNullTerminatedMessage(inputStream)
+        } catch (e: Exception) {
+            if (isExplicitlyStopped.get()) null else throw e
         }
-        return baos.toString(Charsets.UTF_8.name())
-    }
 
-    private fun writeNullTerminatedMessage(outputStream: OutputStream, msg: String) {
-        outputStream.write(msg.toByteArray(Charsets.UTF_8))
-        outputStream.write(0) // Null byte \0
-        outputStream.flush()
-    }
+    private fun writeNullTerminatedMessage(outputStream: OutputStream, msg: String) =
+        BoreProtocolSupport.writeNullTerminatedMessage(outputStream, msg)
 
     private fun notifyConnectionCount() {
         if (assignedPort > 0 && !isExplicitlyStopped.get()) {

@@ -11,6 +11,7 @@ import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.net.http.WebHttpUtils
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.net.portforward.PortForwardState
 import com.devwithzachary.mineserve.repository.BackupRepository
@@ -487,6 +488,7 @@ class WebAdminServer(
                     .put("defaultRamMb", defaultRamMb)
                     .put("minRamMb", 512)
                     .put("ramStepMb", 256)
+                    .put("isPlayStore", com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE)
                 sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                 return
             }
@@ -504,7 +506,7 @@ class WebAdminServer(
                 return
             }
 
-            // MineServe Cloud Status (Owner only)
+            // MineServe Cloud Status & OTP Sign-In (Owner only)
             if (path == "/api/cloud/status" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 sendApiResult(out, extHandlers.handleGetCloudStatus())
@@ -513,6 +515,24 @@ class WebAdminServer(
             if (path == "/api/cloud/refresh" && method == "POST") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 sendApiResult(out, extHandlers.handleRefreshCloudStatus())
+                return
+            }
+            if (path == "/api/cloud/otp/request" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                userRepository.recordAudit(currentUser, "CLOUD_OTP_REQUEST", "host", "Requested Cloud sign-in code", effectiveIp)
+                sendApiResult(out, extHandlers.handleRequestCloudOtp(body))
+                return
+            }
+            if (path == "/api/cloud/otp/verify" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                userRepository.recordAudit(currentUser, "CLOUD_SIGN_IN", "host", "Verified Cloud sign-in code", effectiveIp)
+                sendApiResult(out, extHandlers.handleVerifyCloudOtp(body))
+                return
+            }
+            if (path == "/api/cloud/logout" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                userRepository.recordAudit(currentUser, "CLOUD_SIGN_OUT", "host", "Signed out of MineServe Cloud", effectiveIp)
+                sendApiResult(out, extHandlers.handleLogoutCloud())
                 return
             }
 
@@ -1151,36 +1171,11 @@ class WebAdminServer(
         }
     }
 
-    private fun extractToken(authHeader: String?, cookieHeader: String?): String? {
-        if (!authHeader.isNullOrBlank() && authHeader.startsWith("Bearer ", ignoreCase = true)) {
-            return authHeader.substring(7).trim()
-        }
-        if (!cookieHeader.isNullOrBlank()) {
-            val cookies = cookieHeader.split(";").map { it.trim() }
-            for (c in cookies) {
-                if (c.startsWith("session=")) {
-                    return c.substring(8).trim()
-                }
-            }
-        }
-        return null
-    }
+    private fun extractToken(authHeader: String?, cookieHeader: String?): String? =
+        WebHttpUtils.extractToken(authHeader, cookieHeader)
 
-    private fun parseQueryParams(query: String): Map<String, String> {
-        if (query.isBlank()) return emptyMap()
-        val map = mutableMapOf<String, String>()
-        for (pair in query.split("&")) {
-            val idx = pair.indexOf("=")
-            if (idx > 0) {
-                val k = URLDecoder.decode(pair.substring(0, idx), "UTF-8")
-                val v = URLDecoder.decode(pair.substring(idx + 1), "UTF-8")
-                map[k] = v
-            } else if (pair.isNotBlank()) {
-                map[URLDecoder.decode(pair, "UTF-8")] = ""
-            }
-        }
-        return map
-    }
+    private fun parseQueryParams(query: String): Map<String, String> =
+        WebHttpUtils.parseQueryParams(query)
 
     private fun sendResponse(
         out: OutputStream,
@@ -1189,27 +1184,7 @@ class WebAdminServer(
         contentType: String,
         body: ByteArray,
         extraHeaders: Map<String, String> = emptyMap()
-    ) {
-        val sb = java.lang.StringBuilder()
-        sb.append("HTTP/1.1 $statusCode $statusText\r\n")
-        sb.append("Content-Type: $contentType\r\n")
-        sb.append("Content-Length: ${body.size}\r\n")
-        sb.append("Connection: close\r\n")
-        sb.append("Access-Control-Allow-Origin: *\r\n")
-        sb.append("Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS\r\n")
-        sb.append("Access-Control-Allow-Headers: Content-Type, Authorization, Cookie\r\n")
-        sb.append("X-Content-Type-Options: nosniff\r\n")
-        sb.append("X-Frame-Options: SAMEORIGIN\r\n")
-        for ((k, v) in extraHeaders) {
-            sb.append("$k: $v\r\n")
-        }
-        sb.append("\r\n")
-        out.write(sb.toString().toByteArray(Charsets.UTF_8))
-        if (body.isNotEmpty()) {
-            out.write(body)
-        }
-        out.flush()
-    }
+    ) = WebHttpUtils.sendResponse(out, statusCode, statusText, contentType, body, extraHeaders)
 
     private fun serveStaticAsset(out: OutputStream, path: String): Boolean {
         val assetName = when (path) {
@@ -1380,62 +1355,19 @@ class WebAdminServer(
         )
     }
 
-    private fun readHeaderLine(input: InputStream): String? {
-        val baos = ByteArrayOutputStream()
-        var b = input.read()
-        if (b == -1) return null
-        while (b != -1) {
-            if (b == '\n'.code) break
-            if (b != '\r'.code) baos.write(b)
-            b = input.read()
-        }
-        return baos.toString(Charsets.UTF_8.name())
-    }
+    private fun readHeaderLine(input: InputStream): String? =
+        WebHttpUtils.readAsciiLine(input)
 
-    private fun readFixedBytes(input: InputStream, length: Int): ByteArray {
-        val data = ByteArray(length)
-        var offset = 0
-        while (offset < length) {
-            val read = input.read(data, offset, length - offset)
-            if (read < 0) break
-            offset += read
-        }
-        return if (offset == length) data else data.copyOf(offset)
-    }
+    private fun readFixedBytes(input: InputStream, length: Int): ByteArray =
+        WebHttpUtils.readFixedBytes(input, length)
 
-    private fun streamFixedBytesToFile(input: InputStream, length: Long, dest: File) {
-        val buffer = ByteArray(16 * 1024)
-        var remaining = length
-        dest.outputStream().use { fileOut ->
-            while (remaining > 0) {
-                val toRead = minOf(buffer.size.toLong(), remaining).toInt()
-                val read = input.read(buffer, 0, toRead)
-                if (read < 0) break
-                fileOut.write(buffer, 0, read)
-                remaining -= read
-            }
-        }
-    }
+    private fun streamFixedBytesToFile(input: InputStream, length: Long, dest: File) =
+        WebHttpUtils.streamFixedBytesToFile(input, length, dest)
 
     private fun sendFileStreamResponse(
         out: OutputStream,
         contentType: String,
         file: File,
         extraHeaders: Map<String, String> = emptyMap()
-    ) {
-        val sb = StringBuilder()
-        sb.append("HTTP/1.1 200 OK\r\n")
-        sb.append("Content-Type: $contentType\r\n")
-        sb.append("Content-Length: ${file.length()}\r\n")
-        sb.append("Access-Control-Allow-Origin: *\r\n")
-        sb.append("Cache-Control: no-store\r\n")
-        sb.append("Connection: close\r\n")
-        for ((k, v) in extraHeaders) {
-            sb.append("$k: $v\r\n")
-        }
-        sb.append("\r\n")
-        out.write(sb.toString().toByteArray(Charsets.UTF_8))
-        file.inputStream().use { it.copyTo(out) }
-        out.flush()
-    }
+    ) = WebHttpUtils.sendFileStreamResponse(out, contentType, file, extraHeaders)
 }

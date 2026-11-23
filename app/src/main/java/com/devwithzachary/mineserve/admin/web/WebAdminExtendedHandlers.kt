@@ -932,6 +932,7 @@ internal class WebAdminExtendedHandlers(
         }
         val obj = JSONObject()
             .put("isLinked", st.isLinked)
+            .put("isPlayStore", com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE)
             .put("email", p?.email ?: "")
             .put("tier", p?.tier ?: "FREE")
             .put("storageUsedBytes", p?.storageUsedBytes ?: 0L)
@@ -946,6 +947,32 @@ internal class WebAdminExtendedHandlers(
         val res = handleGetCloudStatus()
         res.body.put("refreshed", okRefresh)
         return res
+    }
+
+    suspend fun handleRequestCloudOtp(body: String): WebApiResult {
+        val email = parseJsonObject(body).optString("email", "")
+        return cloudManager.requestEmailOtp(email).fold(
+            onSuccess = { ok(JSONObject().put("success", true)) },
+            onFailure = { err -> badRequest(err.message ?: "Failed to send verification code.") }
+        )
+    }
+
+    suspend fun handleVerifyCloudOtp(body: String): WebApiResult {
+        val j = parseJsonObject(body)
+        val email = j.optString("email", "")
+        val code = j.optString("code", "")
+        return cloudManager.verifyEmailOtp(email, code).fold(
+            onSuccess = {
+                val st = handleGetCloudStatus().body
+                ok(JSONObject().put("success", true).put("account", st))
+            },
+            onFailure = { err -> badRequest(err.message ?: "Invalid verification code.") }
+        )
+    }
+
+    fun handleLogoutCloud(): WebApiResult {
+        cloudManager.signOut()
+        return ok(JSONObject().put("success", true))
     }
 
     fun handleGetSafeguards(): WebApiResult {

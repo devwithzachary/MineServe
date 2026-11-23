@@ -57,9 +57,10 @@
           <span id="current-user-role" class="role-badge OWNER">Owner</span>
         </div>
         <div id="system-info" class="system-info">Loading host info...</div>
+        <button id="open-cloud-modal-btn" class="btn btn-primary btn-sm btn-full hidden" style="margin-bottom:6px;">MineServe Cloud</button>
         <button id="open-users-modal-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Users &amp; Sessions</button>
         <button id="open-audit-view-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Audit Log</button>
-        <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">Cloud, Safeguards &amp; Diagnostics</button>
+        <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">Host Tools</button>
         <button id="open-password-modal-btn" class="btn btn-ghost btn-sm btn-full" style="margin-bottom:6px;">Change Password</button>
         <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
       </div>
@@ -142,6 +143,10 @@
 
         <!-- Console Tab -->
         <section id="tab-console" class="tab-panel active">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-shrink:0;">
+            <span class="player-sub">Live Server Console (up to 2,000 lines)</span>
+            <button type="button" id="btn-copy-console" class="btn btn-secondary btn-sm">Copy Console Output</button>
+          </div>
           <div id="console-output" class="console-output"></div>
           <form id="console-form" class="console-input-bar">
             <input type="text" id="console-input" placeholder="Enter server command (e.g. say Hello, op Steve)..." autocomplete="off">
@@ -544,6 +549,16 @@
                     <option value="playms.uk">playms.uk (Pro)</option>
                   </select>
                 </div>
+              </div>
+              <div id="tunnel-cloud-unlinked-callout" class="hidden" style="margin:10px 0;padding:12px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.35);">
+                <div style="font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:4px;">MineServe Cloud Account Required</div>
+                <div class="player-sub" style="margin-bottom:8px;">Sign in or start a 7-day free trial of MineServe Plus to reserve custom *.play.mineserve.app (or Pro *.playms.uk) addresses across US, UK, EU, and Asia Pacific relays.</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                  <button type="button" id="tunnel-open-cloud-modal-btn" class="btn btn-primary btn-sm">Sign In / Setup MineServe Cloud</button>
+                  <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Sign Up / 7-Day Free Trial ↗</a>
+                </div>
+              </div>
+              <div class="form-grid">
                 <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
                   <label for="net-bore-host">Custom Relay Host</label>
                   <input type="text" id="net-bore-host" value="bore.pub">
@@ -697,6 +712,14 @@
               <button type="button" id="cloud-backups-refresh-btn" class="btn btn-secondary btn-sm">Refresh Cloud</button>
             </div>
             <p id="cloud-backups-status" class="player-sub">Remote encrypted snapshots stored in MineServe Cloud (R2).</p>
+            <div id="backups-cloud-unlinked-callout" class="hidden" style="margin:10px 0;padding:12px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.35);">
+              <div style="font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:4px;">Get Started with Encrypted Cloud Backups</div>
+              <div class="player-sub" style="margin-bottom:8px;">Sign in to MineServe Cloud or start a 7-day free trial to sync world backups off-device to encrypted Cloudflare R2 storage (10 GB on Plus, 50 GB on Pro).</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="backups-open-cloud-modal-btn" class="btn btn-primary btn-sm">Sign In / Setup MineServe Cloud</button>
+                <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Sign Up / 7-Day Free Trial ↗</a>
+              </div>
+            </div>
             <div id="cloud-backups-list" class="player-list" style="max-height:38vh;"></div>
           </div>
         </section>
@@ -807,22 +830,107 @@
     </div>
   </div>
 
-  <!-- Host, Cloud, Safeguards & Diagnostics Modal -->
-  <div id="host-tools-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:760px;">
+  <!-- Dedicated MineServe Cloud Modal -->
+  <div id="cloud-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:820px;">
       <div class="modal-header">
-        <h3>Host, Cloud, Safeguards &amp; Diagnostics</h3>
-        <button id="close-host-tools-modal" class="btn-icon">✕</button>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <h3 style="margin:0;">MineServe Cloud</h3>
+          <span id="cloud-tier-badge" class="status-badge RUNNING">OPTIONAL ADD-ON</span>
+        </div>
+        <button id="close-cloud-modal" class="btn-icon">✕</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
+      <div style="display:flex;flex-direction:column;gap:14px;max-height:78vh;overflow-y:auto;padding-right:4px;">
         <div class="panel-card">
           <div class="files-toolbar">
             <h3 style="margin:0;">MineServe Cloud Account</h3>
-            <button type="button" id="cloud-refresh-btn" class="btn btn-secondary btn-sm">Refresh Profile</button>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button type="button" id="cloud-refresh-btn" class="btn btn-secondary btn-sm">Refresh Profile</button>
+              <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Open Cloud Portal ↗</a>
+              <button type="button" id="cloud-logout-btn" class="btn btn-danger btn-sm hidden">Sign Out</button>
+            </div>
           </div>
-          <div id="cloud-status-summary" class="player-sub" style="margin-top:6px;">Loading cloud account...</div>
+          <div id="cloud-status-summary" class="player-sub" style="margin-top:8px;">Loading cloud account...</div>
+          <div id="cloud-signin-box" class="hidden" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px solid var(--border-subtle);">
+            <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Sign In with Email Verification Code</div>
+            <div class="player-sub">Already have a MineServe Cloud account or started your 7-day free trial at <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" style="color:var(--emerald);">cloud.mineserve.app</a>? Enter your email below to link this host:</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <input type="email" id="cloud-otp-email" placeholder="you@example.com" style="flex:1;min-width:220px;" />
+              <button type="button" id="cloud-otp-request-btn" class="btn btn-primary btn-sm">Send 6-Digit Code</button>
+            </div>
+            <div id="cloud-otp-verify-row" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+              <input type="text" id="cloud-otp-code" placeholder="Enter 6-digit email code" maxlength="6" style="flex:1;min-width:160px;" />
+              <button type="button" id="cloud-otp-verify-btn" class="btn btn-primary btn-sm">Verify &amp; Sign In</button>
+            </div>
+          </div>
         </div>
 
+        <div class="players-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));">
+          <div class="panel-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="margin:0;">Free Forever</h3>
+              <span class="role-badge VIEWER">LOCAL</span>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:var(--emerald);margin:6px 0 2px;">$0 / month</div>
+            <div class="player-sub" style="margin-bottom:8px;">Everything local in MineServe</div>
+            <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-muted);line-height:1.6;">
+              <li>Unlimited Java &amp; Bedrock servers</li>
+              <li>Built-in Bore, Playit.gg &amp; router UPnP</li>
+              <li>Local Wi-Fi Web Admin &amp; Live Map</li>
+              <li>Local backups &amp; self-hosted WebDAV</li>
+            </ul>
+          </div>
+
+          <div class="panel-card" style="border-color:var(--emerald);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="margin:0;">MineServe Plus</h3>
+              <span class="status-badge RUNNING">7-DAY FREE TRIAL</span>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:var(--emerald);margin:6px 0 2px;">$2.99 / mo <span style="font-size:12px;font-weight:500;color:var(--text-muted);">or $29 / yr</span></div>
+            <div class="player-sub" style="margin-bottom:8px;">7 days free for new subscribers</div>
+            <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-muted);line-height:1.6;">
+              <li>1 custom <code>*.play.mineserve.app</code> address</li>
+              <li>Remote Web Admin &amp; Live Map access</li>
+              <li>10 GB encrypted Cloudflare R2 backups</li>
+              <li>Multi-region low-latency relays (US, UK, EU, AP)</li>
+            </ul>
+          </div>
+
+          <div class="panel-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <h3 style="margin:0;">MineServe Pro</h3>
+              <span class="role-badge OWNER">CREATORS</span>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:var(--emerald);margin:6px 0 2px;">$6.99 / mo <span style="font-size:12px;font-weight:500;color:var(--text-muted);">or $69 / yr</span></div>
+            <div class="player-sub" style="margin-bottom:8px;">For communities &amp; multi-server hosts</div>
+            <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-muted);line-height:1.6;">
+              <li>Up to 3 custom addresses</li>
+              <li>Short <code>*.playms.uk</code> addresses (e.g. <code>smp.playms.uk</code>)</li>
+              <li>50 GB encrypted Cloudflare R2 backups</li>
+              <li>Custom domain CNAME / SRV support</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="panel-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div style="font-size:14px;font-weight:700;color:var(--text-primary);">Ready to try MineServe Plus or manage your plan?</div>
+            <div class="player-sub">Sign up or start your 7-day free trial in the browser portal, then enter your email above to link this host.</div>
+          </div>
+          <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration:none;">Start 7-Day Free Trial in Browser Portal ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Host Tools Modal -->
+  <div id="host-tools-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <h3>Host Tools (Java, Safeguards &amp; Diagnostics)</h3>
+        <button id="close-host-tools-modal" class="btn-icon">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
         <div class="panel-card">
           <div class="files-toolbar">
             <h3 style="margin:0;">Java Runtime Manager (OpenJDK)</h3>

@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.devwithzachary.mineserve.api.MineServeHttpClient
+import com.devwithzachary.mineserve.util.ServerModFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -158,6 +159,9 @@ class ModpackInstaller {
                     Log.w(TAG, "Could not download mod $fileName from any mirror")
                 }
             }
+
+            onProgress(ModpackInstallProgress("Filtering Client-Only Mods", index.name, totalCount, totalCount, 0.98f))
+            ServerModFilter.disableClientOnlyMods(serverDir)
 
             onProgress(ModpackInstallProgress("Complete", index.name, totalCount, totalCount, 1f))
             Result.success(index)

@@ -4,6 +4,11 @@ All notable changes to the MineServe project will be documented in this file.
 
 ## [1.8.0] - Unreleased
 
+### 🐧 Native Linux Engine & Headless Mode (Beta)
+- **Standalone `:desktop` Linux Engine (`LinuxProcessManager`, `LinuxServerRepository`, `LinuxServerSoftwareManager`, `LinuxHostTelemetry`)**: Built a native Linux server runtime running directly via `ProcessBuilder` with zero PRoot overhead, real-time `/proc` CPU/RAM telemetry, 2,000-line console ring buffer, Crash Watchdog auto-restart with crash-loop protection (max 3 restarts in 5 minutes), and automatic backup retention policies.
+- **Portable Adoptium Temurin OpenJDK Provisioning (`PortableJavaManager`)**: Automatically downloads and extracts portable Linux `x64`/`aarch64` OpenJDK 8, 17, 21, and 25 JREs into `~/.local/share/mineserve/runtimes/java/` with zero `sudo` or system package manager requirements.
+- **Headless CLI, Embedded Web Admin & Systemd Generator (`Main.kt`, `LinuxWebServer`, `SystemdServiceInstaller`)**: Added `--headless`, `--port`, `--bind`, `--data-dir`, `--reset-password`, and `--print-service` CLI flags, serving the single-source-of-truth MineServe Web Admin UI with SSE live console streaming, multi-user RBAC, File Manager, Modrinth plugins/mods, backups, and server upgrades.
+
 ### 👥 Multi-User Accounts, RBAC & Audit Log
 - **Shared Multi-User Auth & RBAC Engine (`:core` `UserRepository`, `PasswordHasher`, `UserRole`, `Permission`)**: Added salted PBKDF2-SHA256 user authentication, four role levels (`Owner`, `Admin`, `Moderator`, `Viewer`), optional per-server access scoping, automatic migration of existing admin credentials to the default `Owner` account, and last-owner deletion/demotion protection.
 - **Web Remote Admin Users, Sessions & Audit Log (`WebAdminServer` / Web UI / Android `RemoteAdminScreen`)**: Enforced strict role-based permissions and per-server scoping across all Web Admin API endpoints and tabs, added `/api/users`, `/api/sessions`, `/api/audit`, and `/api/me/password` endpoints, added a **Users, Sessions & Audit Log** modal plus **Change Password** dialog to the Web UI, and added native **Panel Users & Roles** + **Recent Audit Log** management (`PanelUsersCard`) directly inside the Android app's **Web Remote Admin** screen.

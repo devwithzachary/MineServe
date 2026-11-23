@@ -41,6 +41,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         date = "In Development",
         initialExpanded = true,
         highlights = listOf(
+            "MineServe for Linux (Headless Beta): Added a native Linux server engine (:desktop) with portable Adoptium OpenJDK 8/17/21/25 provisioning, /proc telemetry, Crash Watchdog auto-restart, systemd unit generation, and the full MineServe Web Admin panel.",
             "Multi-User Web Admin, RBAC & Audit Log: Create and manage multiple panel user accounts with Owner, Admin, Moderator, or Viewer roles, restrict users to specific servers, view and revoke active sessions, change passwords, and inspect the live audit log from both the Android app (Web Remote Admin settings) and the Web UI.",
             "In-App Cloud Sign-In & Localized Pricing: Sign in to MineServe Cloud directly inside the app with a 6-digit email code, with regional currency pricing estimates on direct builds.",
             "Smooth First-Run Setup Progress: Re-weighted initial runtime setup across download, extraction, and live OpenJDK package installation steps so the progress bar moves steadily instead of stalling at 98%.",

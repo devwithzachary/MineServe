@@ -168,6 +168,7 @@
 
     $("open-create-modal-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-import-server-modal-btn")?.classList.toggle("hidden", !canManageHost);
+    $("open-cloud-modal-btn")?.classList.toggle("hidden", !canManageHost || !!state.isPlayStore);
     $("empty-create-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-host-tools-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-users-modal-btn")?.classList.toggle("hidden", !canManageUsers);
@@ -276,7 +277,12 @@
   async function loadSystemInfo() {
     try {
       const info = await apiFetch("/api/system");
-      $("system-info").textContent = `${info.device} (Android ${info.android})`;
+      state.isPlayStore = !!info.isPlayStore;
+      $("system-info").textContent = info.platform === "linux"
+        ? info.device
+        : `${info.device} (Android ${info.android})`;
+      applyUserPermissionsUi();
+      syncCloudUnlinkedCallouts();
       if (info.maxAllocatableRamMb) {
         state.deviceRam = {
           totalMb: Number(info.deviceTotalRamMb) || 4096,
@@ -429,7 +435,11 @@
     } else {
       badge.className = "net-pill offline";
       badge.textContent = "Public Access · Off";
-      note.textContent = "LAN only (enable a tunnel or UPnP in Network Settings)";
+      if (net.firewallWarning) {
+        note.textContent = `Firewall warning: ${net.firewallWarning}`;
+      } else {
+        note.textContent = "LAN only (enable a tunnel or UPnP in Network Settings)";
+      }
     }
 
     const lan = net.localAddress || "";
@@ -515,7 +525,13 @@
   function updateConsoleOutput(lines) {
     const out = $("console-output");
     if (!out) return;
-    const nextText = lines.join("\n");
+    let nextText = lines.join("\n");
+    if (!nextText.trim()) {
+      const srv = state.servers.find((s) => s.id === state.selectedServerId);
+      if (srv && srv.status === "STOPPED") {
+        nextText = "Server is ready. Click the green Start button above to launch it.";
+      }
+    }
     if (out.textContent === nextText) return;
     const prevTop = out.scrollTop;
     const wasAtBottom = out.scrollHeight - out.scrollTop - out.clientHeight < 40;
@@ -1183,11 +1199,24 @@
   }
 
   // Network (Tunnels & Port Forwarding)
+  function syncCloudUnlinkedCallouts() {
+    if (state.isPlayStore) {
+      $("tunnel-cloud-unlinked-callout")?.classList.add("hidden");
+      $("backups-cloud-unlinked-callout")?.classList.add("hidden");
+      $("open-cloud-modal-btn")?.classList.add("hidden");
+      return;
+    }
+    const isCloudProvider = $("net-tunnel-provider")?.value === "MINESERVE_CLOUD";
+    $("tunnel-cloud-unlinked-callout")?.classList.toggle("hidden", !isCloudProvider || !!state.cloudLinked);
+    $("backups-cloud-unlinked-callout")?.classList.toggle("hidden", !!state.cloudLinked);
+  }
+
   function updateTunnelProviderFields() {
     const provider = $("net-tunnel-provider").value;
     document.querySelectorAll("[data-tunnel-provider]").forEach((el) => {
       el.classList.toggle("hidden", el.dataset.tunnelProvider !== provider);
     });
+    syncCloudUnlinkedCallouts();
   }
 
   async function loadNetwork(syncForm = true) {
@@ -1555,9 +1584,16 @@
 
       if (job.status === "done") {
         $("create-modal").classList.add("hidden");
-        showToast("Server created!");
+        showToast("Server created! Click the green Start button above to launch it.");
         await loadServers();
         if (job.serverId) selectServer(job.serverId);
+        const startBtn = $("btn-start");
+        if (startBtn) {
+          startBtn.classList.remove("btn-pulse-highlight");
+          void startBtn.offsetWidth;
+          startBtn.classList.add("btn-pulse-highlight");
+          setTimeout(() => startBtn.classList.remove("btn-pulse-highlight"), 6000);
+        }
         return;
       }
       if (job.status === "error") {
@@ -2127,6 +2163,7 @@
         });
         const startData = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(startData.error || `Import failed (${res.status})`);
+        if (!startData.jobId) throw new Error(startData.error || "Modpack import is not available for this server.");
 
         const jobId = startData.jobId;
         btn.textContent = "Importing...";
@@ -2246,20 +2283,38 @@
     });
 
     // Host Tools (Cloud, Safeguards, Diagnostics)
-    const loadHostTools = async () => {
+    const loadCloudAccount = async () => {
       try {
         const c = await apiFetch("/api/cloud/status");
+        if (typeof c.isPlayStore === "boolean") {
+          state.isPlayStore = c.isPlayStore;
+          applyUserPermissionsUi();
+        }
+        state.cloudLinked = !!c.isLinked;
+        const signinBox = $("cloud-signin-box");
+        const logoutBtn = $("cloud-logout-btn");
+        const badge = $("cloud-tier-badge");
         if (c.isLinked) {
           const usedMb = ((c.storageUsedBytes || 0) / (1024 * 1024)).toFixed(1);
           const quotaGb = ((c.storageQuotaBytes || 0) / (1024 * 1024 * 1024)).toFixed(0);
-          $("cloud-status-summary").textContent = `Signed in as ${c.email || "user"} · Tier: ${c.tier} · Storage: ${usedMb} MB / ${quotaGb} GB · Subdomains: ${(c.activeSubdomains || []).join(", ") || "none"}`;
+          $("cloud-status-summary").textContent = `Signed in as ${c.email || "user"} · Tier: ${c.tier} · Cloud Storage: ${usedMb} MB / ${quotaGb} GB · Active Subdomains: ${(c.activeSubdomains || []).join(", ") || "none"}`;
+          if (badge) badge.textContent = `${c.tier || "FREE"} PLAN`;
+          signinBox?.classList.add("hidden");
+          logoutBtn?.classList.remove("hidden");
         } else {
-          $("cloud-status-summary").textContent = "Not signed in. Link your MineServe Cloud account in App Settings on Android to enable R2 backups and custom subdomains.";
+          $("cloud-status-summary").textContent = "Your host runs Minecraft servers 100% free forever (with Bore, Playit.gg, UPnP, and local/WebDAV backups). MineServe Cloud is an optional add-on that adds custom *.play.mineserve.app addresses, remote browser Web Admin from anywhere, and encrypted Cloudflare R2 backups.";
+          if (badge) badge.textContent = "OPTIONAL ADD-ON";
+          signinBox?.classList.remove("hidden");
+          logoutBtn?.classList.add("hidden");
         }
+        syncCloudUnlinkedCallouts();
       } catch (err) {
         $("cloud-status-summary").textContent = err.message || "Unable to load cloud status.";
       }
+    };
 
+    const loadHostTools = async () => {
+      await loadCloudAccount();
       try {
         const sg = await apiFetch("/api/safeguards");
         $("sg-battery-enabled").checked = !!sg.batteryAutoStopEnabled;
@@ -2269,10 +2324,44 @@
       } catch (_) {}
     };
 
-    $("open-host-tools-btn").addEventListener("click", () => {
+    const openCloudModal = () => {
+      if (state.isPlayStore) return;
+      $("cloud-modal")?.classList.remove("hidden");
+      loadCloudAccount();
+    };
+    $("open-cloud-modal-btn")?.addEventListener("click", openCloudModal);
+    $("tunnel-open-cloud-modal-btn")?.addEventListener("click", openCloudModal);
+    $("backups-open-cloud-modal-btn")?.addEventListener("click", openCloudModal);
+    $("close-cloud-modal")?.addEventListener("click", () => $("cloud-modal")?.classList.add("hidden"));
+
+    const openHostToolsModal = () => {
       $("host-tools-modal").classList.remove("hidden");
       loadHostTools();
       loadJavaRuntimes();
+    };
+    $("open-host-tools-btn")?.addEventListener("click", openHostToolsModal);
+    loadCloudAccount();
+    $("btn-copy-console")?.addEventListener("click", async () => {
+      const text = ($("console-output")?.textContent || "").trim();
+      if (!text) {
+        showToast("Console is empty", "error");
+        return;
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+        showToast("Console output copied to clipboard!");
+      } catch (_) {
+        showToast("Failed to copy console output", "error");
+      }
     });
     $("close-host-tools-modal").addEventListener("click", () => $("host-tools-modal").classList.add("hidden"));
     $("cloud-refresh-btn").addEventListener("click", async () => {
@@ -2280,6 +2369,55 @@
         await apiFetch("/api/cloud/refresh", { method: "POST" });
         await loadHostTools();
         showToast("Cloud profile refreshed");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+    $("cloud-otp-request-btn")?.addEventListener("click", async () => {
+      const email = ($("cloud-otp-email")?.value || "").trim();
+      if (!email || !email.includes("@")) {
+        showToast("Enter a valid email address.", "error");
+        return;
+      }
+      const btn = $("cloud-otp-request-btn");
+      btn.disabled = true;
+      try {
+        await apiFetch("/api/cloud/otp/request", { method: "POST", body: JSON.stringify({ email }) });
+        $("cloud-otp-verify-row")?.classList.remove("hidden");
+        showToast("6-digit verification code sent! Check your email.");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    $("cloud-otp-verify-btn")?.addEventListener("click", async () => {
+      const email = ($("cloud-otp-email")?.value || "").trim();
+      const code = ($("cloud-otp-code")?.value || "").trim();
+      if (code.length < 6) {
+        showToast("Enter the 6-digit code from your email.", "error");
+        return;
+      }
+      const btn = $("cloud-otp-verify-btn");
+      btn.disabled = true;
+      try {
+        await apiFetch("/api/cloud/otp/verify", { method: "POST", body: JSON.stringify({ email, code }) });
+        $("cloud-otp-code").value = "";
+        $("cloud-otp-verify-row")?.classList.add("hidden");
+        await loadHostTools();
+        showToast("Signed in to MineServe Cloud!");
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+    $("cloud-logout-btn")?.addEventListener("click", async () => {
+      if (!confirm("Sign out of MineServe Cloud on this host?")) return;
+      try {
+        await apiFetch("/api/cloud/logout", { method: "POST" });
+        await loadHostTools();
+        showToast("Signed out of MineServe Cloud");
       } catch (err) {
         showToast(err.message, "error");
       }

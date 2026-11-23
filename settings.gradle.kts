@@ -26,4 +26,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MineServe"
-include(":app", ":core")
+include(":app", ":core", ":desktop")

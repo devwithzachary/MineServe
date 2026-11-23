@@ -1,0 +1,250 @@
+package com.devwithzachary.mineserve.desktop
+
+import com.devwithzachary.mineserve.auth.UserRepository
+import com.devwithzachary.mineserve.core.CoreLog
+import com.devwithzachary.mineserve.core.Logger
+import java.io.File
+import java.security.SecureRandom
+import java.util.concurrent.CountDownLatch
+
+data class CliOptions(
+    val headless: Boolean = false,
+    val verbose: Boolean = false,
+    val port: Int = 8080,
+    val bindHost: String = "0.0.0.0",
+    val dataDir: File = LinuxDataPaths.defaultDataDir(),
+    val resetAdmin: Boolean = false,
+    val resetPassword: String? = null,
+    val printService: Boolean = false,
+    val showHelp: Boolean = false
+)
+
+fun parseCliArgs(args: Array<String>): CliOptions {
+    var headless = false
+    var verbose = false
+    var port = 8080
+    var bindHost = "0.0.0.0"
+    var dataDir = LinuxDataPaths.defaultDataDir()
+    var resetAdmin = false
+    var resetPassword: String? = null
+    var printService = false
+    var showHelp = false
+
+    var i = 0
+    while (i < args.size) {
+        when (val arg = args[i]) {
+            "--headless" -> headless = true
+            "--verbose", "-v" -> verbose = true
+            "--port", "-p" -> {
+                port = args.getOrNull(++i)?.toIntOrNull()?.coerceIn(1, 65535) ?: port
+            }
+            "--bind", "-b" -> {
+                bindHost = args.getOrNull(++i)?.trim()?.ifBlank { bindHost } ?: bindHost
+            }
+            "--data-dir", "-d" -> {
+                val p = args.getOrNull(++i)?.trim()
+                if (!p.isNullOrBlank()) dataDir = File(p)
+            }
+            "--reset-admin" -> {
+                resetAdmin = true
+                val next = args.getOrNull(i + 1)
+                if (next != null && !next.startsWith("-")) {
+                    resetPassword = next
+                    i++
+                }
+            }
+            "--reset-password" -> {
+                resetAdmin = true
+                val next = args.getOrNull(i + 1)
+                if (next != null && !next.startsWith("-")) {
+                    resetPassword = next
+                    i++
+                }
+            }
+            "--print-service" -> printService = true
+            "--help", "-h" -> showHelp = true
+            else -> {
+                if (arg.startsWith("--port=")) {
+                    port = arg.substringAfter("=").toIntOrNull()?.coerceIn(1, 65535) ?: port
+                } else if (arg.startsWith("--bind=")) {
+                    bindHost = arg.substringAfter("=").trim().ifBlank { bindHost }
+                } else if (arg.startsWith("--data-dir=")) {
+                    val p = arg.substringAfter("=").trim()
+                    if (p.isNotBlank()) dataDir = File(p)
+                } else if (arg.startsWith("--reset-admin=")) {
+                    resetAdmin = true
+                    resetPassword = arg.substringAfter("=").takeIf { it.isNotBlank() }
+                } else if (arg.startsWith("--reset-password=")) {
+                    resetAdmin = true
+                    resetPassword = arg.substringAfter("=").takeIf { it.isNotBlank() }
+                }
+            }
+        }
+        i++
+    }
+
+    return CliOptions(
+        headless = headless,
+        verbose = verbose,
+        port = port,
+        bindHost = bindHost,
+        dataDir = dataDir,
+        resetAdmin = resetAdmin,
+        resetPassword = resetPassword,
+        printService = printService,
+        showHelp = showHelp
+    )
+}
+
+private fun generateInitialPassword(length: Int = 14): String {
+    val alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789"
+    val rng = SecureRandom()
+    return (1..length).map { alphabet[rng.nextInt(alphabet.length)] }.joinToString("")
+}
+
+private fun printUsage() {
+    println(
+        """
+        MineServe Linux (v1.8.0-beta) - Native Minecraft Server Manager
+
+        Usage:
+          mineserve [options]
+
+        Options:
+          --headless                Run in headless daemon mode (Web Admin panel only)
+          --verbose, -v             Print detailed HTTP, tunnel, and Minecraft server logs
+          --port, -p <port>         Web Admin HTTP port (default: 8080)
+          --bind, -b <host>         Bind address (default: 0.0.0.0)
+          --data-dir, -d <path>     Custom data directory (default: ~/.local/share/mineserve)
+          --reset-admin [pass]      Reset primary 'admin' Owner account (random password if omitted) and exit
+          --reset-password [pass]   Alias for --reset-admin (min 6 chars if custom password provided)
+          --print-service           Print a ready-to-use systemd mineserve.service unit file
+          --help, -h                Show this help message
+        """.trimIndent()
+    )
+}
+
+fun main(args: Array<String>) {
+    val options = parseCliArgs(args)
+    CoreLog.sink = object : Logger {
+        override fun d(tag: String, message: String) {
+            if (options.verbose) println("D/$tag: $message")
+        }
+        override fun i(tag: String, message: String) = println("[$tag] $message")
+        override fun w(tag: String, message: String, throwable: Throwable?) {
+            System.err.println("[$tag] WARN: $message")
+            throwable?.printStackTrace(System.err)
+        }
+        override fun e(tag: String, message: String, throwable: Throwable?) {
+            System.err.println("[$tag] ERROR: $message")
+            throwable?.printStackTrace(System.err)
+        }
+    }
+
+    if (options.showHelp) {
+        printUsage()
+        return
+    }
+    if (options.printService) {
+        print(SystemdServiceInstaller.generateServiceUnit(dataDir = options.dataDir, port = options.port, bindHost = options.bindHost))
+        return
+    }
+
+    val paths = LinuxDataPaths(options.dataDir)
+    val userRepository = UserRepository(paths.rootDir)
+
+    if (options.resetAdmin) {
+        val newPass = options.resetPassword?.trim()?.takeIf { it.isNotEmpty() } ?: generateInitialPassword()
+        if (newPass.length < 6) {
+            System.err.println("Error: password must be at least 6 characters.")
+            return
+        }
+        userRepository.syncPrimaryOwnerCredentials("admin", newPass)
+        println("============================================================")
+        println(" MineServe Admin Panel Credentials Reset")
+        println("   Username: admin")
+        println("   Password: $newPass")
+        println("   Data Dir: ${paths.rootDir.absolutePath}")
+        println("============================================================")
+        if (!options.headless) {
+            return
+        }
+    }
+
+    val existingUsers = userRepository.listUsers()
+    if (existingUsers.isEmpty()) {
+        val initialPassword = generateInitialPassword()
+        userRepository.ensureDefaultOwner("admin", initialPassword)
+        println("============================================================")
+        println(" MineServe Linux First-Run Setup")
+        println(" Created default Owner account:")
+        println("   Username: admin")
+        println("   Password: $initialPassword")
+        println(" Forgot it later? Run with --reset-admin to generate a new one.")
+        println("============================================================")
+    }
+
+    val javaManager = PortableJavaManager(paths)
+    val serverRepository = LinuxServerRepository(paths)
+    val softwareManager = LinuxServerSoftwareManager(serverRepository, javaManager)
+    val cloudManager = LinuxCloudManager(paths)
+    val networkManager = LinuxNetworkManager(paths, cloudManager = cloudManager, verbose = options.verbose)
+    val processManager = LinuxProcessManager(
+        serverRepository = serverRepository,
+        javaManager = javaManager,
+        verbose = options.verbose,
+        hasActiveTunnel = { serverId -> networkManager.getTunnelState(serverId) is LinuxTunnelState.Connected }
+    )
+
+    // Auto-start any servers configured with autoStart = true
+    serverRepository.servers.value.filter { it.autoStart }.forEach { srv ->
+        println("[MineServe] Auto-starting server '${srv.name}' (${srv.type.displayName} ${srv.version})...")
+        processManager.startServer(srv)
+    }
+
+    val webServer = LinuxWebServer(
+        bindHost = options.bindHost,
+        port = options.port,
+        paths = paths,
+        serverRepository = serverRepository,
+        processManager = processManager,
+        softwareManager = softwareManager,
+        javaManager = javaManager,
+        networkManager = networkManager,
+        cloudManager = cloudManager,
+        userRepository = userRepository,
+        verbose = options.verbose
+    )
+
+    if (!webServer.start()) {
+        System.err.println("Failed to start MineServe Web Admin on ${options.bindHost}:${options.port}")
+        return
+    }
+
+    val lanIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+    val mem = LinuxHostTelemetry.getMemoryInfo()
+    println("")
+    println("MineServe Linux Engine started (${if (options.headless) "Headless Mode" else "Server Mode"}${if (options.verbose) ", Verbose" else ""})")
+    println("  Host:      ${LinuxHostTelemetry.getHostDisplayName()} (${mem.totalMb} MB RAM)")
+    println("  Data Dir:  ${paths.rootDir.absolutePath}")
+    println("  Local URL: http://127.0.0.1:${webServer.actualPort}")
+    println("  LAN URL:   http://$lanIp:${webServer.actualPort}")
+    val webFw = LinuxFirewallChecker.checkInboundPort(webServer.actualPort, isUdp = false)
+    if (webFw.isActive && !webFw.isPortConfirmedOpen && webFw.fixCommand != null) {
+        println("  [Firewall Warning] ${webFw.firewallName} is active. To access the Web UI from another device on LAN, run:")
+        println("    ${webFw.fixCommand}")
+    }
+    println("  Press Ctrl+C to gracefully stop all servers and exit.")
+    println("")
+
+    val shutdownLatch = CountDownLatch(1)
+    Runtime.getRuntime().addShutdownHook(Thread {
+        println("\n[MineServe] Shutting down gracefully...")
+        networkManager.stopAll()
+        processManager.stopAllServers()
+        webServer.stop()
+        shutdownLatch.countDown()
+    })
+
+    shutdownLatch.await()
+}
