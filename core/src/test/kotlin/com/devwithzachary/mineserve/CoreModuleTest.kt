@@ -8,10 +8,12 @@ import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.model.WebMapPluginType
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -81,6 +83,32 @@ class CoreModuleTest {
             val props = ServerProperties(motd = "Core Test", maxPlayers = 25)
             assertEquals("Core Test", props.motd)
             assertEquals(25, props.maxPlayers)
+        } finally {
+            root.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun squaremapDetectionIgnoresConfigDirectoryAfterUninstall() {
+        val root = createTempDirectory("mineserve-squaremap-test").toFile()
+        try {
+            WebMapPluginType.setSquaremapPort(root, isModServer = false, port = 8081)
+            assertEquals(8081, WebMapPluginType.detectSquaremapPort(root))
+            // Config directory alone must not report Squaremap as installed
+            assertNull(WebMapPluginType.detectInstalled(root))
+            assertNull(WebMapPluginType.findInstalledFile(root))
+
+            val jarFile = File(root, "plugins/squaremap-paper-1.2.5.jar").apply {
+                parentFile?.mkdirs()
+                writeText("jar")
+            }
+            assertEquals(WebMapPluginType.SQUAREMAP, WebMapPluginType.detectInstalled(root))
+            assertEquals(jarFile.absolutePath, WebMapPluginType.findInstalledFile(root)?.absolutePath)
+
+            assertTrue(jarFile.delete())
+            // After deleting jar, plugins/squaremap/ still exists, but detection must immediately return null
+            assertNull(WebMapPluginType.detectInstalled(root))
+            assertNull(WebMapPluginType.findInstalledFile(root))
         } finally {
             root.deleteRecursively()
         }

@@ -416,8 +416,8 @@ internal class WebAdminExtendedHandlers(
     fun handleUninstallLiveMap(serverId: String): WebApiResult {
         serverRepository.getServer(serverId) ?: return notFound("Server not found")
         val serverDir = serverRepository.getServerDirectory(serverId)
-        val file = WebMapPluginType.findInstalledFile(serverDir)
-        val deleted = file != null && file.exists() && file.delete()
+        val files = WebMapPluginType.findAllInstalledFiles(serverDir)
+        val deleted = files.isNotEmpty() && files.map { it.exists() && it.delete() }.any { it }
         return ok(JSONObject().put("success", deleted))
     }
 

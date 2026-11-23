@@ -139,23 +139,25 @@ enum class WebMapPluginType(
             "config/squaremap/config.yml"
         )
 
-        fun detectInstalled(serverDir: File): WebMapPluginType? {
-            val pluginsDir = File(serverDir, "plugins")
-            val modsDir = File(serverDir, "mods")
-            val files = (pluginsDir.listFiles() ?: emptyArray()) + (modsDir.listFiles() ?: emptyArray())
+        private fun isSquaremapPluginFile(file: File): Boolean {
+            if (!file.isFile) return false
+            val lower = file.name.lowercase()
+            return lower.contains("squaremap") && (lower.endsWith(".jar") || lower.endsWith(".jar.disabled"))
+        }
 
-            for (file in files) {
-                val lower = file.name.lowercase()
-                if (lower.contains("squaremap")) return SQUAREMAP
-            }
-            return null
+        fun detectInstalled(serverDir: File): WebMapPluginType? {
+            return if (findInstalledFile(serverDir) != null) SQUAREMAP else null
         }
 
         fun findInstalledFile(serverDir: File): File? {
+            return findAllInstalledFiles(serverDir).firstOrNull()
+        }
+
+        fun findAllInstalledFiles(serverDir: File): List<File> {
             val pluginsDir = File(serverDir, "plugins")
             val modsDir = File(serverDir, "mods")
             val files = (pluginsDir.listFiles() ?: emptyArray()) + (modsDir.listFiles() ?: emptyArray())
-            return files.firstOrNull { it.name.lowercase().contains("squaremap") }
+            return files.filter { isSquaremapPluginFile(it) }
         }
 
         fun findSquaremapConfig(serverDir: File): File? {

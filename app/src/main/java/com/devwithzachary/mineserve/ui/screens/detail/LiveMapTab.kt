@@ -454,10 +454,15 @@ fun LiveMapTab(
             onDismiss = { showUninstallDialog = false },
             onConfirmUninstall = {
                 val ok = onUninstallWebMapPlugin()
-                refreshState()
                 if (ok) {
+                    webViewError = null
+                    isWebViewLoading = false
+                    webViewRef?.stopLoading()
+                    webViewRef = null
+                    refreshState()
                     Toast.makeText(context, "Squaremap uninstalled.", Toast.LENGTH_SHORT).show()
                 } else {
+                    refreshState()
                     Toast.makeText(context, "Failed to uninstall Squaremap.", Toast.LENGTH_SHORT).show()
                 }
             }

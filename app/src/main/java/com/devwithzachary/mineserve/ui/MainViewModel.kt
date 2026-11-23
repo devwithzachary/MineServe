@@ -1159,11 +1159,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun uninstallWebMapPlugin(serverId: String): Boolean {
         val serverDir = serverRepository.getServerDirectory(serverId)
-        val file = com.devwithzachary.mineserve.model.WebMapPluginType.findInstalledFile(serverDir)
-        val deleted = file != null && file.exists() && file.delete()
-        if (deleted) {
+        val files = com.devwithzachary.mineserve.model.WebMapPluginType.findAllInstalledFiles(serverDir)
+        if (files.isEmpty()) return false
+        val deletedAny = files.map { it.exists() && it.delete() }.any { it }
+        if (deletedAny) {
+            _webMapPorts.remove(serverId)
             loadServerDetails(serverId)
         }
-        return deleted
+        return deletedAny
     }
 }
