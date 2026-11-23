@@ -161,9 +161,15 @@ The 1.8.0 milestone marks MineServe's first expansion beyond Android with **Beta
 
 The 1.9.0 milestone graduates Linux to **Stable**, introduces **Beta** builds for **macOS** and **Windows**, and launches a redesigned website for the multi-platform MineServe ecosystem.
 
-### 🐧 1. Stable Linux Release
+### 🐧 1. Stable Linux Release & Package Repositories
 - **Production-Ready Linux Builds**:
   - Harden systemd service integration, auto-update flows, headless CLI tooling, and distro packages across Debian/Ubuntu, Fedora, Arch, and Docker.
+- **Arch User Repository (AUR - `mineserve-bin`)**:
+  - Publish and maintain an official `mineserve-bin` package on the AUR (`aur.archlinux.org`) with automated `PKGBUILD` and `.SRCINFO` generation so Arch, CachyOS, EndeavourOS, Manjaro, and SteamOS users can install and update via `paru -S mineserve-bin` or `yay -S mineserve-bin`.
+- **GitHub Container Registry (`ghcr.io`) & Docker Hub Publishing**:
+  - Publish official multi-arch (`linux/amd64` and `linux/arm64`) headless container images to `ghcr.io/devwithzachary/mineserve` and Docker Hub for one-command deployment on Docker, Compose, Portainer, Unraid, CasaOS, and Proxmox.
+- **Signed APT & RPM Package Repositories (`mineserve.app/apt` & `mineserve.app/rpm`)**:
+  - Host GPG-signed static APT and RPM repositories so Debian/Ubuntu (`sudo apt upgrade`) and Fedora/RHEL (`sudo dnf upgrade`) systems receive automatic native package manager updates.
 
 ### 🍎 2. macOS & Windows Desktop Betas (Native UI & Headless Mode)
 - **Windows Beta (`.exe` / `.msi` / Portable)**:

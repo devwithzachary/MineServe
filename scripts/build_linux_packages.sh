@@ -93,6 +93,11 @@ create_install_scripts "$PORTABLE_STAGE"
 tar -C "$BUILD_STAGE" -czf "$RELEASE_DIR/${PORTABLE_DIR_NAME}.tar.gz" "$PORTABLE_DIR_NAME"
 cp "$PROJECT_ROOT/packaging/linux/PKGBUILD" "$RELEASE_DIR/PKGBUILD"
 sed -i "s/^pkgver=.*/pkgver=${VERSION_NAME}/" "$RELEASE_DIR/PKGBUILD"
+cp "$PROJECT_ROOT/packaging/linux/install.sh" "$RELEASE_DIR/install.sh"
+chmod +x "$PROJECT_ROOT/packaging/linux/install.sh" "$RELEASE_DIR/install.sh"
+if [ -d "$PROJECT_ROOT/../MineServe-web" ]; then
+    cp "$PROJECT_ROOT/packaging/linux/install.sh" "$PROJECT_ROOT/../MineServe-web/install.sh" 2>/dev/null || true
+fi
 
 # 3. Package Self-Contained Native Linux .tar.gz (With Embedded JRE from createDistributable)
 echo "[3/5] Building self-contained Linux bundle with embedded JRE (MineServe-${VERSION_NAME}-linux-${ARCH_LABEL}.tar.gz)..."
