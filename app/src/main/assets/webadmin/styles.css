@@ -83,6 +83,34 @@ input:focus, select:focus, textarea:focus {
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
 .span-2 { grid-column: span 2; }
 
+.ram-slider-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ram-slider-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--emerald);
+}
+.ram-range {
+  width: 100%;
+  accent-color: var(--emerald);
+  cursor: pointer;
+  margin: 4px 0;
+  height: 6px;
+}
+.ram-slider-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
 .checkbox-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));

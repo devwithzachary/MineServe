@@ -14,6 +14,9 @@ import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import com.devwithzachary.mineserve.tunnel.TunnelState
+import com.devwithzachary.mineserve.ui.components.getDefaultAllocatedRamMb
+import com.devwithzachary.mineserve.ui.components.getDeviceTotalMemoryMb
+import com.devwithzachary.mineserve.ui.components.getMaxAllocatableRamMb
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -251,11 +254,19 @@ class WebAdminServer(
                 val rt = Runtime.getRuntime()
                 val totalRam = rt.totalMemory() / (1024 * 1024)
                 val freeRam = rt.freeMemory() / (1024 * 1024)
+                val deviceTotalRamMb = getDeviceTotalMemoryMb(context)
+                val maxAllocatableRamMb = getMaxAllocatableRamMb(deviceTotalRamMb)
+                val defaultRamMb = getDefaultAllocatedRamMb(context)
                 val resp = JSONObject()
                     .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
                     .put("android", Build.VERSION.RELEASE)
                     .put("totalRamMb", totalRam)
                     .put("freeRamMb", freeRam)
+                    .put("deviceTotalRamMb", deviceTotalRamMb)
+                    .put("maxAllocatableRamMb", maxAllocatableRamMb)
+                    .put("defaultRamMb", defaultRamMb)
+                    .put("minRamMb", 512)
+                    .put("ramStepMb", 256)
                 sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                 return
             }

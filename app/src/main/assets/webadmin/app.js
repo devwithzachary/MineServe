@@ -84,10 +84,78 @@
     }
   }
 
+  function formatRamValue(mb) {
+    const val = Number(mb) || 512;
+    if (val >= 1024) {
+      return `${(val / 1024).toFixed(1)} GB (${val} MB)`;
+    }
+    return `${val} MB`;
+  }
+
+  function formatRamShort(mb) {
+    const val = Number(mb) || 512;
+    if (val >= 1024) {
+      const gb = Math.round((val / 1024) * 10) / 10;
+      return `${gb % 1 === 0 ? gb.toFixed(0) : gb.toFixed(1)} GB`;
+    }
+    return `${val} MB`;
+  }
+
+  function getDeviceRamBounds() {
+    return state.deviceRam || {
+      totalMb: 4096,
+      maxAllocatableMb: 3072,
+      defaultMb: 2048,
+      minMb: 512,
+      stepMb: 256
+    };
+  }
+
+  function configureRamSlider(prefix, targetMb) {
+    const slider = $(prefix);
+    const display = $(`${prefix}-display`);
+    const minEl = $(`${prefix}-min`);
+    const maxEl = $(`${prefix}-max`);
+    const hintEl = $(`${prefix}-device-hint`);
+    if (!slider) return;
+
+    const bounds = getDeviceRamBounds();
+    const step = bounds.stepMb || 256;
+    const min = bounds.minMb || 512;
+    const rawVal = Number(targetMb || slider.value || bounds.defaultMb);
+    const snapped = Math.max(min, Math.round(rawVal / step) * step);
+    const max = Math.max(bounds.maxAllocatableMb || 3072, snapped);
+
+    slider.min = String(min);
+    slider.max = String(max);
+    slider.step = String(step);
+    slider.value = String(snapped);
+
+    if (display) display.textContent = formatRamValue(snapped);
+    if (minEl) minEl.textContent = formatRamShort(min);
+    if (maxEl) maxEl.textContent = `${formatRamShort(max)} max`;
+    if (hintEl) {
+      hintEl.textContent = bounds.totalMb
+        ? `Device Total: ${formatRamShort(bounds.totalMb)}`
+        : "Device-aware allocation";
+    }
+  }
+
   async function loadSystemInfo() {
     try {
       const info = await apiFetch("/api/system");
       $("system-info").textContent = `${info.device} (Android ${info.android})`;
+      if (info.maxAllocatableRamMb) {
+        state.deviceRam = {
+          totalMb: Number(info.deviceTotalRamMb) || 4096,
+          maxAllocatableMb: Number(info.maxAllocatableRamMb) || 3072,
+          defaultMb: Number(info.defaultRamMb) || 2048,
+          minMb: Number(info.minRamMb) || 512,
+          stepMb: Number(info.ramStepMb) || 256
+        };
+        configureRamSlider("create-ram", state.deviceRam.defaultMb);
+        configureRamSlider("set-ram", parseInt($("set-ram")?.value, 10) || state.deviceRam.defaultMb);
+      }
     } catch (_) {
       $("system-info").textContent = "Host connected";
     }
@@ -434,7 +502,7 @@
       const props = data.properties || {};
 
       $("set-name").value = srv.name || "";
-      $("set-ram").value = srv.allocatedRamMb || 2048;
+      configureRamSlider("set-ram", srv.allocatedRamMb || getDeviceRamBounds().defaultMb);
       $("set-java").value = String(srv.javaVersion || 21);
       $("set-port").value = props.serverPort || srv.port || 25565;
       $("set-jvm-args").value = srv.jvmArgs || "";
@@ -1393,6 +1461,14 @@
     $("btn-open-network-tab")?.addEventListener("click", () => {
       const settingsTabBtn = document.querySelector('.tab-btn[data-tab="settings"]');
       if (settingsTabBtn) settingsTabBtn.click();
+    });
+    $("set-ram")?.addEventListener("input", (e) => {
+      const disp = $("set-ram-display");
+      if (disp) disp.textContent = formatRamValue(e.target.value);
+    });
+    $("create-ram")?.addEventListener("input", (e) => {
+      const disp = $("create-ram-display");
+      if (disp) disp.textContent = formatRamValue(e.target.value);
     });
 
     // Console

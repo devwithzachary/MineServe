@@ -362,10 +362,6 @@
                   <input type="text" id="set-name" required>
                 </div>
                 <div class="form-group">
-                  <label for="set-ram">Allocated RAM (MB)</label>
-                  <input type="number" id="set-ram" min="256" step="128" required>
-                </div>
-                <div class="form-group">
                   <label for="set-java">Java Version</label>
                   <select id="set-java">
                     <option value="8">Java 8</option>
@@ -377,6 +373,18 @@
                 <div class="form-group">
                   <label for="set-port">Server Port</label>
                   <input type="number" id="set-port" min="1" max="65535" required>
+                </div>
+                <div class="form-group span-2">
+                  <div class="ram-slider-header">
+                    <label for="set-ram">Allocated RAM</label>
+                    <span id="set-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
+                  </div>
+                  <input type="range" id="set-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
+                  <div class="ram-slider-meta">
+                    <span id="set-ram-min">512 MB</span>
+                    <span id="set-ram-device-hint">Device RAM: detecting...</span>
+                    <span id="set-ram-max">4.0 GB max</span>
+                  </div>
                 </div>
               </div>
               <div class="form-group">
@@ -719,12 +727,20 @@
             <input type="number" id="create-port" min="1" max="65535" value="25565" required>
           </div>
           <div class="form-group">
-            <label for="create-ram">RAM Allocation (MB)</label>
-            <input type="number" id="create-ram" min="512" step="256" value="2048" required>
-          </div>
-          <div class="form-group">
             <label for="create-motd">MOTD</label>
             <input type="text" id="create-motd" value="A MineServe Minecraft Server">
+          </div>
+          <div class="form-group span-2">
+            <div class="ram-slider-header">
+              <label for="create-ram">RAM Allocation</label>
+              <span id="create-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
+            </div>
+            <input type="range" id="create-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
+            <div class="ram-slider-meta">
+              <span id="create-ram-min">512 MB</span>
+              <span id="create-ram-device-hint">Device RAM: detecting...</span>
+              <span id="create-ram-max">4.0 GB max</span>
+            </div>
           </div>
         </div>
 
