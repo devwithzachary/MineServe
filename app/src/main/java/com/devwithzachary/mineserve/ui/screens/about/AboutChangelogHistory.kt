@@ -37,9 +37,19 @@ data class ReleaseChangelog(
 
 val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
     ReleaseChangelog(
+        version = "v1.8.0",
+        date = "In Development",
+        initialExpanded = true,
+        highlights = listOf(
+            "In-App Cloud Sign-In & Localized Pricing: Sign in to MineServe Cloud directly inside the app with a 6-digit email code, with regional currency pricing estimates on direct builds.",
+            "Smooth First-Run Setup Progress: Re-weighted initial runtime setup across download, extraction, and live OpenJDK package installation steps so the progress bar moves steadily instead of stalling at 98%.",
+            "Networking & Reliability Fixes: Improved Web Admin login rate limiting behind reverse proxies and Cloud Panel tunnels, ensured panel tunnels shut down cleanly, and improved Bore relay port reclaim handling."
+        )
+    ),
+    ReleaseChangelog(
         version = "v1.7.0",
         date = "November 19, 2026",
-        initialExpanded = true,
+        initialExpanded = false,
         highlights = listOf(
             "MineServe Cloud Account Linking: Link your optional MineServe Cloud account in App Settings via browser magic link to view your plan, backup quota, and custom server addresses.",
             "MineServe Cloud Backups: Select MineServe Cloud in a server's Backups tab to upload world backups to encrypted cloud storage, auto-sync new backups, and restore or delete cloud snapshots.",

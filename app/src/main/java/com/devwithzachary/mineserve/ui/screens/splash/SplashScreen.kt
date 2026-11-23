@@ -197,7 +197,7 @@ fun SplashScreen(
                     ) {
                         if (setupState is RootfsSetupState.Downloading) {
                             Text(
-                                text = stringResource(R.string.splash_downloading_runtime, setupState.progressPercent),
+                                text = stringResource(R.string.splash_setting_up_runtime, setupState.progressPercent),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -214,16 +214,20 @@ fun SplashScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "${setupState.bytesDownloaded / (1024 * 1024)} MB / ${setupState.totalBytes / (1024 * 1024)} MB",
+                                text = "Downloading Ubuntu base image: ${setupState.bytesDownloaded / (1024 * 1024)} MB / ${setupState.totalBytes / (1024 * 1024)} MB (${setupState.downloadPercent}%)",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                color = Slate400,
+                                textAlign = TextAlign.Center
                             )
                         } else if (setupState is RootfsSetupState.Extracting) {
+                            val titleText = setupState.stageTitle?.let { "$it (${setupState.progressPercent}%)" }
+                                ?: stringResource(R.string.splash_extracting_runtime, setupState.progressPercent)
                             Text(
-                                text = stringResource(R.string.splash_extracting_runtime, setupState.progressPercent),
+                                text = titleText,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = Color.White,
+                                textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(12.dp))
                             LinearProgressIndicator(

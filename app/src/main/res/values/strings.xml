@@ -28,6 +28,7 @@
     <string name="splash_init_btn">Initialize Server Runtime</string>
     <string name="splash_downloading_runtime">Downloading Runtime (%d%%)</string>
     <string name="splash_extracting_runtime">Extracting Runtime (%d%%)</string>
+    <string name="splash_setting_up_runtime">Setting Up Runtime (%d%%)</string>
     <string name="splash_setup_error">Setup Error</string>
     <string name="splash_retry_setup">Retry Setup</string>
     <string name="splash_continue_anyway">Continue to Dashboard</string>

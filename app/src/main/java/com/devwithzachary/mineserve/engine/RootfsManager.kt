@@ -26,10 +26,183 @@ import kotlinx.coroutines.withContext
 
 sealed class RootfsSetupState {
     data object Idle : RootfsSetupState()
-    data class Downloading(val bytesDownloaded: Long, val totalBytes: Long, val progressPercent: Int) : RootfsSetupState()
-    data class Extracting(val message: String, val progressPercent: Int = 0, val logs: List<String> = emptyList()) : RootfsSetupState()
+    data class Downloading(
+        val bytesDownloaded: Long,
+        val totalBytes: Long,
+        val progressPercent: Int,
+        val downloadPercent: Int = progressPercent
+    ) : RootfsSetupState()
+    data class Extracting(
+        val message: String,
+        val progressPercent: Int = 0,
+        val logs: List<String> = emptyList(),
+        val stageTitle: String? = null
+    ) : RootfsSetupState()
     data class Success(val rootfsDir: File, val logs: List<String> = emptyList()) : RootfsSetupState()
     data class Error(val message: String, val logs: List<String> = emptyList()) : RootfsSetupState()
+}
+
+internal data class AptProgressSnapshot(
+    val percent: Int,
+    val statusMessage: String
+)
+
+internal class AptInstallProgressTracker(
+    private val startPercent: Int = 25,
+    private val maxPercent: Int = 99
+) {
+    private enum class Phase {
+        UPDATE,
+        RESOLVING,
+        DOWNLOADING,
+        UNPACKING,
+        CONFIGURING,
+        FINALIZING
+    }
+
+    companion object {
+        private val PACKAGE_SUMMARY_REGEX = Regex("""(\d+)\s+upgraded,\s+(\d+)\s+newly installed""")
+        private val APT_GET_LINE_REGEX = Regex("""^Get:\d+\s+""")
+        private val UNPACKING_REGEX = Regex("""^Unpacking\s+([^\s:(]+)""")
+        private val SETTING_UP_REGEX = Regex("""^Setting up\s+([^\s:(]+)""")
+        private val TRIGGERS_REGEX = Regex("""^Processing triggers for\s+([^\s:(]+)""")
+    }
+
+    private var phase = Phase.UPDATE
+    private var currentPercent = startPercent
+    private var currentStatus = "Updating package index..."
+    private var updateLines = 0
+    private var expectedPackages = 45
+    private var downloadedPackages = 0
+    private var unpackedPackages = 0
+    private var configuredPackages = 0
+    private var triggerCount = 0
+
+    fun onLine(rawLine: String): AptProgressSnapshot {
+        val line = rawLine.trim()
+        if (line.isEmpty()) {
+            return AptProgressSnapshot(currentPercent, currentStatus)
+        }
+
+        val summaryMatch = PACKAGE_SUMMARY_REGEX.find(line)
+        if (summaryMatch != null) {
+            val upgraded = summaryMatch.groupValues[1].toIntOrNull() ?: 0
+            val newlyInstalled = summaryMatch.groupValues[2].toIntOrNull() ?: 0
+            val total = upgraded + newlyInstalled
+            if (total > 0) {
+                expectedPackages = total
+            }
+            phase = Phase.DOWNLOADING
+            advanceTo(38, "Preparing to download $expectedPackages packages...")
+            return AptProgressSnapshot(currentPercent, currentStatus)
+        }
+
+        when {
+            line.startsWith("Processing triggers for ") -> {
+                phase = Phase.FINALIZING
+                triggerCount++
+                val triggerName = TRIGGERS_REGEX.find(line)?.groupValues?.getOrNull(1)
+                val next = (95 + triggerCount).coerceAtMost(98)
+                val msg = if (triggerName != null) {
+                    "Processing triggers: $triggerName..."
+                } else {
+                    "Processing package triggers..."
+                }
+                advanceTo(next, msg)
+            }
+            line.contains("Updating certificates in ", ignoreCase = true) ||
+                (phase == Phase.FINALIZING && line.equals("done.", ignoreCase = true)) -> {
+                phase = Phase.FINALIZING
+                advanceTo(99, "Finalizing Java certificates...")
+            }
+            line.startsWith("Setting up ") -> {
+                phase = Phase.CONFIGURING
+                configuredPackages++
+                val pkg = SETTING_UP_REGEX.find(line)?.groupValues?.getOrNull(1)
+                val ratio = (configuredPackages.toFloat() / expectedPackages.coerceAtLeast(1)).coerceIn(0f, 1f)
+                val next = 72 + (ratio * 23f).toInt()
+                val msg = if (pkg != null) {
+                    "Configuring $pkg ($configuredPackages/$expectedPackages)..."
+                } else {
+                    "Configuring OpenJDK packages ($configuredPackages/$expectedPackages)..."
+                }
+                advanceTo(next, msg)
+            }
+            line.startsWith("Unpacking ") -> {
+                phase = Phase.UNPACKING
+                unpackedPackages++
+                val pkg = UNPACKING_REGEX.find(line)?.groupValues?.getOrNull(1)
+                val ratio = (unpackedPackages.toFloat() / expectedPackages.coerceAtLeast(1)).coerceIn(0f, 1f)
+                val next = 52 + (ratio * 20f).toInt()
+                val msg = if (pkg != null) {
+                    "Unpacking $pkg ($unpackedPackages/$expectedPackages)..."
+                } else {
+                    "Unpacking OpenJDK packages ($unpackedPackages/$expectedPackages)..."
+                }
+                advanceTo(next, msg)
+            }
+            line.startsWith("Preparing to unpack ") || line.startsWith("Selecting previously unselected package ") -> {
+                if (phase.ordinal < Phase.UNPACKING.ordinal) {
+                    phase = Phase.UNPACKING
+                    advanceTo(52, "Unpacking OpenJDK packages...")
+                }
+            }
+            line.startsWith("Fetched ") -> {
+                if (phase == Phase.DOWNLOADING) {
+                    phase = Phase.UNPACKING
+                    advanceTo(52, "Download complete. Unpacking packages...")
+                } else if (phase == Phase.UPDATE) {
+                    advanceTo(34, "Package index updated...")
+                }
+            }
+            line.startsWith("Need to get ") -> {
+                phase = Phase.DOWNLOADING
+                advanceTo(38, "Downloading OpenJDK packages...")
+            }
+            line.startsWith("Reading state information") -> {
+                if (phase.ordinal <= Phase.RESOLVING.ordinal) {
+                    phase = Phase.RESOLVING
+                    advanceTo(37, "Resolving OpenJDK dependencies...")
+                }
+            }
+            line.startsWith("Building dependency tree") -> {
+                if (phase.ordinal <= Phase.RESOLVING.ordinal) {
+                    phase = Phase.RESOLVING
+                    advanceTo(36, "Building package dependency tree...")
+                }
+            }
+            line.startsWith("Reading package lists") -> {
+                if (phase == Phase.UPDATE) {
+                    phase = Phase.RESOLVING
+                    advanceTo(35, "Reading package lists...")
+                }
+            }
+            APT_GET_LINE_REGEX.containsMatchIn(line) -> {
+                if (phase == Phase.DOWNLOADING) {
+                    downloadedPackages++
+                    val ratio = (downloadedPackages.toFloat() / expectedPackages.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    val next = 38 + (ratio * 14f).toInt()
+                    advanceTo(next, "Downloading packages ($downloadedPackages/$expectedPackages)...")
+                } else if (phase == Phase.UPDATE) {
+                    updateLines++
+                    val next = 25 + ((updateLines * 8) / 12).coerceAtMost(8)
+                    advanceTo(next, "Updating Ubuntu package index...")
+                }
+            }
+            phase == Phase.UPDATE && (line.startsWith("Hit:") || line.startsWith("Ign:")) -> {
+                updateLines++
+                val next = 25 + ((updateLines * 8) / 12).coerceAtMost(8)
+                advanceTo(next, "Updating Ubuntu package index...")
+            }
+        }
+
+        return AptProgressSnapshot(currentPercent, currentStatus)
+    }
+
+    private fun advanceTo(percent: Int, status: String) {
+        currentPercent = maxOf(currentPercent, percent).coerceIn(startPercent, maxPercent)
+        currentStatus = status
+    }
 }
 
 class RootfsManager(private val context: Context, private val pRootEngine: PRootEngine) {
@@ -93,11 +266,12 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                     "Configuring DNS resolvers and APT environment..."
                 )
                 _setupState.value = RootfsSetupState.Extracting(
-                    message = "Installing OpenJDK 21 runtime...",
-                    progressPercent = 96,
-                    logs = setupLogs.toList()
+                    message = "Preparing OpenJDK 21 installation...",
+                    progressPercent = 25,
+                    logs = setupLogs.toList(),
+                    stageTitle = "Installing OpenJDK 21"
                 )
-                MineServeForegroundService.rootfsSetupStatusText = "Installing OpenJDK 21 runtime..."
+                MineServeForegroundService.rootfsSetupStatusText = "Installing OpenJDK 21 (25%)..."
                 withContext(Dispatchers.IO) {
                     configureSystemFiles(isInitialSetup = false)
                 }
@@ -109,11 +283,12 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             setupRootfs().collect { state ->
                 when (state) {
                     is RootfsSetupState.Downloading -> {
-                        MineServeForegroundService.rootfsSetupStatusText = "Downloading Ubuntu runtime: ${state.progressPercent}%"
+                        MineServeForegroundService.rootfsSetupStatusText = "Downloading Ubuntu runtime (${state.progressPercent}%)"
                         _setupState.value = state
                     }
                     is RootfsSetupState.Extracting -> {
-                        MineServeForegroundService.rootfsSetupStatusText = "${state.message} (${state.progressPercent}%)"
+                        val prefix = state.stageTitle ?: "Setting up runtime"
+                        MineServeForegroundService.rootfsSetupStatusText = "$prefix (${state.progressPercent}%)"
                         _setupState.value = state
                     }
                     is RootfsSetupState.Success -> {
@@ -146,7 +321,12 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
         _isInstalled.value = false
         val logList = mutableListOf("Importing local Ubuntu rootfs archive...")
         try {
-            _setupState.value = RootfsSetupState.Extracting("Copying local rootfs archive...", 5, logList.toList())
+            _setupState.value = RootfsSetupState.Extracting(
+                message = "Copying local rootfs archive...",
+                progressPercent = 2,
+                logs = logList.toList(),
+                stageTitle = "Importing Local Archive"
+            )
             val archiveFile = File(context.cacheDir, "ubuntu_base_import.tar.gz")
             withContext(Dispatchers.IO) {
                 val input = context.contentResolver.openInputStream(uri)
@@ -166,19 +346,34 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                     throw IOException("Selected file is empty.")
                 }
                 logList.add("Copied archive (${archiveFile.length() / (1024 * 1024)} MB). Extracting...")
-                _setupState.value = RootfsSetupState.Extracting("Extracting local rootfs...", 15, logList.toList())
+                _setupState.value = RootfsSetupState.Extracting(
+                    message = "Extracting local rootfs...",
+                    progressPercent = 10,
+                    logs = logList.toList(),
+                    stageTitle = "Extracting Ubuntu Runtime"
+                )
                 if (rootfsDir.exists()) {
                     rootfsDir.deleteRecursively()
                 }
                 rootfsDir.mkdirs()
                 extractTarGzInJava(archiveFile, rootfsDir) { status, pct ->
-                    val mapped = (15 + (pct * 0.75f)).toInt().coerceIn(15, 90)
-                    MineServeForegroundService.rootfsSetupStatusText = "$status ($mapped%)"
-                    _setupState.value = RootfsSetupState.Extracting(status, mapped, logList.toList())
+                    val mapped = (10 + (pct * 0.13f)).toInt().coerceIn(10, 23)
+                    MineServeForegroundService.rootfsSetupStatusText = "Extracting Ubuntu runtime ($mapped%)"
+                    _setupState.value = RootfsSetupState.Extracting(
+                        message = status,
+                        progressPercent = mapped,
+                        logs = logList.toList(),
+                        stageTitle = "Extracting Ubuntu Runtime"
+                    )
                 }
                 archiveFile.delete()
                 logList.add("Configuring DNS resolvers and APT environment...")
-                _setupState.value = RootfsSetupState.Extracting("Configuring system files...", 94, logList.toList())
+                _setupState.value = RootfsSetupState.Extracting(
+                    message = "Configuring system files and permissions...",
+                    progressPercent = 24,
+                    logs = logList.toList(),
+                    stageTitle = "Configuring Linux Environment"
+                )
                 configureSystemFiles(isInitialSetup = true)
             }
             installDefaultJavaDuringSetup(javaRuntimeManager, logList, onSuccess)
@@ -205,12 +400,16 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             setupLogs.add(msg)
         }
 
+        val progressTracker = AptInstallProgressTracker(startPercent = 25, maxPercent = 99)
+
         appendSetupLog("Installing OpenJDK 21 runtime environment...")
         _setupState.value = RootfsSetupState.Extracting(
-            message = "Installing OpenJDK 21 runtime...",
-            progressPercent = 96,
-            logs = setupLogs.toList()
+            message = "Updating Ubuntu package index...",
+            progressPercent = 25,
+            logs = setupLogs.toList(),
+            stageTitle = "Installing OpenJDK 21"
         )
+        MineServeForegroundService.rootfsSetupStatusText = "Installing OpenJDK 21 (25%)"
 
         var javaSucceeded = false
         var javaErrorMsg: String? = null
@@ -219,10 +418,14 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             when (javaState) {
                 is JavaInstallState.Progress -> {
                     appendSetupLog(javaState.message)
+                    val snapshot = progressTracker.onLine(javaState.message)
+                    MineServeForegroundService.rootfsSetupStatusText =
+                        "Installing OpenJDK 21 (${snapshot.percent}%): ${snapshot.statusMessage}"
                     _setupState.value = RootfsSetupState.Extracting(
-                        message = "Installing OpenJDK 21: ${javaState.message.take(80)}",
-                        progressPercent = 98,
-                        logs = setupLogs.toList()
+                        message = snapshot.statusMessage,
+                        progressPercent = snapshot.percent,
+                        logs = setupLogs.toList(),
+                        stageTitle = "Installing OpenJDK 21"
                     )
                 }
                 is JavaInstallState.Success -> {
@@ -393,8 +596,9 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
                                         val now = System.currentTimeMillis()
                                         if (now - lastProgressUpdate > 150) {
                                             lastProgressUpdate = now
-                                            val percent = if (totalLength > 0) ((totalRead * 100) / totalLength).toInt().coerceIn(0, 100) else 0
-                                            send(RootfsSetupState.Downloading(totalRead, totalLength.coerceAtLeast(1L), percent))
+                                            val dlPercent = if (totalLength > 0) ((totalRead * 100) / totalLength).toInt().coerceIn(0, 100) else 0
+                                            val overallPercent = (dlPercent * 0.10f).toInt().coerceIn(0, 10)
+                                            send(RootfsSetupState.Downloading(totalRead, totalLength.coerceAtLeast(1L), overallPercent, dlPercent))
                                         }
                                     }
                                     outputStream.flush()
@@ -424,7 +628,14 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             }
 
             emitLog("Extracting Ubuntu rootfs structure...")
-            send(RootfsSetupState.Extracting("Extracting Ubuntu filesystem...", 0, logList.toList()))
+            send(
+                RootfsSetupState.Extracting(
+                    message = "Extracting Ubuntu filesystem...",
+                    progressPercent = 10,
+                    logs = logList.toList(),
+                    stageTitle = "Extracting Ubuntu Runtime"
+                )
+            )
 
             if (rootfsDir.exists()) {
                 rootfsDir.deleteRecursively()
@@ -432,12 +643,27 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
             rootfsDir.mkdirs()
 
             extractTarGzInJava(archiveFile, rootfsDir) { status, percent ->
-                send(RootfsSetupState.Extracting(status, percent, logList.toList()))
+                val mapped = (10 + (percent * 0.13f)).toInt().coerceIn(10, 23)
+                send(
+                    RootfsSetupState.Extracting(
+                        message = status,
+                        progressPercent = mapped,
+                        logs = logList.toList(),
+                        stageTitle = "Extracting Ubuntu Runtime"
+                    )
+                )
             }
             archiveFile.delete()
 
             emitLog("Configuring DNS resolvers, APT sandbox, and system permissions...")
-            send(RootfsSetupState.Extracting("Configuring system files and permissions...", 95, logList.toList()))
+            send(
+                RootfsSetupState.Extracting(
+                    message = "Configuring system files and permissions...",
+                    progressPercent = 24,
+                    logs = logList.toList(),
+                    stageTitle = "Configuring Linux Environment"
+                )
+            )
             configureSystemFiles(isInitialSetup = true)
 
             emitLog("Rootfs setup completed successfully!")

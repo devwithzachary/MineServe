@@ -1,0 +1,3 @@
+- MineServe Cloud: in-app 6-digit email sign-in and localized currency pricing
+- First-Run Setup Progress: weighted progress bar tracking live OpenJDK package installation instead of stalling at 98%
+- Reliability Fixes: improved Web Admin proxy rate limiting and tunnel cleanup

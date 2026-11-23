@@ -2,6 +2,17 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.8.0] - Unreleased
+
+### ☁️ MineServe Cloud & Play Store Compliance
+- **In-App Email OTP Sign-In**: Added native 6-digit email verification sign-in directly inside `MineServeCloudScreen` (`MineServeCloudManager.requestCloudOtp` / `verifyCloudOtp`) with automatic per-device token exchange so Google Play Store builds comply with Play Payments policy without linking to external billing portals.
+- **Localized Cloud Pricing & Build Flavor Flags**: Added `CloudPricing` to display localized currency estimates (GBP, USD, EUR, CAD, AUD, NZD, BRL, INR, JPY, PLN, SEK) on direct/F-Droid builds, and added `IS_PLAY_STORE` / `FORCE_PROD_CLOUD` `BuildConfig` flags in `app/build.gradle.kts` and `scripts/build_release_linux.sh`.
+
+### 🐛 Bug Fixes & Reliability
+- **Weighted First-Run Runtime Setup Progress (`RootfsManager` / `SplashScreen`)**: Re-weighted initial Ubuntu & OpenJDK 21 runtime setup stages (Download 0-10%, Extraction & System Config 10-25%, APT & OpenJDK 21 Install 25-99%) and added a live `AptInstallProgressTracker` parsing `apt-get` and `dpkg` download, unpack, configure, and trigger phases so the progress bar and foreground notification advance smoothly instead of stalling at 98%.
+- **Web Admin Reverse Proxy Rate Limiting**: Updated `WebAdminServer` login rate limiting to read `X-Forwarded-For` when requests arrive via localhost (`127.0.0.1` / `::1`) through a Cloud Panel tunnel or reverse proxy, preventing a single failed login from locking out all remote users.
+- **Tunnel Cleanup & Faster Port Reclaim**: Updated `TunnelManager.stopAllTunnels()` to also stop active remote Web Admin panel tunnels (`activePanelBoreClients`), and updated `BoreTunnelClient` to set `SO_LINGER(true, 0)` on control socket teardown with graceful `"Reclaiming relay port..."` retries when a relay port is briefly held.
+
 ## [1.7.0] - 2026-11-19
 
 ### ☁️ MineServe Cloud Integration (Optional)
