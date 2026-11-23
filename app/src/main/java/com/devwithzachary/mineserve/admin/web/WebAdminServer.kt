@@ -58,7 +58,7 @@ class WebAdminServer(
     }
 
     private val scope = CoroutineScope(Dispatchers.IO + Job())
-    private val apiHandlers = WebAdminApiHandlers(scope, serverRepository, processManager, serverSoftwareManager)
+    private val apiHandlers = WebAdminApiHandlers(context, scope, serverRepository, processManager, serverSoftwareManager)
     private val extHandlers = WebAdminExtendedHandlers(
         context = context,
         scope = scope,
@@ -169,7 +169,8 @@ class WebAdminServer(
             val isPluginJarUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/plugins/upload")
             val isModpackUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/modpack/import")
             val isFileUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/files/upload")
-            val isBinaryUpload = isWorldImportUpload || isPluginJarUpload || isModpackUpload || isFileUpload
+            val isServerImportUpload = method == "POST" && path == "/api/servers/import"
+            val isBinaryUpload = isWorldImportUpload || isPluginJarUpload || isModpackUpload || isFileUpload || isServerImportUpload
 
             // Extract Auth Token before reading potentially large bodies
             val authHeader = headers["authorization"]
@@ -190,8 +191,12 @@ class WebAdminServer(
                     return
                 }
                 val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
-                val serverId = segments.getOrNull(0) ?: ""
-                val uploadPerm = if (isFileUpload) Permission.SERVER_FILES_WRITE else Permission.SERVER_SETTINGS_WRITE
+                val serverId = if (isServerImportUpload) null else (segments.getOrNull(0) ?: "")
+                val uploadPerm = when {
+                    isServerImportUpload -> Permission.MANAGE_HOST
+                    isFileUpload -> Permission.SERVER_FILES_WRITE
+                    else -> Permission.SERVER_SETTINGS_WRITE
+                }
                 if (!requirePerm(out, uploadUser, uploadPerm, serverId)) {
                     return
                 }
@@ -205,15 +210,19 @@ class WebAdminServer(
                 try {
                     streamFixedBytesToFile(rawIn, contentLength, tempFile)
                     val result = when {
+                        isServerImportUpload -> {
+                            userRepository.recordAudit(uploadUser, "SERVER_IMPORT", queryParams["name"] ?: "imported", "Imported server archive (.zip)", effectiveIp)
+                            apiHandlers.handleImportServerZip(queryParams, tempFile)
+                        }
                         isWorldImportUpload -> {
                             val createBackup = queryParams["createBackup"]?.toBooleanStrictOrNull() ?: true
-                            userRepository.recordAudit(uploadUser, "WORLD_IMPORT", serverId, "Uploaded world archive", effectiveIp)
-                            extHandlers.handleImportWorld(serverId, tempFile, createBackup)
+                            userRepository.recordAudit(uploadUser, "WORLD_IMPORT", serverId.orEmpty(), "Uploaded world archive", effectiveIp)
+                            extHandlers.handleImportWorld(serverId.orEmpty(), tempFile, createBackup)
                         }
                         isPluginJarUpload -> {
                             val fname = queryParams["name"] ?: ""
-                            userRepository.recordAudit(uploadUser, "PLUGIN_UPLOAD", serverId, fname, effectiveIp)
-                            extHandlers.handleUploadPluginJar(serverId, fname, tempFile)
+                            userRepository.recordAudit(uploadUser, "PLUGIN_UPLOAD", serverId.orEmpty(), fname, effectiveIp)
+                            extHandlers.handleUploadPluginJar(serverId.orEmpty(), fname, tempFile)
                         }
                         isFileUpload -> {
                             val dirPath = queryParams["path"] ?: ""
@@ -222,7 +231,7 @@ class WebAdminServer(
                             if (safeName.isBlank() || safeName == "." || safeName == "..") {
                                 WebApiResult(400, "Bad Request", JSONObject().put("error", "Invalid file name."))
                             } else {
-                                val serverDir = serverRepository.getServerDirectory(serverId)
+                                val serverDir = serverRepository.getServerDirectory(serverId.orEmpty())
                                 val targetDir = if (dirPath.isBlank()) serverDir else File(serverDir, dirPath)
                                 val destFile = File(targetDir, safeName)
                                 val serverCanon = serverDir.canonicalPath
@@ -233,15 +242,15 @@ class WebAdminServer(
                                     destFile.parentFile?.mkdirs()
                                     tempFile.copyTo(destFile, overwrite = true)
                                     val relPath = if (dirPath.isBlank()) safeName else "$dirPath/$safeName"
-                                    userRepository.recordAudit(uploadUser, "FILE_UPLOAD", serverId, relPath, effectiveIp)
+                                    userRepository.recordAudit(uploadUser, "FILE_UPLOAD", serverId.orEmpty(), relPath, effectiveIp)
                                     WebApiResult(200, "OK", JSONObject().put("success", true).put("path", relPath))
                                 }
                             }
                         }
                         else -> {
                             keepTempForAsync = true
-                            userRepository.recordAudit(uploadUser, "MODPACK_IMPORT", serverId, "Uploaded .mrpack modpack", effectiveIp)
-                            extHandlers.handleStartModpackImport(serverId, tempFile)
+                            userRepository.recordAudit(uploadUser, "MODPACK_IMPORT", serverId.orEmpty(), "Uploaded .mrpack modpack", effectiveIp)
+                            extHandlers.handleStartModpackImport(serverId.orEmpty(), tempFile)
                         }
                     }
                     sendApiResult(out, result)
@@ -482,6 +491,19 @@ class WebAdminServer(
                 return
             }
 
+            // Java Runtime Manager (Owner only)
+            if (path == "/api/java" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                sendApiResult(out, apiHandlers.handleGetJavaStatus())
+                return
+            }
+            if (path == "/api/java/install" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                userRepository.recordAudit(currentUser, "JAVA_INSTALL", "host", body.take(80), effectiveIp)
+                sendApiResult(out, apiHandlers.handleInstallJava(body))
+                return
+            }
+
             // MineServe Cloud Status (Owner only)
             if (path == "/api/cloud/status" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
@@ -672,6 +694,19 @@ class WebAdminServer(
                         if (!requirePerm(out, currentUser, Permission.MANAGE_HOST, serverId)) return
                         userRepository.recordAudit(currentUser, "SERVER_DELETE", server.name, "Deleted server ${server.id}", effectiveIp)
                         sendApiResult(out, apiHandlers.handleDeleteServer(serverId))
+                        return
+                    }
+
+                    // 4b2. GET /api/servers/{id}/build-status & POST /api/servers/{id}/upgrade
+                    if (action == "build-status" && method == "GET") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_SETTINGS_WRITE, serverId)) return
+                        sendApiResult(out, apiHandlers.handleCheckBuildStatus(serverId))
+                        return
+                    }
+                    if (action == "upgrade" && method == "POST") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_SETTINGS_WRITE, serverId)) return
+                        userRepository.recordAudit(currentUser, "SERVER_UPGRADE", server.name, body.take(120), effectiveIp)
+                        sendApiResult(out, apiHandlers.handleUpgradeServer(serverId, body))
                         return
                     }
 

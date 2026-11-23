@@ -45,6 +45,7 @@
 
       <div class="sidebar-actions">
         <button id="open-create-modal-btn" class="btn btn-primary btn-full">+ New Server</button>
+        <button id="open-import-server-modal-btn" class="btn btn-secondary btn-sm btn-full" style="margin-top:6px;">Import Server (.zip)</button>
       </div>
 
       <div class="sidebar-section-label">Servers</div>
@@ -485,6 +486,30 @@
             </div>
           </form>
 
+          <div class="panel-card" style="margin-top: 14px;">
+            <div class="files-toolbar">
+              <h3 style="margin:0;">Software Version &amp; Build Updates</h3>
+              <span id="upgrade-current-label" class="player-sub"></span>
+            </div>
+            <p id="upgrade-build-status" class="player-sub">Checking latest server build...</p>
+            <div class="inline-form" style="margin-top:8px;">
+              <select id="upgrade-version-select" style="flex:1;min-width:160px;"></select>
+              <label class="checkbox-label" style="white-space:nowrap;">
+                <input type="checkbox" id="upgrade-create-backup" checked>
+                <span>Pre-upgrade backup</span>
+              </label>
+              <button type="button" id="upgrade-latest-build-btn" class="btn btn-secondary btn-sm">Update Latest Build</button>
+              <button type="button" id="upgrade-server-btn" class="btn btn-primary btn-sm">Upgrade Version</button>
+            </div>
+            <div id="upgrade-progress-box" class="progress-box hidden" style="margin-top:10px;">
+              <div class="progress-text-row">
+                <span id="upgrade-progress-msg">Preparing upgrade...</span>
+                <span id="upgrade-progress-pct">0%</span>
+              </div>
+              <div class="progress-track"><div id="upgrade-progress-fill" class="progress-fill" style="width:0%;"></div></div>
+            </div>
+          </div>
+
           <div class="players-grid" style="margin-top: 14px;">
             <div class="panel-card">
               <h3>Public Multiplayer Tunnel</h3>
@@ -799,6 +824,15 @@
         </div>
 
         <div class="panel-card">
+          <div class="files-toolbar">
+            <h3 style="margin:0;">Java Runtime Manager (OpenJDK)</h3>
+            <button type="button" id="java-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+          </div>
+          <p class="player-sub" id="java-manager-status" style="margin-top:6px;">Checking installed Java runtimes...</p>
+          <div id="java-runtimes-list" class="player-list" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="panel-card">
           <h3>Battery &amp; Thermal Safeguards</h3>
           <div class="form-grid">
             <div class="form-group">
@@ -959,6 +993,71 @@
         </thead>
         <tbody id="audit-table-body"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- Import Existing Server (.zip) Modal -->
+  <div id="import-server-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Import Existing Server (.zip)</h3>
+        <button id="close-import-server-modal" class="btn-icon" type="button">✕</button>
+      </div>
+      <form id="import-server-form">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="import-srv-name">Server Name</label>
+            <input type="text" id="import-srv-name" placeholder="Imported SMP" required>
+          </div>
+          <div class="form-group">
+            <label for="import-srv-type">Server Software</label>
+            <select id="import-srv-type">
+              <option value="PAPER" selected>Paper</option>
+              <option value="PURPUR">Purpur</option>
+              <option value="FOLIA">Folia</option>
+              <option value="VANILLA">Vanilla</option>
+              <option value="FABRIC">Fabric</option>
+              <option value="FORGE">Forge</option>
+              <option value="NEOFORGE">NeoForge</option>
+              <option value="VELOCITY">Velocity Proxy</option>
+              <option value="BUNGEECORD">BungeeCord Proxy</option>
+              <option value="BEDROCK_BDS">Bedrock Dedicated Server</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="import-srv-version">Minecraft Version Label</label>
+            <input type="text" id="import-srv-version" value="1.21.4" required>
+          </div>
+          <div class="form-group">
+            <label for="import-srv-port">Port</label>
+            <input type="number" id="import-srv-port" min="1" max="65535" value="25565" required>
+          </div>
+          <div class="form-group span-2">
+            <div class="ram-slider-header">
+              <label for="import-srv-ram">RAM Allocation</label>
+              <span id="import-srv-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
+            </div>
+            <input type="range" id="import-srv-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
+            <div class="ram-slider-meta">
+              <span id="import-srv-ram-min">512 MB</span>
+              <span id="import-srv-ram-device-hint">Device RAM: detecting...</span>
+              <span id="import-srv-ram-max">4.0 GB max</span>
+            </div>
+          </div>
+          <div class="form-group span-2">
+            <label for="import-srv-file">Server Archive (.zip)</label>
+            <input type="file" id="import-srv-file" accept=".zip" required>
+          </div>
+        </div>
+        <label class="checkbox-label eula-box">
+          <input type="checkbox" id="import-srv-eula">
+          <span>I agree to the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer">Minecraft EULA</a></span>
+        </label>
+        <div class="modal-footer">
+          <button type="button" id="cancel-import-server-btn" class="btn btn-ghost">Cancel</button>
+          <button type="submit" id="import-srv-submit-btn" class="btn btn-primary">Upload &amp; Import</button>
+        </div>
+      </form>
     </div>
   </div>
 

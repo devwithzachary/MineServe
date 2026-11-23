@@ -1,4 +1,4 @@
-- Multi-User Web Admin & RBAC: add Owner, Admin, Moderator & Viewer accounts, per-server scoping, session control & audit log
+- Multi-User Web Admin & RBAC: Owner, Admin, Moderator & Viewer roles, per-server scoping, session control & full-screen Audit Log
+- End-to-End Web UI: SSE live console, drag-and-drop File Manager, Java Manager, Server Version Upgrader & Import Server (.zip)
 - MineServe Cloud: in-app 6-digit email sign-in, localized pricing & smarter tunnel reconnect/port-reclaim
-- Web Remote Admin: live public tunnel/UPnP address bar, device-aware RAM sliders, aligned forms & fixed Restart
-- Setup & Reliability: smooth weighted first-run progress bar, Live Map default port 8081 & Squaremap uninstall fix
+- Reliability Fixes: weighted first-run setup progress, Live Map default port 8081 & Squaremap uninstall fix

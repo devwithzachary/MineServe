@@ -1,10 +1,15 @@
 package com.devwithzachary.mineserve.admin.web
 
+import android.content.Context
+import com.devwithzachary.mineserve.engine.JavaInstallState
+import com.devwithzachary.mineserve.engine.JavaRuntimeManager
+import com.devwithzachary.mineserve.engine.PRootEngine
 import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.repository.ServerRepository
+import com.devwithzachary.mineserve.util.FileStorageUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -31,12 +36,205 @@ private data class CreationJob(
  * server settings/properties, and player list management.
  */
 internal class WebAdminApiHandlers(
+    private val context: Context,
     private val scope: CoroutineScope,
     private val serverRepository: ServerRepository,
     private val processManager: ServerProcessManager,
     private val serverSoftwareManager: ServerSoftwareManager
 ) {
     private val creationJobs = ConcurrentHashMap<String, CreationJob>()
+    private val javaRuntimeManager by lazy { JavaRuntimeManager(context, PRootEngine(context)) }
+    @Volatile private var installingJavaVersion: Int? = null
+    @Volatile private var javaInstallStatus: String = ""
+    @Volatile private var javaInstallError: String? = null
+
+    fun handleGetJavaStatus(): WebApiResult {
+        val versions = listOf(8, 17, 21, 25)
+        val arr = JSONArray()
+        for (v in versions) {
+            arr.put(
+                JSONObject()
+                    .put("version", v)
+                    .put("installed", javaRuntimeManager.isJavaInstalled(v))
+            )
+        }
+        return ok(
+            JSONObject()
+                .put("runtimes", arr)
+                .put("installingVersion", installingJavaVersion ?: JSONObject.NULL)
+                .put("statusMessage", javaInstallStatus)
+                .put("error", javaInstallError ?: "")
+        )
+    }
+
+    fun handleInstallJava(body: String): WebApiResult {
+        val json = parseJsonObject(body)
+        val version = json.optInt("version", 21)
+        if (version !in setOf(8, 17, 21, 25)) {
+            return badRequest("Unsupported Java version: $version")
+        }
+        if (installingJavaVersion != null) {
+            return badRequest("Java $installingJavaVersion is already installing. Please wait.")
+        }
+        if (javaRuntimeManager.isJavaInstalled(version)) {
+            return ok(JSONObject().put("success", true).put("message", "Java $version is already installed."))
+        }
+
+        installingJavaVersion = version
+        javaInstallStatus = "Starting OpenJDK $version installation..."
+        javaInstallError = null
+
+        scope.launch {
+            try {
+                javaRuntimeManager.installJava(version).collect { st ->
+                    when (st) {
+                        is JavaInstallState.Progress -> {
+                            javaInstallStatus = st.message.take(120)
+                        }
+                        is JavaInstallState.Success -> {
+                            javaInstallStatus = "OpenJDK $version installed successfully."
+                            javaInstallError = null
+                        }
+                        is JavaInstallState.Error -> {
+                            javaInstallError = st.errorMessage
+                            javaInstallStatus = ""
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                javaInstallError = e.message ?: "Java $version installation failed"
+                javaInstallStatus = ""
+            } finally {
+                installingJavaVersion = null
+            }
+        }
+
+        return WebApiResult(202, "Accepted", JSONObject().put("success", true).put("installingVersion", version))
+    }
+
+    suspend fun handleCheckBuildStatus(serverId: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val resolved = runCatching { serverSoftwareManager.resolveLatestBuild(server.type, server.version) }.getOrNull()
+        val latestBuild = resolved?.first.orEmpty()
+        val currentBuild = server.serverBuild.orEmpty()
+        val updateAvailable = latestBuild.isNotBlank() && latestBuild != currentBuild
+        return ok(
+            JSONObject()
+                .put("type", server.type.name)
+                .put("currentVersion", server.version)
+                .put("currentBuild", currentBuild)
+                .put("latestBuild", latestBuild)
+                .put("updateAvailable", updateAvailable)
+        )
+    }
+
+    fun handleUpgradeServer(serverId: String, body: String): WebApiResult {
+        val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
+        val json = parseJsonObject(body)
+        val newVersion = json.optString("newVersion", "").trim()
+        val createBackup = json.optBoolean("createBackup", true)
+        if (newVersion.isBlank()) return badRequest("Target version is required.")
+
+        val jobId = UUID.randomUUID().toString().take(8)
+        creationJobs[jobId] = CreationJob("running", 2, "Preparing upgrade to $newVersion...", serverId)
+
+        scope.launch {
+            try {
+                val okUpgrade = serverSoftwareManager.upgradeServerVersion(
+                    server = server,
+                    newVersion = newVersion,
+                    createBackup = createBackup
+                ) { msg, pct ->
+                    creationJobs[jobId] = CreationJob("running", pct.coerceIn(1, 99), msg, serverId)
+                }
+                if (okUpgrade) {
+                    creationJobs[jobId] = CreationJob("done", 100, "Upgraded ${server.name} to $newVersion!", serverId)
+                } else {
+                    creationJobs[jobId] = CreationJob("error", 0, "Failed to upgrade to $newVersion.", serverId)
+                }
+            } catch (e: Exception) {
+                creationJobs[jobId] = CreationJob("error", 0, e.message ?: "Upgrade failed", serverId)
+            }
+        }
+
+        return WebApiResult(202, "Accepted", JSONObject().put("jobId", jobId))
+    }
+
+    suspend fun handleImportServerZip(queryParams: Map<String, String>, zipFile: File): WebApiResult {
+        val name = (queryParams["name"] ?: "").trim()
+        val typeName = (queryParams["type"] ?: "PAPER").uppercase()
+        val version = (queryParams["version"] ?: "Custom").trim().ifBlank { "Custom" }
+        val port = queryParams["port"]?.toIntOrNull() ?: 25565
+        val ramMb = queryParams["ramMb"]?.toIntOrNull() ?: 2048
+        val eulaAccepted = queryParams["eulaAccepted"]?.toBooleanStrictOrNull() ?: false
+
+        if (name.isBlank()) return badRequest("Server name is required.")
+        if (port !in 1..65535) return badRequest("Port must be between 1 and 65535.")
+        if (ramMb < 256) return badRequest("RAM must be at least 256 MB.")
+        if (!eulaAccepted) return badRequest("You must accept the Minecraft EULA.")
+
+        val type = runCatching { ServerType.valueOf(typeName) }.getOrDefault(ServerType.PAPER)
+
+        val server = serverRepository.createServer(
+            name = name,
+            type = type,
+            version = version,
+            port = port,
+            ramMb = ramMb,
+            motd = "Imported MineServe Server",
+            jarFileName = if (type == ServerType.BEDROCK_BDS) "bedrock_server" else "server.jar",
+            eulaAccepted = true
+        )
+        val serverDir = serverRepository.getServerDirectory(server.id)
+        val extractResult = FileStorageUtils.extractZipSafe(zipFile, serverDir, deleteZipAfter = false)
+        if (extractResult.isFailure) {
+            serverRepository.deleteServer(server.id)
+            return badRequest(extractResult.exceptionOrNull()?.message ?: "Failed to extract server zip archive.")
+        }
+
+        // Flatten single top-level directory if the archive wrapped everything in one folder
+        val topEntries = serverDir.listFiles()?.filter { it.name != "__MACOSX" } ?: emptyList()
+        if (topEntries.size == 1 && topEntries.first().isDirectory) {
+            val innerDir = topEntries.first()
+            innerDir.listFiles()?.forEach { child ->
+                val target = File(serverDir, child.name)
+                if (!child.renameTo(target)) {
+                    if (child.isDirectory) child.copyRecursively(target, overwrite = true) else child.copyTo(target, overwrite = true)
+                    child.deleteRecursively()
+                }
+            }
+            innerDir.deleteRecursively()
+        }
+
+        // Auto-detect primary executable/JAR
+        val detectedJar = if (type == ServerType.BEDROCK_BDS) {
+            "bedrock_server"
+        } else {
+            val rootJars = serverDir.listFiles()?.filter { it.isFile && it.name.endsWith(".jar", ignoreCase = true) } ?: emptyList()
+            val preferred = rootJars.firstOrNull { it.name.equals("server.jar", ignoreCase = true) }
+                ?: rootJars.firstOrNull {
+                    val n = it.name.lowercase()
+                    n.contains("paper") || n.contains("purpur") || n.contains("folia") ||
+                        n.contains("fabric") || n.contains("velocity") || n.contains("bungee") ||
+                        n.contains("spigot") || n.contains("forge")
+                }
+                ?: rootJars.firstOrNull()
+            preferred?.name ?: "server.jar"
+        }
+
+        if (detectedJar != server.jarFileName) {
+            serverRepository.updateServer(server.copy(jarFileName = detectedJar))
+        }
+
+        return ok(
+            JSONObject()
+                .put("success", true)
+                .put("serverId", server.id)
+                .put("name", server.name)
+                .put("jarFileName", detectedJar)
+                .put("extractedCount", extractResult.getOrDefault(0))
+        )
+    }
 
     fun handleSoftwareTypes(): WebApiResult {
         val arr = JSONArray()

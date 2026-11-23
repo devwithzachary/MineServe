@@ -167,6 +167,7 @@
     const canSettings = hasPerm("SERVER_SETTINGS_WRITE");
 
     $("open-create-modal-btn")?.classList.toggle("hidden", !canManageHost);
+    $("open-import-server-modal-btn")?.classList.toggle("hidden", !canManageHost);
     $("empty-create-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-host-tools-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-users-modal-btn")?.classList.toggle("hidden", !canManageUsers);
@@ -285,6 +286,7 @@
           stepMb: Number(info.ramStepMb) || 256
         };
         configureRamSlider("create-ram", state.deviceRam.defaultMb);
+        configureRamSlider("import-srv-ram", state.deviceRam.defaultMb);
         configureRamSlider("set-ram", parseInt($("set-ram")?.value, 10) || state.deviceRam.defaultMb);
       }
     } catch (_) {
@@ -481,7 +483,7 @@
     else if (state.activeTab === "files") loadFiles(state.currentPath);
     else if (state.activeTab === "world") loadWorld();
     else if (state.activeTab === "livemap") loadLiveMap();
-    else if (state.activeTab === "settings") { loadSettings(); loadNetwork(); loadDiscordWebhook(); loadProxySettings(); }
+    else if (state.activeTab === "settings") { loadSettings(); loadUpgradeVersions(); loadNetwork(); loadDiscordWebhook(); loadProxySettings(); }
     else if (state.activeTab === "players") loadPlayers();
     else if (state.activeTab === "backups") loadBackups();
     else if (state.activeTab === "plugins") loadPlugins();
@@ -2270,6 +2272,7 @@
     $("open-host-tools-btn").addEventListener("click", () => {
       $("host-tools-modal").classList.remove("hidden");
       loadHostTools();
+      loadJavaRuntimes();
     });
     $("close-host-tools-modal").addEventListener("click", () => $("host-tools-modal").classList.add("hidden"));
     $("cloud-refresh-btn").addEventListener("click", async () => {
@@ -2468,6 +2471,139 @@
     $("audit-category-filter")?.addEventListener("change", () => renderFilteredAuditLog());
     $("audit-user-filter")?.addEventListener("change", () => renderFilteredAuditLog());
     $("audit-export-csv-btn")?.addEventListener("click", () => exportAuditCsv());
+
+    // Java Runtime Manager
+    $("java-refresh-btn")?.addEventListener("click", () => loadJavaRuntimes());
+
+    // Server Version & Latest Build Upgrader
+    const runServerUpgradeJob = async (newVersion, confirmText) => {
+      if (!state.selectedServerId) return;
+      const createBackup = !!$("upgrade-create-backup")?.checked;
+      if (!newVersion) {
+        showToast("Select a target version first", "error");
+        return;
+      }
+      if (!confirm(confirmText)) return;
+      const btn = $("upgrade-server-btn");
+      const buildBtn = $("upgrade-latest-build-btn");
+      const box = $("upgrade-progress-box");
+      if (btn) btn.disabled = true;
+      if (buildBtn) buildBtn.disabled = true;
+      box.classList.remove("hidden");
+      $("upgrade-progress-msg").textContent = "Starting update...";
+      $("upgrade-progress-pct").textContent = "2%";
+      $("upgrade-progress-fill").style.width = "2%";
+      try {
+        const res = await apiFetch(`/api/servers/${state.selectedServerId}/upgrade`, {
+          method: "POST",
+          body: JSON.stringify({ newVersion, createBackup })
+        });
+        const jobId = res.jobId;
+        const pollUpgrade = setInterval(async () => {
+          try {
+            const job = await apiFetch(`/api/servers/jobs/${jobId}`);
+            $("upgrade-progress-msg").textContent = job.message || "Updating...";
+            $("upgrade-progress-pct").textContent = `${job.progress || 0}%`;
+            $("upgrade-progress-fill").style.width = `${job.progress || 0}%`;
+            if (job.status === "done") {
+              clearInterval(pollUpgrade);
+              if (btn) btn.disabled = false;
+              if (buildBtn) buildBtn.disabled = false;
+              showToast(job.message || "Update complete!");
+              await loadServers();
+              loadSettings();
+              loadUpgradeVersions();
+            } else if (job.status === "error") {
+              clearInterval(pollUpgrade);
+              if (btn) btn.disabled = false;
+              if (buildBtn) buildBtn.disabled = false;
+              showToast(job.message || "Update failed", "error");
+            }
+          } catch (err) {
+            clearInterval(pollUpgrade);
+            if (btn) btn.disabled = false;
+            if (buildBtn) buildBtn.disabled = false;
+            showToast(err.message, "error");
+          }
+        }, 1000);
+      } catch (err) {
+        if (btn) btn.disabled = false;
+        if (buildBtn) buildBtn.disabled = false;
+        showToast(err.message, "error");
+      }
+    };
+    $("upgrade-server-btn")?.addEventListener("click", () => {
+      const newVersion = $("upgrade-version-select")?.value;
+      runServerUpgradeJob(
+        newVersion,
+        `Upgrade this server to ${newVersion}? If running, the server will be stopped during the upgrade.`
+      );
+    });
+    $("upgrade-latest-build-btn")?.addEventListener("click", () => {
+      const srv = state.servers.find((s) => s.id === state.selectedServerId);
+      if (!srv) return;
+      runServerUpgradeJob(
+        srv.version,
+        `Update ${srv.type} ${srv.version} to the latest available build? If running, the server will be stopped briefly.`
+      );
+    });
+
+    // Import Existing Server (.zip) Modal
+    $("open-import-server-modal-btn")?.addEventListener("click", () => {
+      configureRamSlider("import-srv-ram", getDeviceRamBounds().defaultMb);
+      $("import-srv-name").value = "";
+      $("import-srv-file").value = "";
+      $("import-srv-eula").checked = false;
+      $("import-server-modal").classList.remove("hidden");
+    });
+    $("close-import-server-modal")?.addEventListener("click", () => $("import-server-modal").classList.add("hidden"));
+    $("cancel-import-server-btn")?.addEventListener("click", () => $("import-server-modal").classList.add("hidden"));
+    $("import-srv-ram")?.addEventListener("input", (e) => {
+      const disp = $("import-srv-ram-display");
+      if (disp) disp.textContent = formatRamValue(e.target.value);
+    });
+    $("import-server-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = $("import-srv-file").files?.[0];
+      if (!file) {
+        showToast("Please select a .zip archive", "error");
+        return;
+      }
+      if (!$("import-srv-eula").checked) {
+        showToast("You must accept the Minecraft EULA", "error");
+        return;
+      }
+      const btn = $("import-srv-submit-btn");
+      btn.disabled = true;
+      btn.textContent = "Uploading & Extracting...";
+      try {
+        const params = new URLSearchParams({
+          name: $("import-srv-name").value.trim(),
+          type: $("import-srv-type").value,
+          version: $("import-srv-version").value.trim() || "Custom",
+          port: $("import-srv-port").value,
+          ramMb: $("import-srv-ram").value,
+          eulaAccepted: "true"
+        });
+        const res = await fetch(`/api/servers/import?${params.toString()}`, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/octet-stream" },
+          body: file
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `Import failed (${res.status})`);
+        $("import-server-modal").classList.add("hidden");
+        showToast(`Imported '${data.name}' (${data.extractedCount || 0} files, ${data.jarFileName})`);
+        await loadServers();
+        if (data.serverId) selectServer(data.serverId);
+      } catch (err) {
+        showToast(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Upload & Import";
+      }
+    });
     $("new-user-restrict")?.addEventListener("change", (e) => {
       $("new-user-servers-box").classList.toggle("hidden", !e.target.checked);
       if (e.target.checked) renderUserServerCheckboxes();
@@ -2743,6 +2879,103 @@
     a.download = `mineserve-audit-log-${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function loadJavaRuntimes() {
+    const list = $("java-runtimes-list");
+    const statusEl = $("java-manager-status");
+    if (!list) return;
+    try {
+      const data = await apiFetch("/api/java");
+      const runtimes = data.runtimes || [];
+      const installing = data.installingVersion;
+      if (data.error) {
+        statusEl.textContent = `Error: ${data.error}`;
+      } else if (installing) {
+        statusEl.textContent = `Installing Java ${installing}: ${data.statusMessage || "Working..."}`;
+      } else if (data.statusMessage) {
+        statusEl.textContent = data.statusMessage;
+      } else {
+        statusEl.textContent = "Manage OpenJDK runtimes installed on this host.";
+      }
+
+      list.innerHTML = runtimes.map((r) => `
+        <div class="player-row">
+          <div>
+            <strong>OpenJDK ${r.version}</strong>
+            <span class="status-badge ${r.installed ? "RUNNING" : ""}" style="margin-left:8px;">
+              ${r.installed ? "INSTALLED" : (installing === r.version ? "INSTALLING..." : "NOT INSTALLED")}
+            </span>
+          </div>
+          <div class="player-actions">
+            ${!r.installed ? `<button type="button" class="btn btn-primary btn-sm" data-install-java="${r.version}" ${installing ? "disabled" : ""}>Install Java ${r.version}</button>` : ""}
+          </div>
+        </div>
+      `).join("");
+
+      list.querySelectorAll("[data-install-java]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const ver = parseInt(btn.dataset.installJava, 10);
+          try {
+            await apiFetch("/api/java/install", {
+              method: "POST",
+              body: JSON.stringify({ version: ver })
+            });
+            showToast(`Started installing OpenJDK ${ver}`);
+            loadJavaRuntimes();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
+        });
+      });
+
+      if (installing && !$("host-tools-modal").classList.contains("hidden")) {
+        setTimeout(() => {
+          if (!$("host-tools-modal").classList.contains("hidden")) loadJavaRuntimes();
+        }, 2500);
+      }
+    } catch (err) {
+      if (statusEl) statusEl.textContent = err.message;
+    }
+  }
+
+  async function loadUpgradeVersions() {
+    const sel = $("upgrade-version-select");
+    const lbl = $("upgrade-current-label");
+    const buildStatusEl = $("upgrade-build-status");
+    const srv = state.servers.find((s) => s.id === state.selectedServerId);
+    if (!sel || !srv) return;
+    if (lbl) lbl.textContent = `Current: ${srv.type} ${srv.version}`;
+    if (buildStatusEl) buildStatusEl.textContent = "Checking latest server build...";
+    sel.innerHTML = `<option value="">Loading versions...</option>`;
+
+    apiFetch(`/api/servers/${state.selectedServerId}/build-status`).then((b) => {
+      if (!buildStatusEl) return;
+      const cur = b.currentBuild ? `Build #${b.currentBuild}` : "Unknown build";
+      if (b.latestBuild) {
+        if (b.updateAvailable) {
+          buildStatusEl.textContent = `Installed: ${cur} · Latest build available: #${b.latestBuild} (click "Update Latest Build" to update without changing Minecraft version)`;
+        } else {
+          buildStatusEl.textContent = `Installed: ${cur} · You are on the latest build (#${b.latestBuild}) for ${b.currentVersion}.`;
+        }
+      } else {
+        buildStatusEl.textContent = `Upgrade ${b.currentVersion} to another version or reinstall the latest build in place.`;
+      }
+    }).catch(() => {
+      if (buildStatusEl) buildStatusEl.textContent = "Upgrade Minecraft version or update to the latest server build in place.";
+    });
+
+    try {
+      const data = await apiFetch(`/api/software/versions?type=${encodeURIComponent(srv.type)}`);
+      const versions = data.versions || [];
+      if (!versions.length) {
+        sel.innerHTML = `<option value="">No versions available</option>`;
+        return;
+      }
+      sel.innerHTML = versions.map((v) => `<option value="${escapeHtml(v)}" ${v === srv.version ? "selected" : ""}>${escapeHtml(v)}${v === srv.version ? " (Current)" : ""}</option>`).join("");
+    } catch (_) {
+      sel.innerHTML = `<option value="">Unable to fetch versions</option>`;
+    }
   }
 
   async function loadAuditLog() {

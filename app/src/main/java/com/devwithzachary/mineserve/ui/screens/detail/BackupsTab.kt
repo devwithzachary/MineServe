@@ -117,6 +117,7 @@ fun BackupsTab(
     onExportBackup: (BackupEntry, (String?) -> Unit) -> Unit = { _, _ -> },
     onDeleteBackup: (BackupEntry, (Boolean) -> Unit) -> Unit = { _, _ -> },
     onGetShareIntent: (BackupEntry) -> Intent? = { null },
+    onRefreshBackups: () -> Unit = {},
     onSaveServer: ((MinecraftServer) -> Unit)? = null,
     onSyncBackupToCloud: ((BackupEntry, (Result<String>) -> Unit) -> Unit)? = null,
     cloudAccountState: CloudAccountState = CloudAccountState(),
@@ -130,6 +131,10 @@ fun BackupsTab(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+
+    LaunchedEffect(server?.id) {
+        onRefreshBackups()
+    }
 
     var isCreatingBackup by remember { mutableStateOf(false) }
     var restoringBackupId by remember { mutableStateOf<String?>(null) }

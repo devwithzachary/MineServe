@@ -336,6 +336,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                         onExportBackup = { b, onResult -> viewModel.exportBackup(b, onResult) },
                         onDeleteBackup = { b, onResult -> viewModel.deleteBackup(server.id, b, onResult) },
                         onGetShareIntent = { b -> viewModel.getBackupShareIntent(b) },
+                        onRefreshBackups = { viewModel.loadServerDetails(server.id) },
                         onSyncBackupToCloud = { b, onResult -> viewModel.syncBackupToCloud(server.id, b, onResult) },
                         cloudAccountState = cloudState,
                         cloudBackups = cloudBackups,
