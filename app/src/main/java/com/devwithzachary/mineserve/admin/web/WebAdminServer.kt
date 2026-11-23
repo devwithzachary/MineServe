@@ -5,11 +5,15 @@ import android.os.Build
 import android.util.Log
 import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
+import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.TunnelProvider
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
+import com.devwithzachary.mineserve.net.portforward.PortForwardState
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
 import com.devwithzachary.mineserve.tunnel.TunnelManager
+import com.devwithzachary.mineserve.tunnel.TunnelState
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -330,6 +334,7 @@ class WebAdminServer(
                         .put("port", s.port)
                         .put("allocatedRamMb", s.allocatedRamMb)
                         .put("status", status)
+                        .put("network", buildNetworkSummary(s))
                     arr.put(obj)
                 }
                 sendResponse(out, 200, "OK", "application/json", arr.toString().toByteArray(Charsets.UTF_8))
@@ -387,6 +392,7 @@ class WebAdminServer(
                         resp.put("allocatedRamMb", server.allocatedRamMb)
                         resp.put("status", status)
                         resp.put("metrics", metricsObj)
+                        resp.put("network", buildNetworkSummary(server))
                         sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                         return
                     }
@@ -537,6 +543,70 @@ class WebAdminServer(
         } finally {
             try { socket.close() } catch (_: Exception) {}
         }
+    }
+
+    private fun buildNetworkSummary(server: MinecraftServer): JSONObject {
+        val tState = tunnelManager.getTunnelState(server.id)
+        val pfState = portForwardManager.getState(server.id)
+        val localIp = portForwardManager.getLocalWifiIpAddress().orEmpty()
+        val providerLabel = when (server.tunnelConfig.provider) {
+            TunnelProvider.MINESERVE_CLOUD -> "MineServe Cloud"
+            TunnelProvider.BORE -> "Bore"
+            TunnelProvider.CUSTOM_BORE -> "Custom Bore"
+            TunnelProvider.PLAYIT -> "Playit.gg"
+        }
+
+        val tunnelStatus = when (tState) {
+            is TunnelState.Connected -> "connected"
+            is TunnelState.Connecting -> "connecting"
+            is TunnelState.Error -> "error"
+            is TunnelState.Disconnected -> "disconnected"
+        }
+        val tunnelAddress = (tState as? TunnelState.Connected)?.fullAddress.orEmpty()
+        val tunnelMessage = when (tState) {
+            is TunnelState.Connecting -> tState.message
+            is TunnelState.Error -> tState.errorMessage
+            else -> ""
+        }
+
+        val portForwardStatus = when (pfState) {
+            is PortForwardState.Mapped -> "mapped"
+            is PortForwardState.Discovering -> "discovering"
+            is PortForwardState.Failed -> "failed"
+            is PortForwardState.Idle -> "idle"
+        }
+        val directAddress = (pfState as? PortForwardState.Mapped)?.directAddress.orEmpty()
+        val portForwardMessage = when (pfState) {
+            is PortForwardState.Discovering -> pfState.message
+            is PortForwardState.Failed -> pfState.reason
+            else -> ""
+        }
+
+        val publicAddress = when {
+            tunnelAddress.isNotBlank() -> tunnelAddress
+            directAddress.isNotBlank() -> directAddress
+            else -> ""
+        }
+        val activeMethod = when {
+            tunnelAddress.isNotBlank() -> providerLabel
+            directAddress.isNotBlank() -> "UPnP / NAT-PMP"
+            tunnelStatus == "connecting" -> providerLabel
+            portForwardStatus == "discovering" -> "UPnP / NAT-PMP"
+            else -> ""
+        }
+
+        return JSONObject()
+            .put("localAddress", if (localIp.isNotBlank()) "$localIp:${server.port}" else "")
+            .put("publicAddress", publicAddress)
+            .put("activeMethod", activeMethod)
+            .put("tunnelProvider", server.tunnelConfig.provider.name)
+            .put("tunnelProviderLabel", providerLabel)
+            .put("tunnelStatus", tunnelStatus)
+            .put("tunnelAddress", tunnelAddress)
+            .put("tunnelMessage", tunnelMessage)
+            .put("portForwardStatus", portForwardStatus)
+            .put("directAddress", directAddress)
+            .put("portForwardMessage", portForwardMessage)
     }
 
     private fun handleLogin(out: OutputStream, clientIp: String, body: String) {

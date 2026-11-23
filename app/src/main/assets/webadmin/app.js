@@ -149,6 +149,94 @@
     $("btn-start").disabled = running;
     $("btn-stop").disabled = server.status === "STOPPED";
     $("btn-restart").disabled = server.status === "STOPPED";
+    renderConnectionStrip(server.network || {});
+  }
+
+  function copyTextToClipboard(text, label) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(`Copied ${label}: ${text}`);
+      }).catch(() => {
+        fallbackCopyText(text, label);
+      });
+    } else {
+      fallbackCopyText(text, label);
+    }
+  }
+
+  function fallbackCopyText(text, label) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      showToast(`Copied ${label}: ${text}`);
+    } catch (_) {
+      showToast("Unable to copy to clipboard", true);
+    }
+    document.body.removeChild(ta);
+  }
+
+  function renderConnectionStrip(net) {
+    const badge = $("net-public-badge");
+    const pubAddr = $("net-public-addr");
+    const copyPubBtn = $("btn-copy-public-addr");
+    const note = $("net-public-note");
+    const localLabel = $("net-local-label");
+    const localAddr = $("net-local-addr");
+    const copyLocalBtn = $("btn-copy-local-addr");
+    if (!badge) return;
+
+    const publicAddress = net.publicAddress || "";
+    const tunnelStatus = net.tunnelStatus || "disconnected";
+    const pfStatus = net.portForwardStatus || "idle";
+    const activeMethod = net.activeMethod || net.tunnelProviderLabel || "";
+
+    pubAddr.textContent = publicAddress;
+    pubAddr.classList.toggle("hidden", !publicAddress);
+    copyPubBtn.classList.toggle("hidden", !publicAddress);
+    copyPubBtn.dataset.addr = publicAddress;
+
+    if (publicAddress) {
+      badge.className = "net-pill active";
+      badge.textContent = `Public · ${activeMethod || "Online"}`;
+      if (net.tunnelAddress && net.directAddress && net.tunnelAddress !== net.directAddress) {
+        note.textContent = `UPnP also mapped: ${net.directAddress}`;
+      } else {
+        note.textContent = "";
+      }
+    } else if (tunnelStatus === "connecting") {
+      badge.className = "net-pill connecting";
+      badge.textContent = `${net.tunnelProviderLabel || "Tunnel"} · Connecting`;
+      note.textContent = net.tunnelMessage || "Establishing public tunnel...";
+    } else if (pfStatus === "discovering") {
+      badge.className = "net-pill connecting";
+      badge.textContent = "UPnP / NAT-PMP · Mapping";
+      note.textContent = net.portForwardMessage || "Mapping router port...";
+    } else if (tunnelStatus === "error") {
+      badge.className = "net-pill error";
+      badge.textContent = `${net.tunnelProviderLabel || "Tunnel"} · Error`;
+      note.textContent = net.tunnelMessage || "Tunnel connection failed";
+    } else if (pfStatus === "failed") {
+      badge.className = "net-pill error";
+      badge.textContent = "Port Forward · Failed";
+      note.textContent = net.portForwardMessage || "Router mapping failed";
+    } else {
+      badge.className = "net-pill offline";
+      badge.textContent = "Public Access · Off";
+      note.textContent = "LAN only (enable a tunnel or UPnP in Network Settings)";
+    }
+
+    const lan = net.localAddress || "";
+    localLabel.classList.toggle("hidden", !lan);
+    localAddr.textContent = lan;
+    localAddr.classList.toggle("hidden", !lan);
+    copyLocalBtn.classList.toggle("hidden", !lan);
+    copyLocalBtn.dataset.addr = lan;
   }
 
   function selectServer(serverId) {
@@ -1293,6 +1381,18 @@
       await apiFetch(`/api/servers/${state.selectedServerId}/restart`, { method: "POST" });
       showToast("Restart requested");
       loadServerDetails();
+    });
+    $("btn-copy-public-addr")?.addEventListener("click", () => {
+      const addr = $("btn-copy-public-addr")?.dataset?.addr || "";
+      copyTextToClipboard(addr, "public address");
+    });
+    $("btn-copy-local-addr")?.addEventListener("click", () => {
+      const addr = $("btn-copy-local-addr")?.dataset?.addr || "";
+      copyTextToClipboard(addr, "LAN address");
+    });
+    $("btn-open-network-tab")?.addEventListener("click", () => {
+      const settingsTabBtn = document.querySelector('.tab-btn[data-tab="settings"]');
+      if (settingsTabBtn) settingsTabBtn.click();
     });
 
     // Console

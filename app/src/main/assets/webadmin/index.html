@@ -82,6 +82,22 @@
       </div>
 
       <div id="server-workspace" class="workspace hidden">
+        <!-- Connection & Public Access Strip -->
+        <div id="connection-strip" class="connection-strip">
+          <div class="connection-group">
+            <span id="net-public-badge" class="net-pill offline">LAN Only</span>
+            <code id="net-public-addr" class="addr-chip mono hidden"></code>
+            <button id="btn-copy-public-addr" class="btn btn-secondary btn-sm hidden" type="button">Copy Address</button>
+            <span id="net-public-note" class="connection-note"></span>
+          </div>
+          <div class="connection-group">
+            <span id="net-local-label" class="connection-note hidden">LAN:</span>
+            <code id="net-local-addr" class="addr-chip mono hidden"></code>
+            <button id="btn-copy-local-addr" class="btn btn-ghost btn-sm hidden" type="button">Copy LAN</button>
+            <button id="btn-open-network-tab" class="btn btn-ghost btn-sm" type="button">Network Settings</button>
+          </div>
+        </div>
+
         <!-- Metrics Strip -->
         <div class="metrics-grid">
           <div class="metric-card">
