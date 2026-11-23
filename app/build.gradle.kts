@@ -11,6 +11,7 @@ android {
     compileSdk = 36
     ndkVersion = "28.2.13676358"
     val isPlayStoreBuild = (project.findProperty("playStoreBuild") as? String)?.toBoolean() ?: false
+    val forceProdCloud = (project.findProperty("useProdCloud") as? String)?.toBoolean() ?: false
 
     defaultConfig {
         applicationId = "com.devwithzachary.mineserve"
@@ -19,6 +20,7 @@ android {
         versionCode = 13
         versionName = "1.7.0"
         buildConfigField("boolean", "IS_PLAY_STORE", isPlayStoreBuild.toString())
+        buildConfigField("boolean", "FORCE_PROD_CLOUD", forceProdCloud.toString())
 
         ndk {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")

@@ -262,8 +262,9 @@ fun DashboardScreen(
                                     Icon(Icons.Default.Close, contentDescription = "Dismiss", tint = Slate400, modifier = Modifier.size(16.dp))
                                 }
                             }
+                            val cloudPricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
                             Text(
-                                text = "Need custom *.play.mineserve.app addresses, remote Web Admin, or encrypted cloud backups? Plus is £2.99/mo & Pro is £6.99/mo. Local hosting stays 100% free.",
+                                text = "Keep hosting free on your phone - add a custom *.play.mineserve.app address, remote browser Web Admin, and encrypted cloud backups. Try Plus free for 7 days (then ${cloudPricing.plusMonthly}/mo; Pro ${cloudPricing.proMonthly}/mo).",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Slate400
                             )
@@ -273,7 +274,7 @@ fun DashboardScreen(
                                 shape = RoundedCornerShape(8.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
                             ) {
-                                Text("Explore Plans", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text("Try Plus Free (7 Days)", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                             }
                         }
                     }

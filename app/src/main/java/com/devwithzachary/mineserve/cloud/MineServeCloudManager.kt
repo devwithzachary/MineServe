@@ -158,11 +158,14 @@ class MineServeCloudManager(context: Context) {
         private const val KEY_AUTH_TOKEN = "cloud_auth_token"
         private const val KEY_CACHED_PROFILE = "cloud_cached_profile"
 
+        private val useStagingCloud: Boolean
+            get() = BuildConfig.DEBUG && !BuildConfig.FORCE_PROD_CLOUD
+
         val apiBaseUrl: String
-            get() = if (BuildConfig.DEBUG) "https://api-staging.mineserve.app" else "https://api.mineserve.app"
+            get() = if (useStagingCloud) "https://api-staging.mineserve.app" else "https://api.mineserve.app"
 
         val portalBaseUrl: String
-            get() = if (BuildConfig.DEBUG) "https://cloud-staging.mineserve.app" else "https://cloud.mineserve.app"
+            get() = if (useStagingCloud) "https://cloud-staging.mineserve.app" else "https://cloud.mineserve.app"
     }
 
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

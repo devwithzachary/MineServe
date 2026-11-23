@@ -961,8 +961,9 @@ fun SettingsTab(
                                         color = GoldYellow
                                     )
                                 } else {
+                                    val pricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
                                     Text(
-                                        text = "Custom *.play.mineserve.app tunnels require MineServe Plus (\$2.99/mo, 1 address) or Pro (\$6.99/mo, 3 addresses).",
+                                        text = "Custom *.play.mineserve.app tunnels require MineServe Plus (7-day free trial, then ${pricing.plusMonthly}/mo, 1 address) or Pro (${pricing.proMonthly}/mo, 3 addresses).",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = GoldYellow
                                     )
@@ -971,7 +972,7 @@ fun SettingsTab(
                                         shape = RoundedCornerShape(8.dp),
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text("Upgrade in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                        Text("Start 7-Day Free Trial in Cloud Portal", color = Color.White, fontSize = 12.sp)
                                     }
                                 }
                             } else {

@@ -377,7 +377,7 @@ fun MineServeCloudScreen(
                             }
                         } else {
                             Text(
-                                text = "Local server hosting, Bore, Playit.gg, UPnP, and local/WebDAV backups remain 100% free forever. MineServe Cloud is an optional upgrade for custom *.play.mineserve.app addresses, remote Web Admin access, and off-device R2 backups.",
+                                text = "Your Android phone hosts your Minecraft servers 100% free forever (with Bore, Playit.gg, UPnP, and local/WebDAV backups). MineServe Cloud is an optional add-on (not 24/7 cloud hosting) that adds a custom *.play.mineserve.app address, remote browser Web Admin from anywhere, and encrypted R2 backups. Try Plus free for 7 days.",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = Slate400
                             )
@@ -538,6 +538,7 @@ fun MineServeCloudScreen(
                 }
             } else {
                 // Transparent Plan Comparison (Non-Play Store builds only)
+                val pricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
                 Text(
                     text = "Plans & Pricing",
                     style = MaterialTheme.typography.titleMedium,
@@ -545,10 +546,17 @@ fun MineServeCloudScreen(
                     color = Color.White,
                     modifier = Modifier.padding(top = 4.dp)
                 )
+                if (pricing.isEstimatedLocal) {
+                    Text(
+                        text = "Estimated local pricing (${pricing.currencyCode}) - Stripe Checkout confirms your exact local currency.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Slate400
+                    )
+                }
 
                 CloudPlanCard(
                     title = "Free Forever",
-                    price = "£0 / month",
+                    price = "${pricing.free} / month",
                     subtitle = "Everything local in MineServe",
                     isCurrent = profile?.tier == "FREE" || !cloudState.isLinked,
                     features = listOf(
@@ -560,9 +568,9 @@ fun MineServeCloudScreen(
                 )
 
                 CloudPlanCard(
-                    title = "MineServe Plus",
-                    price = "£2.99 / mo  (or £29.99 / yr)",
-                    subtitle = "For personal & friend SMPs",
+                    title = "MineServe Plus (7-Day Free Trial)",
+                    price = "${pricing.plusMonthly} / mo  (or ${pricing.plusYearly} / yr)",
+                    subtitle = "7 days free for new subscribers - cancel anytime",
                     highlighted = true,
                     isCurrent = false,
                     features = listOf(
@@ -575,7 +583,7 @@ fun MineServeCloudScreen(
 
                 CloudPlanCard(
                     title = "MineServe Pro",
-                    price = "£6.99 / mo  (or £69.99 / yr)",
+                    price = "${pricing.proMonthly} / mo  (or ${pricing.proYearly} / yr)",
                     subtitle = "For communities & creators",
                     isCurrent = false,
                     features = listOf(
@@ -594,7 +602,7 @@ fun MineServeCloudScreen(
                 ) {
                     Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Manage Plans in Browser Portal", color = EmeraldLight, fontWeight = FontWeight.SemiBold)
+                    Text("Start 7-Day Free Trial in Browser Portal", color = EmeraldLight, fontWeight = FontWeight.SemiBold)
                 }
             }
         }

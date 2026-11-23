@@ -620,8 +620,9 @@ fun BackupsTab(
                                                 color = GoldYellow
                                             )
                                         } else {
+                                            val pricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
                                             Text(
-                                                text = "Cloud Backups require MineServe Plus (\$2.99/mo, 10 GB) or Pro (\$6.99/mo, 50 GB).",
+                                                text = "Encrypted Cloud Backups require MineServe Plus (7-day free trial, then ${pricing.plusMonthly}/mo, 10 GB) or Pro (${pricing.proMonthly}/mo, 50 GB).",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = GoldYellow
                                             )
@@ -630,7 +631,7 @@ fun BackupsTab(
                                                 shape = RoundedCornerShape(8.dp),
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Text("Upgrade in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                                Text("Start 7-Day Free Trial in Cloud Portal", color = Color.White, fontSize = 12.sp)
                                             }
                                         }
                                     } else {
