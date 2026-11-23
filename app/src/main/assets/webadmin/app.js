@@ -56,7 +56,72 @@
     return data;
   }
 
+  function disconnectServerStream() {
+    if (state.eventSource) {
+      try { state.eventSource.close(); } catch (_) {}
+      state.eventSource = null;
+      state.sseConnected = false;
+    }
+  }
+
+  function applyServerMetricsPayload(data) {
+    if (!data || data.id !== state.selectedServerId) return;
+    const idx = state.servers.findIndex((s) => s.id === data.id);
+    if (idx >= 0) state.servers[idx] = { ...state.servers[idx], ...data };
+    refreshSelectedServerHeader();
+    renderServerList();
+
+    const m = data.metrics || {};
+    const cpu = Number(m.cpuPercentage || 0);
+    const ramUsed = Number(m.ramUsedMb || 0);
+    const ramMax = Number(m.ramMaxMb || data.allocatedRamMb || 1);
+    const tpsNum = typeof m.tps === "number" ? m.tps : 20.0;
+    const msptNum = typeof m.mspt === "number" ? m.mspt : 0.0;
+
+    $("metric-cpu").textContent = `${Math.round(cpu)}%`;
+    $("metric-ram").textContent = `${ramUsed} / ${data.allocatedRamMb || 0} MB`;
+    const tps = tpsNum.toFixed(1);
+    if (data.status === "RUNNING") {
+      recordPerfSample(data.id, cpu, ramUsed, ramMax, tpsNum, msptNum);
+    }
+    const mspt = typeof m.mspt === "number" ? m.mspt.toFixed(1) : "0.0";
+    $("metric-tps").textContent = `${tps} / ${mspt} ms`;
+    $("metric-players").textContent = `${m.onlinePlayerCount || 0}`;
+  }
+
+  function connectServerStream(serverId) {
+    disconnectServerStream();
+    if (!serverId || typeof EventSource === "undefined") return;
+    try {
+      const es = new EventSource(`/api/servers/${encodeURIComponent(serverId)}/stream`);
+      state.eventSource = es;
+      es.addEventListener("open", () => {
+        state.sseConnected = true;
+      });
+      es.addEventListener("console", (evt) => {
+        if (state.selectedServerId !== serverId) return;
+        try {
+          const data = JSON.parse(evt.data);
+          updateConsoleOutput(data.lines || []);
+        } catch (_) {}
+      });
+      es.addEventListener("status", (evt) => {
+        if (state.selectedServerId !== serverId) return;
+        try {
+          const data = JSON.parse(evt.data);
+          applyServerMetricsPayload(data);
+        } catch (_) {}
+      });
+      es.onerror = () => {
+        state.sseConnected = false;
+      };
+    } catch (_) {
+      state.sseConnected = false;
+    }
+  }
+
   function showLogin() {
+    disconnectServerStream();
     if (state.pollTimer) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
@@ -104,7 +169,8 @@
     $("open-create-modal-btn")?.classList.toggle("hidden", !canManageHost);
     $("empty-create-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-host-tools-btn")?.classList.toggle("hidden", !canManageHost);
-    $("open-users-modal-btn")?.classList.toggle("hidden", !(canManageUsers || canViewAudit));
+    $("open-users-modal-btn")?.classList.toggle("hidden", !canManageUsers);
+    $("open-audit-view-btn")?.classList.toggle("hidden", !canViewAudit);
     $("btn-start")?.classList.toggle("hidden", !canControl);
     $("btn-restart")?.classList.toggle("hidden", !canControl);
     $("btn-stop")?.classList.toggle("hidden", !canControl);
@@ -381,6 +447,7 @@
     renderServerList();
 
     if (!serverId) {
+      disconnectServerStream();
       $("active-server-name").textContent = "Select a Server";
       $("active-server-meta").textContent = "";
       $("server-controls").classList.add("hidden");
@@ -395,33 +462,14 @@
     refreshSelectedServerHeader();
     loadServerDetails();
     loadActiveTabData();
+    connectServerStream(serverId);
   }
 
   async function loadServerDetails() {
     if (!state.selectedServerId) return;
     try {
       const data = await apiFetch(`/api/servers/${state.selectedServerId}`);
-      const idx = state.servers.findIndex((s) => s.id === data.id);
-      if (idx >= 0) state.servers[idx] = { ...state.servers[idx], ...data };
-      refreshSelectedServerHeader();
-      renderServerList();
-
-      const m = data.metrics || {};
-      const cpu = Number(m.cpuPercentage || 0);
-      const ramUsed = Number(m.ramUsedMb || 0);
-      const ramMax = Number(m.ramMaxMb || data.allocatedRamMb || 1);
-      const tpsNum = typeof m.tps === "number" ? m.tps : 20.0;
-      const msptNum = typeof m.mspt === "number" ? m.mspt : 0.0;
-
-      $("metric-cpu").textContent = `${Math.round(cpu)}%`;
-      $("metric-ram").textContent = `${ramUsed} / ${data.allocatedRamMb || 0} MB`;
-      const tps = tpsNum.toFixed(1);
-      if (data.status === "RUNNING") {
-        recordPerfSample(data.id, cpu, ramUsed, ramMax, tpsNum, msptNum);
-      }
-      const mspt = typeof m.mspt === "number" ? m.mspt.toFixed(1) : "0.0";
-      $("metric-tps").textContent = `${tps} / ${mspt} ms`;
-      $("metric-players").textContent = `${m.onlinePlayerCount || 0}`;
+      applyServerMetricsPayload(data);
     } catch (_) {}
   }
 
@@ -444,10 +492,13 @@
       await loadServers();
       return;
     }
-    await loadServerDetails();
-    if (state.activeTab === "console") {
-      await loadConsole();
-    } else if (state.activeTab === "performance") {
+    if (!state.sseConnected) {
+      await loadServerDetails();
+      if (state.activeTab === "console") {
+        await loadConsole();
+      }
+    }
+    if (state.activeTab === "performance") {
       await loadPerformance();
     } else if (state.activeTab === "settings") {
       await loadNetwork(false);
@@ -459,14 +510,26 @@
   }
 
   // Console
+  function updateConsoleOutput(lines) {
+    const out = $("console-output");
+    if (!out) return;
+    const nextText = lines.join("\n");
+    if (out.textContent === nextText) return;
+    const prevTop = out.scrollTop;
+    const wasAtBottom = out.scrollHeight - out.scrollTop - out.clientHeight < 40;
+    out.textContent = nextText;
+    if (wasAtBottom) {
+      out.scrollTop = out.scrollHeight;
+    } else {
+      out.scrollTop = prevTop;
+    }
+  }
+
   async function loadConsole() {
     if (!state.selectedServerId) return;
     try {
-      const data = await apiFetch(`/api/servers/${state.selectedServerId}/console`);
-      const out = $("console-output");
-      const wasAtBottom = out.scrollHeight - out.scrollTop - out.clientHeight < 40;
-      out.textContent = (data.lines || []).join("\n");
-      if (wasAtBottom) out.scrollTop = out.scrollHeight;
+      const data = await apiFetch(`/api/servers/${state.selectedServerId}/console?limit=2000`);
+      updateConsoleOutput(data.lines || []);
     } catch (_) {}
   }
 
@@ -486,21 +549,27 @@
       const list = $("files-list");
       const files = data.files || [];
       if (files.length === 0) {
-        list.innerHTML = `<div class="player-sub" style="padding: 16px;">Empty directory</div>`;
+        list.innerHTML = `<div class="player-sub" style="padding: 16px;">Empty directory · Drag &amp; drop files here to upload</div>`;
         return;
       }
-      list.innerHTML = files.map((f) => `
+      list.innerHTML = files.map((f) => {
+        const isZip = !f.isDirectory && f.name.toLowerCase().endsWith(".zip");
+        return `
         <div class="file-row">
           <button class="file-name-btn" data-path="${escapeHtml(f.relativePath)}" data-dir="${f.isDirectory}" data-editable="${f.isEditable}">
-            <span>${f.isDirectory ? "📁" : "📄"}</span>
+            <span>${f.isDirectory ? "📁" : (isZip ? "🗜️" : "📄")}</span>
             <span>${escapeHtml(f.name)}</span>
           </button>
           <div class="file-meta">
             <span>${f.isDirectory ? "Folder" : formatSize(f.sizeBytes)}</span>
+            ${!f.isDirectory ? `<a class="btn btn-ghost btn-sm" href="/api/servers/${encodeURIComponent(state.selectedServerId)}/files/download?path=${encodeURIComponent(f.relativePath)}" download title="Download">⬇</a>` : ""}
+            ${isZip ? `<button class="btn btn-ghost btn-sm file-unzip-btn" data-path="${escapeHtml(f.relativePath)}" title="Unzip Archive">📦</button>` : ""}
+            <button class="btn btn-ghost btn-sm file-rename-btn" data-path="${escapeHtml(f.relativePath)}" data-name="${escapeHtml(f.name)}" title="Rename">✏️</button>
             <button class="btn btn-ghost btn-sm file-del-btn" data-path="${escapeHtml(f.relativePath)}" title="Delete">🗑️</button>
           </div>
         </div>
-      `).join("");
+      `;
+      }).join("");
 
       list.querySelectorAll(".file-name-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
@@ -510,7 +579,43 @@
           } else if (btn.dataset.editable === "true") {
             openFileEditor(rel);
           } else {
-            showToast("Binary or large file cannot be edited in browser", "error");
+            showToast("Binary or large file cannot be edited in browser (use Download)", "error");
+          }
+        });
+      });
+
+      list.querySelectorAll(".file-rename-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const rel = btn.dataset.path;
+          const oldName = btn.dataset.name;
+          const newName = window.prompt(`Rename "${oldName}" to:`, oldName);
+          if (!newName || newName.trim() === oldName) return;
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/files/rename`, {
+              method: "POST",
+              body: JSON.stringify({ path: rel, newName: newName.trim() })
+            });
+            showToast("Renamed");
+            loadFiles(state.currentPath);
+          } catch (e) {
+            showToast(e.message, "error");
+          }
+        });
+      });
+
+      list.querySelectorAll(".file-unzip-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const rel = btn.dataset.path;
+          if (!confirm(`Extract "${rel}" into the current folder?`)) return;
+          try {
+            const res = await apiFetch(`/api/servers/${state.selectedServerId}/files/unzip`, {
+              method: "POST",
+              body: JSON.stringify({ path: rel, deleteZipAfter: false })
+            });
+            showToast(`Extracted ${res.extractedCount || 0} file(s)`);
+            loadFiles(state.currentPath);
+          } catch (e) {
+            showToast(e.message, "error");
           }
         });
       });
@@ -2258,22 +2363,111 @@
     });
 
     // Multi-User, Sessions & Audit Log Modal
+    const uploadFilesToCurrentDir = async (fileList) => {
+      if (!state.selectedServerId || !fileList || !fileList.length) return;
+      for (const file of Array.from(fileList)) {
+        try {
+          showToast(`Uploading ${file.name}...`);
+          const url = `/api/servers/${encodeURIComponent(state.selectedServerId)}/files/upload?path=${encodeURIComponent(state.currentPath || "")}&name=${encodeURIComponent(file.name)}`;
+          const res = await fetch(url, {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/octet-stream" },
+            body: file
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
+          showToast(`Uploaded ${file.name}`);
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      }
+      loadFiles(state.currentPath);
+    };
+    $("files-new-file-btn")?.addEventListener("click", async () => {
+      if (!state.selectedServerId) return;
+      const name = window.prompt("New file name (e.g. config.yml):");
+      if (!name || !name.trim()) return;
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/files/create`, {
+          method: "POST",
+          body: JSON.stringify({ path: state.currentPath || "", name: name.trim(), content: "" })
+        });
+        showToast(`Created ${name.trim()}`);
+        await loadFiles(state.currentPath);
+        const rel = state.currentPath ? `${state.currentPath}/${name.trim()}` : name.trim();
+        openFileEditor(rel);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+    $("files-new-dir-btn")?.addEventListener("click", async () => {
+      if (!state.selectedServerId) return;
+      const name = window.prompt("New folder name:");
+      if (!name || !name.trim()) return;
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/files/mkdir`, {
+          method: "POST",
+          body: JSON.stringify({ path: state.currentPath || "", name: name.trim() })
+        });
+        showToast(`Created folder ${name.trim()}`);
+        loadFiles(state.currentPath);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    });
+    $("files-upload-btn")?.addEventListener("click", () => {
+      const inp = $("files-upload-input");
+      if (inp) {
+        inp.value = "";
+        inp.click();
+      }
+    });
+    $("files-upload-input")?.addEventListener("change", (e) => {
+      uploadFilesToCurrentDir(e.target.files);
+    });
+    const filesDropEl = $("files-list");
+    if (filesDropEl) {
+      filesDropEl.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        filesDropEl.classList.add("drag-over");
+      });
+      filesDropEl.addEventListener("dragleave", () => {
+        filesDropEl.classList.remove("drag-over");
+      });
+      filesDropEl.addEventListener("drop", (e) => {
+        e.preventDefault();
+        filesDropEl.classList.remove("drag-over");
+        if (e.dataTransfer?.files?.length) {
+          uploadFilesToCurrentDir(e.dataTransfer.files);
+        }
+      });
+    }
+
     const openUsersModal = async () => {
       $("users-modal").classList.remove("hidden");
-      const isOwner = hasPerm("MANAGE_USERS");
-      $("users-owner-section").classList.toggle("hidden", !isOwner);
-      if (isOwner) {
-        renderUserServerCheckboxes();
-        await Promise.all([loadPanelUsers(), loadActiveSessions(), loadAuditLog()]);
-      } else {
-        await loadAuditLog();
-      }
+      renderUserServerCheckboxes();
+      await Promise.all([loadPanelUsers(), loadActiveSessions()]);
     };
     $("open-users-modal-btn")?.addEventListener("click", openUsersModal);
     $("close-users-modal-btn")?.addEventListener("click", () => $("users-modal").classList.add("hidden"));
     $("users-refresh-btn")?.addEventListener("click", () => loadPanelUsers());
     $("sessions-refresh-btn")?.addEventListener("click", () => loadActiveSessions());
+
+    // Full-Screen Audit Log View
+    $("open-audit-view-btn")?.addEventListener("click", async () => {
+      $("audit-fullscreen-view").classList.remove("hidden");
+      await loadAuditLog();
+    });
+    $("close-audit-view-btn")?.addEventListener("click", () => {
+      $("audit-fullscreen-view").classList.add("hidden");
+    });
     $("audit-refresh-btn")?.addEventListener("click", () => loadAuditLog());
+    $("audit-limit-select")?.addEventListener("change", () => loadAuditLog());
+    $("audit-search-input")?.addEventListener("input", () => renderFilteredAuditLog());
+    $("audit-category-filter")?.addEventListener("change", () => renderFilteredAuditLog());
+    $("audit-user-filter")?.addEventListener("change", () => renderFilteredAuditLog());
+    $("audit-export-csv-btn")?.addEventListener("click", () => exportAuditCsv());
     $("new-user-restrict")?.addEventListener("change", (e) => {
       $("new-user-servers-box").classList.toggle("hidden", !e.target.checked);
       if (e.target.checked) renderUserServerCheckboxes();
@@ -2474,30 +2668,100 @@
     }
   }
 
-  async function loadAuditLog() {
-    const list = $("audit-list");
-    if (!list) return;
-    try {
-      const data = await apiFetch("/api/audit?limit=100");
-      const entries = data.entries || [];
-      if (!entries.length) {
-        list.innerHTML = `<div class="player-sub">No audit events recorded yet.</div>`;
-        return;
+  function auditCategoryFor(action) {
+    const a = String(action || "").toUpperCase();
+    if (a.includes("LOGIN") || a.includes("LOGOUT") || a.includes("PASSWORD")) return "AUTH";
+    if (a.startsWith("SERVER_")) return "SERVER";
+    if (a === "CONSOLE_CMD") return "CONSOLE";
+    if (a.startsWith("FILE_") || a.startsWith("DIR_") || a.includes("UPLOAD") || a.includes("IMPORT")) return "FILES";
+    if (a.startsWith("PLAYER")) return "PLAYERS";
+    if (a.startsWith("USER_") || a.startsWith("SESSION_")) return "USERS";
+    return "SETTINGS";
+  }
+
+  function getFilteredAuditEntries() {
+    const all = state.auditEntries || [];
+    const q = ($("audit-search-input")?.value || "").trim().toLowerCase();
+    const cat = $("audit-category-filter")?.value || "ALL";
+    const usr = $("audit-user-filter")?.value || "ALL";
+    return all.filter((e) => {
+      if (cat !== "ALL" && auditCategoryFor(e.action) !== cat) return false;
+      if (usr !== "ALL" && e.username !== usr) return false;
+      if (q) {
+        const hay = `${e.username} ${e.role} ${e.action} ${e.target} ${e.details} ${e.clientIp}`.toLowerCase();
+        if (!hay.includes(q)) return false;
       }
-      list.innerHTML = entries.map((e) => `
-        <div class="player-row">
-          <div>
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-              <span class="role-badge ${escapeHtml(e.role || "VIEWER")}">${escapeHtml(e.action)}</span>
-              <strong>${escapeHtml(e.username)}</strong>
-              ${e.target ? `<span class="player-sub">→ ${escapeHtml(e.target)}</span>` : ""}
-            </div>
-            <div class="player-sub">${escapeHtml(new Date(e.timestamp).toLocaleString())} · ${escapeHtml(e.clientIp || "")}${e.details ? ` · ${escapeHtml(e.details)}` : ""}</div>
-          </div>
-        </div>
-      `).join("");
+      return true;
+    });
+  }
+
+  function renderFilteredAuditLog() {
+    const tbody = $("audit-table-body");
+    const summary = $("audit-summary-line");
+    if (!tbody) return;
+    const filtered = getFilteredAuditEntries();
+    const total = (state.auditEntries || []).length;
+    if (summary) {
+      summary.textContent = `Showing ${filtered.length} of ${total} audit event(s)`;
+    }
+    if (!filtered.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="player-sub" style="text-align:center;padding:24px;">No matching audit events found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = filtered.map((e) => `
+      <tr>
+        <td class="mono" style="white-space:nowrap;font-size:12px;">${escapeHtml(new Date(e.timestamp).toLocaleString())}</td>
+        <td style="white-space:nowrap;">
+          <strong>${escapeHtml(e.username)}</strong>
+          <span class="role-badge ${escapeHtml(e.role || "VIEWER")}" style="margin-left:4px;">${escapeHtml(e.role || "")}</span>
+        </td>
+        <td style="white-space:nowrap;"><span class="role-badge">${escapeHtml(e.action)}</span></td>
+        <td>${escapeHtml(e.target || "-")}</td>
+        <td class="mono" style="font-size:12px;word-break:break-word;">${escapeHtml(e.details || "")}</td>
+        <td class="mono" style="white-space:nowrap;font-size:12px;">${escapeHtml(e.clientIp || "")}</td>
+      </tr>
+    `).join("");
+  }
+
+  function exportAuditCsv() {
+    const rows = getFilteredAuditEntries();
+    const csvEscape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const header = ["Timestamp", "Username", "Role", "Action", "Target", "Details", "IP"].join(",");
+    const lines = rows.map((e) => [
+      new Date(e.timestamp).toISOString(),
+      e.username,
+      e.role,
+      e.action,
+      e.target,
+      e.details,
+      e.clientIp
+    ].map(csvEscape).join(","));
+    const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `mineserve-audit-log-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function loadAuditLog() {
+    const tbody = $("audit-table-body");
+    if (!tbody) return;
+    const limit = parseInt($("audit-limit-select")?.value, 10) || 250;
+    try {
+      const data = await apiFetch(`/api/audit?limit=${limit}`);
+      state.auditEntries = data.entries || [];
+      const userSel = $("audit-user-filter");
+      if (userSel) {
+        const prev = userSel.value || "ALL";
+        const users = Array.from(new Set(state.auditEntries.map((e) => e.username).filter(Boolean))).sort();
+        userSel.innerHTML = `<option value="ALL">All Users</option>` + users.map((u) => `<option value="${escapeHtml(u)}">${escapeHtml(u)}</option>`).join("");
+        userSel.value = users.includes(prev) ? prev : "ALL";
+      }
+      renderFilteredAuditLog();
     } catch (err) {
-      list.innerHTML = `<div class="player-sub">${escapeHtml(err.message)}</div>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="player-sub" style="text-align:center;padding:24px;">${escapeHtml(err.message)}</td></tr>`;
     }
   }
 

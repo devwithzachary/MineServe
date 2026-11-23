@@ -56,7 +56,8 @@
           <span id="current-user-role" class="role-badge OWNER">Owner</span>
         </div>
         <div id="system-info" class="system-info">Loading host info...</div>
-        <button id="open-users-modal-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Users &amp; Audit Log</button>
+        <button id="open-users-modal-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Users &amp; Sessions</button>
+        <button id="open-audit-view-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Audit Log</button>
         <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">Cloud, Safeguards &amp; Diagnostics</button>
         <button id="open-password-modal-btn" class="btn btn-ghost btn-sm btn-full" style="margin-bottom:6px;">Change Password</button>
         <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
@@ -232,19 +233,25 @@
         <section id="tab-files" class="tab-panel">
           <div class="files-toolbar">
             <div class="files-breadcrumb">
-              <button id="files-up-btn" class="btn btn-secondary btn-sm">Up</button>
+              <button id="files-up-btn" class="btn btn-secondary btn-sm" type="button">Up</button>
               <span id="files-current-path" class="mono">/</span>
             </div>
-            <button id="files-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+            <div class="player-actions">
+              <button id="files-new-file-btn" class="btn btn-secondary btn-sm" type="button">+ New File</button>
+              <button id="files-new-dir-btn" class="btn btn-secondary btn-sm" type="button">+ New Folder</button>
+              <button id="files-upload-btn" class="btn btn-primary btn-sm" type="button">Upload File</button>
+              <input type="file" id="files-upload-input" class="hidden" multiple>
+              <button id="files-refresh-btn" class="btn btn-secondary btn-sm" type="button">Refresh</button>
+            </div>
           </div>
           <div class="files-layout">
-            <div id="files-list" class="files-list"></div>
+            <div id="files-list" class="files-list" title="Drag and drop files here to upload"></div>
             <div id="file-editor-pane" class="file-editor-pane hidden">
               <div class="editor-header">
                 <span id="editor-filename" class="mono"></span>
                 <div class="editor-actions">
-                  <button id="editor-save-btn" class="btn btn-primary btn-sm">Save</button>
-                  <button id="editor-close-btn" class="btn btn-ghost btn-sm">Close</button>
+                  <button id="editor-save-btn" class="btn btn-primary btn-sm" type="button">Save</button>
+                  <button id="editor-close-btn" class="btn btn-ghost btn-sm" type="button">Close</button>
                 </div>
               </div>
               <textarea id="editor-textarea" spellcheck="false"></textarea>
@@ -841,11 +848,11 @@
     </div>
   </div>
 
-  <!-- Users, Sessions & Audit Log Modal -->
+  <!-- Users & Sessions Modal -->
   <div id="users-modal" class="modal-backdrop hidden">
     <div class="modal-card" style="max-width:760px;">
       <div class="modal-header">
-        <h3>Users, Sessions &amp; Audit Log</h3>
+        <h3>Users &amp; Active Sessions</h3>
         <button id="close-users-modal-btn" class="btn-icon" type="button">✕</button>
       </div>
 
@@ -889,7 +896,7 @@
           <div id="users-list" class="player-list" style="margin-top:8px;"></div>
         </div>
 
-        <div class="panel-card" style="margin-bottom:14px;">
+        <div class="panel-card">
           <div class="files-toolbar">
             <h3 style="margin:0;">Active Sessions</h3>
             <button type="button" id="sessions-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
@@ -897,14 +904,61 @@
           <div id="sessions-list" class="player-list" style="margin-top:8px;"></div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="panel-card">
-        <div class="files-toolbar">
-          <h3 style="margin:0;">Recent Audit Log</h3>
-          <button type="button" id="audit-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+  <!-- Full-Screen Audit Log View -->
+  <div id="audit-fullscreen-view" class="fullscreen-overlay hidden">
+    <div class="fullscreen-header">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button type="button" id="close-audit-view-btn" class="btn btn-secondary btn-sm">← Back</button>
+        <div>
+          <h2 style="margin:0;font-size:18px;">Audit Log</h2>
+          <div id="audit-summary-line" class="server-meta-line">Loading audit events...</div>
         </div>
-        <div id="audit-list" class="player-list" style="margin-top:8px;max-height:260px;overflow-y:auto;"></div>
       </div>
+      <div class="player-actions">
+        <button type="button" id="audit-export-csv-btn" class="btn btn-secondary btn-sm">Export CSV</button>
+        <button type="button" id="audit-refresh-btn" class="btn btn-primary btn-sm">Refresh</button>
+      </div>
+    </div>
+
+    <div class="audit-filters-bar">
+      <input type="search" id="audit-search-input" placeholder="Search user, action, target, command, or IP..." style="flex:2;min-width:220px;">
+      <select id="audit-category-filter" style="flex:1;min-width:170px;">
+        <option value="ALL">All Categories</option>
+        <option value="AUTH">Auth (Login / Logout / Password)</option>
+        <option value="SERVER">Server Lifecycle</option>
+        <option value="CONSOLE">Console Commands</option>
+        <option value="FILES">Files &amp; Uploads</option>
+        <option value="PLAYERS">Players</option>
+        <option value="SETTINGS">Settings &amp; Safeguards</option>
+        <option value="USERS">Users &amp; Sessions</option>
+      </select>
+      <select id="audit-user-filter" style="flex:1;min-width:140px;">
+        <option value="ALL">All Users</option>
+      </select>
+      <select id="audit-limit-select" style="width:120px;flex:none;">
+        <option value="100">Last 100</option>
+        <option value="250" selected>Last 250</option>
+        <option value="500">Last 500</option>
+      </select>
+    </div>
+
+    <div class="audit-table-wrap">
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Action</th>
+            <th>Target</th>
+            <th>Details</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody id="audit-table-body"></tbody>
+      </table>
     </div>
   </div>
 

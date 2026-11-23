@@ -32,6 +32,7 @@ import java.net.URLDecoder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.json.JSONArray
@@ -167,7 +168,8 @@ class WebAdminServer(
             val isWorldImportUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/world/import")
             val isPluginJarUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/plugins/upload")
             val isModpackUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/modpack/import")
-            val isBinaryUpload = isWorldImportUpload || isPluginJarUpload || isModpackUpload
+            val isFileUpload = method == "POST" && path.startsWith("/api/servers/") && path.endsWith("/files/upload")
+            val isBinaryUpload = isWorldImportUpload || isPluginJarUpload || isModpackUpload || isFileUpload
 
             // Extract Auth Token before reading potentially large bodies
             val authHeader = headers["authorization"]
@@ -189,7 +191,8 @@ class WebAdminServer(
                 }
                 val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
                 val serverId = segments.getOrNull(0) ?: ""
-                if (!requirePerm(out, uploadUser, Permission.SERVER_SETTINGS_WRITE, serverId)) {
+                val uploadPerm = if (isFileUpload) Permission.SERVER_FILES_WRITE else Permission.SERVER_SETTINGS_WRITE
+                if (!requirePerm(out, uploadUser, uploadPerm, serverId)) {
                     return
                 }
                 if (contentLength <= 0L || contentLength > 512L * 1024L * 1024L) {
@@ -211,6 +214,29 @@ class WebAdminServer(
                             val fname = queryParams["name"] ?: ""
                             userRepository.recordAudit(uploadUser, "PLUGIN_UPLOAD", serverId, fname, effectiveIp)
                             extHandlers.handleUploadPluginJar(serverId, fname, tempFile)
+                        }
+                        isFileUpload -> {
+                            val dirPath = queryParams["path"] ?: ""
+                            val rawName = queryParams["name"] ?: ""
+                            val safeName = File(rawName).name.trim()
+                            if (safeName.isBlank() || safeName == "." || safeName == "..") {
+                                WebApiResult(400, "Bad Request", JSONObject().put("error", "Invalid file name."))
+                            } else {
+                                val serverDir = serverRepository.getServerDirectory(serverId)
+                                val targetDir = if (dirPath.isBlank()) serverDir else File(serverDir, dirPath)
+                                val destFile = File(targetDir, safeName)
+                                val serverCanon = serverDir.canonicalPath
+                                val destCanon = destFile.canonicalPath
+                                if (!destCanon.startsWith(serverCanon)) {
+                                    WebApiResult(403, "Forbidden", JSONObject().put("error", "Target path is outside server directory."))
+                                } else {
+                                    destFile.parentFile?.mkdirs()
+                                    tempFile.copyTo(destFile, overwrite = true)
+                                    val relPath = if (dirPath.isBlank()) safeName else "$dirPath/$safeName"
+                                    userRepository.recordAudit(uploadUser, "FILE_UPLOAD", serverId, relPath, effectiveIp)
+                                    WebApiResult(200, "OK", JSONObject().put("success", true).put("path", relPath))
+                                }
+                            }
                         }
                         else -> {
                             keepTempForAsync = true
@@ -699,10 +725,17 @@ class WebAdminServer(
                         return
                     }
 
-                    // 5. GET & POST /api/servers/{id}/console
+                    // 5. GET /api/servers/{id}/stream (Real-Time SSE Console & Telemetry)
+                    if (action == "stream" && method == "GET") {
+                        handleServerSseStream(socket, out, server, token)
+                        return
+                    }
+
+                    // 5b. GET & POST /api/servers/{id}/console
                     if (action == "console") {
                         if (method == "GET") {
-                            val lines = processManager.getRecentConsoleLines(serverId, 200)
+                            val limit = queryParams["limit"]?.toIntOrNull()?.coerceIn(100, 2000) ?: 2000
+                            val lines = processManager.getRecentConsoleLines(serverId, limit)
                             val resp = JSONObject().put("lines", JSONArray(lines))
                             sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                             return
@@ -778,6 +811,89 @@ class WebAdminServer(
                             sendResponse(out, if (ok) 200 else 400, if (ok) "OK" else "Bad Request", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                             return
                         }
+
+                        // POST /api/servers/{id}/files/create
+                        if (fileAction == "create" && method == "POST") {
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                            val dirPath = jsonBody.optString("path", "")
+                            val fileName = File(jsonBody.optString("name", "")).name.trim()
+                            val content = jsonBody.optString("content", "")
+                            if (fileName.isBlank() || fileName == "." || fileName == "..") {
+                                sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", "Invalid file name.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
+                            val ok = serverRepository.createFile(serverId, dirPath, fileName, content)
+                            if (ok) userRepository.recordAudit(currentUser, "FILE_CREATE", server.name, if (dirPath.isBlank()) fileName else "$dirPath/$fileName", effectiveIp)
+                            sendResponse(out, if (ok) 200 else 400, if (ok) "OK" else "Bad Request", "application/json", JSONObject().put("success", ok).put("error", if (ok) "" else "File already exists or could not be created.").toString().toByteArray(Charsets.UTF_8))
+                            return
+                        }
+
+                        // POST /api/servers/{id}/files/mkdir
+                        if (fileAction == "mkdir" && method == "POST") {
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                            val dirPath = jsonBody.optString("path", "")
+                            val dirName = File(jsonBody.optString("name", "")).name.trim()
+                            if (dirName.isBlank() || dirName == "." || dirName == "..") {
+                                sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", "Invalid folder name.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
+                            val ok = serverRepository.createDirectory(serverId, dirPath, dirName)
+                            if (ok) userRepository.recordAudit(currentUser, "DIR_CREATE", server.name, if (dirPath.isBlank()) dirName else "$dirPath/$dirName", effectiveIp)
+                            sendResponse(out, if (ok) 200 else 400, if (ok) "OK" else "Bad Request", "application/json", JSONObject().put("success", ok).toString().toByteArray(Charsets.UTF_8))
+                            return
+                        }
+
+                        // POST /api/servers/{id}/files/rename
+                        if (fileAction == "rename" && method == "POST") {
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                            val targetPath = jsonBody.optString("path", "")
+                            val newName = File(jsonBody.optString("newName", "")).name.trim()
+                            if (targetPath.isBlank() || newName.isBlank() || newName == "." || newName == "..") {
+                                sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", "Invalid rename parameters.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
+                            val ok = serverRepository.renameFileOrDirectory(serverId, targetPath, newName)
+                            if (ok) userRepository.recordAudit(currentUser, "FILE_RENAME", server.name, "$targetPath -> $newName", effectiveIp)
+                            sendResponse(out, if (ok) 200 else 400, if (ok) "OK" else "Bad Request", "application/json", JSONObject().put("success", ok).toString().toByteArray(Charsets.UTF_8))
+                            return
+                        }
+
+                        // POST /api/servers/{id}/files/unzip
+                        if (fileAction == "unzip" && method == "POST") {
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                            val targetPath = jsonBody.optString("path", "")
+                            val deleteAfter = jsonBody.optBoolean("deleteZipAfter", false)
+                            val res = serverRepository.unzipFile(serverId, targetPath, "", deleteAfter)
+                            res.fold(
+                                onSuccess = { count ->
+                                    userRepository.recordAudit(currentUser, "FILE_UNZIP", server.name, "$targetPath ($count files)", effectiveIp)
+                                    sendResponse(out, 200, "OK", "application/json", JSONObject().put("success", true).put("extractedCount", count).toString().toByteArray(Charsets.UTF_8))
+                                },
+                                onFailure = { err ->
+                                    sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", err.message ?: "Failed to unzip archive.").toString().toByteArray(Charsets.UTF_8))
+                                }
+                            )
+                            return
+                        }
+
+                        // GET /api/servers/{id}/files/download?path=...
+                        if (fileAction == "download" && method == "GET") {
+                            val targetPath = queryParams["path"] ?: ""
+                            val serverDir = serverRepository.getServerDirectory(serverId)
+                            val file = File(serverDir, targetPath)
+                            if (!file.exists() || !file.isFile || !file.canonicalPath.startsWith(serverDir.canonicalPath)) {
+                                sendResponse(out, 404, "Not Found", "application/json", JSONObject().put("error", "File not found.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
+                            val safeHeaderName = file.name.replace("\"", "_")
+                            sendFileStreamResponse(
+                                out = out,
+                                contentType = "application/octet-stream",
+                                file = file,
+                                extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"$safeHeaderName\"")
+                            )
+                            return
+                        }
                     }
                 }
             }
@@ -789,6 +905,85 @@ class WebAdminServer(
             Log.e(TAG, "Error handling client request from $clientIp", e)
         } finally {
             try { socket.close() } catch (_: Exception) {}
+        }
+    }
+
+    private suspend fun handleServerSseStream(
+        socket: Socket,
+        out: OutputStream,
+        server: MinecraftServer,
+        token: String?
+    ) {
+        try {
+            socket.soTimeout = 0
+            val header = buildString {
+                append("HTTP/1.1 200 OK\r\n")
+                append("Content-Type: text/event-stream; charset=utf-8\r\n")
+                append("Cache-Control: no-cache\r\n")
+                append("Connection: keep-alive\r\n")
+                append("X-Accel-Buffering: no\r\n")
+                append("\r\n")
+            }
+            out.write(header.toByteArray(Charsets.UTF_8))
+            out.flush()
+
+            var lastRefreshTs = -1L
+            var lastStatusSentAt = 0L
+            var lastStatusStr = ""
+            var lastKeepaliveAt = System.currentTimeMillis()
+
+            while (isRunning && !socket.isClosed) {
+                if (security.validateSession(token) == null) break
+
+                val now = System.currentTimeMillis()
+                val refreshTs = processManager.refreshTriggers.value[server.id] ?: 0L
+                if (refreshTs != lastRefreshTs) {
+                    lastRefreshTs = refreshTs
+                    val lines = processManager.getRecentConsoleLines(server.id, 2000)
+                    val payload = JSONObject().put("lines", JSONArray(lines)).toString()
+                    out.write("event: console\ndata: $payload\n\n".toByteArray(Charsets.UTF_8))
+                    out.flush()
+                    lastKeepaliveAt = now
+                }
+
+                val currentStatus = processManager.getServerStatus(server.id).name
+                if (currentStatus != lastStatusStr || now - lastStatusSentAt >= 2000L) {
+                    lastStatusStr = currentStatus
+                    lastStatusSentAt = now
+                    val latestServer = serverRepository.getServer(server.id) ?: server
+                    val metrics = processManager.serverMetrics.value[server.id]
+                    val metricsObj = JSONObject()
+                    if (metrics != null) {
+                        metricsObj.put("isRunning", metrics.isRunning)
+                        metricsObj.put("cpuPercentage", metrics.cpuPercentage.toDouble())
+                        metricsObj.put("ramUsedMb", metrics.ramUsedMb)
+                        metricsObj.put("ramMaxMb", metrics.ramMaxMb)
+                        metricsObj.put("onlinePlayerCount", metrics.onlinePlayerCount)
+                        metricsObj.put("onlinePlayers", JSONArray(metrics.onlinePlayers))
+                        metricsObj.put("tps", metrics.tps)
+                        metricsObj.put("mspt", metrics.mspt)
+                        metricsObj.put("uptimeSeconds", metrics.uptimeSeconds)
+                    }
+                    val statusPayload = JSONObject()
+                        .put("id", latestServer.id)
+                        .put("status", currentStatus)
+                        .put("allocatedRamMb", latestServer.allocatedRamMb)
+                        .put("metrics", metricsObj)
+                        .put("network", buildNetworkSummary(latestServer))
+                        .toString()
+                    out.write("event: status\ndata: $statusPayload\n\n".toByteArray(Charsets.UTF_8))
+                    out.flush()
+                    lastKeepaliveAt = now
+                } else if (now - lastKeepaliveAt >= 10_000L) {
+                    out.write(": keepalive\n\n".toByteArray(Charsets.UTF_8))
+                    out.flush()
+                    lastKeepaliveAt = now
+                }
+
+                delay(250)
+            }
+        } catch (_: Exception) {
+            // Client disconnected
         }
     }
 

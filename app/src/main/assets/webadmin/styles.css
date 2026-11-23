@@ -636,6 +636,74 @@ input:focus, select:focus, textarea:focus {
   font-size: 13px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
 }
+.files-list.drag-over {
+  border-color: var(--emerald) !important;
+  border-style: dashed !important;
+  background: rgba(16, 185, 129, 0.08);
+}
+
+/* Full-Screen Audit Log View */
+.fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: var(--bg-obsidian);
+  display: flex;
+  flex-direction: column;
+}
+.fullscreen-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 22px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+.audit-filters-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+.audit-table-wrap {
+  flex: 1;
+  overflow: auto;
+  padding: 16px 22px;
+}
+.audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 13px;
+}
+.audit-table th,
+.audit-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-subtle);
+  vertical-align: top;
+}
+.audit-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  z-index: 1;
+}
+.audit-table tr:hover td {
+  background: rgba(255, 255, 255, 0.02);
+}
 .livemap-frame {
   width: 100%;
   height: 60vh;
