@@ -1,0 +1,14 @@
+.git
+.gradle
+.idea
+build
+app/build
+core/build
+desktop/build
+release
+external
+local.properties
+*.keystore
+*.jks
+*.apk
+*.aab

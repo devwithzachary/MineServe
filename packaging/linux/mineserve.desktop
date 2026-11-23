@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=MineServe
+GenericName=Minecraft Server Manager
+Comment=Create, host, and manage Minecraft Java, Modded, Proxy, and Bedrock servers
+Exec=/usr/bin/mineserve
+Icon=mineserve
+Terminal=false
+Categories=Game;Utility;Network;
+Keywords=Minecraft;Server;Paper;Fabric;NeoForge;Forge;Bedrock;
+StartupWMClass=com-devwithzachary-mineserve-desktop-MainKt

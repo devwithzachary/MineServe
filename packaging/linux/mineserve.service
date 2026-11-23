@@ -1,0 +1,19 @@
+[Unit]
+Description=MineServe Headless Minecraft Server Manager
+Documentation=https://github.com/devwithzachary/MineServe
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mineserve
+Group=mineserve
+WorkingDirectory=/var/lib/mineserve
+ExecStart=/usr/bin/mineserve --headless --bind 0.0.0.0 --port 8080 --data-dir /var/lib/mineserve
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
