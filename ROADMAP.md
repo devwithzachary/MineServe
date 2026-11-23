@@ -14,7 +14,7 @@ Our goal is to deliver the most reliable, capable, and accessible dedicated Mine
 | **v1.5.0 / v1.5.1** | Connectivity, Cloud Backups, Web Remote Admin, Telemetry & Community | October / November 2026 | **Shipped** ✅ |
 | **v1.6.0 / v1.6.1** | Full Web UI, Bedrock Server, Proxies, Discord Bridge & R8 Optimization | November 2026 | **Shipped** ✅ |
 | **v1.7.0** | Optional MineServe Cloud (Account Linking, R2 Backups, Custom Tunnels & Cloud Discovery) | November 2026 (Week of Nov 16) | **In Progress** 🚧 |
-| **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Mesh VPN | November 2026 (Week of Nov 23) | **Scheduled** 📋 |
+| **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Bug Fixes | November 2026 (Week of Nov 23) | **In Progress** 🚧 |
 | **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Nov / Dec 2026 (Week of Nov 30) | **Scheduled** 📋 |
 | **v2.0.0** | Stable Kotlin Multiplatform Release (Android, Linux, macOS, Windows) | December 2026 (Week of Dec 7) | **Target Milestone** 🎯 |
 | **v2.1.0+** | Autonomous Ops, Clustering, Bare-Metal Bionic & Multi-Game Hosting | December 2026+ | **Exploration** 🔭 |
@@ -143,9 +143,9 @@ The 1.7.0 milestone lays the architectural foundation for Kotlin Multiplatform b
 
 ---
 
-## 🐧 Version 1.8.0: Linux Beta, Headless Mode, Distro Packaging & Mesh VPN
+## 🐧 Version 1.8.0: Linux Beta, Headless Mode & Distro Packaging
 
-The 1.8.0 milestone marks MineServe's first expansion beyond Android with **Beta** builds for Linux desktops and headless servers, plus container footprint minimization and private mesh networking.
+The 1.8.0 milestone marks MineServe's first expansion beyond Android with **Beta** builds for Linux desktops and headless servers, alongside key Android & Web Remote Admin reliability improvements.
 
 ### 🖥️ 1. Linux Desktop & Headless Server (Beta)
 - **Native Linux Runtime (No PRoot Required)**:
@@ -154,15 +154,6 @@ The 1.8.0 milestone marks MineServe's first expansion beyond Android with **Beta
   - Compose Multiplatform desktop UI for Linux workstations alongside a `--headless` / daemon CLI mode that runs purely in the background and exposes the full Web UI (ideal for home servers, VPS hosts, and Raspberry Pi).
 - **Linux Distro Build & Release Pipeline**:
   - Automated CI/CD packaging and release distribution across popular Linux formats: `.deb` (Debian/Ubuntu), `.rpm` (Fedora/RHEL), `AppImage` / `Flatpak`, standalone `.tar.gz`, and official Docker images.
-
-### 📦 2. Lightweight Android Container Profile (Alpine Linux)
-- **Ultra-Minimal Alpine Linux Rootfs**:
-  - Optional musl/Alpine rootfs profile reducing Android container base disk consumption by over 60% compared to standard Ubuntu.
-  - Faster cold-boot times and minimal footprint for budget Android hardware.
-
-### 🔒 3. Private Mesh VPN Networking (Tailscale & WireGuard)
-- **Tailscale Mesh Integration**:
-  - Connect your server to a private Tailscale tailnet directly within the app, allowing friends with Tailscale to join privately without public exposure.
 
 ---
 
