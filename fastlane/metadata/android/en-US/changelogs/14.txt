@@ -1,3 +1,3 @@
 - MineServe Cloud: in-app 6-digit email sign-in and localized currency pricing
 - First-Run Setup Progress: weighted progress bar tracking live OpenJDK package installation instead of stalling at 98%
-- Reliability Fixes: improved Web Admin proxy rate limiting and tunnel cleanup
+- Reliability Fixes: Live Map now defaults to port 8081 to avoid Web Admin port 8080 conflicts, plus proxy rate-limit and tunnel fixes

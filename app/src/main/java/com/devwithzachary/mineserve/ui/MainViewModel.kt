@@ -1074,8 +1074,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val serverDir = serverRepository.getServerDirectory(serverId)
         val installed = com.devwithzachary.mineserve.model.WebMapPluginType.detectInstalled(serverDir)
         val isRunning = serverStatuses.value[serverId] == ServerStatus.RUNNING
-        val defaultPort = installed?.defaultPort ?: 8080
-        val port = _webMapPorts[serverId] ?: defaultPort
+        val configuredPort = com.devwithzachary.mineserve.model.WebMapPluginType.detectSquaremapPort(serverDir)
+        val port = _webMapPorts[serverId] ?: configuredPort
         return com.devwithzachary.mineserve.model.WebMapState(
             installedPlugin = installed,
             port = port,
@@ -1085,6 +1085,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun setWebMapPort(serverId: String, port: Int) {
         _webMapPorts[serverId] = port
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val currentServer = servers.value.firstOrNull { it.id == serverId }
+        val isModServer = currentServer?.type?.supportsMods == true && currentServer.type.supportsPlugins != true
+        runCatching {
+            com.devwithzachary.mineserve.model.WebMapPluginType.setSquaremapPort(serverDir, isModServer, port)
+        }
     }
 
     fun installWebMapPlugin(
@@ -1127,7 +1133,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     fileName = resolved.first,
                     downloadUrl = resolved.second,
                     isMod = isModServer,
-                    onResult = onResult
+                    onResult = { ok ->
+                        if (ok) {
+                            val serverDir = serverRepository.getServerDirectory(serverId)
+                            if (com.devwithzachary.mineserve.model.WebMapPluginType.findSquaremapConfig(serverDir) == null) {
+                                runCatching {
+                                    com.devwithzachary.mineserve.model.WebMapPluginType.setSquaremapPort(
+                                        serverDir = serverDir,
+                                        isModServer = isModServer,
+                                        port = pluginType.defaultPort
+                                    )
+                                }
+                                _webMapPorts[serverId] = pluginType.defaultPort
+                            }
+                        }
+                        onResult(ok)
+                    }
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed installing web map plugin", e)

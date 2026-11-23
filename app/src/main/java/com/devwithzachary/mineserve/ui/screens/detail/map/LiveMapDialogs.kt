@@ -110,7 +110,7 @@ fun LiveMapPortDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val parsed = portInputText.toIntOrNull() ?: 8080
+                    val parsed = portInputText.toIntOrNull() ?: 8081
                     val safePort = parsed.coerceIn(1024, 65535)
                     onSavePort(safePort)
                     onDismiss()

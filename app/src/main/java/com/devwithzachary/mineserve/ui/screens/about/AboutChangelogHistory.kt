@@ -43,7 +43,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         highlights = listOf(
             "In-App Cloud Sign-In & Localized Pricing: Sign in to MineServe Cloud directly inside the app with a 6-digit email code, with regional currency pricing estimates on direct builds.",
             "Smooth First-Run Setup Progress: Re-weighted initial runtime setup across download, extraction, and live OpenJDK package installation steps so the progress bar moves steadily instead of stalling at 98%.",
-            "Networking & Reliability Fixes: Improved Web Admin login rate limiting behind reverse proxies and Cloud Panel tunnels, ensured panel tunnels shut down cleanly, and improved Bore relay port reclaim handling."
+            "Networking & Reliability Fixes: Changed Squaremap Live Map's default port to 8081 so it never collides with Web Remote Admin on port 8080, improved Web Admin login rate limiting behind reverse proxies and Cloud Panel tunnels, ensured panel tunnels shut down cleanly, and improved Bore relay port reclaim handling."
         )
     ),
     ReleaseChangelog(

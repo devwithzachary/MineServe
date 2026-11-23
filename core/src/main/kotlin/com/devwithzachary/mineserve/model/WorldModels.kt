@@ -127,12 +127,18 @@ enum class WebMapPluginType(
 ) {
     SQUAREMAP(
         displayName = "Squaremap",
-        defaultPort = 8080,
+        defaultPort = 8081,
         modrinthSlug = "squaremap",
         description = "Lightweight, ultra-fast 2D web map with real-time player markers and minimal CPU/RAM overhead, specifically tailored for mobile servers."
     );
 
     companion object {
+        private val SQUAREMAP_CONFIG_PATHS = listOf(
+            "plugins/squaremap/config.yml",
+            "mods/squaremap/config.yml",
+            "config/squaremap/config.yml"
+        )
+
         fun detectInstalled(serverDir: File): WebMapPluginType? {
             val pluginsDir = File(serverDir, "plugins")
             val modsDir = File(serverDir, "mods")
@@ -151,6 +157,48 @@ enum class WebMapPluginType(
             val files = (pluginsDir.listFiles() ?: emptyArray()) + (modsDir.listFiles() ?: emptyArray())
             return files.firstOrNull { it.name.lowercase().contains("squaremap") }
         }
+
+        fun findSquaremapConfig(serverDir: File): File? {
+            return SQUAREMAP_CONFIG_PATHS
+                .map { File(serverDir, it) }
+                .firstOrNull { it.exists() }
+        }
+
+        fun detectSquaremapPort(serverDir: File): Int {
+            val cfg = findSquaremapConfig(serverDir)
+            if (cfg != null) {
+                val match = Regex("""^\s*port:\s*(\d+)""", RegexOption.MULTILINE).find(cfg.readText())
+                val p = match?.groupValues?.getOrNull(1)?.toIntOrNull()
+                if (p != null && p in 1..65535) return p
+            }
+            return SQUAREMAP.defaultPort
+        }
+
+        fun setSquaremapPort(serverDir: File, isModServer: Boolean, port: Int) {
+            val existing = findSquaremapConfig(serverDir)
+            if (existing != null) {
+                val content = existing.readText()
+                val regex = Regex("""^(\s*port:\s*)\d+""", RegexOption.MULTILINE)
+                val updated = if (regex.containsMatchIn(content)) {
+                    regex.replaceFirst(content, "$1$port")
+                } else {
+                    content.trimEnd() + "\nsettings:\n  internal-webserver:\n    port: $port\n"
+                }
+                existing.writeText(updated)
+                return
+            }
+            val targetCfg = File(serverDir, if (isModServer) "config/squaremap/config.yml" else "plugins/squaremap/config.yml")
+            targetCfg.parentFile?.mkdirs()
+            targetCfg.writeText(
+                """
+                settings:
+                  internal-webserver:
+                    enabled: true
+                    bind: 0.0.0.0
+                    port: $port
+                """.trimIndent() + "\n"
+            )
+        }
     }
 }
 
@@ -159,7 +207,7 @@ enum class WebMapPluginType(
  */
 data class WebMapState(
     val installedPlugin: WebMapPluginType? = null,
-    val port: Int = 8080,
+    val port: Int = WebMapPluginType.SQUAREMAP.defaultPort,
     val isServerRunning: Boolean = false
 ) {
     val webMapUrl: String get() = "http://127.0.0.1:$port"

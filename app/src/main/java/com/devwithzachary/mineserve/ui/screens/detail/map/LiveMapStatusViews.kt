@@ -144,7 +144,7 @@ fun SquaremapInstallView(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "Default HTTP Port: 8080 • Form factor: 2D Interactive Leaflet",
+                        text = "Default HTTP Port: 8081 • Form factor: 2D Interactive Leaflet",
                         color = DiamondLight,
                         fontSize = 11.sp,
                         modifier = Modifier.padding(8.dp)

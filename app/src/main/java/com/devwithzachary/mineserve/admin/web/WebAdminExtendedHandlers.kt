@@ -343,7 +343,11 @@ internal class WebAdminExtendedHandlers(
         val isRunning = processManager.isServerRunning(serverId)
         val localIp = portForwardManager.getLocalWifiIpAddress() ?: "127.0.0.1"
         val portConflict = port == webAdminPort
-        val suggestedPort = if (webAdminPort == 8080) 8081 else 8080
+        val suggestedPort = if (webAdminPort == WebMapPluginType.SQUAREMAP.defaultPort) {
+            WebMapPluginType.SQUAREMAP.defaultPort + 1
+        } else {
+            WebMapPluginType.SQUAREMAP.defaultPort
+        }
 
         return ok(
             JSONObject()
@@ -380,9 +384,16 @@ internal class WebAdminExtendedHandlers(
         val destFile = File(targetFolder, resolved.first)
         serverSoftwareManager.downloadFileWithProgress(resolved.second, destFile) { _, _ -> }
         val okDownload = destFile.exists() && destFile.length() > 0L
-        if (okDownload && detectSquaremapPort(serverDir) == webAdminPort) {
-            val safePort = if (webAdminPort == 8080) 8081 else 8080
-            setSquaremapPort(serverDir, server.type, safePort)
+        if (okDownload) {
+            val existingCfg = WebMapPluginType.findSquaremapConfig(serverDir)
+            val safePort = if (webAdminPort == WebMapPluginType.SQUAREMAP.defaultPort) {
+                WebMapPluginType.SQUAREMAP.defaultPort + 1
+            } else {
+                WebMapPluginType.SQUAREMAP.defaultPort
+            }
+            if (existingCfg == null || detectSquaremapPort(serverDir) == webAdminPort) {
+                setSquaremapPort(serverDir, server.type, safePort)
+            }
         }
         return ok(JSONObject().put("success", okDownload).put("fileName", resolved.first))
     }
@@ -896,51 +907,12 @@ internal class WebAdminExtendedHandlers(
     }
 
     private fun detectSquaremapPort(serverDir: File): Int {
-        val candidates = listOf(
-            File(serverDir, "plugins/squaremap/config.yml"),
-            File(serverDir, "mods/squaremap/config.yml"),
-            File(serverDir, "config/squaremap/config.yml")
-        )
-        for (cfg in candidates) {
-            if (cfg.exists()) {
-                val match = Regex("""^\s*port:\s*(\d+)""", RegexOption.MULTILINE).find(cfg.readText())
-                val p = match?.groupValues?.getOrNull(1)?.toIntOrNull()
-                if (p != null && p in 1..65535) return p
-            }
-        }
-        return WebMapPluginType.SQUAREMAP.defaultPort
+        return WebMapPluginType.detectSquaremapPort(serverDir)
     }
 
     private fun setSquaremapPort(serverDir: File, serverType: ServerType, port: Int) {
-        val candidates = listOf(
-            File(serverDir, "plugins/squaremap/config.yml"),
-            File(serverDir, "mods/squaremap/config.yml"),
-            File(serverDir, "config/squaremap/config.yml")
-        )
-        val existing = candidates.firstOrNull { it.exists() }
-        if (existing != null) {
-            val content = existing.readText()
-            val regex = Regex("""^(\s*port:\s*)\d+""", RegexOption.MULTILINE)
-            val updated = if (regex.containsMatchIn(content)) {
-                regex.replaceFirst(content, "$1$port")
-            } else {
-                content.trimEnd() + "\nsettings:\n  internal-webserver:\n    port: $port\n"
-            }
-            existing.writeText(updated)
-            return
-        }
         val isMod = serverType.supportsMods && !serverType.supportsPlugins
-        val targetCfg = File(serverDir, if (isMod) "config/squaremap/config.yml" else "plugins/squaremap/config.yml")
-        targetCfg.parentFile?.mkdirs()
-        targetCfg.writeText(
-            """
-            settings:
-              internal-webserver:
-                enabled: true
-                bind: 0.0.0.0
-                port: $port
-            """.trimIndent() + "\n"
-        )
+        WebMapPluginType.setSquaremapPort(serverDir, isMod, port)
     }
 
     // --- MineServe Cloud, Safeguards, Diagnostics & Cloud Backups (v1.7.0) ---
