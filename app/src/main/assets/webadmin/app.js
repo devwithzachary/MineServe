@@ -2341,9 +2341,108 @@
       }
       loadHostTools();
       loadJavaRuntimes();
+      loadWhatsNewData(false);
     };
     $("open-host-tools-btn")?.addEventListener("click", openHostToolsModal);
     loadCloudAccount();
+
+    // What's New Feature Guide Modal (Synced with Desktop & Android UI)
+    const renderWhatsNewModal = (data) => {
+      if (!data) return;
+      if ($("whatsnew-title")) $("whatsnew-title").textContent = data.headline || "What's New in MineServe";
+      if ($("whatsnew-version-badge")) $("whatsnew-version-badge").textContent = data.displayVersion || "v1.8";
+      if ($("whatsnew-subtitle")) $("whatsnew-subtitle").textContent = data.subtitle || "";
+      if ($("open-whatsnew-from-settings-btn")) {
+        $("open-whatsnew-from-settings-btn").textContent = `What's New in ${data.displayVersion || "v1.8"}`;
+      }
+      const showEnabled = data.showOnUpdateEnabled !== false;
+      if ($("settings-whatsnew-autoshow")) $("settings-whatsnew-autoshow").checked = showEnabled;
+      if ($("whatsnew-never-show-chk")) $("whatsnew-never-show-chk").checked = !showEnabled;
+
+      const listEl = $("whatsnew-features-list");
+      if (listEl) {
+        const features = data.features || [];
+        listEl.innerHTML = features.map((f) => `
+          <div class="panel-card" style="padding:14px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+              <span class="status-badge RUNNING">${escapeHtml(f.badge || "NEW")}</span>
+              <strong style="font-size:15px;color:var(--text-primary);">${escapeHtml(f.title || "")}</strong>
+            </div>
+            <div class="player-sub" style="line-height:1.55;margin-bottom:10px;">${escapeHtml(f.summary || "")}</div>
+            <div style="background:rgba(9,13,22,0.65);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;">
+              <div style="font-size:11px;font-weight:700;color:var(--emerald);text-transform:uppercase;margin-bottom:6px;">Where to find it</div>
+              <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--text-primary);line-height:1.6;">
+                ${(f.stepsToFind || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
+              </ol>
+            </div>
+          </div>
+        `).join("");
+      }
+    };
+
+    const loadWhatsNewData = async (openModalIfAutoOrForced = false, forceOpen = false) => {
+      try {
+        const data = await apiFetch("/api/whats-new");
+        renderWhatsNewModal(data);
+        if (forceOpen || (openModalIfAutoOrForced && data.shouldAutoShow)) {
+          $("whatsnew-modal")?.classList.remove("hidden");
+          // Immediately mark seen on the host so neither Desktop/Android nor Web UI auto-pops it again
+          await apiFetch("/api/whats-new", {
+            method: "POST",
+            body: JSON.stringify({ markSeen: true })
+          });
+        }
+      } catch (_) {}
+    };
+
+    const closeWhatsNewModal = async () => {
+      $("whatsnew-modal")?.classList.add("hidden");
+      const neverShow = !!$("whatsnew-never-show-chk")?.checked;
+      try {
+        await apiFetch("/api/whats-new", {
+          method: "POST",
+          body: JSON.stringify({
+            markSeen: true,
+            showOnUpdateEnabled: !neverShow
+          })
+        });
+        if ($("settings-whatsnew-autoshow")) $("settings-whatsnew-autoshow").checked = !neverShow;
+      } catch (_) {}
+    };
+
+    $("close-whatsnew-modal")?.addEventListener("click", closeWhatsNewModal);
+    $("whatsnew-got-it-btn")?.addEventListener("click", closeWhatsNewModal);
+    $("whatsnew-never-show-chk")?.addEventListener("change", async (e) => {
+      const showOnUpdateEnabled = !e.target.checked;
+      if ($("settings-whatsnew-autoshow")) $("settings-whatsnew-autoshow").checked = showOnUpdateEnabled;
+      try {
+        await apiFetch("/api/whats-new", {
+          method: "POST",
+          body: JSON.stringify({ markSeen: true, showOnUpdateEnabled })
+        });
+      } catch (_) {}
+    });
+    $("settings-whatsnew-autoshow")?.addEventListener("change", async (e) => {
+      const showOnUpdateEnabled = !!e.target.checked;
+      if ($("whatsnew-never-show-chk")) $("whatsnew-never-show-chk").checked = !showOnUpdateEnabled;
+      try {
+        await apiFetch("/api/whats-new", {
+          method: "POST",
+          body: JSON.stringify({ showOnUpdateEnabled })
+        });
+        showToast(showOnUpdateEnabled ? "What's New guide will show after major updates" : "What's New auto-popup disabled");
+      } catch (_) {}
+    });
+    $("open-whatsnew-from-settings-btn")?.addEventListener("click", () => {
+      loadWhatsNewData(false, true);
+    });
+    $("open-whatsnew-from-about-btn")?.addEventListener("click", () => {
+      $("about-modal")?.classList.add("hidden");
+      loadWhatsNewData(false, true);
+    });
+
+    // Check auto-show What's New once authenticated
+    setTimeout(() => loadWhatsNewData(true, false), 900);
 
     // App Updates Checker in App Settings
     $("web-update-check-btn")?.addEventListener("click", async () => {

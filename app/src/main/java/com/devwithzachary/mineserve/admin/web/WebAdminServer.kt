@@ -582,6 +582,50 @@ class WebAdminServer(
                 return
             }
 
+            // What's New Feature Guide (Synced with Android UpdatePreferences)
+            if (path == "/api/whats-new" && (method == "GET" || method == "POST")) {
+                val updatePrefs = com.devwithzachary.mineserve.repository.UpdatePreferences(context)
+                val release = com.devwithzachary.mineserve.model.MineServeWhatsNewCatalog.getForPlatform(
+                    com.devwithzachary.mineserve.model.ChangelogPlatform.ANDROID
+                )
+                if (method == "POST") {
+                    val j = runCatching { JSONObject(body) }.getOrDefault(JSONObject())
+                    if (j.optBoolean("markSeen", false)) {
+                        updatePrefs.lastSeenWhatsNewVersion = release.majorVersion
+                    }
+                    if (j.has("showOnUpdateEnabled")) {
+                        updatePrefs.isShowWhatsNewOnUpdateEnabled = j.optBoolean("showOnUpdateEnabled", true)
+                    }
+                }
+                val featuresArr = JSONArray()
+                release.features.forEach { f ->
+                    featuresArr.put(
+                        JSONObject()
+                            .put("badge", f.badge)
+                            .put("title", f.title)
+                            .put("summary", f.summary)
+                            .put("stepsToFind", JSONArray(f.stepsToFind))
+                            .put("iconKey", f.iconKey)
+                    )
+                }
+                val shouldAuto = if (method == "POST") {
+                    false
+                } else {
+                    serverRepository.servers.value.isNotEmpty() && updatePrefs.shouldAutoShowWhatsNew(release.majorVersion)
+                }
+                val resp = JSONObject()
+                    .put("majorVersion", release.majorVersion)
+                    .put("displayVersion", release.displayVersion)
+                    .put("headline", release.headline)
+                    .put("subtitle", release.subtitle)
+                    .put("features", featuresArr)
+                    .put("showOnUpdateEnabled", updatePrefs.isShowWhatsNewOnUpdateEnabled)
+                    .put("lastSeenVersion", updatePrefs.lastSeenWhatsNewVersion)
+                    .put("shouldAutoShow", shouldAuto)
+                sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+
             // Java Runtime Manager (Owner only)
             if (path == "/api/java" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return

@@ -6,6 +6,7 @@ import com.devwithzachary.mineserve.api.UpdateCheckResult
 import com.devwithzachary.mineserve.core.CoreLog
 import com.devwithzachary.mineserve.model.ChangelogPlatform
 import com.devwithzachary.mineserve.model.MineServeAboutData
+import com.devwithzachary.mineserve.model.MineServeWhatsNewCatalog
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -262,5 +263,77 @@ object LinuxDiagnosticsManager {
                 .put("error", res.message)
                 .put("htmlUrl", MineServeAboutData.GITHUB_RELEASES_URL)
         }
+    }
+
+    private val prefsLock = Any()
+
+    private fun readDesktopUiJson(paths: LinuxDataPaths): JSONObject = synchronized(prefsLock) {
+        val file = File(paths.rootDir, "desktop_ui.json")
+        if (!file.exists()) return JSONObject()
+        return runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
+    }
+
+    private fun writeDesktopUiJson(paths: LinuxDataPaths, updater: (JSONObject) -> Unit) = synchronized(prefsLock) {
+        val file = File(paths.rootDir, "desktop_ui.json")
+        val obj = if (file.exists()) runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject()) else JSONObject()
+        updater(obj)
+        runCatching { file.writeText(obj.toString(2)) }
+    }
+
+    fun isShowWhatsNewOnUpdateEnabled(paths: LinuxDataPaths): Boolean {
+        return readDesktopUiJson(paths).optBoolean("showWhatsNewOnUpdate", true)
+    }
+
+    fun setShowWhatsNewOnUpdateEnabled(paths: LinuxDataPaths, enabled: Boolean) {
+        writeDesktopUiJson(paths) { it.put("showWhatsNewOnUpdate", enabled) }
+    }
+
+    fun getLastSeenWhatsNewVersion(paths: LinuxDataPaths): String {
+        return readDesktopUiJson(paths).optString("lastSeenWhatsNewVersion", "")
+    }
+
+    fun markWhatsNewSeen(paths: LinuxDataPaths, majorVersion: String = MineServeWhatsNewCatalog.CURRENT_MAJOR_VERSION) {
+        writeDesktopUiJson(paths) { it.put("lastSeenWhatsNewVersion", majorVersion) }
+    }
+
+    fun shouldAutoShowWhatsNew(paths: LinuxDataPaths, hasExistingServers: Boolean): Boolean {
+        val major = MineServeWhatsNewCatalog.CURRENT_MAJOR_VERSION
+        if (!hasExistingServers) {
+            // Brand-new installation: mark current major release seen so it doesn't pop up
+            if (getLastSeenWhatsNewVersion(paths) != major) {
+                markWhatsNewSeen(paths, major)
+            }
+            return false
+        }
+        return isShowWhatsNewOnUpdateEnabled(paths) && getLastSeenWhatsNewVersion(paths) != major
+    }
+
+    fun buildWhatsNewJson(
+        platform: ChangelogPlatform,
+        showOnUpdateEnabled: Boolean,
+        lastSeenVersion: String,
+        shouldAutoShow: Boolean
+    ): JSONObject {
+        val release = MineServeWhatsNewCatalog.getForPlatform(platform)
+        val featuresArr = JSONArray()
+        release.features.forEach { f ->
+            featuresArr.put(
+                JSONObject()
+                    .put("badge", f.badge)
+                    .put("title", f.title)
+                    .put("summary", f.summary)
+                    .put("stepsToFind", JSONArray(f.stepsToFind))
+                    .put("iconKey", f.iconKey)
+            )
+        }
+        return JSONObject()
+            .put("majorVersion", release.majorVersion)
+            .put("displayVersion", release.displayVersion)
+            .put("headline", release.headline)
+            .put("subtitle", release.subtitle)
+            .put("features", featuresArr)
+            .put("showOnUpdateEnabled", showOnUpdateEnabled)
+            .put("lastSeenVersion", lastSeenVersion)
+            .put("shouldAutoShow", shouldAutoShow)
     }
 }

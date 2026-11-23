@@ -947,11 +947,16 @@
               <h3 style="margin:0;">App Updates &amp; Releases</h3>
               <div id="web-update-status" class="player-sub" style="margin-top:4px;">Check GitHub Releases for new MineServe versions.</div>
             </div>
-            <div style="display:flex;gap:8px;align-items:center;">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button type="button" id="open-whatsnew-from-settings-btn" class="btn btn-secondary btn-sm">What's New in v1.8</button>
               <button type="button" id="web-update-check-btn" class="btn btn-primary btn-sm">Check for Updates</button>
               <a id="web-update-link-btn" href="https://github.com/devwithzachary/MineServe/releases" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">GitHub Releases ↗</a>
             </div>
           </div>
+          <label class="checkbox-label" style="margin-top:10px;">
+            <input type="checkbox" id="settings-whatsnew-autoshow" checked>
+            <span>Automatically show "What's New" guide after major updates</span>
+          </label>
           <pre id="web-update-notes" class="console-output hidden" style="max-height:140px;margin-top:8px;font-size:11px;white-space:pre-wrap;"></pre>
         </div>
 
@@ -1042,9 +1047,10 @@
           </div>
         </div>
 
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button type="button" id="about-tab-changelog-btn" class="btn btn-primary btn-sm">Release Changelog</button>
           <button type="button" id="about-tab-credits-btn" class="btn btn-secondary btn-sm">Software &amp; Open-Source Credits</button>
+          <button type="button" id="open-whatsnew-from-about-btn" class="btn btn-secondary btn-sm">View What's New Guide</button>
         </div>
 
         <div id="about-changelog-section" class="panel-card">
@@ -1065,6 +1071,31 @@
           </div>
           <div id="about-credits-list" class="player-list"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- What's New Feature Guide Modal -->
+  <div id="whatsnew-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:780px;">
+      <div class="modal-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="/logo.png" alt="MineServe" style="width:28px;height:28px;border-radius:6px;">
+          <h3 id="whatsnew-title" style="margin:0;">What's New in MineServe 1.8</h3>
+          <span id="whatsnew-version-badge" class="status-badge RUNNING">v1.8</span>
+        </div>
+        <button id="close-whatsnew-modal" class="btn-icon">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:12px;max-height:72vh;overflow-y:auto;padding-right:4px;">
+        <p id="whatsnew-subtitle" class="player-sub" style="margin:0;">Explore the biggest new features added in this update, ordered by impact, with quick steps on where to find them.</p>
+        <div id="whatsnew-features-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);">
+        <label class="checkbox-label" style="margin:0;">
+          <input type="checkbox" id="whatsnew-never-show-chk">
+          <span>Don't show automatically on future updates</span>
+        </label>
+        <button type="button" id="whatsnew-got-it-btn" class="btn btn-primary">Got It, Let's Go!</button>
       </div>
     </div>
   </div>

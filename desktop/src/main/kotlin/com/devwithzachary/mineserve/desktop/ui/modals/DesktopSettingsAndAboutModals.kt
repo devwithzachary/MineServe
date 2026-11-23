@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -51,6 +52,7 @@ import com.devwithzachary.mineserve.desktop.ui.DesktopPanelCard
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.ChangelogPlatform
 import com.devwithzachary.mineserve.model.MineServeAboutData
+import com.devwithzachary.mineserve.model.MineServeWhatsNewCatalog
 import com.devwithzachary.mineserve.model.SharedCreditCategory
 import java.io.File
 import kotlinx.coroutines.launch
@@ -512,6 +514,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
 
             3 -> {
                 // App Updates & Releases Section
+                val showWhatsNewOnUpdate by viewModel.showWhatsNewOnUpdate.collectAsState()
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -522,48 +525,74 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                         border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text("GitHub Release Update Checker", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(updateHeadline, fontSize = 12.sp, color = DesktopColors.EmeraldLight)
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Button(
-                                    onClick = {
-                                        updateBusy = true
-                                        updateHeadline = "Checking GitHub Releases..."
-                                        viewModel.scope.launch {
-                                            val checker = GitHubUpdateChecker()
-                                            when (val res = checker.checkLatestRelease(MineServeAboutData.APP_VERSION)) {
-                                                is UpdateCheckResult.UpToDate -> {
-                                                    updateHeadline = "You are on the latest release (v${MineServeAboutData.APP_VERSION})."
-                                                    updateBody = ""
+                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("GitHub Release Update Checker", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(updateHeadline, fontSize = 12.sp, color = DesktopColors.EmeraldLight)
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    OutlinedButton(onClick = { viewModel.openWhatsNewGuide() }) {
+                                        Text("What's New in ${MineServeWhatsNewCatalog.CURRENT_DISPLAY_VERSION}", fontSize = 12.sp, color = DesktopColors.EmeraldLight)
+                                    }
+                                    Button(
+                                        onClick = {
+                                            updateBusy = true
+                                            updateHeadline = "Checking GitHub Releases..."
+                                            viewModel.scope.launch {
+                                                val checker = GitHubUpdateChecker()
+                                                when (val res = checker.checkLatestRelease(MineServeAboutData.APP_VERSION)) {
+                                                    is UpdateCheckResult.UpToDate -> {
+                                                        updateHeadline = "You are on the latest release (v${MineServeAboutData.APP_VERSION})."
+                                                        updateBody = ""
+                                                    }
+                                                    is UpdateCheckResult.UpdateAvailable -> {
+                                                        updateHeadline = "New update available: ${res.release.tagName} (${res.release.name})"
+                                                        updateBody = res.release.body
+                                                        updateUrl = res.release.htmlUrl
+                                                    }
+                                                    is UpdateCheckResult.Error -> {
+                                                        updateHeadline = "Update check failed: ${res.message}"
+                                                    }
                                                 }
-                                                is UpdateCheckResult.UpdateAvailable -> {
-                                                    updateHeadline = "New update available: ${res.release.tagName} (${res.release.name})"
-                                                    updateBody = res.release.body
-                                                    updateUrl = res.release.htmlUrl
-                                                }
-                                                is UpdateCheckResult.Error -> {
-                                                    updateHeadline = "Update check failed: ${res.message}"
-                                                }
+                                                updateBusy = false
                                             }
-                                            updateBusy = false
-                                        }
-                                    },
-                                    enabled = !updateBusy,
-                                    colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
-                                ) {
-                                    Text(if (updateBusy) "Checking..." else "Check for Updates", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        },
+                                        enabled = !updateBusy,
+                                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                                    ) {
+                                        Text(if (updateBusy) "Checking..." else "Check for Updates", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                    }
+                                    OutlinedButton(onClick = { viewModel.openUrlInBrowser(updateUrl) }) {
+                                        Text("Open GitHub Releases", fontSize = 12.sp)
+                                    }
                                 }
-                                OutlinedButton(onClick = { viewModel.openUrlInBrowser(updateUrl) }) {
-                                    Text("Open GitHub Releases", fontSize = 12.sp)
+                            }
+
+                            HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("What's New Release Guide", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
+                                    Text(
+                                        text = "Automatically display the What's New feature guide after major updates (synced with the Web UI).",
+                                        fontSize = 11.sp,
+                                        color = DesktopColors.Slate400
+                                    )
                                 }
+                                Switch(
+                                    checked = showWhatsNewOnUpdate,
+                                    onCheckedChange = { viewModel.setShowWhatsNewOnUpdate(it) }
+                                )
                             }
                         }
                     }
@@ -698,7 +727,7 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
         Spacer(modifier = Modifier.height(10.dp))
 
         // Sub-Tab Switcher
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             listOf(
                 0 to "Release Changelog (Linux & Cross-Platform)",
                 1 to "Software & Open-Source Credits (${filteredCredits.size})"
@@ -718,6 +747,9 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
                     )
                 }
+            }
+            OutlinedButton(onClick = { viewModel.openWhatsNewGuide() }) {
+                Text("View What's New Guide", fontSize = 12.sp, color = DesktopColors.EmeraldLight)
             }
         }
 
@@ -828,6 +860,134 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
+    val release = remember { MineServeWhatsNewCatalog.getForPlatform(ChangelogPlatform.LINUX) }
+    val showOnUpdate by viewModel.showWhatsNewOnUpdate.collectAsState()
+
+    DesktopPanelCard(modifier = Modifier.width(820.dp).height(640.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(release.headline, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = Color.White)
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = DesktopColors.EmeraldPrimary.copy(alpha = 0.2f),
+                        border = BorderStroke(1.dp, DesktopColors.EmeraldPrimary)
+                    ) {
+                        Text(
+                            text = release.displayVersion,
+                            color = DesktopColors.EmeraldLight,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(release.subtitle, fontSize = 12.sp, color = DesktopColors.Slate400)
+            }
+            OutlinedButton(
+                onClick = {
+                    LinuxDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
+                    viewModel.openModal(DesktopModal.NONE)
+                }
+            ) {
+                Text("Close", fontSize = 12.sp)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
+        Spacer(modifier = Modifier.height(12.dp))
+
+        LazyColumn(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(release.features, key = { it.title }) { feature ->
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = DesktopColors.Slate900,
+                    border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = DesktopColors.EmeraldPrimary.copy(alpha = 0.16f),
+                                border = BorderStroke(1.dp, DesktopColors.EmeraldPrimary)
+                            ) {
+                                Text(
+                                    text = feature.badge,
+                                    color = DesktopColors.EmeraldLight,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                            Text(feature.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
+                        }
+                        Text(feature.summary, fontSize = 12.sp, color = DesktopColors.Slate300, lineHeight = 17.sp)
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = DesktopColors.Slate950,
+                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("WHERE TO FIND IT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DesktopColors.EmeraldLight)
+                                feature.stepsToFind.forEachIndexed { idx, step ->
+                                    Text("${idx + 1}. $step", fontSize = 11.sp, color = DesktopColors.Slate300)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { viewModel.setShowWhatsNewOnUpdate(!showOnUpdate) }
+            ) {
+                Checkbox(
+                    checked = !showOnUpdate,
+                    onCheckedChange = { neverShow -> viewModel.setShowWhatsNewOnUpdate(!neverShow) }
+                )
+                Text(
+                    text = "Don't show automatically on future updates (synced with Web UI)",
+                    fontSize = 12.sp,
+                    color = DesktopColors.Slate300
+                )
+            }
+            Button(
+                onClick = {
+                    LinuxDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
+                    viewModel.openModal(DesktopModal.NONE)
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+            ) {
+                Text("Got It, Let's Go!", fontWeight = FontWeight.Bold, fontSize = 12.sp)
             }
         }
     }

@@ -308,6 +308,7 @@ fun DesktopWorldTab(
     server: MinecraftServer
 ) {
     val dims by viewModel.worldDimensions.collectAsState()
+    val regions by viewModel.regionFiles.collectAsState()
 
     Column(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -344,25 +345,127 @@ fun DesktopWorldTab(
             }
         }
 
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth()) {
-            Text("World Chunk Pruner & Optimizer", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Automatically creates a world backup and removes Anvil chunks that players only passed through briefly (based on InhabitedTime). Stop the server before pruning.",
-                fontSize = 12.sp,
-                color = DesktopColors.Slate400
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                InhabitedTimeThreshold.entries.forEach { threshold ->
+        // Row 2: World Import/Export + World Chunk Pruner
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            DesktopPanelCard(modifier = Modifier.weight(1f)) {
+                Text("World Import & Export (.zip / .mcworld)", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Import an existing Minecraft world archive (automatically backs up current world first) or export your world to a .zip file. Stop the server first.",
+                    fontSize = 12.sp,
+                    color = DesktopColors.Slate400
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Button(
-                        onClick = { viewModel.pruneChunks(threshold) },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = DesktopColors.Slate800,
-                            contentColor = DesktopColors.EmeraldLight
-                        )
+                        onClick = {
+                            val dialog = FileDialog(null as Frame?, "Select World .zip or .mcworld Archive", FileDialog.LOAD)
+                            dialog.isVisible = true
+                            if (dialog.directory != null && dialog.file != null) {
+                                val f = File(dialog.directory, dialog.file)
+                                if (f.exists()) viewModel.importWorldArchive(f)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
                     ) {
-                        Text("Prune: ${threshold.label}", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Import World (.zip / .mcworld)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            val dialog = FileDialog(null as Frame?, "Save World Export .zip", FileDialog.SAVE)
+                            dialog.file = "${server.name.replace(' ', '_')}_world.zip"
+                            dialog.isVisible = true
+                            if (dialog.directory != null && dialog.file != null) {
+                                viewModel.exportWorldZip(File(dialog.directory, dialog.file))
+                            }
+                        }
+                    ) {
+                        Text("Export World (.zip)", fontSize = 12.sp, color = DesktopColors.Slate300)
+                    }
+                }
+            }
+
+            DesktopPanelCard(modifier = Modifier.weight(1.2f)) {
+                Text("World Chunk Pruner & Optimizer", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Automatically creates a world backup and removes Anvil chunks that players only passed through briefly (based on InhabitedTime). Stop the server before pruning.",
+                    fontSize = 12.sp,
+                    color = DesktopColors.Slate400
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InhabitedTimeThreshold.entries.forEach { threshold ->
+                        Button(
+                            onClick = { viewModel.pruneChunks(threshold) },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DesktopColors.Slate800,
+                                contentColor = DesktopColors.EmeraldLight
+                            )
+                        ) {
+                            Text("Prune: ${threshold.label}", fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Row 3: Anvil Region File Inspector (.mca)
+        DesktopPanelCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Anvil Region File Inspector (${regions.size} .mca files)", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                OutlinedButton(
+                    onClick = { viewModel.refreshWorldSummary(server) },
+                    modifier = Modifier.height(30.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)
+                ) {
+                    Text("Refresh Regions", fontSize = 11.sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            if (regions.isEmpty()) {
+                Text("No Anvil .mca region files generated yet.", fontSize = 12.sp, color = DesktopColors.Slate400)
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    items(regions, key = { "${it.dimension.name}_${it.fileName}" }) { reg ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = DesktopColors.Slate900,
+                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(reg.fileName, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color.White)
+                                    Text(
+                                        text = "${reg.dimension.displayName} - ~${reg.estimatedChunks}/1024 chunks - ${FileStorageUtils.formatBytes(reg.sizeBytes)}",
+                                        fontSize = 11.sp,
+                                        color = DesktopColors.Slate400
+                                    )
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.deleteRegionFile(reg) },
+                                    modifier = Modifier.height(28.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)
+                                ) {
+                                    Text("Delete Region", fontSize = 11.sp, color = DesktopColors.RedstoneLight)
+                                }
+                            }
+                        }
                     }
                 }
             }

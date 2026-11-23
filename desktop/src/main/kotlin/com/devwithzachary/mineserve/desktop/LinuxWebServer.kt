@@ -261,6 +261,35 @@ class LinuxWebServer(
                 sendJson(out, 200, "OK", LinuxDiagnosticsManager.checkGitHubUpdatesJson())
                 return
             }
+            if (path == "/api/whats-new" && method == "GET") {
+                val hasServers = serverRepository.servers.value.isNotEmpty()
+                val shouldAuto = LinuxDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasServers)
+                val resp = LinuxDiagnosticsManager.buildWhatsNewJson(
+                    platform = com.devwithzachary.mineserve.model.ChangelogPlatform.LINUX,
+                    showOnUpdateEnabled = LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths),
+                    lastSeenVersion = LinuxDiagnosticsManager.getLastSeenWhatsNewVersion(paths),
+                    shouldAutoShow = shouldAuto
+                )
+                sendJson(out, 200, "OK", resp)
+                return
+            }
+            if (path == "/api/whats-new" && method == "POST") {
+                val j = parseJson(body)
+                if (j.optBoolean("markSeen", false)) {
+                    LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+                }
+                if (j.has("showOnUpdateEnabled")) {
+                    LinuxDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, j.optBoolean("showOnUpdateEnabled", true))
+                }
+                val resp = LinuxDiagnosticsManager.buildWhatsNewJson(
+                    platform = com.devwithzachary.mineserve.model.ChangelogPlatform.LINUX,
+                    showOnUpdateEnabled = LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths),
+                    lastSeenVersion = LinuxDiagnosticsManager.getLastSeenWhatsNewVersion(paths),
+                    shouldAutoShow = false
+                )
+                sendJson(out, 200, "OK", resp)
+                return
+            }
             if (path == "/api/diagnostics/logcat" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 val filter = queryParams["filter"]

@@ -72,6 +72,7 @@ fun DesktopModalOverlay(
             DesktopModal.HOST_TOOLS -> DesktopAppSettingsModal(viewModel)
             DesktopModal.USERS_AUDIT -> UsersAndAuditModal(viewModel)
             DesktopModal.ABOUT_CREDITS -> DesktopAboutAndCreditsModal(viewModel)
+            DesktopModal.WHATS_NEW -> DesktopWhatsNewModal(viewModel)
             DesktopModal.NONE -> {}
         }
     }

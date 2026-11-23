@@ -546,7 +546,52 @@ fun DesktopSettingsTab(
             }
         }
 
-        // Card 4: Danger Zone
+        // Card 4: Proxy Network / Internal Loopback Binding (127.0.0.1)
+        DesktopPanelCard(modifier = Modifier.fillMaxWidth()) {
+            var loopbackOnly by remember(server.id) {
+                mutableStateOf(viewModel.serverRepository.loadServerProperties(server.id).serverIp.trim() == "127.0.0.1")
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = if (server.type.isProxy) "Velocity / BungeeCord Proxy Routing" else "Internal Loopback Binding (Proxy Backend Mode)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
+                    Text(
+                        text = if (server.type.isProxy) {
+                            "Configure backend server routes in velocity.toml / config.yml via the Files tab or Web Admin UI."
+                        } else {
+                            "Bind server-ip strictly to 127.0.0.1 so only a local Velocity or BungeeCord proxy on this host can connect to this backend server."
+                        },
+                        fontSize = 12.sp,
+                        color = DesktopColors.Slate400
+                    )
+                }
+                if (!server.type.isProxy) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        LabeledCheckbox("Bind strictly to 127.0.0.1", loopbackOnly) { checked ->
+                            loopbackOnly = checked
+                            val currentProps = viewModel.serverRepository.loadServerProperties(server.id)
+                            viewModel.serverRepository.saveServerProperties(
+                                server.id,
+                                currentProps.copy(
+                                    serverIp = if (checked) "127.0.0.1" else "",
+                                    onlineMode = if (checked) false else currentProps.onlineMode
+                                )
+                            )
+                            viewModel.showToast(if (checked) "Bound backend to 127.0.0.1 (online-mode=false)" else "Cleared 127.0.0.1 loopback binding")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Card 5: Danger Zone
         DesktopPanelCard(
             modifier = Modifier.fillMaxWidth(),
             borderColor = DesktopColors.RedstonePrimary.copy(alpha = 0.5f)

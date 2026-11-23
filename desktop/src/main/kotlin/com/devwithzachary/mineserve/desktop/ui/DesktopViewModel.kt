@@ -5,6 +5,7 @@ import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.auth.UserRole
 import com.devwithzachary.mineserve.desktop.LinuxCloudManager
 import com.devwithzachary.mineserve.desktop.LinuxDataPaths
+import com.devwithzachary.mineserve.desktop.LinuxDiagnosticsManager
 import com.devwithzachary.mineserve.desktop.LinuxFirewallChecker
 import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
 import com.devwithzachary.mineserve.desktop.LinuxNetworkManager
@@ -68,8 +69,16 @@ enum class DesktopModal {
     CLOUD,
     HOST_TOOLS,
     USERS_AUDIT,
-    ABOUT_CREDITS
+    ABOUT_CREDITS,
+    WHATS_NEW
 }
+
+data class DesktopRegionFileEntry(
+    val dimension: DimensionType,
+    val fileName: String,
+    val sizeBytes: Long,
+    val estimatedChunks: Int
+)
 
 data class DesktopDimensionSummary(
     val dimension: DimensionType,
@@ -108,6 +117,9 @@ class DesktopViewModel(
     private val uiSettingsFile = File(paths.rootDir, "desktop_ui.json")
     private val _uiScale = MutableStateFlow(loadInitialUiScale())
     val uiScale: StateFlow<Float> = _uiScale.asStateFlow()
+
+    private val _showWhatsNewOnUpdate = MutableStateFlow(LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths))
+    val showWhatsNewOnUpdate: StateFlow<Boolean> = _showWhatsNewOnUpdate.asStateFlow()
 
     private val _webAdminRunning = MutableStateFlow(webServer.isRunning)
     val webAdminRunning: StateFlow<Boolean> = _webAdminRunning.asStateFlow()
@@ -149,6 +161,9 @@ class DesktopViewModel(
     private val _worldDimensions = MutableStateFlow<List<DesktopDimensionSummary>>(emptyList())
     val worldDimensions: StateFlow<List<DesktopDimensionSummary>> = _worldDimensions.asStateFlow()
 
+    private val _regionFiles = MutableStateFlow<List<DesktopRegionFileEntry>>(emptyList())
+    val regionFiles: StateFlow<List<DesktopRegionFileEntry>> = _regionFiles.asStateFlow()
+
     private val _squaremapInstalled = MutableStateFlow(false)
     val squaremapInstalled: StateFlow<Boolean> = _squaremapInstalled.asStateFlow()
 
@@ -174,12 +189,18 @@ class DesktopViewModel(
 
     init {
         _selectedServerId.value?.let { refreshSelectedServerData(it) }
+        val hasExistingServers = serverRepository.servers.value.isNotEmpty()
+        if (LinuxDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasExistingServers)) {
+            LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+            _activeModal.value = DesktopModal.WHATS_NEW
+        }
         scope.launch {
             while (true) {
                 _selectedServerId.value?.let { sid ->
                     _tunnelState.value = networkManager.getTunnelState(sid)
                     _portForwardState.value = networkManager.getPortForwardState(sid)
                 }
+                _showWhatsNewOnUpdate.value = LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths)
                 delay(1200)
             }
         }
@@ -220,8 +241,21 @@ class DesktopViewModel(
         val clamped = ((newScale * 20f).toInt() / 20f).coerceIn(0.85f, 2.0f)
         _uiScale.value = clamped
         runCatching {
-            uiSettingsFile.writeText(JSONObject().put("uiScale", clamped.toDouble()).toString(2))
+            val obj = if (uiSettingsFile.exists()) JSONObject(uiSettingsFile.readText()) else JSONObject()
+            obj.put("uiScale", clamped.toDouble())
+            uiSettingsFile.writeText(obj.toString(2))
         }
+    }
+
+    fun setShowWhatsNewOnUpdate(enabled: Boolean) {
+        _showWhatsNewOnUpdate.value = enabled
+        LinuxDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, enabled)
+        LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+    }
+
+    fun openWhatsNewGuide() {
+        LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+        _activeModal.value = DesktopModal.WHATS_NEW
     }
 
     fun adjustUiScale(delta: Float) {
@@ -559,6 +593,7 @@ class DesktopViewModel(
     fun refreshWorldSummary(server: MinecraftServer) {
         val serverDir = serverRepository.getServerDirectory(server.id)
         val levelName = serverRepository.loadServerProperties(server.id).levelName.ifBlank { "world" }
+        val allRegions = mutableListOf<DesktopRegionFileEntry>()
         _worldDimensions.value = DimensionType.entries.map { dim ->
             val dDir = dim.getDimensionDir(serverDir, levelName)
             val rDir = when (dim) {
@@ -568,9 +603,86 @@ class DesktopViewModel(
             }
             val exists = dDir.exists() && dDir.isDirectory
             val size = if (exists) FileStorageUtils.calculateDirectorySize(dDir) else 0L
-            val mca = if (rDir.exists()) (rDir.listFiles()?.filter { it.name.endsWith(".mca") } ?: emptyList()) else emptyList()
-            val chunks = mca.sumOf { ((it.length() / 4096L).toInt()).coerceIn(0, 1024) }
-            DesktopDimensionSummary(dim, exists, size, mca.size, chunks)
+            val mca = if (rDir.exists()) (rDir.listFiles()?.filter { it.isFile && it.name.endsWith(".mca") } ?: emptyList()) else emptyList()
+            var dimChunks = 0
+            mca.forEach { f ->
+                val c = ((f.length() / 4096L).toInt()).coerceIn(0, 1024)
+                dimChunks += c
+                allRegions.add(DesktopRegionFileEntry(dim, f.name, f.length(), c))
+            }
+            DesktopDimensionSummary(dim, exists, size, mca.size, dimChunks)
+        }
+        _regionFiles.value = allRegions.sortedByDescending { it.sizeBytes }
+    }
+
+    fun deleteRegionFile(entry: DesktopRegionFileEntry) {
+        val srv = getSelectedServer() ?: return
+        if (processManager.isServerRunning(srv.id)) {
+            showToast("Stop the server before deleting region files.")
+            return
+        }
+        val serverDir = serverRepository.getServerDirectory(srv.id)
+        val levelName = serverRepository.loadServerProperties(srv.id).levelName.ifBlank { "world" }
+        val dDir = entry.dimension.getDimensionDir(serverDir, levelName)
+        val rDir = when (entry.dimension) {
+            DimensionType.OVERWORLD -> File(dDir, "region")
+            DimensionType.NETHER -> File(dDir, "DIM-1/region").takeIf { it.exists() } ?: File(dDir, "region")
+            DimensionType.THE_END -> File(dDir, "DIM1/region").takeIf { it.exists() } ?: File(dDir, "region")
+        }
+        val target = File(rDir, File(entry.fileName).name)
+        if (target.exists() && target.delete()) {
+            refreshWorldSummary(srv)
+            showToast("Deleted ${entry.fileName}")
+        }
+    }
+
+    fun exportWorldZip(destZip: File) {
+        val srv = getSelectedServer() ?: return
+        if (processManager.isServerRunning(srv.id)) {
+            showToast("Stop the server before exporting the world.")
+            return
+        }
+        scope.launch {
+            val serverDir = serverRepository.getServerDirectory(srv.id)
+            val levelName = serverRepository.loadServerProperties(srv.id).levelName.ifBlank { "world" }
+            val worldDir = File(serverDir, levelName)
+            if (!worldDir.exists()) {
+                showToast("World directory '$levelName' not found.")
+                return@launch
+            }
+            runCatching {
+                java.util.zip.ZipOutputStream(java.io.BufferedOutputStream(FileOutputStream(destZip))).use { zos ->
+                    FileStorageUtils.zipDirectoryToStream(worldDir, zos)
+                }
+            }.fold(
+                onSuccess = {
+                    showToast("Exported world to ${destZip.name}")
+                    openInFileManager(destZip.parentFile ?: destZip)
+                },
+                onFailure = { err -> showToast("Export failed: ${err.message}") }
+            )
+        }
+    }
+
+    fun importWorldArchive(archiveFile: File) {
+        val srv = getSelectedServer() ?: return
+        if (processManager.isServerRunning(srv.id)) {
+            showToast("Stop the server before importing a world.")
+            return
+        }
+        scope.launch {
+            showToast("Backing up and importing ${archiveFile.name}...")
+            serverRepository.createBackup(srv.id, worldOnly = true)
+            val serverDir = serverRepository.getServerDirectory(srv.id)
+            val levelName = serverRepository.loadServerProperties(srv.id).levelName.ifBlank { "world" }
+            val worldDir = File(serverDir, levelName).apply { mkdirs() }
+            FileStorageUtils.extractZipSafe(archiveFile, worldDir, deleteZipAfter = false).fold(
+                onSuccess = { count ->
+                    refreshWorldSummary(srv)
+                    showToast("Imported world ($count files extracted)")
+                },
+                onFailure = { err -> showToast("World import failed: ${err.message}") }
+            )
         }
     }
 

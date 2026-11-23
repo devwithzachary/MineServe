@@ -1,4 +1,3 @@
-- Multi-User Web Admin & RBAC: Owner, Admin, Moderator & Viewer roles, per-server scoping, session control & full-screen Audit Log
-- End-to-End Web UI: SSE live console, drag-and-drop File Manager, Java Manager, Server Version Upgrader & Import Server (.zip)
-- MineServe Cloud: in-app 6-digit email sign-in, localized pricing & smarter tunnel reconnect/port-reclaim
-- Reliability Fixes: weighted first-run setup progress, Live Map default port 8081 & Squaremap uninstall fix
+• Multi-User Web Admin & Audit Log: Create Owner, Admin, Moderator, and Viewer accounts with per-server scoping, active session management, and a searchable Audit Log with CSV export.
+• Web UI Upgrades: Real-time SSE live console streaming (2,000-line scrollback), full File Manager (create, rename, upload, download, unzip), Java Runtime Manager, in-place Server Upgrader, and Import Server (.zip).
+• Smart Modpack Filter: Automatically disables client-only mods when importing .mrpack files.
