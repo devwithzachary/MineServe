@@ -41,6 +41,7 @@ val APP_CHANGELOG_HISTORY: List<ReleaseChangelog> = listOf(
         date = "In Development",
         initialExpanded = true,
         highlights = listOf(
+            "Multi-User Web Admin, RBAC & Audit Log: Create and manage multiple panel user accounts with Owner, Admin, Moderator, or Viewer roles, restrict users to specific servers, view and revoke active sessions, change passwords, and inspect the live audit log from both the Android app (Web Remote Admin settings) and the Web UI.",
             "In-App Cloud Sign-In & Localized Pricing: Sign in to MineServe Cloud directly inside the app with a 6-digit email code, with regional currency pricing estimates on direct builds.",
             "Smooth First-Run Setup Progress: Re-weighted initial runtime setup across download, extraction, and live OpenJDK package installation steps so the progress bar moves steadily instead of stalling at 98%.",
             "Web Remote Admin Improvements: Added a live Connection & Public Access bar at the top of the Web UI showing active Bore, Playit.gg, UPnP, or MineServe Cloud status with one-click copyable public and LAN join addresses, replaced the Web UI RAM number inputs with device-aware sliders, and fixed the Restart button so servers reliably boot back up.",

@@ -83,6 +83,10 @@ import com.devwithzachary.mineserve.admin.web.WebAdminConfig
 import com.devwithzachary.mineserve.admin.web.WebAdminExposure
 import com.devwithzachary.mineserve.admin.web.WebAdminExposureState
 import com.devwithzachary.mineserve.admin.web.WebAdminState
+import com.devwithzachary.mineserve.auth.AuditLogEntry
+import com.devwithzachary.mineserve.auth.PanelUser
+import com.devwithzachary.mineserve.auth.UserRole
+import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.ui.components.QrCodeHelper
 import com.devwithzachary.mineserve.ui.theme.EmeraldDark
 import com.devwithzachary.mineserve.ui.theme.EmeraldLight
@@ -105,6 +109,13 @@ fun RemoteAdminScreen(
     adminConfig: WebAdminConfig,
     onUpdateConfig: (WebAdminConfig) -> Unit,
     onGeneratePassword: () -> String,
+    servers: List<MinecraftServer> = emptyList(),
+    panelUsers: List<PanelUser> = emptyList(),
+    auditEntries: List<AuditLogEntry> = emptyList(),
+    onCreateUser: (String, String, UserRole, Boolean, List<String>) -> Result<PanelUser> = { _, _, _, _, _ -> Result.failure(IllegalStateException("Not configured")) },
+    onUpdateUser: (String, UserRole, Boolean, List<String>, Boolean, String?) -> Result<PanelUser> = { _, _, _, _, _, _ -> Result.failure(IllegalStateException("Not configured")) },
+    onDeleteUser: (String) -> Result<Unit> = { Result.failure(IllegalStateException("Not configured")) },
+    onRefreshUsers: () -> Unit = {},
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -492,6 +503,17 @@ fun RemoteAdminScreen(
                     )
                 }
             }
+
+            // Panel Users, Roles & Audit Log Card
+            PanelUsersCard(
+                users = panelUsers,
+                auditEntries = auditEntries,
+                servers = servers,
+                onCreateUser = onCreateUser,
+                onUpdateUser = onUpdateUser,
+                onDeleteUser = onDeleteUser,
+                onRefresh = onRefreshUsers
+            )
 
             // Public Internet Exposure Card
             Card(

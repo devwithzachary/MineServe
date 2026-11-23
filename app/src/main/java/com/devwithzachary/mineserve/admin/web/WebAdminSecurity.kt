@@ -1,12 +1,16 @@
 package com.devwithzachary.mineserve.admin.web
 
+import com.devwithzachary.mineserve.auth.UserRole
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.concurrent.ConcurrentHashMap
 
 data class AdminSession(
+    val id: String,
     val token: String,
+    val userId: String,
     val username: String,
+    val role: UserRole = UserRole.OWNER,
     val clientIp: String,
     val createdAt: Long = System.currentTimeMillis(),
     val expiresAt: Long = System.currentTimeMillis() + 24 * 60 * 60 * 1000L
@@ -68,12 +72,25 @@ class WebAdminSecurity {
         return MessageDigest.isEqual(aBytes, bBytes)
     }
 
-    fun createSession(username: String, clientIp: String): AdminSession {
+    fun createSession(
+        userId: String,
+        username: String,
+        role: UserRole,
+        clientIp: String
+    ): AdminSession {
         cleanExpiredSessions()
         val bytes = ByteArray(32)
         secureRandom.nextBytes(bytes)
         val token = bytes.joinToString("") { "%02x".format(it) }
-        val session = AdminSession(token = token, username = username, clientIp = clientIp)
+        val sessionId = token.take(12)
+        val session = AdminSession(
+            id = sessionId,
+            token = token,
+            userId = userId,
+            username = username,
+            role = role,
+            clientIp = clientIp
+        )
         activeSessions[token] = session
         return session
     }
@@ -94,6 +111,23 @@ class WebAdminSecurity {
         }
     }
 
+    fun revokeSessionById(sessionId: String): Boolean {
+        val match = activeSessions.values.firstOrNull { it.id == sessionId } ?: return false
+        return activeSessions.remove(match.token) != null
+    }
+
+    fun revokeUserSessions(userId: String) {
+        val tokens = activeSessions.values.filter { it.userId == userId }.map { it.token }
+        for (t in tokens) {
+            activeSessions.remove(t)
+        }
+    }
+
+    fun listSessions(): List<AdminSession> {
+        cleanExpiredSessions()
+        return activeSessions.values.sortedByDescending { it.createdAt }
+    }
+
     fun getActiveSessionsCount(): Int {
         cleanExpiredSessions()
         return activeSessions.size
@@ -107,4 +141,3 @@ class WebAdminSecurity {
         }
     }
 }
-

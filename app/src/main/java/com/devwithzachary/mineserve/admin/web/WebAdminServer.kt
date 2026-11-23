@@ -3,6 +3,10 @@ package com.devwithzachary.mineserve.admin.web
 import android.content.Context
 import android.os.Build
 import android.util.Log
+import com.devwithzachary.mineserve.auth.PanelUser
+import com.devwithzachary.mineserve.auth.Permission
+import com.devwithzachary.mineserve.auth.UserRepository
+import com.devwithzachary.mineserve.auth.UserRole
 import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.model.MinecraftServer
@@ -37,6 +41,7 @@ class WebAdminServer(
     private val context: Context,
     val port: Int,
     private val security: WebAdminSecurity,
+    private val userRepository: UserRepository,
     private val configProvider: () -> WebAdminConfig,
     private val serverRepository: ServerRepository,
     private val processManager: ServerProcessManager,
@@ -168,15 +173,25 @@ class WebAdminServer(
             val authHeader = headers["authorization"]
             val cookieHeader = headers["cookie"]
             val token = extractToken(authHeader, cookieHeader)
+            val effectiveIp = if (clientIp == "127.0.0.1" || clientIp == "::1") {
+                headers["x-forwarded-for"]?.substringBefore(",")?.trim()?.takeIf { it.isNotBlank() } ?: clientIp
+            } else {
+                clientIp
+            }
 
             if (isBinaryUpload) {
-                if (security.validateSession(token) == null) {
+                val uploadSession = security.validateSession(token)
+                val uploadUser = uploadSession?.let { userRepository.getUser(it.userId) }?.takeIf { it.enabled }
+                if (uploadSession == null || uploadUser == null) {
                     val errObj = JSONObject().put("error", "Unauthorized. Please log in.")
                     sendResponse(out, 401, "Unauthorized", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
                     return
                 }
                 val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
                 val serverId = segments.getOrNull(0) ?: ""
+                if (!requirePerm(out, uploadUser, Permission.SERVER_SETTINGS_WRITE, serverId)) {
+                    return
+                }
                 if (contentLength <= 0L || contentLength > 512L * 1024L * 1024L) {
                     val errObj = JSONObject().put("error", "Upload must be between 1 byte and 512 MB.")
                     sendResponse(out, 400, "Bad Request", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
@@ -189,13 +204,17 @@ class WebAdminServer(
                     val result = when {
                         isWorldImportUpload -> {
                             val createBackup = queryParams["createBackup"]?.toBooleanStrictOrNull() ?: true
+                            userRepository.recordAudit(uploadUser, "WORLD_IMPORT", serverId, "Uploaded world archive", effectiveIp)
                             extHandlers.handleImportWorld(serverId, tempFile, createBackup)
                         }
                         isPluginJarUpload -> {
-                            extHandlers.handleUploadPluginJar(serverId, queryParams["name"] ?: "", tempFile)
+                            val fname = queryParams["name"] ?: ""
+                            userRepository.recordAudit(uploadUser, "PLUGIN_UPLOAD", serverId, fname, effectiveIp)
+                            extHandlers.handleUploadPluginJar(serverId, fname, tempFile)
                         }
                         else -> {
                             keepTempForAsync = true
+                            userRepository.recordAudit(uploadUser, "MODPACK_IMPORT", serverId, "Uploaded .mrpack modpack", effectiveIp)
                             extHandlers.handleStartModpackImport(serverId, tempFile)
                         }
                     }
@@ -217,18 +236,15 @@ class WebAdminServer(
 
             // Public Endpoint: Login
             if (path == "/api/login" && method == "POST") {
-                val effectiveIp = if (clientIp == "127.0.0.1" || clientIp == "::1") {
-                    headers["x-forwarded-for"]?.substringBefore(",")?.trim()?.takeIf { it.isNotBlank() } ?: clientIp
-                } else {
-                    clientIp
-                }
                 handleLogin(out, effectiveIp, body)
                 return
             }
 
-            // Protected API Endpoints: Require valid session
+            // Protected API Endpoints: Require valid session and active user
             val session = security.validateSession(token)
-            if (session == null) {
+            val currentUser = session?.let { userRepository.getUser(it.userId) }?.takeIf { it.enabled }
+            if (session == null || currentUser == null) {
+                if (session != null) security.invalidateSession(token)
                 val errObj = JSONObject().put("error", "Unauthorized. Please log in.")
                 sendResponse(out, 401, "Unauthorized", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
                 return
@@ -237,15 +253,184 @@ class WebAdminServer(
             // Logout
             if (path == "/api/logout" && method == "POST") {
                 security.invalidateSession(token)
+                userRepository.recordAudit(currentUser, "LOGOUT", currentUser.username, "Signed out", effectiveIp)
                 val resp = JSONObject().put("success", true)
                 sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                 return
             }
 
-            // Session Verification
+            // Session Verification & Profile
             if (path == "/api/me" && method == "GET") {
-                val resp = JSONObject().put("authenticated", true).put("username", session.username)
+                val resp = JSONObject()
+                    .put("authenticated", true)
+                    .put("id", currentUser.id)
+                    .put("username", currentUser.username)
+                    .put("role", currentUser.role.name)
+                    .put("roleLabel", currentUser.role.displayName)
+                    .put("restrictServers", currentUser.restrictServers)
+                    .put("allowedServerIds", JSONArray(currentUser.allowedServerIds))
+                    .put("permissions", JSONArray(userRepository.permissionsFor(currentUser.role).map { it.name }))
                 sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+
+            // Change Own Password
+            if (path == "/api/me/password" && method == "POST") {
+                val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                val currentPass = jsonBody.optString("currentPassword", "")
+                val newPass = jsonBody.optString("newPassword", "")
+                val res = userRepository.changeOwnPassword(currentUser.id, currentPass, newPass)
+                res.fold(
+                    onSuccess = {
+                        userRepository.recordAudit(currentUser, "PASSWORD_CHANGE", currentUser.username, "Changed own password", effectiveIp)
+                        sendResponse(out, 200, "OK", "application/json", JSONObject().put("success", true).toString().toByteArray(Charsets.UTF_8))
+                    },
+                    onFailure = { err ->
+                        sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", err.message ?: "Failed to change password").toString().toByteArray(Charsets.UTF_8))
+                    }
+                )
+                return
+            }
+
+            // Multi-User Management (Owner only)
+            if (path == "/api/users" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_USERS)) return
+                val arr = JSONArray()
+                userRepository.listUsers().forEach { arr.put(userToJson(it)) }
+                sendResponse(out, 200, "OK", "application/json", JSONObject().put("users", arr).toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+            if (path == "/api/users" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_USERS)) return
+                val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                val username = jsonBody.optString("username", "")
+                val password = jsonBody.optString("password", "")
+                val role = UserRole.fromString(jsonBody.optString("role", "VIEWER"))
+                val restrictServers = jsonBody.optBoolean("restrictServers", false)
+                val allowedArr = jsonBody.optJSONArray("allowedServerIds")
+                val allowedIds = mutableListOf<String>()
+                if (allowedArr != null) {
+                    for (i in 0 until allowedArr.length()) {
+                        val sid = allowedArr.optString(i, "").trim()
+                        if (sid.isNotBlank()) allowedIds.add(sid)
+                    }
+                }
+                userRepository.createUser(username, password, role, restrictServers, allowedIds).fold(
+                    onSuccess = { created ->
+                        userRepository.recordAudit(currentUser, "USER_CREATE", created.username, "Role: ${created.role.name}", effectiveIp)
+                        sendResponse(out, 200, "OK", "application/json", JSONObject().put("success", true).put("user", userToJson(created)).toString().toByteArray(Charsets.UTF_8))
+                    },
+                    onFailure = { err ->
+                        sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", err.message ?: "Failed to create user").toString().toByteArray(Charsets.UTF_8))
+                    }
+                )
+                return
+            }
+            if (path.startsWith("/api/users/")) {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_USERS)) return
+                val targetUserId = path.removePrefix("/api/users/").trim('/')
+                if (method == "PUT" || method == "POST") {
+                    val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrDefault(JSONObject())
+                    val role = if (jsonBody.has("role")) UserRole.fromString(jsonBody.optString("role")) else null
+                    val restrictServers = if (jsonBody.has("restrictServers")) jsonBody.optBoolean("restrictServers") else null
+                    val enabled = if (jsonBody.has("enabled")) jsonBody.optBoolean("enabled") else null
+                    val newPassword = jsonBody.optString("password", "").takeIf { it.isNotEmpty() }
+                    val allowedIds = if (jsonBody.has("allowedServerIds")) {
+                        val arr = jsonBody.optJSONArray("allowedServerIds")
+                        buildList<String> {
+                            if (arr != null) {
+                                for (i in 0 until arr.length()) {
+                                    val sid = arr.optString(i, "").trim()
+                                    if (sid.isNotBlank()) add(sid)
+                                }
+                            }
+                        }
+                    } else null
+                    userRepository.updateUser(targetUserId, role, restrictServers, allowedIds, enabled, newPassword).fold(
+                        onSuccess = { updated ->
+                            if (!updated.enabled) {
+                                security.revokeUserSessions(updated.id)
+                            }
+                            userRepository.recordAudit(
+                                currentUser,
+                                "USER_UPDATE",
+                                updated.username,
+                                "Role: ${updated.role.name}, Enabled: ${updated.enabled}",
+                                effectiveIp
+                            )
+                            sendResponse(out, 200, "OK", "application/json", JSONObject().put("success", true).put("user", userToJson(updated)).toString().toByteArray(Charsets.UTF_8))
+                        },
+                        onFailure = { err ->
+                            sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", err.message ?: "Failed to update user").toString().toByteArray(Charsets.UTF_8))
+                        }
+                    )
+                    return
+                } else if (method == "DELETE") {
+                    val targetName = userRepository.getUser(targetUserId)?.username ?: targetUserId
+                    userRepository.deleteUser(targetUserId).fold(
+                        onSuccess = {
+                            security.revokeUserSessions(targetUserId)
+                            userRepository.recordAudit(currentUser, "USER_DELETE", targetName, "Deleted user account", effectiveIp)
+                            sendResponse(out, 200, "OK", "application/json", JSONObject().put("success", true).toString().toByteArray(Charsets.UTF_8))
+                        },
+                        onFailure = { err ->
+                            sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", err.message ?: "Failed to delete user").toString().toByteArray(Charsets.UTF_8))
+                        }
+                    )
+                    return
+                }
+            }
+
+            // Active Sessions Management (Owner only)
+            if (path == "/api/sessions" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_USERS)) return
+                val arr = JSONArray()
+                for (s in security.listSessions()) {
+                    arr.put(
+                        JSONObject()
+                            .put("id", s.id)
+                            .put("userId", s.userId)
+                            .put("username", s.username)
+                            .put("role", s.role.name)
+                            .put("clientIp", s.clientIp)
+                            .put("createdAt", s.createdAt)
+                            .put("expiresAt", s.expiresAt)
+                            .put("isCurrent", s.token == session.token)
+                    )
+                }
+                sendResponse(out, 200, "OK", "application/json", JSONObject().put("sessions", arr).toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+            if (path.startsWith("/api/sessions/") && method == "DELETE") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_USERS)) return
+                val sid = path.removePrefix("/api/sessions/").trim('/')
+                val revoked = security.revokeSessionById(sid)
+                if (revoked) {
+                    userRepository.recordAudit(currentUser, "SESSION_REVOKE", sid, "Revoked active web session", effectiveIp)
+                }
+                sendResponse(out, 200, "OK", "application/json", JSONObject().put("success", revoked).toString().toByteArray(Charsets.UTF_8))
+                return
+            }
+
+            // Audit Log (Owner & Admin)
+            if (path == "/api/audit" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.VIEW_AUDIT_LOG)) return
+                val limit = queryParams["limit"]?.toIntOrNull() ?: 150
+                val arr = JSONArray()
+                for (entry in userRepository.getAuditLog(limit)) {
+                    arr.put(
+                        JSONObject()
+                            .put("id", entry.id)
+                            .put("timestamp", entry.timestamp)
+                            .put("username", entry.username)
+                            .put("role", entry.role)
+                            .put("action", entry.action)
+                            .put("target", entry.target)
+                            .put("details", entry.details)
+                            .put("clientIp", entry.clientIp)
+                    )
+                }
+                sendResponse(out, 200, "OK", "application/json", JSONObject().put("entries", arr).toString().toByteArray(Charsets.UTF_8))
                 return
             }
 
@@ -271,37 +456,44 @@ class WebAdminServer(
                 return
             }
 
-            // MineServe Cloud Status
+            // MineServe Cloud Status (Owner only)
             if (path == "/api/cloud/status" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 sendApiResult(out, extHandlers.handleGetCloudStatus())
                 return
             }
             if (path == "/api/cloud/refresh" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 sendApiResult(out, extHandlers.handleRefreshCloudStatus())
                 return
             }
 
-            // Battery & Thermal Safeguards
+            // Battery & Thermal Safeguards (Owner only)
             if (path == "/api/safeguards") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 if (method == "GET") {
                     sendApiResult(out, extHandlers.handleGetSafeguards())
                     return
                 } else if (method == "POST") {
+                    userRepository.recordAudit(currentUser, "SAFEGUARDS_SAVE", "host", "Updated battery/thermal safeguards", effectiveIp)
                     sendApiResult(out, extHandlers.handleSaveSafeguards(body))
                     return
                 }
             }
 
-            // Diagnostics & Logcat
+            // Diagnostics & Logcat (Owner only)
             if (path == "/api/diagnostics/logcat" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 sendApiResult(out, extHandlers.handleCaptureLogcat(queryParams["filter"]))
                 return
             }
             if (path == "/api/diagnostics/selftest" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 sendApiResult(out, extHandlers.handleRunSelfTest())
                 return
             }
             if (path == "/api/diagnostics/bundle" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 val (zipFile, errResult) = extHandlers.exportDiagnosticZip(queryParams["filter"])
                 if (errResult != null) {
                     sendApiResult(out, errResult)
@@ -332,7 +524,7 @@ class WebAdminServer(
 
             // List or Create Servers
             if (path == "/api/servers" && method == "GET") {
-                val servers = serverRepository.servers.value
+                val servers = serverRepository.servers.value.filter { userRepository.canAccessServer(currentUser, it.id) }
                 val statuses = processManager.serverStatuses.value
                 val arr = JSONArray()
                 for (s in servers) {
@@ -352,6 +544,8 @@ class WebAdminServer(
                 return
             }
             if (path == "/api/servers" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                userRepository.recordAudit(currentUser, "SERVER_CREATE", "servers", "Requested new server creation", effectiveIp)
                 sendApiResult(out, apiHandlers.handleCreateServer(body))
                 return
             }
@@ -373,9 +567,14 @@ class WebAdminServer(
                         sendResponse(out, 404, "Not Found", "application/json", err.toString().toByteArray(Charsets.UTF_8))
                         return
                     }
+                    if (!requirePerm(out, currentUser, Permission.SERVER_VIEW, serverId)) {
+                        return
+                    }
 
                     // 1. GET or DELETE /api/servers/{id}
                     if (segments.size == 1 && method == "DELETE") {
+                        if (!requirePerm(out, currentUser, Permission.MANAGE_HOST, serverId)) return
+                        userRepository.recordAudit(currentUser, "SERVER_DELETE", server.name, "Deleted server ${server.id}", effectiveIp)
                         sendApiResult(out, apiHandlers.handleDeleteServer(serverId))
                         return
                     }
@@ -412,8 +611,10 @@ class WebAdminServer(
 
                     // 2. POST /api/servers/{id}/start
                     if (action == "start" && method == "POST") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_CONTROL, serverId)) return
                         val serverDir = serverRepository.getServerDirectory(server.id)
                         processManager.startServer(server, serverDir)
+                        userRepository.recordAudit(currentUser, "SERVER_START", server.name, "Started server", effectiveIp)
                         val resp = JSONObject().put("success", true).put("message", "Server start requested")
                         sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                         return
@@ -421,7 +622,9 @@ class WebAdminServer(
 
                     // 3. POST /api/servers/{id}/stop
                     if (action == "stop" && method == "POST") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_CONTROL, serverId)) return
                         processManager.stopServer(server.id)
+                        userRepository.recordAudit(currentUser, "SERVER_STOP", server.name, "Stopped server", effectiveIp)
                         val resp = JSONObject().put("success", true).put("message", "Server stop requested")
                         sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                         return
@@ -429,8 +632,10 @@ class WebAdminServer(
 
                     // 4. POST /api/servers/{id}/restart
                     if (action == "restart" && method == "POST") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_CONTROL, serverId)) return
                         val serverDir = serverRepository.getServerDirectory(server.id)
                         processManager.restartServer(server, serverDir)
+                        userRepository.recordAudit(currentUser, "SERVER_RESTART", server.name, "Restarted server", effectiveIp)
                         val resp = JSONObject().put("success", true).put("message", "Server restart requested")
                         sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                         return
@@ -438,16 +643,20 @@ class WebAdminServer(
 
                     // 4b. POST /api/servers/{id}/delete
                     if (action == "delete" && method == "POST") {
+                        if (!requirePerm(out, currentUser, Permission.MANAGE_HOST, serverId)) return
+                        userRepository.recordAudit(currentUser, "SERVER_DELETE", server.name, "Deleted server ${server.id}", effectiveIp)
                         sendApiResult(out, apiHandlers.handleDeleteServer(serverId))
                         return
                     }
 
                     // 4c. GET & POST /api/servers/{id}/settings
                     if (action == "settings") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_SETTINGS_WRITE, serverId)) return
                         if (method == "GET") {
                             sendApiResult(out, apiHandlers.handleGetSettings(serverId))
                             return
                         } else if (method == "POST") {
+                            userRepository.recordAudit(currentUser, "SETTINGS_SAVE", server.name, "Updated server settings", effectiveIp)
                             sendApiResult(out, apiHandlers.handleSaveSettings(serverId, body))
                             return
                         }
@@ -455,17 +664,37 @@ class WebAdminServer(
 
                     // 4d. Players Endpoints: /api/servers/{id}/players[/whitelist|ops|ban|ban-ip|kick]
                     if (action == "players") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_PLAYERS, serverId)) return
                         val playerAction = segments.getOrNull(2)
                         if (playerAction == null && method == "GET") {
                             sendApiResult(out, apiHandlers.handleGetPlayers(serverId))
                             return
                         } else if (playerAction != null && method == "POST") {
+                            userRepository.recordAudit(currentUser, "PLAYER_ACTION", server.name, "Action: $playerAction", effectiveIp)
                             sendApiResult(out, apiHandlers.handlePlayerAction(serverId, playerAction, body))
                             return
                         }
                     }
 
                     // 4e. Performance, Automation, World, Live Map, Network, Backups, Plugins
+                    if (action in setOf("performance", "automation", "world", "livemap", "network", "backups", "plugins", "discord", "proxy")) {
+                        val sub = segments.getOrNull(2)
+                        val requiredPerm = when (action) {
+                            "performance", "livemap" -> {
+                                if (method == "GET") Permission.SERVER_VIEW else Permission.SERVER_SETTINGS_WRITE
+                            }
+                            "backups" -> {
+                                when {
+                                    sub == "cloud" -> Permission.SERVER_BACKUPS_MANAGE
+                                    method == "GET" -> Permission.SERVER_BACKUPS_CREATE
+                                    sub == "create" -> Permission.SERVER_BACKUPS_CREATE
+                                    else -> Permission.SERVER_BACKUPS_MANAGE
+                                }
+                            }
+                            else -> Permission.SERVER_SETTINGS_WRITE
+                        }
+                        if (!requirePerm(out, currentUser, requiredPerm, serverId)) return
+                    }
                     if (dispatchExtendedRoutes(out, serverId, action, segments, method, queryParams, body)) {
                         return
                     }
@@ -478,10 +707,12 @@ class WebAdminServer(
                             sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                             return
                         } else if (method == "POST") {
+                            if (!requirePerm(out, currentUser, Permission.SERVER_CONSOLE_WRITE, serverId)) return
                             val jsonBody = JSONObject(if (body.isBlank()) "{}" else body)
                             val cmd = jsonBody.optString("command", "").trim()
                             if (cmd.isNotBlank()) {
                                 processManager.sendCommand(serverId, cmd)
+                                userRepository.recordAudit(currentUser, "CONSOLE_CMD", server.name, cmd, effectiveIp)
                             }
                             val resp = JSONObject().put("success", true)
                             sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
@@ -489,8 +720,9 @@ class WebAdminServer(
                         }
                     }
 
-                    // 6. Files Endpoints
+                    // 6. Files Endpoints (Admin+ only)
                     if (action == "files") {
+                        if (!requirePerm(out, currentUser, Permission.SERVER_FILES_WRITE, serverId)) return
                         val fileAction = segments.getOrNull(2)
 
                         // GET /api/servers/{id}/files?path=...
@@ -524,10 +756,12 @@ class WebAdminServer(
 
                         // POST /api/servers/{id}/files/write
                         if (fileAction == "write" && method == "POST") {
+                            if (!requirePerm(out, currentUser, Permission.SERVER_FILES_WRITE, serverId)) return
                             val jsonBody = JSONObject(if (body.isBlank()) "{}" else body)
                             val targetPath = jsonBody.optString("path", "")
                             val content = jsonBody.optString("content", "")
                             val ok = serverRepository.writeFile(serverId, targetPath, content)
+                            if (ok) userRepository.recordAudit(currentUser, "FILE_EDIT", server.name, targetPath, effectiveIp)
                             val resp = JSONObject().put("success", ok)
                             sendResponse(out, if (ok) 200 else 400, if (ok) "OK" else "Bad Request", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                             return
@@ -535,9 +769,11 @@ class WebAdminServer(
 
                         // POST /api/servers/{id}/files/delete
                         if (fileAction == "delete" && method == "POST") {
+                            if (!requirePerm(out, currentUser, Permission.SERVER_FILES_WRITE, serverId)) return
                             val jsonBody = JSONObject(if (body.isBlank()) "{}" else body)
                             val targetPath = jsonBody.optString("path", "")
                             val ok = serverRepository.deleteFileOrDirectory(serverId, targetPath)
+                            if (ok) userRepository.recordAudit(currentUser, "FILE_DELETE", server.name, targetPath, effectiveIp)
                             val resp = JSONObject().put("success", ok)
                             sendResponse(out, if (ok) 200 else 400, if (ok) "OK" else "Bad Request", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
                             return
@@ -620,6 +856,31 @@ class WebAdminServer(
             .put("portForwardMessage", portForwardMessage)
     }
 
+    private fun requirePerm(
+        out: OutputStream,
+        user: PanelUser,
+        permission: Permission,
+        serverId: String? = null
+    ): Boolean {
+        if (userRepository.hasPermission(user, permission, serverId)) return true
+        val err = JSONObject().put("error", "Insufficient permissions (${user.role.displayName} cannot perform this action).")
+        sendResponse(out, 403, "Forbidden", "application/json", err.toString().toByteArray(Charsets.UTF_8))
+        return false
+    }
+
+    private fun userToJson(user: PanelUser): JSONObject {
+        return JSONObject()
+            .put("id", user.id)
+            .put("username", user.username)
+            .put("role", user.role.name)
+            .put("roleLabel", user.role.displayName)
+            .put("restrictServers", user.restrictServers)
+            .put("allowedServerIds", JSONArray(user.allowedServerIds))
+            .put("enabled", user.enabled)
+            .put("createdAt", user.createdAt)
+            .put("lastLoginAt", user.lastLoginAt ?: 0L)
+    }
+
     private fun handleLogin(out: OutputStream, clientIp: String, body: String) {
         if (security.isIpLockedOut(clientIp)) {
             val errObj = JSONObject().put("error", "Too many failed attempts. Temporary lockout for 5 minutes.")
@@ -632,13 +893,19 @@ class WebAdminServer(
         val inputPass = json.optString("password", "")
 
         val cfg = configProvider()
-        val isValid = security.verifyCredentials(inputUser, inputPass, cfg.username, cfg.password)
+        userRepository.ensureDefaultOwner(cfg.username, cfg.password)
+        val authedUser = userRepository.authenticate(inputUser, inputPass)
 
-        if (isValid) {
+        if (authedUser != null) {
             security.resetFailedAttempts(clientIp)
-            val session = security.createSession(cfg.username, clientIp)
+            val session = security.createSession(authedUser.id, authedUser.username, authedUser.role, clientIp)
+            userRepository.recordAudit(authedUser, "LOGIN", authedUser.username, "Signed in (${authedUser.role.displayName})", clientIp)
             val cookie = "session=${session.token}; Path=/; HttpOnly; SameSite=Lax"
-            val resp = JSONObject().put("success", true).put("token", session.token)
+            val resp = JSONObject()
+                .put("success", true)
+                .put("token", session.token)
+                .put("user", userToJson(authedUser))
+                .put("permissions", JSONArray(userRepository.permissionsFor(authedUser.role).map { it.name }))
             sendResponse(
                 out = out,
                 statusCode = 200,

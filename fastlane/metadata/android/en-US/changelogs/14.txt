@@ -1,4 +1,4 @@
-- MineServe Cloud: in-app 6-digit email sign-in, localized pricing, and smarter tunnel reconnect & port-reclaim handling
-- First-Run Setup Progress: weighted progress bar tracking live OpenJDK package installation instead of stalling at 98%
-- Web Remote Admin: live public tunnel/UPnP address bar, device-aware RAM sliders, aligned form styling, and fixed Restart button
-- Reliability Fixes: Live Map defaults to port 8081, fixed Squaremap uninstall refresh, and proxy/tunnel fixes
+- Multi-User Web Admin & RBAC: add Owner, Admin, Moderator & Viewer accounts, per-server scoping, session control & audit log
+- MineServe Cloud: in-app 6-digit email sign-in, localized pricing & smarter tunnel reconnect/port-reclaim
+- Web Remote Admin: live public tunnel/UPnP address bar, device-aware RAM sliders, aligned forms & fixed Restart
+- Setup & Reliability: smooth weighted first-run progress bar, Live Map default port 8081 & Squaremap uninstall fix

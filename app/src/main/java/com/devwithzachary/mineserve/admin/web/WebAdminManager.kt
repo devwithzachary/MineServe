@@ -3,6 +3,7 @@ package com.devwithzachary.mineserve.admin.web
 import android.content.Context
 import android.util.Log
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.engine.ServerProcessManager
 import com.devwithzachary.mineserve.engine.ServerSoftwareManager
 import com.devwithzachary.mineserve.model.TunnelConfig
@@ -69,6 +70,7 @@ class WebAdminManager private constructor(
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val prefs = WebAdminPreferences(context)
     val security = WebAdminSecurity()
+    val userRepository = UserRepository(context.filesDir)
 
     private val _config = MutableStateFlow(prefs.loadConfig())
     val config: StateFlow<WebAdminConfig> = _config.asStateFlow()
@@ -81,6 +83,7 @@ class WebAdminManager private constructor(
 
     init {
         val initialConfig = _config.value
+        userRepository.ensureDefaultOwner(initialConfig.username, initialConfig.password)
         if (initialConfig.enabled) {
             start()
         }
@@ -90,6 +93,9 @@ class WebAdminManager private constructor(
         val old = _config.value
         _config.value = newConfig
         prefs.saveConfig(newConfig)
+        if (old.username != newConfig.username || old.password != newConfig.password) {
+            userRepository.syncPrimaryOwnerCredentials(newConfig.username, newConfig.password)
+        }
 
         if (old.enabled != newConfig.enabled) {
             if (newConfig.enabled) start() else stop()
@@ -116,6 +122,7 @@ class WebAdminManager private constructor(
             context = context,
             port = cfg.port,
             security = security,
+            userRepository = userRepository,
             configProvider = { _config.value },
             serverRepository = serverRepository,
             processManager = processManager,

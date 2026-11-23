@@ -51,8 +51,14 @@
       <div id="server-list" class="server-list"></div>
 
       <div class="sidebar-footer">
+        <div id="current-user-pill" class="user-profile-pill hidden">
+          <span id="current-user-name" class="user-profile-name">admin</span>
+          <span id="current-user-role" class="role-badge OWNER">Owner</span>
+        </div>
         <div id="system-info" class="system-info">Loading host info...</div>
+        <button id="open-users-modal-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Users &amp; Audit Log</button>
         <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">Cloud, Safeguards &amp; Diagnostics</button>
+        <button id="open-password-modal-btn" class="btn btn-ghost btn-sm btn-full" style="margin-bottom:6px;">Change Password</button>
         <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
       </div>
     </aside>
@@ -832,6 +838,97 @@
           <pre id="diag-logcat-output" class="console-output" style="max-height:220px;margin-top:8px;font-size:11px;">Click "Capture Logcat" to inspect redacted app &amp; engine logs.</pre>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Users, Sessions & Audit Log Modal -->
+  <div id="users-modal" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width:760px;">
+      <div class="modal-header">
+        <h3>Users, Sessions &amp; Audit Log</h3>
+        <button id="close-users-modal-btn" class="btn-icon" type="button">✕</button>
+      </div>
+
+      <div id="users-owner-section">
+        <div class="panel-card" style="margin-bottom:14px;">
+          <h3>Add User Account</h3>
+          <form id="create-user-form">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="new-user-name">Username</label>
+                <input type="text" id="new-user-name" placeholder="alex_mod" required>
+              </div>
+              <div class="form-group">
+                <label for="new-user-pass">Password (min 6 chars)</label>
+                <input type="password" id="new-user-pass" required>
+              </div>
+              <div class="form-group">
+                <label for="new-user-role">Role</label>
+                <select id="new-user-role">
+                  <option value="VIEWER">Viewer (Read-Only)</option>
+                  <option value="MODERATOR" selected>Moderator (Control, Console, Players, Backups)</option>
+                  <option value="ADMIN">Admin (Full Server Management)</option>
+                  <option value="OWNER">Owner (Full Host &amp; User Control)</option>
+                </select>
+              </div>
+            </div>
+            <label class="checkbox-label" style="margin-bottom:8px;">
+              <input type="checkbox" id="new-user-restrict">
+              <span>Restrict access to specific servers only</span>
+            </label>
+            <div id="new-user-servers-box" class="checkbox-grid hidden" style="margin-bottom:10px;"></div>
+            <button type="submit" class="btn btn-primary btn-sm">+ Create User</button>
+          </form>
+        </div>
+
+        <div class="panel-card" style="margin-bottom:14px;">
+          <div class="files-toolbar">
+            <h3 style="margin:0;">Panel Users</h3>
+            <button type="button" id="users-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+          </div>
+          <div id="users-list" class="player-list" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="panel-card" style="margin-bottom:14px;">
+          <div class="files-toolbar">
+            <h3 style="margin:0;">Active Sessions</h3>
+            <button type="button" id="sessions-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+          </div>
+          <div id="sessions-list" class="player-list" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <div class="files-toolbar">
+          <h3 style="margin:0;">Recent Audit Log</h3>
+          <button type="button" id="audit-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+        </div>
+        <div id="audit-list" class="player-list" style="margin-top:8px;max-height:260px;overflow-y:auto;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Change Password Modal -->
+  <div id="password-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Change Password</h3>
+        <button id="close-password-modal-btn" class="btn-icon" type="button">✕</button>
+      </div>
+      <form id="change-password-form">
+        <div class="form-group">
+          <label for="pw-current">Current Password</label>
+          <input type="password" id="pw-current" required>
+        </div>
+        <div class="form-group">
+          <label for="pw-new">New Password (min 6 chars)</label>
+          <input type="password" id="pw-new" required>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="cancel-password-modal-btn" class="btn btn-ghost">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Password</button>
+        </div>
+      </form>
     </div>
   </div>
 

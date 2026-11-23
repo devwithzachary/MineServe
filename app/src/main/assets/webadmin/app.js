@@ -75,11 +75,76 @@
     }
   }
 
+  function hasPerm(perm) {
+    const perms = state.currentUser?.permissions || [];
+    return perms.includes(perm);
+  }
+
+  function applyUserPermissionsUi() {
+    const u = state.currentUser;
+    const pill = $("current-user-pill");
+    if (pill && u) {
+      pill.classList.remove("hidden");
+      $("current-user-name").textContent = u.username || "admin";
+      const roleEl = $("current-user-role");
+      roleEl.textContent = u.roleLabel || u.role || "User";
+      roleEl.className = `role-badge ${u.role || "VIEWER"}`;
+    }
+    const canManageHost = hasPerm("MANAGE_HOST");
+    const canManageUsers = hasPerm("MANAGE_USERS");
+    const canViewAudit = hasPerm("VIEW_AUDIT_LOG");
+    const canControl = hasPerm("SERVER_CONTROL");
+    const canConsoleWrite = hasPerm("SERVER_CONSOLE_WRITE");
+    const canPlayers = hasPerm("SERVER_PLAYERS");
+    const canBackups = hasPerm("SERVER_BACKUPS_CREATE");
+    const canBackupsManage = hasPerm("SERVER_BACKUPS_MANAGE");
+    const canFiles = hasPerm("SERVER_FILES_WRITE");
+    const canSettings = hasPerm("SERVER_SETTINGS_WRITE");
+
+    $("open-create-modal-btn")?.classList.toggle("hidden", !canManageHost);
+    $("empty-create-btn")?.classList.toggle("hidden", !canManageHost);
+    $("open-host-tools-btn")?.classList.toggle("hidden", !canManageHost);
+    $("open-users-modal-btn")?.classList.toggle("hidden", !(canManageUsers || canViewAudit));
+    $("btn-start")?.classList.toggle("hidden", !canControl);
+    $("btn-restart")?.classList.toggle("hidden", !canControl);
+    $("btn-stop")?.classList.toggle("hidden", !canControl);
+    $("console-form")?.classList.toggle("hidden", !canConsoleWrite);
+    $("btn-open-network-tab")?.classList.toggle("hidden", !canSettings);
+    $("apply-aikar-btn")?.classList.toggle("hidden", !canSettings);
+    $("delete-server-btn")?.classList.toggle("hidden", !canManageHost);
+    $("cloud-backups-refresh-btn")?.closest(".panel-card")?.classList.toggle("hidden", !canBackupsManage);
+
+    const tabPerms = {
+      console: true,
+      performance: true,
+      livemap: true,
+      players: canPlayers,
+      backups: canBackups,
+      files: canFiles,
+      automation: canSettings,
+      world: canSettings,
+      settings: canSettings,
+      plugins: canSettings
+    };
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      const tab = btn.dataset.tab;
+      const allowed = !!tabPerms[tab];
+      btn.classList.toggle("hidden", !allowed);
+    });
+    if (!tabPerms[state.activeTab]) {
+      const consoleTabBtn = document.querySelector('.tab-btn[data-tab="console"]');
+      if (consoleTabBtn) consoleTabBtn.click();
+    }
+  }
+
   async function checkAuth() {
     try {
-      await apiFetch("/api/me");
+      const me = await apiFetch("/api/me");
+      state.currentUser = me;
+      applyUserPermissionsUi();
       showApp();
     } catch (_) {
+      state.currentUser = null;
       showLogin();
     }
   }
@@ -947,9 +1012,10 @@
       const portInput = $("livemap-port-input");
       const conflictBanner = $("livemap-conflict-banner");
 
-      installBtn.classList.toggle("hidden", m.installed || !m.supportsPluginsOrMods);
-      uninstallBtn.classList.toggle("hidden", !m.installed);
-      portRow.classList.toggle("hidden", !m.installed);
+      const canEditMap = hasPerm("SERVER_SETTINGS_WRITE");
+      installBtn.classList.toggle("hidden", !canEditMap || m.installed || !m.supportsPluginsOrMods);
+      uninstallBtn.classList.toggle("hidden", !canEditMap || !m.installed);
+      portRow.classList.toggle("hidden", !canEditMap || !m.installed);
       if (m.installed && document.activeElement !== portInput) {
         portInput.value = m.port;
       }
@@ -1152,6 +1218,7 @@
         list.innerHTML = `<div class="player-sub">No backups yet.</div>`;
         return;
       }
+      const canManageBackups = hasPerm("SERVER_BACKUPS_MANAGE");
       list.innerHTML = backups.map((b) => `
         <div class="player-row">
           <div>
@@ -1160,9 +1227,11 @@
           </div>
           <div class="player-actions">
             <a class="btn btn-secondary btn-sm" href="/api/servers/${state.selectedServerId}/backups/download?file=${encodeURIComponent(b.fileName)}" download>Download</a>
-            <button class="btn btn-secondary btn-sm backup-cloud-upload-btn" data-file="${escapeHtml(b.fileName)}">Cloud Sync</button>
-            <button class="btn btn-ghost btn-sm backup-restore-btn" data-file="${escapeHtml(b.fileName)}">Restore</button>
-            <button class="btn btn-danger btn-sm backup-del-btn" data-file="${escapeHtml(b.fileName)}">Delete</button>
+            ${canManageBackups ? `
+              <button class="btn btn-secondary btn-sm backup-cloud-upload-btn" data-file="${escapeHtml(b.fileName)}">Cloud Sync</button>
+              <button class="btn btn-ghost btn-sm backup-restore-btn" data-file="${escapeHtml(b.fileName)}">Restore</button>
+              <button class="btn btn-danger btn-sm backup-del-btn" data-file="${escapeHtml(b.fileName)}">Delete</button>
+            ` : ""}
           </div>
         </div>
       `).join("");
@@ -1397,7 +1466,7 @@
       $("login-error").classList.add("hidden");
       $("login-btn").disabled = true;
       try {
-        await apiFetch("/api/login", {
+        const loginRes = await apiFetch("/api/login", {
           method: "POST",
           body: JSON.stringify({
             username: $("login-user").value.trim(),
@@ -1405,7 +1474,13 @@
           })
         });
         $("login-pass").value = "";
-        showApp();
+        if (loginRes.user) {
+          state.currentUser = { ...loginRes.user, permissions: loginRes.permissions || [] };
+          applyUserPermissionsUi();
+          showApp();
+        } else {
+          await checkAuth();
+        }
       } catch (err) {
         $("login-error").textContent = err.message;
         $("login-error").classList.remove("hidden");
@@ -2181,6 +2256,249 @@
         showToast(err.message, "error");
       }
     });
+
+    // Multi-User, Sessions & Audit Log Modal
+    const openUsersModal = async () => {
+      $("users-modal").classList.remove("hidden");
+      const isOwner = hasPerm("MANAGE_USERS");
+      $("users-owner-section").classList.toggle("hidden", !isOwner);
+      if (isOwner) {
+        renderUserServerCheckboxes();
+        await Promise.all([loadPanelUsers(), loadActiveSessions(), loadAuditLog()]);
+      } else {
+        await loadAuditLog();
+      }
+    };
+    $("open-users-modal-btn")?.addEventListener("click", openUsersModal);
+    $("close-users-modal-btn")?.addEventListener("click", () => $("users-modal").classList.add("hidden"));
+    $("users-refresh-btn")?.addEventListener("click", () => loadPanelUsers());
+    $("sessions-refresh-btn")?.addEventListener("click", () => loadActiveSessions());
+    $("audit-refresh-btn")?.addEventListener("click", () => loadAuditLog());
+    $("new-user-restrict")?.addEventListener("change", (e) => {
+      $("new-user-servers-box").classList.toggle("hidden", !e.target.checked);
+      if (e.target.checked) renderUserServerCheckboxes();
+    });
+    $("create-user-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const restrict = $("new-user-restrict").checked;
+      const allowedServerIds = restrict
+        ? Array.from(document.querySelectorAll('input[name="new-user-srv"]:checked')).map((el) => el.value)
+        : [];
+      try {
+        await apiFetch("/api/users", {
+          method: "POST",
+          body: JSON.stringify({
+            username: $("new-user-name").value.trim(),
+            password: $("new-user-pass").value,
+            role: $("new-user-role").value,
+            restrictServers: restrict,
+            allowedServerIds
+          })
+        });
+        $("new-user-name").value = "";
+        $("new-user-pass").value = "";
+        $("new-user-restrict").checked = false;
+        $("new-user-servers-box").classList.add("hidden");
+        showToast("User account created");
+        await Promise.all([loadPanelUsers(), loadAuditLog()]);
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+
+    // Change Own Password Modal
+    $("open-password-modal-btn")?.addEventListener("click", () => {
+      $("pw-current").value = "";
+      $("pw-new").value = "";
+      $("password-modal").classList.remove("hidden");
+    });
+    $("close-password-modal-btn")?.addEventListener("click", () => $("password-modal").classList.add("hidden"));
+    $("cancel-password-modal-btn")?.addEventListener("click", () => $("password-modal").classList.add("hidden"));
+    $("change-password-form")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      try {
+        await apiFetch("/api/me/password", {
+          method: "POST",
+          body: JSON.stringify({
+            currentPassword: $("pw-current").value,
+            newPassword: $("pw-new").value
+          })
+        });
+        $("password-modal").classList.add("hidden");
+        showToast("Password updated successfully");
+      } catch (err) {
+        showToast(err.message, true);
+      }
+    });
+  }
+
+  function renderUserServerCheckboxes() {
+    const box = $("new-user-servers-box");
+    if (!box) return;
+    if (!state.servers.length) {
+      box.innerHTML = `<div class="player-sub">No servers created yet.</div>`;
+      return;
+    }
+    box.innerHTML = state.servers.map((s) => `
+      <label class="checkbox-label">
+        <input type="checkbox" name="new-user-srv" value="${escapeHtml(s.id)}">
+        <span>${escapeHtml(s.name)}</span>
+      </label>
+    `).join("");
+  }
+
+  async function loadPanelUsers() {
+    const list = $("users-list");
+    if (!list) return;
+    try {
+      const data = await apiFetch("/api/users");
+      const users = data.users || [];
+      list.innerHTML = users.map((u) => {
+        const scope = u.restrictServers
+          ? `Scoped (${(u.allowedServerIds || []).length} server(s))`
+          : "All servers";
+        const lastLogin = u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never";
+        return `
+          <div class="player-row">
+            <div>
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong>${escapeHtml(u.username)}</strong>
+                <span class="role-badge ${escapeHtml(u.role)}">${escapeHtml(u.roleLabel || u.role)}</span>
+                ${!u.enabled ? `<span class="status-badge ERROR">DISABLED</span>` : ""}
+              </div>
+              <div class="player-sub">${escapeHtml(scope)} · Last login: ${escapeHtml(lastLogin)}</div>
+            </div>
+            <div class="player-actions">
+              <button class="btn btn-secondary btn-sm" data-user-toggle="${escapeHtml(u.id)}" data-enabled="${u.enabled ? "1" : "0"}">${u.enabled ? "Disable" : "Enable"}</button>
+              <button class="btn btn-secondary btn-sm" data-user-reset="${escapeHtml(u.id)}" data-username="${escapeHtml(u.username)}">Reset PW</button>
+              <button class="btn btn-danger btn-sm" data-user-del="${escapeHtml(u.id)}" data-username="${escapeHtml(u.username)}">Delete</button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      list.querySelectorAll("[data-user-toggle]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.userToggle;
+          const currentlyEnabled = btn.dataset.enabled === "1";
+          try {
+            await apiFetch(`/api/users/${id}`, {
+              method: "PUT",
+              body: JSON.stringify({ enabled: !currentlyEnabled })
+            });
+            showToast(currentlyEnabled ? "User disabled" : "User enabled");
+            await Promise.all([loadPanelUsers(), loadActiveSessions(), loadAuditLog()]);
+          } catch (err) {
+            showToast(err.message, true);
+          }
+        });
+      });
+
+      list.querySelectorAll("[data-user-reset]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.userReset;
+          const uname = btn.dataset.username;
+          const newPw = window.prompt(`Enter a new password for ${uname} (min 6 chars):`);
+          if (!newPw) return;
+          try {
+            await apiFetch(`/api/users/${id}`, {
+              method: "PUT",
+              body: JSON.stringify({ password: newPw })
+            });
+            showToast(`Password reset for ${uname}`);
+            loadAuditLog();
+          } catch (err) {
+            showToast(err.message, true);
+          }
+        });
+      });
+
+      list.querySelectorAll("[data-user-del]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const id = btn.dataset.userDel;
+          const uname = btn.dataset.username;
+          if (!window.confirm(`Delete user '${uname}'?`)) return;
+          try {
+            await apiFetch(`/api/users/${id}`, { method: "DELETE" });
+            showToast(`Deleted user ${uname}`);
+            await Promise.all([loadPanelUsers(), loadActiveSessions(), loadAuditLog()]);
+          } catch (err) {
+            showToast(err.message, true);
+          }
+        });
+      });
+    } catch (err) {
+      list.innerHTML = `<div class="player-sub">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function loadActiveSessions() {
+    const list = $("sessions-list");
+    if (!list) return;
+    try {
+      const data = await apiFetch("/api/sessions");
+      const sessions = data.sessions || [];
+      if (!sessions.length) {
+        list.innerHTML = `<div class="player-sub">No active sessions.</div>`;
+        return;
+      }
+      list.innerHTML = sessions.map((s) => `
+        <div class="player-row">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong>${escapeHtml(s.username)}</strong>
+              <span class="role-badge ${escapeHtml(s.role)}">${escapeHtml(s.role)}</span>
+              ${s.isCurrent ? `<span class="status-badge RUNNING">THIS SESSION</span>` : ""}
+            </div>
+            <div class="player-sub">IP: ${escapeHtml(s.clientIp || "unknown")} · Signed in ${escapeHtml(new Date(s.createdAt).toLocaleString())}</div>
+          </div>
+          <div class="player-actions">
+            <button class="btn btn-danger btn-sm" data-revoke-session="${escapeHtml(s.id)}">Revoke</button>
+          </div>
+        </div>
+      `).join("");
+
+      list.querySelectorAll("[data-revoke-session]").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          try {
+            await apiFetch(`/api/sessions/${btn.dataset.revokeSession}`, { method: "DELETE" });
+            showToast("Session revoked");
+            await Promise.all([loadActiveSessions(), loadAuditLog()]);
+          } catch (err) {
+            showToast(err.message, true);
+          }
+        });
+      });
+    } catch (err) {
+      list.innerHTML = `<div class="player-sub">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  async function loadAuditLog() {
+    const list = $("audit-list");
+    if (!list) return;
+    try {
+      const data = await apiFetch("/api/audit?limit=100");
+      const entries = data.entries || [];
+      if (!entries.length) {
+        list.innerHTML = `<div class="player-sub">No audit events recorded yet.</div>`;
+        return;
+      }
+      list.innerHTML = entries.map((e) => `
+        <div class="player-row">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span class="role-badge ${escapeHtml(e.role || "VIEWER")}">${escapeHtml(e.action)}</span>
+              <strong>${escapeHtml(e.username)}</strong>
+              ${e.target ? `<span class="player-sub">→ ${escapeHtml(e.target)}</span>` : ""}
+            </div>
+            <div class="player-sub">${escapeHtml(new Date(e.timestamp).toLocaleString())} · ${escapeHtml(e.clientIp || "")}${e.details ? ` · ${escapeHtml(e.details)}` : ""}</div>
+          </div>
+        </div>
+      `).join("");
+    } catch (err) {
+      list.innerHTML = `<div class="player-sub">${escapeHtml(err.message)}</div>`;
+    }
   }
 
   bindEvents();

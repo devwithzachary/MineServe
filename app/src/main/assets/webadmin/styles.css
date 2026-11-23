@@ -280,6 +280,41 @@ input:focus, select:focus, textarea:focus {
 .status-badge.STARTING, .status-badge.STOPPING { background: rgba(245, 158, 11, 0.15); border-color: var(--amber); color: #fcd34d; }
 .status-badge.ERROR { background: rgba(239, 68, 68, 0.15); border-color: var(--redstone); color: #fca5a5; }
 
+.user-profile-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--bg-obsidian);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 8px;
+}
+.user-profile-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.role-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.role-badge.OWNER { background: rgba(16, 185, 129, 0.16); border-color: var(--emerald); color: #6ee7b7; }
+.role-badge.ADMIN { background: rgba(56, 189, 248, 0.16); border-color: #38bdf8; color: #7dd3fc; }
+.role-badge.MODERATOR { background: rgba(245, 158, 11, 0.16); border-color: var(--amber); color: #fcd34d; }
+.role-badge.VIEWER { background: rgba(148, 163, 184, 0.15); border-color: var(--border-subtle); color: var(--text-muted); }
+
 .empty-state {
   flex: 1;
   display: flex;

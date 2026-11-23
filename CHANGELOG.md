@@ -4,6 +4,10 @@ All notable changes to the MineServe project will be documented in this file.
 
 ## [1.8.0] - Unreleased
 
+### 👥 Multi-User Accounts, RBAC & Audit Log
+- **Shared Multi-User Auth & RBAC Engine (`:core` `UserRepository`, `PasswordHasher`, `UserRole`, `Permission`)**: Added salted PBKDF2-SHA256 user authentication, four role levels (`Owner`, `Admin`, `Moderator`, `Viewer`), optional per-server access scoping, automatic migration of existing admin credentials to the default `Owner` account, and last-owner deletion/demotion protection.
+- **Web Remote Admin Users, Sessions & Audit Log (`WebAdminServer` / Web UI / Android `RemoteAdminScreen`)**: Enforced strict role-based permissions and per-server scoping across all Web Admin API endpoints and tabs, added `/api/users`, `/api/sessions`, `/api/audit`, and `/api/me/password` endpoints, added a **Users, Sessions & Audit Log** modal plus **Change Password** dialog to the Web UI, and added native **Panel Users & Roles** + **Recent Audit Log** management (`PanelUsersCard`) directly inside the Android app's **Web Remote Admin** screen.
+
 ### ☁️ MineServe Cloud & Play Store Compliance
 - **In-App Email OTP Sign-In**: Added native 6-digit email verification sign-in directly inside `MineServeCloudScreen` (`MineServeCloudManager.requestCloudOtp` / `verifyCloudOtp`) with automatic per-device token exchange so Google Play Store builds comply with Play Payments policy without linking to external billing portals.
 - **Localized Cloud Pricing & Build Flavor Flags**: Added `CloudPricing` to display localized currency estimates (GBP, USD, EUR, CAD, AUD, NZD, BRL, INR, JPY, PLN, SEK) on direct/F-Droid builds, and added `IS_PLAY_STORE` / `FORCE_PROD_CLOUD` `BuildConfig` flags in `app/build.gradle.kts` and `scripts/build_release_linux.sh`.

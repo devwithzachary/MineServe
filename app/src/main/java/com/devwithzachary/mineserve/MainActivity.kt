@@ -477,11 +477,50 @@ fun MineServeApp(viewModel: MainViewModel) {
             }
 
             is Screen.RemoteAdmin -> {
+                var usersRefreshTick by remember { mutableStateOf(0) }
+                val panelUsers = remember(usersRefreshTick) {
+                    viewModel.webAdminManager.userRepository.listUsers()
+                }
+                val auditEntries = remember(usersRefreshTick) {
+                    viewModel.webAdminManager.userRepository.getAuditLog(30)
+                }
                 RemoteAdminScreen(
                     adminState = webAdminState,
                     adminConfig = webAdminConfig,
-                    onUpdateConfig = { viewModel.webAdminManager.updateConfig(it) },
-                    onGeneratePassword = { viewModel.webAdminManager.generateNewPassword() },
+                    onUpdateConfig = {
+                        viewModel.webAdminManager.updateConfig(it)
+                        usersRefreshTick++
+                    },
+                    onGeneratePassword = {
+                        val pw = viewModel.webAdminManager.generateNewPassword()
+                        usersRefreshTick++
+                        pw
+                    },
+                    servers = servers,
+                    panelUsers = panelUsers,
+                    auditEntries = auditEntries,
+                    onCreateUser = { u, p, r, restrict, allowed ->
+                        viewModel.webAdminManager.userRepository.createUser(u, p, r, restrict, allowed).also { res ->
+                            if (res.isSuccess) {
+                                viewModel.webAdminManager.userRepository.recordAudit(null, "USER_CREATE", u, "Role: ${r.name} (from Android app)", "local")
+                            }
+                        }
+                    },
+                    onUpdateUser = { id, r, restrict, allowed, enabled, newPw ->
+                        viewModel.webAdminManager.userRepository.updateUser(id, r, restrict, allowed, enabled, newPw).also { res ->
+                            if (res.isSuccess && !enabled) {
+                                viewModel.webAdminManager.security.revokeUserSessions(id)
+                            }
+                        }
+                    },
+                    onDeleteUser = { id ->
+                        viewModel.webAdminManager.userRepository.deleteUser(id).also { res ->
+                            if (res.isSuccess) {
+                                viewModel.webAdminManager.security.revokeUserSessions(id)
+                            }
+                        }
+                    },
+                    onRefreshUsers = { usersRefreshTick++ },
                     onBack = { navigateBack() }
                 )
             }
