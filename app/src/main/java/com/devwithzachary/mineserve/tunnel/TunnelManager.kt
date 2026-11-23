@@ -31,11 +31,23 @@ class TunnelManager private constructor(
         }
     }
 
+    private data class TunnelSpec(
+        val localPort: Int,
+        val provider: TunnelProvider,
+        val customRelayHost: String,
+        val customRelayPort: Int,
+        val cloudSubdomain: String,
+        val cloudRegion: String,
+        val cloudDomain: String,
+        val playitSecret: String
+    )
+
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val activeBoreClients = ConcurrentHashMap<String, BoreTunnelClient>()
     private val activePanelBoreClients = ConcurrentHashMap<String, BoreTunnelClient>()
     private val activePlayitClients = ConcurrentHashMap<String, PlayitTunnelClient>()
     private val activeCloudJobs = ConcurrentHashMap<String, Job>()
+    private val activeTunnelSpecs = ConcurrentHashMap<String, TunnelSpec>()
     private val mineServeCloudManager = MineServeCloudManager(context)
 
     private val _tunnelStates = MutableStateFlow<Map<String, TunnelState>>(emptyMap())
@@ -49,17 +61,43 @@ class TunnelManager private constructor(
         return getTunnelState(serverId) is TunnelState.Connected
     }
 
-    fun startTunnel(server: MinecraftServer) {
-        startCustomTunnel(server.id, server.port, server.tunnelConfig, server.name)
+    fun isTunnelActiveOrConnecting(serverId: String): Boolean {
+        val state = getTunnelState(serverId)
+        return state is TunnelState.Connected || state is TunnelState.Connecting
+    }
+
+    fun startTunnel(server: MinecraftServer, forceRestart: Boolean = false) {
+        startCustomTunnel(server.id, server.port, server.tunnelConfig, server.name, forceRestart)
     }
 
     fun startCustomTunnel(
         tunnelId: String,
         localPort: Int,
         config: com.devwithzachary.mineserve.model.TunnelConfig,
-        label: String = tunnelId
+        label: String = tunnelId,
+        forceRestart: Boolean = false
     ) {
+        val spec = TunnelSpec(
+            localPort = localPort,
+            provider = config.provider,
+            customRelayHost = config.customRelayHost.trim(),
+            customRelayPort = config.customRelayPort,
+            cloudSubdomain = config.cloudSubdomain.trim().lowercase(),
+            cloudRegion = config.cloudRegion.trim().lowercase(),
+            cloudDomain = config.cloudDomain.trim().lowercase(),
+            playitSecret = config.playitSecret
+        )
+        val currentState = getTunnelState(tunnelId)
+        if (!forceRestart &&
+            (currentState is TunnelState.Connected || currentState is TunnelState.Connecting) &&
+            activeTunnelSpecs[tunnelId] == spec
+        ) {
+            Log.i(TAG, "Tunnel for $label ($tunnelId) is already ${currentState::class.simpleName} with identical config; skipping reconnect.")
+            return
+        }
+
         stopTunnel(tunnelId)
+        activeTunnelSpecs[tunnelId] = spec
         Log.i(TAG, "Starting public tunnel for $label ($tunnelId) on port $localPort using ${config.provider}")
 
         when (config.provider) {
@@ -204,6 +242,7 @@ class TunnelManager private constructor(
 
     fun stopTunnel(serverId: String) {
         activeCloudJobs.remove(serverId)?.cancel()
+        activeTunnelSpecs.remove(serverId)
 
         val boreClient = activeBoreClients.remove(serverId)
         boreClient?.stop()
@@ -227,6 +266,12 @@ class TunnelManager private constructor(
     }
 
     fun stopAllTunnels() {
+        for ((_, job) in activeCloudJobs) {
+            job.cancel()
+        }
+        activeCloudJobs.clear()
+        activeTunnelSpecs.clear()
+
         for ((_, client) in activeBoreClients) {
             client.stop()
         }

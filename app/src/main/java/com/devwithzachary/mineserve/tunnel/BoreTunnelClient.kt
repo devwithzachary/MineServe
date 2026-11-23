@@ -42,6 +42,7 @@ class BoreTunnelClient(
         private const val TAG = "BoreTunnelClient"
         private const val CONNECT_TIMEOUT_MS = 10000
         private const val BUFFER_SIZE = 8192
+        private const val MAX_PORT_RECLAIM_ATTEMPTS = 10
         private val LISTENING_REGEX = Regex("""listening at\s+([a-zA-Z0-9_.-]+):([0-9]+)""")
         private val ANSI_REGEX = Regex("\u001B\\[[0-9;]*[a-zA-Z]")
     }
@@ -181,13 +182,16 @@ class BoreTunnelClient(
 
     private suspend fun runTunnelLoop(parentScope: CoroutineScope) {
         var retryDelayMs = 2000L
+        var portReclaimAttempts = 0
         val effectiveLocalPort = if (localPort in 1..65535) localPort else 25565
 
         while (parentScope.isActive && !isExplicitlyStopped.get()) {
             var socket: Socket? = null
             try {
                 if (isExplicitlyStopped.get()) break
-                onStateChanged(TunnelState.Connecting("Connecting to $relayHost:$relayPort..."))
+                if (portReclaimAttempts == 0) {
+                    onStateChanged(TunnelState.Connecting("Connecting to $relayHost:$relayPort..."))
+                }
                 Log.d(TAG, "Connecting to bore relay at $relayHost:$relayPort for local port $effectiveLocalPort")
 
                 socket = Socket()
@@ -233,6 +237,7 @@ class BoreTunnelClient(
                 val fullAddress = "$relayHost:$assignedPort"
                 Log.i(TAG, "Public tunnel active! Allocated address: $fullAddress (forwarding to 127.0.0.1:$effectiveLocalPort)")
                 retryDelayMs = 2000L
+                portReclaimAttempts = 0
 
                 val connectedState = TunnelState.Connected(
                     publicHost = relayHost,
@@ -289,9 +294,25 @@ class BoreTunnelClient(
                 Log.e(TAG, "Tunnel connection failed: ${e.message}", e)
                 val isPortReclaim = e.message?.contains("port already in use", ignoreCase = true) == true
                 if (isPortReclaim) {
-                    retryDelayMs = 2000L
-                    onStateChanged(TunnelState.Connecting("Reclaiming relay port..."))
+                    portReclaimAttempts++
+                    if (portReclaimAttempts > MAX_PORT_RECLAIM_ATTEMPTS) {
+                        onStateChanged(
+                            TunnelState.Error(
+                                "Relay port is still in use (another device may be using this subdomain, or the previous session has not expired yet). Try reconnecting in a moment."
+                            )
+                        )
+                        break
+                    }
+                    retryDelayMs = when {
+                        portReclaimAttempts <= 3 -> 2000L
+                        portReclaimAttempts <= 6 -> 3500L
+                        else -> 5000L
+                    }
+                    onStateChanged(
+                        TunnelState.Connecting("Reclaiming relay port (attempt $portReclaimAttempts/$MAX_PORT_RECLAIM_ATTEMPTS)...")
+                    )
                 } else {
+                    portReclaimAttempts = 0
                     onStateChanged(TunnelState.Error(e.message ?: "Tunnel connection lost"))
                 }
             } finally {
