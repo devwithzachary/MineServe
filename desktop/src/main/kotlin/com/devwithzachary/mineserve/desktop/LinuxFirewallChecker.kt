@@ -105,11 +105,23 @@ object LinuxFirewallChecker {
             val pattern = Regex("""\b$port(?:/$proto)?\b.*\bALLOW\b""", RegexOption.IGNORE_CASE)
             if (statusOut.lines().any { pattern.containsMatchIn(it) }) return true
         }
-        // Check /etc/ufw/user.rules if readable
+        // Check /etc/ufw/user.rules if readable (match -p, --dport, and -j ACCEPT on the same rule line)
         val rulesFile = File("/etc/ufw/user.rules")
         if (rulesFile.exists() && rulesFile.canRead()) {
-            val rules = runCatching { rulesFile.readText() }.getOrDefault("")
-            if (rules.contains("--dport $port") && rules.contains("-p $proto")) return true
+            val protoPattern = Regex("""(?:^|\s)-p\s+${Regex.escape(proto)}(?:\s|$)""", RegexOption.IGNORE_CASE)
+            val dportPattern = Regex("""(?:^|\s)--dport\s+$port(?:\s|$)""")
+            val acceptPattern = Regex("""(?:^|\s)-j\s+ACCEPT(?:\s|$)""", RegexOption.IGNORE_CASE)
+            val matched = runCatching {
+                rulesFile.readLines().any { rawLine ->
+                    val line = rawLine.trim()
+                    line.isNotEmpty() &&
+                        !line.startsWith("#") &&
+                        protoPattern.containsMatchIn(line) &&
+                        dportPattern.containsMatchIn(line) &&
+                        acceptPattern.containsMatchIn(line)
+                }
+            }.getOrDefault(false)
+            if (matched) return true
         }
         return false
     }

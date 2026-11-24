@@ -84,6 +84,10 @@ import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.util.FileStorageUtils
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
 private const val DESKTOP_AIKAR_FLAGS =
     "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20 -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1"
@@ -339,15 +343,35 @@ fun DesktopPerformanceTab(
     val tpsRatio = (tps / 20.0).coerceIn(0.0, 1.0).toFloat()
 
     val serverDir = remember(server.id) { viewModel.serverRepository.getServerDirectory(server.id) }
-    val storageBytes = remember(server.id, uptimeSeconds / 10) {
-        FileStorageUtils.calculateDirectorySize(serverDir)
+    var storageBytes by remember(server.id) { mutableStateOf(0L) }
+    var totalDiskBytes by remember(server.id) { mutableStateOf(0L) }
+    var freeDiskBytes by remember(server.id) { mutableStateOf(0L) }
+    var hostMem by remember { mutableStateOf(LinuxHostTelemetry.getMemoryInfo()) }
+
+    LaunchedEffect(server.id) {
+        var tick = 0
+        while (isActive) {
+            if (tick % 5 == 0) {
+                val (used, total, free) = withContext(Dispatchers.IO) {
+                    Triple(
+                        FileStorageUtils.calculateDirectorySize(serverDir),
+                        serverDir.totalSpace,
+                        serverDir.usableSpace
+                    )
+                }
+                storageBytes = used
+                totalDiskBytes = total
+                freeDiskBytes = free
+            }
+            hostMem = withContext(Dispatchers.IO) { LinuxHostTelemetry.getMemoryInfo() }
+            tick++
+            delay(2000)
+        }
     }
-    val totalDiskBytes = remember(server.id) { serverDir.totalSpace }
-    val freeDiskBytes = remember(server.id, uptimeSeconds / 10) { serverDir.usableSpace }
+
     val usedDiskBytes = (totalDiskBytes - freeDiskBytes).coerceAtLeast(0L)
     val diskRatio = if (totalDiskBytes > 0L) (usedDiskBytes.toFloat() / totalDiskBytes.toFloat()).coerceIn(0f, 1f) else 0f
-    val isLowStorage = freeDiskBytes < 1024L * 1024L * 1024L
-    val hostMem = remember(uptimeSeconds) { LinuxHostTelemetry.getMemoryInfo() }
+    val isLowStorage = totalDiskBytes > 0L && freeDiskBytes < 1024L * 1024L * 1024L
     val hostUsedMb = (hostMem.totalMb - hostMem.availableMb).coerceAtLeast(0L)
 
     val cpuColor = when {

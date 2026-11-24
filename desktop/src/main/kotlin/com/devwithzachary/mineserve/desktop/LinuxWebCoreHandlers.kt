@@ -32,6 +32,7 @@ private data class AsyncJobState(
 
 private data class LinuxModpackJob(
     val id: String,
+    val serverId: String,
     @Volatile var status: String = "RUNNING",
     @Volatile var message: String = "Reading Modpack Metadata...",
     @Volatile var currentFile: String = "",
@@ -348,10 +349,9 @@ internal class LinuxWebCoreHandlers(
         }
 
         val jobId = UUID.randomUUID().toString()
-        val job = LinuxModpackJob(id = jobId)
+        val job = LinuxModpackJob(id = jobId, serverId = serverId)
         modpackJobs[jobId] = job
         val serverDir = serverRepository.getServerDirectory(serverId)
-        val serverCanon = serverDir.canonicalPath
         userRepository.recordAudit(user, "MODPACK_IMPORT", srv.name, "Started .mrpack import", effectiveIp)
 
         scopeProvider()?.launch {
@@ -370,7 +370,7 @@ internal class LinuxWebCoreHandlers(
                                 name.removePrefix("overrides/")
                             }
                             val target = File(serverDir, rel)
-                            if (target.canonicalPath.startsWith(serverCanon)) {
+                            if (isPathInside(target, serverDir)) {
                                 target.parentFile?.mkdirs()
                                 FileOutputStream(target).use { zis.copyTo(it) }
                             }
@@ -403,7 +403,7 @@ internal class LinuxWebCoreHandlers(
                 val total = toDownload.size.coerceAtLeast(1)
                 for ((idx, spec) in toDownload.withIndex()) {
                     val dest = File(serverDir, spec.path)
-                    if (!dest.canonicalPath.startsWith(serverCanon)) continue
+                    if (!isPathInside(dest, serverDir)) continue
                     dest.parentFile?.mkdirs()
                     val fname = dest.name
                     job.message = "Downloading Mods (${idx + 1}/${toDownload.size})"
@@ -441,8 +441,8 @@ internal class LinuxWebCoreHandlers(
         sendJson(out, 200, "OK", JSONObject().put("success", true).put("jobId", jobId))
     }
 
-    fun handleGetModpackJob(out: OutputStream, jobId: String) {
-        val job = modpackJobs[jobId]
+    fun handleGetModpackJob(out: OutputStream, serverId: String, jobId: String) {
+        val job = modpackJobs[jobId]?.takeIf { it.serverId == serverId }
         if (job == null) {
             sendJson(out, 404, "Not Found", JSONObject().put("error", "Modpack import job not found"))
         } else {
@@ -526,20 +526,38 @@ internal class LinuxWebCoreHandlers(
             )
             userRepository.recordAudit(currentUser, "SETTINGS_SAVE", server.name, "Updated server settings", effectiveIp)
             sendJson(out, 200, "OK", JSONObject().put("success", true))
+        } else {
+            sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }
+    }
+
+    private fun isPathInside(target: File, root: File): Boolean {
+        val rootPath = root.canonicalPath
+        val targetPath = target.canonicalPath
+        return targetPath == rootPath || targetPath.startsWith(rootPath + File.separator)
+    }
+
+    private fun readJsonArrayFile(dir: File, fileName: String): JSONArray {
+        val f = File(dir, fileName)
+        if (!f.exists() || !f.isFile) return JSONArray()
+        return runCatching {
+            val raw = f.readText().trim()
+            if (raw.isBlank()) JSONArray() else JSONArray(raw)
+        }.getOrDefault(JSONArray())
     }
 
     fun handlePlayers(out: OutputStream, method: String, server: MinecraftServer, sub: String?, body: String, currentUser: PanelUser, effectiveIp: String) {
         if (sub == null && method == "GET") {
             val online = processManager.serverMetrics.value[server.id]?.onlinePlayers ?: emptyList()
+            val dir = serverRepository.getServerDirectory(server.id)
             sendJson(
                 out, 200, "OK",
                 JSONObject()
                     .put("onlinePlayers", JSONArray(online))
-                    .put("whitelist", JSONArray())
-                    .put("ops", JSONArray())
-                    .put("bannedPlayers", JSONArray())
-                    .put("bannedIps", JSONArray())
+                    .put("whitelist", readJsonArrayFile(dir, "whitelist.json"))
+                    .put("ops", readJsonArrayFile(dir, "ops.json"))
+                    .put("bannedPlayers", readJsonArrayFile(dir, "banned-players.json"))
+                    .put("bannedIps", readJsonArrayFile(dir, "banned-ips.json"))
             )
         } else if (sub != null && method == "POST") {
             val j = parseJson(body)
@@ -560,6 +578,8 @@ internal class LinuxWebCoreHandlers(
             }
             userRepository.recordAudit(currentUser, "PLAYER_ACTION", server.name, cmd.ifBlank { sub }, effectiveIp)
             sendJson(out, 200, "OK", JSONObject().put("success", true))
+        } else {
+            sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }
     }
 
@@ -642,12 +662,13 @@ internal class LinuxWebCoreHandlers(
                 val targetPath = queryParams["path"] ?: ""
                 val root = serverRepository.getServerDirectory(server.id)
                 val file = File(root, targetPath)
-                if (!file.exists() || !file.isFile || !file.canonicalPath.startsWith(root.canonicalPath)) {
+                if (!file.exists() || !file.isFile || !isPathInside(file, root)) {
                     sendJson(out, 404, "Not Found", JSONObject().put("error", "File not found"))
                 } else {
                     WebHttpUtils.sendFileStreamResponse(out, "application/octet-stream", file, mapOf("Content-Disposition" to "attachment; filename=\"${file.name.replace("\"", "_")}\""))
                 }
             }
+            else -> sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }
     }
 
@@ -659,6 +680,10 @@ internal class LinuxWebCoreHandlers(
         user: PanelUser,
         effectiveIp: String
     ) {
+        if (serverRepository.getServer(serverId) == null) {
+            sendJson(out, 404, "Not Found", JSONObject().put("error", "Server not found"))
+            return
+        }
         val dirPath = queryParams["path"] ?: ""
         val safeName = File(queryParams["name"] ?: "").name.trim()
         if (safeName.isBlank() || safeName == "." || safeName == "..") {
@@ -668,7 +693,7 @@ internal class LinuxWebCoreHandlers(
         val root = serverRepository.getServerDirectory(serverId)
         val destDir = if (dirPath.isBlank()) root else File(root, dirPath)
         val destFile = File(destDir, safeName)
-        if (!destFile.canonicalPath.startsWith(root.canonicalPath)) {
+        if (!isPathInside(destFile, root)) {
             sendJson(out, 403, "Forbidden", JSONObject().put("error", "Path outside server directory."))
             return
         }

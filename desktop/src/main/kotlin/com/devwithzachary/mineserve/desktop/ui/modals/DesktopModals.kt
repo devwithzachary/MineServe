@@ -82,6 +82,7 @@ fun DesktopModalOverlay(
 private fun CreateServerModal(viewModel: DesktopViewModel) {
     val hostMem = remember { LinuxHostTelemetry.getMemoryInfo() }
     val maxRam = (hostMem.totalMb.toInt() - 1024).coerceAtLeast(2048)
+    val supportedTypes = remember { ServerType.entries.filter { it != ServerType.CUSTOM } }
 
     var name by remember { mutableStateOf("My Minecraft Server") }
     var type by remember { mutableStateOf(ServerType.PAPER) }
@@ -95,6 +96,11 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
     var statusMsg by remember { mutableStateOf("") }
 
     LaunchedEffect(type) {
+        if (type == ServerType.BEDROCK_BDS && portText == "25565") {
+            portText = "19132"
+        } else if (type != ServerType.BEDROCK_BDS && portText == "19132") {
+            portText = "25565"
+        }
         val fetched = viewModel.softwareManager.fetchAvailableVersions(type)
         if (fetched.isNotEmpty()) {
             availableVersions = fetched
@@ -119,7 +125,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
         Text("Select Engine", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DesktopColors.Slate300)
         Spacer(modifier = Modifier.height(6.dp))
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            ServerType.entries.chunked(5).forEach { rowTypes ->
+            supportedTypes.chunked(5).forEach { rowTypes ->
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                     rowTypes.forEach { t ->
                         val active = type == t
@@ -208,15 +214,22 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                     }
                     busy = true
                     statusMsg = "Creating server and downloading ${type.displayName} $version..."
+                    val resolvedPort = (portText.toIntOrNull() ?: if (type == ServerType.BEDROCK_BDS) 19132 else 25565).coerceIn(1, 65535)
+                    val jarFileName = when (type) {
+                        ServerType.FORGE, ServerType.NEOFORGE -> "installer.jar"
+                        ServerType.BEDROCK_BDS -> "bedrock_server"
+                        else -> "server.jar"
+                    }
                     viewModel.scope.launch {
                         try {
                             val srv = viewModel.serverRepository.createServer(
                                 name = name.trim().ifBlank { "Minecraft Server" },
                                 type = type,
                                 version = version.trim(),
-                                port = portText.toIntOrNull() ?: 25565,
+                                port = resolvedPort,
                                 ramMb = ramMb,
                                 motd = motd.trim(),
+                                jarFileName = jarFileName,
                                 eulaAccepted = true
                             )
                             runCatching {
@@ -230,6 +243,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                                     viewModel.showToast("Created ${srv.name}!")
                                 },
                                 onFailure = { err ->
+                                    viewModel.serverRepository.deleteServer(srv.id)
                                     statusMsg = "Download failed: ${err.message}"
                                 }
                             )
@@ -249,15 +263,27 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
 
 @Composable
 private fun ImportServerZipModal(viewModel: DesktopViewModel) {
+    val hostMem = remember { LinuxHostTelemetry.getMemoryInfo() }
+    val maxRam = (hostMem.totalMb.toInt() - 1024).coerceAtLeast(2048)
+    val supportedTypes = remember { ServerType.entries.filter { it != ServerType.CUSTOM } }
+
     var pickedZip by remember { mutableStateOf<File?>(null) }
     var name by remember { mutableStateOf("Imported Server") }
     var type by remember { mutableStateOf(ServerType.PAPER) }
     var version by remember { mutableStateOf("1.21.4") }
     var portText by remember { mutableStateOf("25565") }
-    var ramMb by remember { mutableStateOf(2048) }
+    var ramMb by remember { mutableStateOf(2048.coerceAtMost(maxRam)) }
     var busy by remember { mutableStateOf(false) }
 
-    DesktopPanelCard(modifier = Modifier.width(560.dp)) {
+    LaunchedEffect(type) {
+        if (type == ServerType.BEDROCK_BDS && portText == "25565") {
+            portText = "19132"
+        } else if (type != ServerType.BEDROCK_BDS && portText == "19132") {
+            portText = "25565"
+        }
+    }
+
+    DesktopPanelCard(modifier = Modifier.width(640.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -293,6 +319,32 @@ private fun ImportServerZipModal(viewModel: DesktopViewModel) {
             )
         }
         Spacer(modifier = Modifier.height(10.dp))
+        Text("Server Engine", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = DesktopColors.Slate300)
+        Spacer(modifier = Modifier.height(6.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            supportedTypes.chunked(5).forEach { rowTypes ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                    rowTypes.forEach { t ->
+                        val active = type == t
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
+                            border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
+                            modifier = Modifier.weight(1f).clickable { type = t }
+                        ) {
+                            Text(
+                                text = t.displayName,
+                                color = if (active) Color.Black else DesktopColors.Slate300,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 7.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(10.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = name,
@@ -316,7 +368,14 @@ private fun ImportServerZipModal(viewModel: DesktopViewModel) {
                 modifier = Modifier.width(110.dp)
             )
         }
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        Text("Allocated Memory: $ramMb MB", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Slider(
+            value = ramMb.toFloat(),
+            onValueChange = { ramMb = ((it.toInt() / 256) * 256).coerceIn(512, maxRam) },
+            valueRange = 512f..maxRam.toFloat()
+        )
+        Spacer(modifier = Modifier.height(10.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Button(
                 onClick = {
@@ -326,23 +385,52 @@ private fun ImportServerZipModal(viewModel: DesktopViewModel) {
                         return@Button
                     }
                     busy = true
+                    val resolvedPort = (portText.toIntOrNull() ?: if (type == ServerType.BEDROCK_BDS) 19132 else 25565).coerceIn(1, 65535)
+                    val initialJar = if (type == ServerType.BEDROCK_BDS) "bedrock_server" else "server.jar"
                     viewModel.scope.launch {
                         try {
                             val srv = viewModel.serverRepository.createServer(
                                 name = name.trim().ifBlank { "Imported Server" },
                                 type = type,
                                 version = version.trim(),
-                                port = portText.toIntOrNull() ?: 25565,
+                                port = resolvedPort,
                                 ramMb = ramMb,
                                 motd = "Imported MineServe Server",
+                                jarFileName = initialJar,
                                 eulaAccepted = true
                             )
                             val dir = viewModel.serverRepository.getServerDirectory(srv.id)
-                            FileStorageUtils.extractZipSafe(zip, dir, deleteZipAfter = false)
+                            val res = FileStorageUtils.extractZipSafe(zip, dir, deleteZipAfter = false)
+                            if (res.isFailure) {
+                                viewModel.serverRepository.deleteServer(srv.id)
+                                viewModel.showToast("Import failed: ${res.exceptionOrNull()?.message ?: "Unable to extract zip"}")
+                                return@launch
+                            }
+                            val topEntries = dir.listFiles()?.filter { it.name != "__MACOSX" } ?: emptyList()
+                            if (topEntries.size == 1 && topEntries.first().isDirectory) {
+                                val inner = topEntries.first()
+                                inner.listFiles()?.forEach { child ->
+                                    val target = File(dir, child.name)
+                                    if (!child.renameTo(target)) {
+                                        if (child.isDirectory) child.copyRecursively(target, overwrite = true) else child.copyTo(target, overwrite = true)
+                                        child.deleteRecursively()
+                                    }
+                                }
+                                inner.deleteRecursively()
+                            }
+                            val detectedJar = if (type == ServerType.BEDROCK_BDS) {
+                                "bedrock_server"
+                            } else {
+                                val jars = dir.listFiles()?.filter { it.isFile && it.name.endsWith(".jar", ignoreCase = true) } ?: emptyList()
+                                (jars.firstOrNull { it.name.equals("server.jar", ignoreCase = true) } ?: jars.firstOrNull())?.name ?: "server.jar"
+                            }
+                            if (detectedJar != srv.jarFileName) {
+                                viewModel.serverRepository.updateServer(srv.copy(jarFileName = detectedJar))
+                            }
                             File(dir, "eula.txt").writeText("eula=true\n")
                             viewModel.selectServer(srv.id)
                             viewModel.openModal(DesktopModal.NONE)
-                            viewModel.showToast("Imported ${srv.name}!")
+                            viewModel.showToast("Imported ${srv.name} ($detectedJar)!")
                         } finally {
                             busy = false
                         }

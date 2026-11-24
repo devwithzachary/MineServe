@@ -181,6 +181,100 @@ class LinuxEngineTest {
             val arr = JSONArray(srvConn.inputStream.bufferedReader().readText())
             assertEquals(0, arr.length())
             assertFalse(web.actualPort == 0)
+
+            // 6. Sibling-directory traversal rejected in LinuxServerRepository
+            val paperSrv = serverRepo.createServer("Survival", ServerType.PAPER, "1.21.4", 25565, 2048, "MOTD")
+            val siblingDir = File(paths.serversDir, "${paperSrv.id}_evil").apply { mkdirs() }
+            File(siblingDir, "secret.txt").writeText("secret")
+            assertTrue(serverRepo.listDirectory(paperSrv.id, "../${paperSrv.id}_evil").isEmpty())
+            assertFalse(serverRepo.writeFile("../${paperSrv.id}_evil", "pwn.txt", "bad"))
+
+            // 7. Binary upload cannot target `..` to overwrite panel_users.json
+            val origUsersBytes = File(paths.rootDir, "panel_users.json").readBytes()
+            val badUpload = (URL("$baseUrl/api/servers/../files/upload?name=panel_users.json").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                outputStream.write("""[]""".toByteArray())
+            }
+            assertTrue(badUpload.responseCode in listOf(400, 404))
+            assertEquals(String(origUsersBytes), File(paths.rootDir, "panel_users.json").readText())
+
+            // 8. GET /delete is rejected with 405 and unknown action returns 404
+            val getDelConn = (URL("$baseUrl/api/servers/${paperSrv.id}/delete").openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Authorization", "Bearer $token")
+            }
+            assertEquals(405, getDelConn.responseCode)
+            assertNotNull(serverRepo.getServer(paperSrv.id))
+
+            val unknownConn = (URL("$baseUrl/api/servers/${paperSrv.id}/does_not_exist").openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Authorization", "Bearer $token")
+            }
+            assertEquals(404, unknownConn.responseCode)
+
+            // 9. Scheduled task toggle & delete operate cleanly without duplicating tasks
+            val addTaskConn = (URL("$baseUrl/api/servers/${paperSrv.id}/automation/tasks/add").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.write("""{"name":"Nightly","taskType":"RESTART","frequency":"INTERVAL","intervalMinutes":60}""".toByteArray())
+            }
+            assertEquals(200, addTaskConn.responseCode)
+            val addedTask = serverRepo.getServer(paperSrv.id)!!.automationConfig.scheduledTasks.single()
+            assertTrue(addedTask.enabled)
+
+            val toggleConn = (URL("$baseUrl/api/servers/${paperSrv.id}/automation/tasks/toggle").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.write("""{"taskId":"${addedTask.id}"}""".toByteArray())
+            }
+            assertEquals(200, toggleConn.responseCode)
+            val afterToggle = serverRepo.getServer(paperSrv.id)!!.automationConfig.scheduledTasks
+            assertEquals(1, afterToggle.size)
+            assertFalse(afterToggle.single().enabled)
+
+            val delTaskConn = (URL("$baseUrl/api/servers/${paperSrv.id}/automation/tasks/delete").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.write("""{"taskId":"${addedTask.id}"}""".toByteArray())
+            }
+            assertEquals(200, delTaskConn.responseCode)
+            assertEquals(0, serverRepo.getServer(paperSrv.id)!!.automationConfig.scheduledTasks.size)
+
+            // 10. Players endpoint reads whitelist.json & ops.json from disk
+            val srvDir = serverRepo.getServerDirectory(paperSrv.id)
+            File(srvDir, "whitelist.json").writeText("""[{"uuid":"00000000-0000-0000-0000-000000000001","name":"Steve"}]""")
+            File(srvDir, "ops.json").writeText("""[{"uuid":"00000000-0000-0000-0000-000000000001","name":"Steve","level":4}]""")
+            val playersConn = (URL("$baseUrl/api/servers/${paperSrv.id}/players").openConnection() as HttpURLConnection).apply {
+                setRequestProperty("Authorization", "Bearer $token")
+            }
+            assertEquals(200, playersConn.responseCode)
+            val playersJson = JSONObject(playersConn.inputStream.bufferedReader().readText())
+            assertEquals("Steve", playersJson.getJSONArray("whitelist").getJSONObject(0).getString("name"))
+            assertEquals(4, playersJson.getJSONArray("ops").getJSONObject(0).getInt("level"))
+
+            // 11. Velocity proxy config persists routes, writes velocity.toml, and binds backend loopback
+            val proxySrv = serverRepo.createServer("LobbyProxy", ServerType.VELOCITY, "3.4.0", 25577, 1024, "Proxy")
+            val proxySaveConn = (URL("$baseUrl/api/servers/${proxySrv.id}/proxy").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Content-Type", "application/json")
+                outputStream.write("""{"onlineMode":true,"linkedServerIds":["${paperSrv.id}"],"bindBackendsLoopback":true}""".toByteArray())
+            }
+            assertEquals(200, proxySaveConn.responseCode)
+            val proxyDir = serverRepo.getServerDirectory(proxySrv.id)
+            val velocityToml = File(proxyDir, "velocity.toml").readText()
+            assertTrue(velocityToml.contains("""127.0.0.1:${paperSrv.port}"""))
+            assertTrue(File(proxyDir, "forwarding.secret").exists())
+            val backendProps = serverRepo.loadServerProperties(paperSrv.id)
+            assertEquals("127.0.0.1", backendProps.serverIp)
+            assertFalse(backendProps.onlineMode)
         } finally {
             web.stop()
             tempRoot.deleteRecursively()

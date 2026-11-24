@@ -30,8 +30,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -41,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.desktop.FirewallCheckResult
 import com.devwithzachary.mineserve.desktop.LinuxFirewallChecker
 import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
 import com.devwithzachary.mineserve.desktop.LinuxPortForwardState
@@ -50,6 +55,10 @@ import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 
 @Composable
 fun DesktopSidebar(
@@ -297,12 +306,34 @@ fun DesktopServerHeader(
     val tunnelState by viewModel.tunnelState.collectAsState()
     val portForwardState by viewModel.portForwardState.collectAsState()
     val isRunning = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
-    val localIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+    var localIp by remember { mutableStateOf("127.0.0.1") }
+    var fwStatus by remember(server.id, server.port, server.type) {
+        mutableStateOf(
+            FirewallCheckResult(
+                firewallName = "none",
+                isActive = false,
+                isPortConfirmedOpen = true,
+                warningMessage = null,
+                fixCommand = null
+            )
+        )
+    }
+    LaunchedEffect(server.id, server.port, server.type) {
+        while (isActive) {
+            val (ip, fw) = withContext(Dispatchers.IO) {
+                val detectedIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+                val check = LinuxFirewallChecker.checkInboundPort(
+                    server.port,
+                    isUdp = server.type == ServerType.BEDROCK_BDS || server.type == ServerType.BEDROCK_GEYSER
+                )
+                detectedIp to check
+            }
+            localIp = ip
+            fwStatus = fw
+            delay(30_000)
+        }
+    }
     val lanAddress = "$localIp:${server.port}"
-    val fwStatus = LinuxFirewallChecker.checkInboundPort(
-        server.port,
-        isUdp = server.type == ServerType.BEDROCK_BDS || server.type == ServerType.BEDROCK_GEYSER
-    )
 
     Column(
         modifier = Modifier

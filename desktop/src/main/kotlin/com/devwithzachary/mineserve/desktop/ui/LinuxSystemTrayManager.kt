@@ -13,6 +13,8 @@ import java.awt.image.BufferedImage
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import javax.imageio.ImageIO
 import javax.swing.BorderFactory
 import javax.swing.JMenuItem
@@ -31,15 +33,31 @@ class LinuxSystemTrayManager(
 ) {
     @Volatile private var sniProcess: Process? = null
     @Volatile private var awtTrayIcon: TrayIcon? = null
+    @Volatile private var stopped: Boolean = false
+
+    val isActive: Boolean
+        get() = (sniProcess?.isAlive == true) || (awtTrayIcon != null)
 
     fun start() {
-        if (tryStartNativeDbusSniTray()) {
-            return
+        stopped = false
+        Thread({
+            if (stopped) return@Thread
+            if (tryStartNativeDbusSniTray()) {
+                return@Thread
+            }
+            if (!stopped) {
+                SwingUtilities.invokeLater {
+                    if (!stopped) startFallbackAwtTray()
+                }
+            }
+        }, "MineServe-Tray-Init").apply {
+            isDaemon = true
+            start()
         }
-        startFallbackAwtTray()
     }
 
     fun stop() {
+        stopped = true
         runCatching {
             sniProcess?.destroyForcibly()
             sniProcess = null
@@ -75,17 +93,25 @@ class LinuxSystemTrayManager(
                 .redirectErrorStream(false)
                 .start()
 
-            // Wait briefly to see if the helper connected to D-Bus StatusNotifierWatcher
-            val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
-            val firstLine = reader.readLine()
-            if (firstLine != "SNI_READY") {
-                proc.destroyForcibly()
-                return false
+            // Drain stderr continuously so the helper never blocks on pipe buffers
+            Thread({
+                runCatching {
+                    BufferedReader(InputStreamReader(proc.errorStream, Charsets.UTF_8)).use { errReader ->
+                        while (errReader.readLine() != null) { /* discard */ }
+                    }
+                }
+            }, "MineServe-SNI-Tray-Stderr").apply {
+                isDaemon = true
+                start()
             }
 
-            sniProcess = proc
+            val readyFuture = CompletableFuture<String?>()
+            val reader = BufferedReader(InputStreamReader(proc.inputStream, Charsets.UTF_8))
             Thread({
                 try {
+                    val first = reader.readLine()
+                    readyFuture.complete(first)
+                    if (first != "SNI_READY") return@Thread
                     var line: String?
                     while (reader.readLine().also { line = it } != null) {
                         when (line?.trim()) {
@@ -97,11 +123,22 @@ class LinuxSystemTrayManager(
                             "CMD:QUIT" -> onQuitApp()
                         }
                     }
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                    readyFuture.complete(null)
+                }
             }, "MineServe-SNI-Tray-Reader").apply {
                 isDaemon = true
                 start()
             }
+
+            // Wait up to 3 seconds for StatusNotifierWatcher registration
+            val firstLine = runCatching { readyFuture.get(3, TimeUnit.SECONDS) }.getOrNull()
+            if (stopped || firstLine != "SNI_READY") {
+                proc.destroyForcibly()
+                return false
+            }
+
+            sniProcess = proc
             true
         } catch (_: Exception) {
             false

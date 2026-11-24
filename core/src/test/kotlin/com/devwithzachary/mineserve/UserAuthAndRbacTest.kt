@@ -83,4 +83,25 @@ class UserAuthAndRbacTest {
             dir.deleteRecursively()
         }
     }
+
+    @Test
+    fun userRepositoryReloadsExternalPanelUsersChangesFromDisk() {
+        val dir = createTempDirectory("mineserve-reload-test").toFile()
+        try {
+            val runningDaemonRepo = UserRepository(dir)
+            runningDaemonRepo.ensureDefaultOwner("admin", "initialPass1")
+            assertNotNull(runningDaemonRepo.authenticate("admin", "initialPass1"))
+
+            // Simulate another process (e.g. `mineserve --reset-admin`) updating panel_users.json
+            Thread.sleep(20)
+            val cliRepo = UserRepository(dir)
+            cliRepo.syncPrimaryOwnerCredentials("admin", "resetPass999")
+
+            // Running daemon instance should detect disk change and accept the new password
+            assertNull(runningDaemonRepo.authenticate("admin", "initialPass1"))
+            assertNotNull(runningDaemonRepo.authenticate("admin", "resetPass999"))
+        } finally {
+            dir.deleteRecursively()
+        }
+    }
 }

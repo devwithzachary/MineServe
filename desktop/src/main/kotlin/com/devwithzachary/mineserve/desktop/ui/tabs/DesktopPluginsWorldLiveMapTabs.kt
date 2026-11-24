@@ -72,7 +72,9 @@ import java.io.File
 import javax.imageio.ImageIO
 import kotlin.math.floor
 import kotlin.math.roundToInt
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -553,7 +555,10 @@ fun DesktopLiveMapTab(
     LaunchedEffect(server.id, installed, port, selectedWorld, reloadGen) {
         if (!installed) return@LaunchedEffect
         while (isActive) {
-            withContext(Dispatchers.IO) {
+            val currentWorld = selectedWorld
+            val pollResult = withContext(Dispatchers.IO) {
+                var parsedWorlds: List<String>? = null
+                var reachable = false
                 runCatching {
                     val req = MineServeHttpClient.newRequestBuilder("$localLoopbackUrl/tiles/settings.json").get().build()
                     MineServeHttpClient.client.newCall(req).execute().use { resp ->
@@ -566,23 +571,18 @@ fun DesktopLiveMapTab(
                                     val wName = worldsArr.optJSONObject(i)?.optString("name", "").orEmpty()
                                     if (wName.isNotBlank()) parsed.add(wName)
                                 }
-                                if (parsed.isNotEmpty()) {
-                                    availableWorlds = parsed
-                                    if (selectedWorld !in parsed) selectedWorld = parsed.first()
-                                }
+                                if (parsed.isNotEmpty()) parsedWorlds = parsed
                             }
-                            squaremapReachable = true
-                        } else {
-                            squaremapReachable = false
+                            reachable = true
                         }
                     }
-                }.onFailure {
-                    squaremapReachable = false
                 }
 
-                if (squaremapReachable) {
+                val targetWorld = parsedWorlds?.let { if (currentWorld in it) currentWorld else it.first() } ?: currentWorld
+                var parsedPlayers: List<SquaremapPlayerMarker>? = null
+                if (reachable) {
                     runCatching {
-                        val pReq = MineServeHttpClient.newRequestBuilder("$localLoopbackUrl/tiles/$selectedWorld/players.json").get().build()
+                        val pReq = MineServeHttpClient.newRequestBuilder("$localLoopbackUrl/tiles/$targetWorld/players.json").get().build()
                         MineServeHttpClient.client.newCall(pReq).execute().use { resp ->
                             if (resp.isSuccessful) {
                                 val json = JSONObject(resp.body?.string().orEmpty())
@@ -594,28 +594,38 @@ fun DesktopLiveMapTab(
                                         markers.add(
                                             SquaremapPlayerMarker(
                                                 name = p.optString("name", "Player"),
-                                                world = p.optString("world", selectedWorld),
+                                                world = p.optString("world", targetWorld),
                                                 x = p.optInt("x", 0),
                                                 z = p.optInt("z", 0)
                                             )
                                         )
                                     }
                                 }
-                                livePlayers = markers
+                                parsedPlayers = markers
                             }
                         }
                     }
                 }
+                Triple(parsedWorlds, reachable, parsedPlayers)
             }
+
+            pollResult.first?.let { parsed ->
+                availableWorlds = parsed
+                if (selectedWorld !in parsed) selectedWorld = parsed.first()
+            }
+            squaremapReachable = pollResult.second
+            pollResult.third?.let { livePlayers = it }
+
             delay(4000)
         }
     }
 
-    // Fetch visible Squaremap PNG tiles around current pan offset
-    LaunchedEffect(server.id, installed, port, squaremapReachable, selectedWorld, squaremapZoom, panOffset, reloadGen) {
+    val centerTileX = (-panOffset.x / 256f).roundToInt()
+    val centerTileZ = (-panOffset.y / 256f).roundToInt()
+
+    // Fetch visible Squaremap PNG tiles around current integer tile coordinates
+    LaunchedEffect(server.id, installed, port, squaremapReachable, selectedWorld, squaremapZoom, centerTileX, centerTileZ, reloadGen) {
         if (!installed || !squaremapReachable) return@LaunchedEffect
-        val centerTileX = (-panOffset.x / 256f).roundToInt()
-        val centerTileZ = (-panOffset.y / 256f).roundToInt()
         for (dz in -2..2) {
             for (dx in -3..3) {
                 val tx = centerTileX + dx
@@ -623,19 +633,38 @@ fun DesktopLiveMapTab(
                 val key = tx to tz
                 if (attemptedTiles.containsKey(key)) continue
                 attemptedTiles[key] = true
-                launch(Dispatchers.IO) {
-                    runCatching {
-                        val url = "$localLoopbackUrl/tiles/$selectedWorld/$squaremapZoom/${tx}_${tz}.png"
-                        val req = MineServeHttpClient.newRequestBuilder(url).get().build()
-                        MineServeHttpClient.client.newCall(req).execute().use { resp ->
-                            if (resp.isSuccessful) {
-                                val bytes = resp.body?.bytes()
-                                if (bytes != null && bytes.isNotEmpty()) {
-                                    val img = ImageIO.read(ByteArrayInputStream(bytes))
-                                    if (img != null) {
-                                        tileBitmaps[key] = img.toComposeImageBitmap()
+                launch {
+                    var shouldRetry = false
+                    try {
+                        val bitmap = withContext(Dispatchers.IO) {
+                            val url = "$localLoopbackUrl/tiles/$selectedWorld/$squaremapZoom/${tx}_${tz}.png"
+                            val req = MineServeHttpClient.newRequestBuilder(url).get().build()
+                            MineServeHttpClient.client.newCall(req).execute().use { resp ->
+                                if (resp.isSuccessful) {
+                                    val bytes = resp.body?.bytes()
+                                    if (bytes != null && bytes.isNotEmpty()) {
+                                        ImageIO.read(ByteArrayInputStream(bytes))?.toComposeImageBitmap()
+                                    } else {
+                                        null
                                     }
+                                } else {
+                                    if (resp.code != 404) shouldRetry = true
+                                    null
                                 }
+                            }
+                        }
+                        if (bitmap != null) {
+                            tileBitmaps[key] = bitmap
+                        }
+                    } catch (ce: CancellationException) {
+                        shouldRetry = true
+                        throw ce
+                    } catch (_: Exception) {
+                        shouldRetry = true
+                    } finally {
+                        if (shouldRetry) {
+                            withContext(NonCancellable) {
+                                attemptedTiles.remove(key)
                             }
                         }
                     }

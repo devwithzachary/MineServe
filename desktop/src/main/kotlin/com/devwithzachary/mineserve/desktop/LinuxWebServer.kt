@@ -342,10 +342,10 @@ class LinuxWebServer(
                 sendJson(
                     out, 200, "OK",
                     JSONObject()
-                        .put("batterySafeguardEnabled", false)
-                        .put("batteryThresholdPercent", 15)
-                        .put("thermalSafeguardEnabled", false)
-                        .put("thermalThresholdCelsius", 45.0)
+                        .put("batteryAutoStopEnabled", false)
+                        .put("minBatteryPercent", 15)
+                        .put("thermalAutoStopEnabled", false)
+                        .put("maxBatteryTempC", 45.0)
                 )
                 return
             }
@@ -386,6 +386,7 @@ class LinuxWebServer(
                 return
             }
             if (path.startsWith("/api/servers/jobs/") && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 coreHandlers.handleGetJob(out, path.removePrefix("/api/servers/jobs/").trim('/'))
                 return
             }
@@ -425,6 +426,17 @@ class LinuxWebServer(
         }
         val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
         val serverId = if (isServerImport) null else segments.getOrNull(0).orEmpty()
+        if (!isServerImport) {
+            val sid = serverId.orEmpty()
+            if (sid.isBlank() || sid.contains('/') || sid.contains('\\') || sid.contains("..") || sid == ".") {
+                sendJson(out, 400, "Bad Request", JSONObject().put("error", "Invalid server ID"))
+                return
+            }
+            if (serverRepository.getServer(sid) == null) {
+                sendJson(out, 404, "Not Found", JSONObject().put("error", "Server not found"))
+                return
+            }
+        }
         val perm = when {
             isServerImport -> Permission.MANAGE_HOST
             isFileUpload -> Permission.SERVER_FILES_WRITE
@@ -456,14 +468,17 @@ class LinuxWebServer(
     }
 
     private fun handleLogin(out: OutputStream, clientIp: String, body: String) {
-        if (sessionManager.isIpLockedOut(clientIp)) {
+        val j = parseJson(body)
+        val inputUser = j.optString("username", "").trim()
+        val userLockKey = if (inputUser.isNotEmpty()) "user:${inputUser.lowercase()}" else null
+        if (sessionManager.isIpLockedOut(clientIp) || (userLockKey != null && sessionManager.isIpLockedOut(userLockKey))) {
             sendJson(out, 429, "Too Many Requests", JSONObject().put("error", "Too many failed attempts. Try again in 5 minutes."))
             return
         }
-        val j = parseJson(body)
-        val user = userRepository.authenticate(j.optString("username", ""), j.optString("password", ""))
+        val user = userRepository.authenticate(inputUser, j.optString("password", ""))
         if (user != null) {
             sessionManager.resetFailedAttempts(clientIp)
+            if (userLockKey != null) sessionManager.resetFailedAttempts(userLockKey)
             val session = sessionManager.createSession(user.id, user.username, user.role, clientIp)
             userRepository.recordAudit(user, "LOGIN", user.username, "Signed in (${user.role.displayName})", clientIp)
             val resp = JSONObject()
@@ -477,6 +492,7 @@ class LinuxWebServer(
             )
         } else {
             sessionManager.recordFailedAttempt(clientIp)
+            if (userLockKey != null) sessionManager.recordFailedAttempt(userLockKey)
             sendJson(out, 401, "Unauthorized", JSONObject().put("error", "Invalid username or password."))
         }
     }
@@ -518,16 +534,21 @@ class LinuxWebServer(
         val targetId = path.removePrefix("/api/users/").trim('/')
         if (method == "PUT" || method == "POST") {
             val j = parseJson(body)
+            val newPw = j.optString("password", "").takeIf { it.isNotEmpty() }
+            val roleChanged = j.has("role")
+            val restrictChanged = j.has("restrictServers") || j.has("allowedServerIds")
             userRepository.updateUser(
                 userId = targetId,
-                role = if (j.has("role")) UserRole.fromString(j.optString("role")) else null,
+                role = if (roleChanged) UserRole.fromString(j.optString("role")) else null,
                 restrictServers = if (j.has("restrictServers")) j.optBoolean("restrictServers") else null,
                 allowedServerIds = if (j.has("allowedServerIds")) parseStringArray(j.optJSONArray("allowedServerIds")) else null,
                 enabled = if (j.has("enabled")) j.optBoolean("enabled") else null,
-                newPassword = j.optString("password", "").takeIf { it.isNotEmpty() }
+                newPassword = newPw
             ).fold(
                 onSuccess = { updated ->
-                    if (!updated.enabled) sessionManager.revokeUserSessions(updated.id)
+                    if (!updated.enabled || roleChanged || restrictChanged || newPw != null) {
+                        sessionManager.revokeUserSessions(updated.id)
+                    }
                     userRepository.recordAudit(currentUser, "USER_UPDATE", updated.username, "Role: ${updated.role.name}", effectiveIp)
                     sendJson(out, 200, "OK", JSONObject().put("success", true).put("user", userToJson(updated)))
                 },
@@ -549,7 +570,9 @@ class LinuxWebServer(
                     sendJson(out, 400, "Bad Request", JSONObject().put("error", err.message ?: "Failed to delete user"))
                 }
             )
+            return
         }
+        sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
     }
 
     private fun handleSessionsRoutes(
@@ -580,7 +603,9 @@ class LinuxWebServer(
             val removed = sessionManager.revokeSessionById(sid)
             if (removed) userRepository.recordAudit(currentUser, "SESSION_REVOKE", sid, "Revoked session", effectiveIp)
             sendJson(out, 200, "OK", JSONObject().put("success", removed))
+            return
         }
+        sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
     }
 
     private suspend fun handleCloudRoutes(
@@ -651,7 +676,9 @@ class LinuxWebServer(
         if (segments.size == 1) {
             if (method == "DELETE") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST, serverId)) return
-                processManager.stopServer(serverId)
+                networkManager.stopTunnel(serverId)
+                networkManager.releasePortForward(serverId)
+                processManager.stopServerAndWait(serverId)
                 serverRepository.deleteServer(serverId)
                 userRepository.recordAudit(currentUser, "SERVER_DELETE", server.name, "Deleted server", effectiveIp)
                 sendJson(out, 200, "OK", JSONObject().put("success", true))
@@ -661,31 +688,51 @@ class LinuxWebServer(
                 sendJson(out, 200, "OK", buildServerDetailJson(server))
                 return
             }
+            sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
+            return
         }
 
         val action = segments.getOrNull(1) ?: return
         when (action) {
             "start" -> {
+                if (method != "POST") {
+                    sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
+                    return
+                }
                 if (!requirePerm(out, currentUser, Permission.SERVER_CONTROL, serverId)) return
                 processManager.startServer(server)
                 userRepository.recordAudit(currentUser, "SERVER_START", server.name, "Started server", effectiveIp)
                 sendJson(out, 200, "OK", JSONObject().put("success", true))
             }
             "stop" -> {
+                if (method != "POST") {
+                    sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
+                    return
+                }
                 if (!requirePerm(out, currentUser, Permission.SERVER_CONTROL, serverId)) return
                 processManager.stopServer(server.id)
                 userRepository.recordAudit(currentUser, "SERVER_STOP", server.name, "Stopped server", effectiveIp)
                 sendJson(out, 200, "OK", JSONObject().put("success", true))
             }
             "restart" -> {
+                if (method != "POST") {
+                    sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
+                    return
+                }
                 if (!requirePerm(out, currentUser, Permission.SERVER_CONTROL, serverId)) return
                 processManager.restartServer(server)
                 userRepository.recordAudit(currentUser, "SERVER_RESTART", server.name, "Restarted server", effectiveIp)
                 sendJson(out, 200, "OK", JSONObject().put("success", true))
             }
             "delete" -> {
+                if (method != "POST") {
+                    sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
+                    return
+                }
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST, serverId)) return
-                processManager.stopServer(server.id)
+                networkManager.stopTunnel(server.id)
+                networkManager.releasePortForward(server.id)
+                processManager.stopServerAndWait(server.id)
                 serverRepository.deleteServer(server.id)
                 userRepository.recordAudit(currentUser, "SERVER_DELETE", server.name, "Deleted server", effectiveIp)
                 sendJson(out, 200, "OK", JSONObject().put("success", true))
@@ -703,6 +750,8 @@ class LinuxWebServer(
                         userRepository.recordAudit(currentUser, "CONSOLE_CMD", server.name, cmd, effectiveIp)
                     }
                     sendJson(out, 200, "OK", JSONObject().put("success", true))
+                } else {
+                    sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
                 }
             }
             "build-status" -> {
@@ -738,7 +787,7 @@ class LinuxWebServer(
             }
             "automation" -> {
                 if (!requirePerm(out, currentUser, Permission.SERVER_SETTINGS_WRITE, serverId)) return
-                extHandlers.handleAutomationRoutes(out, method, server, segments.getOrNull(2), body, currentUser, effectiveIp)
+                extHandlers.handleAutomationRoutes(out, method, server, segments.getOrNull(2), segments.getOrNull(3), body, currentUser, effectiveIp)
             }
             "discord" -> {
                 if (!requirePerm(out, currentUser, Permission.SERVER_SETTINGS_WRITE, serverId)) return
@@ -746,7 +795,8 @@ class LinuxWebServer(
             }
             "proxy" -> {
                 if (!requirePerm(out, currentUser, Permission.SERVER_SETTINGS_WRITE, serverId)) return
-                extHandlers.handleProxyRoutes(out, method, server, body, currentUser, effectiveIp)
+                val accessibleIds = if (currentUser.restrictServers) currentUser.allowedServerIds.toSet() else null
+                extHandlers.handleProxyRoutes(out, method, server, body, currentUser, effectiveIp, accessibleIds)
             }
             "performance" -> extHandlers.handlePerformanceRoutes(out, method, server, segments.getOrNull(2), currentUser, effectiveIp) { perm ->
                 requirePerm(out, currentUser, perm, serverId)
@@ -760,12 +810,12 @@ class LinuxWebServer(
             }
             "modpack" -> {
                 if (segments.getOrNull(2) == "jobs" && method == "GET") {
-                    coreHandlers.handleGetModpackJob(out, segments.getOrNull(3).orEmpty())
+                    coreHandlers.handleGetModpackJob(out, serverId, segments.getOrNull(3).orEmpty())
                 } else {
                     sendJson(out, 404, "Not Found", JSONObject().put("error", "Unknown modpack route"))
                 }
             }
-            else -> sendJson(out, 200, "OK", JSONObject().put("success", true))
+            else -> sendJson(out, 404, "Not Found", JSONObject().put("error", "Unknown server action: $action"))
         }
     }
 
@@ -787,7 +837,13 @@ class LinuxWebServer(
             var lastKeepaliveAt = System.currentTimeMillis()
 
             while (isRunning && !socket.isClosed) {
-                if (sessionManager.validateSession(token) == null) break
+                val activeSession = sessionManager.validateSession(token) ?: break
+                val activeUser = userRepository.getUser(activeSession.userId) ?: break
+                if (!activeUser.enabled || !userRepository.hasPermission(activeUser, Permission.SERVER_VIEW, server.id)) {
+                    break
+                }
+                val latestServer = serverRepository.getServer(server.id) ?: break
+
                 val now = System.currentTimeMillis()
                 val refreshTs = processManager.refreshTriggers.value[server.id] ?: 0L
                 if (refreshTs != lastRefreshTs) {
@@ -802,8 +858,7 @@ class LinuxWebServer(
                 if (currentStatus != lastStatusStr || now - lastStatusSentAt >= 2000L) {
                     lastStatusStr = currentStatus
                     lastStatusSentAt = now
-                    val latest = serverRepository.getServer(server.id) ?: server
-                    val payload = buildServerDetailJson(latest).toString()
+                    val payload = buildServerDetailJson(latestServer).toString()
                     out.write("event: status\ndata: $payload\n\n".toByteArray(Charsets.UTF_8))
                     out.flush()
                     lastKeepaliveAt = now

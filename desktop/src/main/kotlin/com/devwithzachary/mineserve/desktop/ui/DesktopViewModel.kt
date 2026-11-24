@@ -40,6 +40,7 @@ import java.io.FileOutputStream
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -187,12 +188,42 @@ class DesktopViewModel(
     private val _operationStatus = MutableStateFlow("")
     val operationStatus: StateFlow<String> = _operationStatus.asStateFlow()
 
+    private var refreshJob: Job? = null
+
+    private fun isPathInside(target: File, root: File): Boolean {
+        val rootPath = root.canonicalPath
+        val targetPath = target.canonicalPath
+        return targetPath == rootPath || targetPath.startsWith(rootPath + File.separator)
+    }
+
     init {
         _selectedServerId.value?.let { refreshSelectedServerData(it) }
         val hasExistingServers = serverRepository.servers.value.isNotEmpty()
         if (LinuxDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasExistingServers)) {
             LinuxDiagnosticsManager.markWhatsNewSeen(paths)
             _activeModal.value = DesktopModal.WHATS_NEW
+        }
+        scope.launch {
+            serverRepository.servers.collect { list ->
+                val cur = _selectedServerId.value
+                if (list.isEmpty()) {
+                    if (cur != null) _selectedServerId.value = null
+                    _currentFilePath.value = ""
+                    _editingFilePath.value = null
+                    _directoryEntries.value = emptyList()
+                    _localBackups.value = emptyList()
+                    _installedPlugins.value = emptyList()
+                    _worldDimensions.value = emptyList()
+                    _regionFiles.value = emptyList()
+                    _squaremapInstalled.value = false
+                } else if (cur == null || list.none { it.id == cur }) {
+                    val nextId = list.first().id
+                    _selectedServerId.value = nextId
+                    _currentFilePath.value = ""
+                    _editingFilePath.value = null
+                    refreshSelectedServerData(nextId)
+                }
+            }
         }
         scope.launch {
             while (true) {
@@ -297,14 +328,17 @@ class DesktopViewModel(
 
     fun refreshSelectedServerData(serverId: String = _selectedServerId.value.orEmpty()) {
         if (serverId.isBlank()) return
-        val srv = serverRepository.getServer(serverId) ?: return
-        _tunnelState.value = networkManager.getTunnelState(serverId)
-        _portForwardState.value = networkManager.getPortForwardState(serverId)
-        loadDirectory(serverId, _currentFilePath.value)
-        _localBackups.value = serverRepository.listBackups(serverId)
-        refreshInstalledPlugins(srv)
-        refreshWorldSummary(srv)
-        refreshLiveMap(srv)
+        refreshJob?.cancel()
+        refreshJob = scope.launch {
+            val srv = serverRepository.getServer(serverId) ?: return@launch
+            _tunnelState.value = networkManager.getTunnelState(serverId)
+            _portForwardState.value = networkManager.getPortForwardState(serverId)
+            loadDirectory(serverId, _currentFilePath.value)
+            _localBackups.value = serverRepository.listBackups(serverId)
+            refreshInstalledPlugins(srv)
+            refreshWorldSummary(srv)
+            refreshLiveMap(srv)
+        }
     }
 
     // --- File Manager Actions ---
@@ -529,7 +563,6 @@ class DesktopViewModel(
             return
         }
         val serverDir = serverRepository.getServerDirectory(srv.id)
-        val serverCanon = serverDir.canonicalPath
         _operationBusy.value = true
         _operationProgress.value = 5
         _operationStatus.value = "Reading ${mrpackFile.name}..."
@@ -545,7 +578,7 @@ class DesktopViewModel(
                         } else if ((name.startsWith("overrides/") || name.startsWith("server-overrides/")) && !entry.isDirectory) {
                             val rel = if (name.startsWith("server-overrides/")) name.removePrefix("server-overrides/") else name.removePrefix("overrides/")
                             val target = File(serverDir, rel)
-                            if (target.canonicalPath.startsWith(serverCanon)) {
+                            if (isPathInside(target, serverDir)) {
                                 target.parentFile?.mkdirs()
                                 FileOutputStream(target).use { zis.copyTo(it) }
                             }
@@ -570,7 +603,7 @@ class DesktopViewModel(
                 val total = toDownload.size.coerceAtLeast(1)
                 for ((idx, pair) in toDownload.withIndex()) {
                     val dest = File(serverDir, pair.first)
-                    if (!dest.canonicalPath.startsWith(serverCanon)) continue
+                    if (!isPathInside(dest, serverDir)) continue
                     dest.parentFile?.mkdirs()
                     _operationStatus.value = "Downloading ${dest.name} (${idx + 1}/${toDownload.size})..."
                     _operationProgress.value = (((idx + 1) * 95) / total).coerceIn(5, 95)

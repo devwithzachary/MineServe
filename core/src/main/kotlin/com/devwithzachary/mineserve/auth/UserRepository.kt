@@ -29,6 +29,8 @@ class UserRepository(
     private val lock = Any()
     private var usersCache: MutableList<PanelUser> = mutableListOf()
     private var auditCache: MutableList<AuditLogEntry> = mutableListOf()
+    private var usersFileLastModified: Long = -1L
+    private var usersFileLength: Long = -1L
 
     init {
         synchronized(lock) {
@@ -38,10 +40,20 @@ class UserRepository(
         }
     }
 
+    private fun reloadUsersIfChangedLocked() {
+        if (!usersFile.exists()) return
+        val m = usersFile.lastModified()
+        val l = usersFile.length()
+        if (m != usersFileLastModified || l != usersFileLength) {
+            loadUsersLocked()
+        }
+    }
+
     /**
      * Ensures at least one Owner account exists, seamlessly migrating legacy single-admin credentials.
      */
     fun ensureDefaultOwner(username: String, password: String): PanelUser = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         val cleanUser = username.trim().ifBlank { "admin" }
         val existingOwner = usersCache.firstOrNull { it.role == UserRole.OWNER }
         if (existingOwner != null) {
@@ -66,6 +78,7 @@ class UserRepository(
      */
     fun syncPrimaryOwnerCredentials(username: String, password: String) {
         synchronized(lock) {
+            reloadUsersIfChangedLocked()
             val cleanUser = username.trim().ifBlank { "admin" }
             if (password.isBlank()) return
             val idx = usersCache.indexOfFirst { it.id == "owner-default" }
@@ -90,6 +103,7 @@ class UserRepository(
     }
 
     fun authenticate(username: String, password: String): PanelUser? = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         val user = usersCache.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) }
             ?: return null
         if (!user.enabled) return null
@@ -104,14 +118,17 @@ class UserRepository(
     }
 
     fun listUsers(): List<PanelUser> = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         usersCache.toList()
     }
 
     fun getUser(userId: String): PanelUser? = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         usersCache.firstOrNull { it.id == userId }
     }
 
     fun findByUsername(username: String): PanelUser? = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         usersCache.firstOrNull { it.username.equals(username.trim(), ignoreCase = true) }
     }
 
@@ -122,6 +139,7 @@ class UserRepository(
         restrictServers: Boolean = false,
         allowedServerIds: List<String> = emptyList()
     ): Result<PanelUser> = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         val cleanUser = username.trim()
         if (!USERNAME_REGEX.matches(cleanUser)) {
             return Result.failure(IllegalArgumentException("Username must be 3-32 characters (letters, numbers, _, ., -)."))
@@ -155,6 +173,7 @@ class UserRepository(
         enabled: Boolean? = null,
         newPassword: String? = null
     ): Result<PanelUser> = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         val idx = usersCache.indexOfFirst { it.id == userId }
         if (idx < 0) return Result.failure(IllegalArgumentException("User not found."))
         val existing = usersCache[idx]
@@ -194,6 +213,7 @@ class UserRepository(
     }
 
     fun changeOwnPassword(userId: String, currentPassword: String, newPassword: String): Result<Unit> = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         val idx = usersCache.indexOfFirst { it.id == userId }
         if (idx < 0) return Result.failure(IllegalArgumentException("User not found."))
         val existing = usersCache[idx]
@@ -209,6 +229,7 @@ class UserRepository(
     }
 
     fun deleteUser(userId: String): Result<Unit> = synchronized(lock) {
+        reloadUsersIfChangedLocked()
         val existing = usersCache.firstOrNull { it.id == userId }
             ?: return Result.failure(IllegalArgumentException("User not found."))
         if (existing.role == UserRole.OWNER) {
@@ -296,6 +317,12 @@ class UserRepository(
             if (usersFile.exists()) {
                 val parsed = json.decodeFromString<List<PanelUser>>(usersFile.readText())
                 usersCache = parsed.toMutableList()
+                usersFileLastModified = usersFile.lastModified()
+                usersFileLength = usersFile.length()
+            } else {
+                usersCache = mutableListOf()
+                usersFileLastModified = -1L
+                usersFileLength = -1L
             }
         } catch (e: Exception) {
             CoreLog.e(TAG, "Failed to load panel_users.json", e)
@@ -312,6 +339,8 @@ class UserRepository(
                 tmp.copyTo(usersFile, overwrite = true)
                 tmp.delete()
             }
+            usersFileLastModified = usersFile.lastModified()
+            usersFileLength = usersFile.length()
         } catch (e: Exception) {
             CoreLog.e(TAG, "Failed to save panel_users.json", e)
         }

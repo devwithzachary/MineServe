@@ -279,10 +279,12 @@ fun main(args: Array<String>) {
     }
     println("")
 
+    val trayRef = java.util.concurrent.atomic.AtomicReference<LinuxSystemTrayManager?>(null)
     val shutdownHook = Thread {
         println("\n[MineServe] Shutting down gracefully...")
+        trayRef.getAndSet(null)?.stop()
         networkManager.stopAll()
-        processManager.stopAllServers()
+        processManager.stopAllServersBlocking()
         webServer.stop()
     }
     Runtime.getRuntime().addShutdownHook(shutdownHook)
@@ -373,28 +375,36 @@ fun main(args: Array<String>) {
                 onStopAllServers = { processManager.stopAllServers() },
                 onOpenWebAdmin = { viewModel.openUrlInBrowser("http://127.0.0.1:${webServer.actualPort}") },
                 onQuitApp = {
-                    networkManager.stopAll()
-                    processManager.stopAllServers()
-                    webServer.stop()
-                    exitApplication()
+                    Thread({
+                        networkManager.stopAll()
+                        processManager.stopAllServersBlocking()
+                        webServer.stop()
+                        trayRef.getAndSet(null)?.stop()
+                        exitApplication()
+                    }, "mineserve-quit").start()
                 }
             )
+            trayRef.set(trayManager)
             trayManager.start()
             onDispose {
+                trayRef.compareAndSet(trayManager, null)
                 trayManager.stop()
             }
         }
 
         Window(
             onCloseRequest = {
-                if (runningCount > 0) {
+                if (runningCount > 0 && trayRef.get()?.isActive == true) {
                     isWindowVisible = false
                     println("[MineServe] Window hidden to system tray ($runningCount server(s) running). Left-click or right-click the tray icon to restore.")
                 } else {
-                    networkManager.stopAll()
-                    processManager.stopAllServers()
-                    webServer.stop()
-                    exitApplication()
+                    Thread({
+                        networkManager.stopAll()
+                        processManager.stopAllServersBlocking()
+                        webServer.stop()
+                        trayRef.getAndSet(null)?.stop()
+                        exitApplication()
+                    }, "mineserve-close").start()
                 }
             },
             visible = isWindowVisible,

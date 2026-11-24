@@ -112,6 +112,12 @@ fun DesktopSettingsTab(
     LaunchedEffect(server.type) {
         availableVersions = viewModel.softwareManager.fetchAvailableVersions(server.type)
     }
+    LaunchedEffect(server.javaVersion) {
+        javaVer = server.javaVersion
+    }
+    LaunchedEffect(server.version) {
+        targetVersion = server.version
+    }
 
     Column(
         modifier = Modifier
@@ -130,6 +136,7 @@ fun DesktopSettingsTab(
                 Text("Server Configuration & server.properties", fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 Button(
                     onClick = {
+                        val freshProps = viewModel.serverRepository.loadServerProperties(server.id)
                         val newPort = portText.toIntOrNull()?.coerceIn(1024, 65535) ?: server.port
                         val updatedSrv = server.copy(
                             name = name.trim().ifBlank { server.name },
@@ -140,12 +147,12 @@ fun DesktopSettingsTab(
                             jvmArgs = jvmArgs.trim()
                         )
                         viewModel.serverRepository.updateServer(updatedSrv)
-                        val updatedProps = props.copy(
+                        val updatedProps = freshProps.copy(
                             motd = motd,
                             serverPort = newPort,
-                            maxPlayers = maxPlayersText.toIntOrNull() ?: props.maxPlayers,
-                            viewDistance = viewDistText.toIntOrNull() ?: props.viewDistance,
-                            simulationDistance = simDistText.toIntOrNull() ?: props.simulationDistance,
+                            maxPlayers = maxPlayersText.toIntOrNull() ?: freshProps.maxPlayers,
+                            viewDistance = viewDistText.toIntOrNull() ?: freshProps.viewDistance,
+                            simulationDistance = simDistText.toIntOrNull() ?: freshProps.simulationDistance,
                             gamemode = gamemode,
                             difficulty = difficulty,
                             levelSeed = seed,
@@ -533,7 +540,7 @@ fun DesktopSettingsTab(
                         }
                         Button(
                             onClick = {
-                                val cfg = DiscordWebhookConfig(enabled = discordEnabled, webhookUrl = discordUrl.trim())
+                                val cfg = server.discordWebhookConfig.copy(enabled = discordEnabled, webhookUrl = discordUrl.trim())
                                 viewModel.serverRepository.updateServer(server.copy(discordWebhookConfig = cfg))
                                 viewModel.showToast("Saved Discord webhook settings")
                             },
@@ -576,6 +583,7 @@ fun DesktopSettingsTab(
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         LabeledCheckbox("Bind strictly to 127.0.0.1", loopbackOnly) { checked ->
                             loopbackOnly = checked
+                            if (checked) onlineMode = false
                             val currentProps = viewModel.serverRepository.loadServerProperties(server.id)
                             viewModel.serverRepository.saveServerProperties(
                                 server.id,
@@ -616,14 +624,15 @@ fun DesktopSettingsTab(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                if (viewModel.processManager.isServerRunning(server.id)) {
-                                    viewModel.processManager.stopServer(server.id)
+                                viewModel.scope.launch {
+                                    viewModel.networkManager.stopTunnel(server.id)
+                                    viewModel.networkManager.releasePortForward(server.id)
+                                    if (viewModel.processManager.isServerRunning(server.id)) {
+                                        viewModel.processManager.stopServerAndWait(server.id)
+                                    }
+                                    viewModel.serverRepository.deleteServer(server.id)
+                                    viewModel.showToast("Deleted server ${server.name}")
                                 }
-                                viewModel.networkManager.stopTunnel(server.id)
-                                viewModel.serverRepository.deleteServer(server.id)
-                                val next = viewModel.serverRepository.servers.value.firstOrNull()?.id
-                                if (next != null) viewModel.selectServer(next)
-                                viewModel.showToast("Deleted server ${server.name}")
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.RedstonePrimary, contentColor = Color.White)
                         ) {

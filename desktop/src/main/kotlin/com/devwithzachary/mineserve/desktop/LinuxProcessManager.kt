@@ -10,6 +10,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,6 +18,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -101,15 +103,11 @@ class LinuxProcessManager(
             if (buf.size >= MAX_CONSOLE_LINES) buf.removeFirst()
             buf.addLast(line)
         }
-        val m = _refreshTriggers.value.toMutableMap()
-        m[serverId] = System.currentTimeMillis()
-        _refreshTriggers.value = m
+        _refreshTriggers.update { it + (serverId to System.currentTimeMillis()) }
     }
 
     private fun updateStatus(serverId: String, status: ServerStatus) {
-        val m = _serverStatuses.value.toMutableMap()
-        m[serverId] = status
-        _serverStatuses.value = m
+        _serverStatuses.update { it + (serverId to status) }
     }
 
     fun startServer(server: MinecraftServer, autoRestartOnCrash: Boolean = true) {
@@ -189,7 +187,7 @@ class LinuxProcessManager(
                 val exitCode = proc.waitFor()
                 appendConsoleLine(server.id, "[MineServe Linux] Server process exited with code $exitCode.")
                 val wasRequested = session.stopRequested
-                sessions.remove(server.id)
+                sessions.remove(server.id, session)
 
                 if (wasRequested || exitCode == 0) {
                     updateStatus(server.id, ServerStatus.STOPPED)
@@ -207,7 +205,7 @@ class LinuxProcessManager(
             } catch (e: Exception) {
                 CoreLog.e(TAG, "Error running server ${server.id}", e)
                 appendConsoleLine(server.id, "[MineServe Linux] ERROR: ${e.message}")
-                sessions.remove(server.id)
+                sessions.remove(server.id, session)
                 updateStatus(server.id, ServerStatus.ERROR)
             }
         }
@@ -235,7 +233,10 @@ class LinuxProcessManager(
         }
         val unixArgs = File(serverDir, "libraries").takeIf {
             server.type == ServerType.FORGE || server.type == ServerType.NEOFORGE
-        }?.walkTopDown()?.firstOrNull { it.name == "unix_args.txt" }
+        }?.walkTopDown()?.filter { it.name == "unix_args.txt" }?.toList()?.let { candidates ->
+            candidates.firstOrNull { it.absolutePath.contains(server.version) }
+                ?: candidates.maxByOrNull { it.lastModified() }
+        }
 
         if (unixArgs != null) {
             args.add("@${unixArgs.relativeTo(serverDir).path}")
@@ -255,8 +256,10 @@ class LinuxProcessManager(
         scope.launch {
             runCatching {
                 val formatted = if (command.endsWith("\n")) command else "$command\n"
-                proc.outputStream.write(formatted.toByteArray(Charsets.UTF_8))
-                proc.outputStream.flush()
+                synchronized(proc.outputStream) {
+                    proc.outputStream.write(formatted.toByteArray(Charsets.UTF_8))
+                    proc.outputStream.flush()
+                }
             }
         }
     }
@@ -275,6 +278,18 @@ class LinuxProcessManager(
                 appendConsoleLine(serverId, "[MineServe Linux] Graceful stop timed out; terminating process...")
                 session.process?.destroyForcibly()
             }
+        }
+    }
+
+    suspend fun stopServerAndWait(serverId: String, timeoutMs: Long = 20_000L) {
+        val session = sessions[serverId]
+        stopServer(serverId)
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (!isServerFullyStopped(serverId) && System.currentTimeMillis() < deadline) {
+            delay(250)
+        }
+        if (session?.process?.isAlive == true) {
+            session.process?.destroyForcibly()
         }
     }
 
@@ -301,6 +316,37 @@ class LinuxProcessManager(
     fun stopAllServers() {
         for (id in sessions.keys.toList()) {
             stopServer(id)
+        }
+    }
+
+    fun stopAllServersBlocking(timeoutMs: Long = 25_000L) {
+        val liveEntries = sessions.entries.map { it.key to it.value }
+        if (liveEntries.isEmpty()) return
+
+        for ((id, session) in liveEntries) {
+            session.stopRequested = true
+            updateStatus(id, ServerStatus.STOPPING)
+            val proc = session.process
+            if (proc != null && proc.isAlive) {
+                runCatching {
+                    val cmd = if (session.server.type.isProxy) "end\n" else "stop\n"
+                    synchronized(proc.outputStream) {
+                        proc.outputStream.write(cmd.toByteArray(Charsets.UTF_8))
+                        proc.outputStream.flush()
+                    }
+                }
+            }
+        }
+
+        val deadline = System.currentTimeMillis() + timeoutMs
+        for ((_, session) in liveEntries) {
+            val proc = session.process ?: continue
+            if (!proc.isAlive) continue
+            val remaining = (deadline - System.currentTimeMillis()).coerceAtLeast(1L)
+            val exited = runCatching { proc.waitFor(remaining, TimeUnit.MILLISECONDS) }.getOrDefault(false)
+            if (!exited && proc.isAlive) {
+                proc.destroyForcibly()
+            }
         }
     }
 

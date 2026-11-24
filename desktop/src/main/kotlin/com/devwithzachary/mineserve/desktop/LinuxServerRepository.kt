@@ -139,10 +139,25 @@ class LinuxServerRepository(
 
     // --- File Manager ---
 
+    private fun isValidServerId(serverId: String): Boolean {
+        return serverId.isNotBlank() &&
+            !serverId.contains('/') &&
+            !serverId.contains('\\') &&
+            !serverId.contains("..") &&
+            serverId != "."
+    }
+
+    private fun isPathInside(target: File, root: File): Boolean {
+        val rootPath = root.canonicalPath
+        val targetPath = target.canonicalPath
+        return targetPath == rootPath || targetPath.startsWith(rootPath + File.separator)
+    }
+
     private fun resolveSafeFile(serverId: String, relativePath: String): File? {
+        if (!isValidServerId(serverId)) return null
         val root = getServerDirectory(serverId)
         val target = if (relativePath.isBlank()) root else File(root, relativePath)
-        return if (target.canonicalPath.startsWith(root.canonicalPath)) target else null
+        return if (isPathInside(target, root)) target else null
     }
 
     fun listDirectory(serverId: String, relativePath: String = ""): List<FileEntry> {
@@ -207,7 +222,7 @@ class LinuxServerRepository(
         if (!src.exists()) return false
         val dst = File(src.parentFile, safeName)
         val root = getServerDirectory(serverId)
-        if (!dst.canonicalPath.startsWith(root.canonicalPath)) return false
+        if (!isPathInside(dst, root)) return false
         return src.renameTo(dst)
     }
 

@@ -11,6 +11,8 @@ import com.devwithzachary.mineserve.model.DimensionType
 import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.InhabitedTimeThreshold
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.ProxyRoute
+import com.devwithzachary.mineserve.model.ProxyServerConfig
 import com.devwithzachary.mineserve.model.ScheduleFrequency
 import com.devwithzachary.mineserve.model.ScheduledTask
 import com.devwithzachary.mineserve.model.ScheduledTaskType
@@ -207,7 +209,7 @@ internal class LinuxWebExtendedHandlers(
         val dest = File(File(serverRepository.getServerDirectory(srv.id), folder).apply { mkdirs() }, safeName)
         tmpFile.copyTo(dest, overwrite = true)
         userRepository.recordAudit(user, "PLUGIN_UPLOAD", srv.name, safeName, effectiveIp)
-        sendJson(out, 200, "OK", JSONObject().put("success", true).put("fileName", safeName))
+        sendJson(out, 200, "OK", JSONObject().put("success", true).put("fileName", safeName).put("folder", folder))
     }
 
     suspend fun handleWorldRoutes(
@@ -619,6 +621,7 @@ internal class LinuxWebExtendedHandlers(
         method: String,
         server: MinecraftServer,
         sub: String?,
+        subAction: String? = null,
         body: String,
         currentUser: PanelUser,
         effectiveIp: String
@@ -668,7 +671,7 @@ internal class LinuxWebExtendedHandlers(
             }
             sub == "tasks" && method == "POST" -> {
                 val j = parseJson(body)
-                val act = j.optString("action", "add").lowercase()
+                val act = (subAction?.takeIf { it.isNotBlank() } ?: j.optString("action", "add")).lowercase()
                 val tasks = cfg.scheduledTasks.toMutableList()
                 when (act) {
                     "add" -> {
@@ -705,6 +708,7 @@ internal class LinuxWebExtendedHandlers(
                 userRepository.recordAudit(currentUser, "AUTOMATION_TASK_${act.uppercase()}", server.name, act, effectiveIp)
                 sendJson(out, 200, "OK", JSONObject().put("success", true))
             }
+            else -> sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }
     }
 
@@ -773,7 +777,149 @@ internal class LinuxWebExtendedHandlers(
                     sendJson(out, 400, "Bad Request", JSONObject().put("error", "Discord webhook test failed."))
                 }
             }
+            else -> sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }
+    }
+
+    private fun sanitizeProxyAlias(raw: String): String {
+        val cleaned = raw.lowercase().replace(Regex("[^a-z0-9_-]"), "-").trim('-')
+        return cleaned.ifBlank { "server" }
+    }
+
+    private fun applyLinuxProxyConfig(
+        proxyServer: MinecraftServer,
+        proxyDir: File,
+        allServers: List<MinecraftServer>
+    ): ProxyServerConfig {
+        proxyDir.mkdirs()
+        val cfg = proxyServer.proxyConfig
+        val secret = cfg.forwardingSecret.ifBlank { ProxyServerConfig.generateSecret() }
+        val resolvedRoutes = cfg.routes.map { r ->
+            val target = allServers.firstOrNull { it.id == r.targetServerId }
+            r.copy(
+                alias = sanitizeProxyAlias(r.alias),
+                port = target?.port ?: r.port
+            )
+        }
+        val tryList = if (cfg.tryOrder.isNotEmpty()) {
+            cfg.tryOrder.filter { alias -> resolvedRoutes.any { it.alias == alias } }
+        } else {
+            resolvedRoutes.map { it.alias }
+        }.ifEmpty { resolvedRoutes.map { it.alias } }
+
+        when (proxyServer.type) {
+            ServerType.VELOCITY -> {
+                File(proxyDir, "forwarding.secret").writeText(secret)
+                val serversBlock = if (resolvedRoutes.isEmpty()) {
+                    "lobby = \"127.0.0.1:25566\""
+                } else {
+                    resolvedRoutes.joinToString("\n") { "${it.alias} = \"${it.host}:${it.port}\"" }
+                }
+                val tryArray = if (tryList.isEmpty()) {
+                    "[\"lobby\"]"
+                } else {
+                    tryList.joinToString(", ", prefix = "[", postfix = "]") { "\"$it\"" }
+                }
+                val escapedMotd = proxyServer.motd.replace("\"", "\\\"")
+                val toml = """
+                    config-version = "2.7"
+                    bind = "0.0.0.0:${proxyServer.port}"
+                    motd = "<green>$escapedMotd</green>"
+                    show-max-players = 100
+                    online-mode = ${cfg.onlineMode}
+                    force-key-authentication = true
+                    prevent-client-proxy-connections = false
+                    player-info-forwarding-mode = "modern"
+                    forwarding-secret-file = "forwarding.secret"
+                    announce-forge = false
+
+                    [servers]
+                    $serversBlock
+                    try = $tryArray
+
+                    [forced-hosts]
+
+                    [advanced]
+                    compression-threshold = 256
+                    compression-level = -1
+                    login-ratelimit = 3000
+                    connection-timeout = 5000
+                    read-timeout = 30000
+                    haproxy-protocol = false
+                    tcp-fast-open = false
+                    bungee-plugin-message-channel = true
+                    show-ping-requests = false
+                    failover-on-unexpected-server-disconnect = true
+                    announce-proxy-commands = true
+                    log-command-executions = false
+                    log-player-connections = true
+                """.trimIndent() + "\n"
+                File(proxyDir, "velocity.toml").writeText(toml)
+            }
+            ServerType.BUNGEECORD -> {
+                val serversYaml = if (resolvedRoutes.isEmpty()) {
+                    """
+                    |  lobby:
+                    |    motd: '${proxyServer.motd.replace("'", "''")}'
+                    |    address: 127.0.0.1:25566
+                    |    restricted: false
+                    """.trimMargin()
+                } else {
+                    resolvedRoutes.joinToString("\n") { r ->
+                        """
+                        |  ${r.alias}:
+                        |    motd: '${proxyServer.motd.replace("'", "''")}'
+                        |    address: ${r.host}:${r.port}
+                        |    restricted: false
+                        """.trimMargin()
+                    }
+                }
+                val prioritiesYaml = if (tryList.isEmpty()) {
+                    "  - lobby"
+                } else {
+                    tryList.joinToString("\n") { "  - $it" }
+                }
+                val yml = """
+                    forge_support: true
+                    connection_throttle_limit: 3
+                    timeout: 30000
+                    online_mode: ${cfg.onlineMode}
+                    log_commands: false
+                    network_compression_threshold: 256
+                    listeners:
+                    - query_port: ${proxyServer.port}
+                      motd: '${proxyServer.motd.replace("'", "''")}'
+                      tab_list: GLOBAL_PING
+                      query_enabled: false
+                      proxy_protocol: false
+                      forced_hosts: {}
+                      ping_passthrough: false
+                      priorities:
+                    $prioritiesYaml
+                      bind_local_address: true
+                      host: 0.0.0.0:${proxyServer.port}
+                      max_players: 100
+                      tab_size: 60
+                      force_default_server: true
+                    connection_throttle: 4000
+                    groups: {}
+                    log_pings: true
+                    ip_forward: true
+                    prevent_proxy_connections: false
+                    servers:
+                    $serversYaml
+                    stats: ${UUID.randomUUID()}
+                """.trimIndent() + "\n"
+                File(proxyDir, "config.yml").writeText(yml)
+            }
+            else -> Unit
+        }
+
+        return cfg.copy(
+            routes = resolvedRoutes,
+            tryOrder = tryList,
+            forwardingSecret = secret
+        )
     }
 
     fun handleProxyRoutes(
@@ -782,23 +928,26 @@ internal class LinuxWebExtendedHandlers(
         server: MinecraftServer,
         body: String,
         currentUser: PanelUser,
-        effectiveIp: String
+        effectiveIp: String,
+        accessibleServerIds: Set<String>? = null
     ) {
         if (method == "GET") {
             if (server.type.isProxy) {
                 val candidates = JSONArray()
-                serverRepository.servers.value.filter { it.id != server.id && !it.type.isProxy }.forEach { b ->
-                    val existing = server.proxyConfig.routes.firstOrNull { it.targetServerId == b.id }
-                    candidates.put(
-                        JSONObject()
-                            .put("id", b.id)
-                            .put("name", b.name)
-                            .put("type", b.type.displayName)
-                            .put("port", b.port)
-                            .put("linked", existing != null)
-                            .put("alias", existing?.alias ?: b.name.lowercase().replace(Regex("[^a-z0-9_-]"), ""))
-                    )
-                }
+                serverRepository.servers.value
+                    .filter { it.id != server.id && !it.type.isProxy && (accessibleServerIds == null || accessibleServerIds.contains(it.id)) }
+                    .forEach { b ->
+                        val existing = server.proxyConfig.routes.firstOrNull { it.targetServerId == b.id }
+                        candidates.put(
+                            JSONObject()
+                                .put("id", b.id)
+                                .put("name", b.name)
+                                .put("type", b.type.displayName)
+                                .put("port", b.port)
+                                .put("linked", existing != null)
+                                .put("alias", existing?.alias ?: sanitizeProxyAlias(b.name))
+                        )
+                    }
                 sendJson(
                     out, 200, "OK",
                     JSONObject()
@@ -813,13 +962,67 @@ internal class LinuxWebExtendedHandlers(
             }
         } else if (method == "POST") {
             val j = parseJson(body)
-            if (!server.type.isProxy) {
+            if (server.type.isProxy) {
+                val allServers = serverRepository.servers.value
+                val targetIds = j.optJSONArray("linkedServerIds") ?: JSONArray()
+                val routes = mutableListOf<ProxyRoute>()
+                for (i in 0 until targetIds.length()) {
+                    val tid = targetIds.optString(i, "")
+                    if (accessibleServerIds != null && !accessibleServerIds.contains(tid)) {
+                        sendJson(out, 403, "Forbidden", JSONObject().put("error", "Access denied to backend server $tid"))
+                        return
+                    }
+                    val backend = allServers.firstOrNull { it.id == tid && !it.type.isProxy } ?: continue
+                    routes.add(
+                        ProxyRoute(
+                            alias = sanitizeProxyAlias(backend.name),
+                            targetServerId = backend.id,
+                            host = "127.0.0.1",
+                            port = backend.port
+                        )
+                    )
+                }
+                val onlineMode = j.optBoolean("onlineMode", server.proxyConfig.onlineMode)
+                val draft = server.copy(
+                    proxyConfig = server.proxyConfig.copy(
+                        routes = routes,
+                        tryOrder = routes.map { it.alias },
+                        onlineMode = onlineMode
+                    )
+                )
+                val appliedCfg = applyLinuxProxyConfig(
+                    proxyServer = draft,
+                    proxyDir = serverRepository.getServerDirectory(server.id),
+                    allServers = allServers
+                )
+                serverRepository.updateServer(draft.copy(proxyConfig = appliedCfg))
+
+                if (j.optBoolean("bindBackendsLoopback", false)) {
+                    routes.forEach { r ->
+                        val bProps = serverRepository.loadServerProperties(r.targetServerId)
+                        serverRepository.saveServerProperties(
+                            r.targetServerId,
+                            bProps.copy(serverIp = "127.0.0.1", onlineMode = false)
+                        )
+                    }
+                }
+                userRepository.recordAudit(currentUser, "PROXY_CONFIG", server.name, "Linked ${routes.size} backend(s)", effectiveIp)
+                sendJson(out, 200, "OK", JSONObject().put("success", true).put("linkedCount", routes.size))
+            } else {
                 val loopback = j.optBoolean("loopbackOnly", false)
                 val props = serverRepository.loadServerProperties(server.id)
-                serverRepository.saveServerProperties(server.id, props.copy(serverIp = if (loopback) "127.0.0.1" else ""))
+                serverRepository.saveServerProperties(
+                    server.id,
+                    props.copy(
+                        serverIp = if (loopback) "127.0.0.1" else "",
+                        onlineMode = if (loopback) false else props.onlineMode
+                    )
+                )
                 userRepository.recordAudit(currentUser, "PROXY_LOOPBACK", server.name, "loopbackOnly=$loopback", effectiveIp)
+                sendJson(out, 200, "OK", JSONObject().put("success", true).put("loopbackOnly", loopback))
             }
-            sendJson(out, 200, "OK", JSONObject().put("success", true))
+        } else {
+            sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }
     }
 

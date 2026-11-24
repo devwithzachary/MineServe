@@ -18,6 +18,8 @@ import java.io.OutputStream
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -29,6 +31,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONObject
 
 sealed class LinuxTunnelState {
@@ -56,11 +60,11 @@ class LinuxNetworkManager(
         private const val PLAYIT_VERSION = "v0.15.26"
         private val ANSI_REGEX = Regex("\u001B\\[[0-9;]*[a-zA-Z]")
         private val CLAIM_URL_REGEX = Regex("""https://playit\.gg/claim/[a-zA-Z0-9_-]+""")
-        private val PLAYIT_ADDR_REGEX = Regex("""\b([a-zA-Z0-9_.-]+\.(?:ply\.gg|joinmc\.link|playit\.gg))(?::\d+)?\b""", RegexOption.IGNORE_CASE)
+        private val PLAYIT_ADDR_REGEX = Regex("""\b([a-zA-Z0-9_.-]+\.(?:ply\.gg|joinmc\.link|playit\.gg)(?::\d+)?)\b""", RegexOption.IGNORE_CASE)
     }
 
     private data class ActiveTunnel(
-        val job: Job,
+        @Volatile var job: Job? = null,
         val stopped: AtomicBoolean = AtomicBoolean(false),
         @Volatile var controlSocket: Socket? = null,
         @Volatile var process: Process? = null
@@ -69,12 +73,14 @@ class LinuxNetworkManager(
     private data class ActivePortMapping(
         val gateway: UpnpGateway?,
         val externalPort: Int,
-        val protocols: List<String>
+        val protocols: List<String>,
+        val natPmpGateway: InetAddress? = null
     )
 
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val upnpClient = UpnpClient()
     private val natPmpClient = NatPmpClient()
+    private val playitDownloadMutex = Mutex()
 
     private val tunnelStates = ConcurrentHashMap<String, LinuxTunnelState>()
     private val activeTunnels = ConcurrentHashMap<String, ActiveTunnel>()
@@ -90,7 +96,8 @@ class LinuxNetworkManager(
         val cfg = server.tunnelConfig
         CoreLog.i(TAG, "Starting ${cfg.provider.name} tunnel for '${server.name}' (local port ${server.port})")
         val stopped = AtomicBoolean(false)
-        lateinit var handle: ActiveTunnel
+        val handle = ActiveTunnel(stopped = stopped)
+        activeTunnels[server.id] = handle
         val job = scope.launch {
             when (cfg.provider) {
                 TunnelProvider.BORE, TunnelProvider.CUSTOM_BORE -> {
@@ -143,8 +150,7 @@ class LinuxNetworkManager(
                 }
             }
         }
-        handle = ActiveTunnel(job = job, stopped = stopped)
-        activeTunnels[server.id] = handle
+        handle.job = job
     }
 
     fun stopTunnel(serverId: String) {
@@ -154,7 +160,7 @@ class LinuxNetworkManager(
             runCatching { active.controlSocket?.setSoLinger(true, 0) }
             runCatching { active.controlSocket?.close() }
             runCatching { active.process?.destroyForcibly() }
-            active.job.cancel()
+            active.job?.cancel()
             CoreLog.i(TAG, "Stopped tunnel for server $serverId")
         }
         tunnelStates[serverId] = LinuxTunnelState.Disconnected
@@ -282,9 +288,10 @@ class LinuxNetworkManager(
         }
     }
 
-    private suspend fun ensurePlayitBinary(): File {
+    private suspend fun ensurePlayitBinary(): File = playitDownloadMutex.withLock {
         val bin = File(paths.binDir, "playit-$PLAYIT_VERSION")
-        if (bin.exists() && bin.canExecute() && bin.length() > 100_000L) return bin
+        if (bin.exists() && bin.canExecute() && bin.length() > 100_000L) return@withLock bin
+        val tmp = File(paths.binDir, "playit-$PLAYIT_VERSION.tmp")
         val arch = (System.getProperty("os.arch") ?: "amd64").lowercase()
         val asset = if (arch.contains("aarch64") || arch.contains("arm64")) "playit-linux-aarch64" else "playit-linux-amd64"
         val url = "https://github.com/playit-cloud/playit-agent/releases/download/$PLAYIT_VERSION/$asset"
@@ -294,13 +301,27 @@ class LinuxNetworkManager(
             .readTimeout(3, TimeUnit.MINUTES)
             .followRedirects(true)
             .build()
-        client.newCall(MineServeHttpClient.newRequestBuilder(url).build()).execute().use { resp ->
-            if (!resp.isSuccessful) throw IllegalStateException("Failed downloading playit agent (HTTP ${resp.code})")
-            val body = resp.body ?: throw IllegalStateException("Empty playit download body")
-            FileOutputStream(bin).use { out -> body.byteStream().copyTo(out) }
+        try {
+            client.newCall(MineServeHttpClient.newRequestBuilder(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) throw IllegalStateException("Failed downloading playit agent (HTTP ${resp.code})")
+                val body = resp.body ?: throw IllegalStateException("Empty playit download body")
+                FileOutputStream(tmp).use { out -> body.byteStream().copyTo(out) }
+            }
+            tmp.setExecutable(true, false)
+            runCatching {
+                Files.move(tmp.toPath(), bin.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+            }.onFailure {
+                if (!tmp.renameTo(bin)) {
+                    tmp.copyTo(bin, overwrite = true)
+                    tmp.delete()
+                }
+            }
+            bin.setExecutable(true, false)
+            return@withLock bin
+        } catch (e: Exception) {
+            tmp.delete()
+            throw e
         }
-        bin.setExecutable(true, false)
-        return bin
     }
 
     private suspend fun runPlayitLoop(
@@ -314,15 +335,12 @@ class LinuxNetworkManager(
             val playitBin = ensurePlayitBinary()
             val secretFile = File(paths.rootDir, "playit.toml")
             val cmd = mutableListOf(playitBin.absolutePath, "--stdout")
-            if (secret.isNotBlank()) {
-                cmd.add("--secret")
-                cmd.add(secret.trim())
-            } else {
+            if (secret.isBlank()) {
                 cmd.add("--secret_path")
                 cmd.add(secretFile.absolutePath)
             }
             cmd.add("start")
-            CoreLog.i(TAG, "[Playit] Launching ${cmd.joinToString(" ")}")
+            CoreLog.i(TAG, if (secret.isNotBlank()) "[Playit] Launching ${playitBin.name} (configured secret via env)" else "[Playit] Launching ${cmd.joinToString(" ")}")
             tunnelStates[serverId] = LinuxTunnelState.Connecting("Starting Playit.gg agent...")
             val pb = ProcessBuilder(cmd)
                 .directory(paths.binDir)
@@ -418,7 +436,7 @@ class LinuxNetworkManager(
                     }
                     if (mappedPort != null) {
                         val direct = "$extIp:$mappedPort"
-                        activeMappings[server.id] = ActivePortMapping(null, mappedPort, protocols)
+                        activeMappings[server.id] = ActivePortMapping(null, mappedPort, protocols, natPmpGateway = gwAddr)
                         pfStates[server.id] = LinuxPortForwardState.Mapped(extIp, mappedPort, direct, "NAT-PMP ($gwIp)")
                         CoreLog.i(TAG, "[NAT-PMP] Port mapped: $direct")
                         return@launch
@@ -432,10 +450,17 @@ class LinuxNetworkManager(
 
     fun releasePortForward(serverId: String) {
         val active = activeMappings.remove(serverId)
-        if (active != null && active.gateway != null) {
+        if (active != null) {
             scope.launch {
-                for (proto in active.protocols) {
-                    upnpClient.deletePortMapping(active.gateway, active.externalPort, proto)
+                if (active.gateway != null) {
+                    for (proto in active.protocols) {
+                        upnpClient.deletePortMapping(active.gateway, active.externalPort, proto)
+                    }
+                }
+                if (active.natPmpGateway != null) {
+                    for (proto in active.protocols) {
+                        natPmpClient.mapPort(active.natPmpGateway, active.externalPort, active.externalPort, proto == "UDP", 0)
+                    }
                 }
             }
         }
