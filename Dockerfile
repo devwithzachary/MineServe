@@ -10,7 +10,7 @@ COPY app/build.gradle.kts ./app/build.gradle.kts
 COPY app/src/main/assets/webadmin ./app/src/main/assets/webadmin
 COPY app/src/main/res/drawable/ic_launcher_logo.png ./app/src/main/res/drawable/ic_launcher_logo.png
 
-RUN chmod +x ./gradlew && ./gradlew :desktop:installDist --no-daemon
+RUN chmod +x ./gradlew && ./gradlew :desktop:installDist -PexcludeAndroid=true --no-daemon
 
 # Stage 2: Lightweight Production Headless Container
 FROM eclipse-temurin:21-jre

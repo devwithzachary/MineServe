@@ -46,6 +46,7 @@ echo "[1/5] Running unit tests and compiling Linux Desktop & Headless distributi
 ICON_SRC="$PROJECT_ROOT/app/src/main/res/drawable/ic_launcher_logo.png"
 DESKTOP_ENTRY_SRC="$PROJECT_ROOT/packaging/linux/mineserve.desktop"
 SYSTEMD_UNIT_SRC="$PROJECT_ROOT/packaging/linux/mineserve.service"
+SYSUSERS_SRC="$PROJECT_ROOT/packaging/linux/mineserve.sysusers"
 
 # Helper script written into tar.gz distributions for optional system/user installation
 create_install_scripts() {
@@ -66,6 +67,8 @@ if [ "$(id -u)" -eq 0 ]; then
     install -Dm644 "$SRC_DIR/share/mineserve.png" /usr/share/icons/hicolor/512x512/apps/mineserve.png
     install -Dm644 "$SRC_DIR/share/mineserve.png" /usr/share/pixmaps/mineserve.png
     install -Dm644 "$SRC_DIR/share/mineserve.service" /lib/systemd/system/mineserve.service
+    install -Dm644 "$SRC_DIR/share/mineserve.sysusers" /usr/lib/sysusers.d/mineserve.conf
+    systemd-sysusers /usr/lib/sysusers.d/mineserve.conf 2>/dev/null || true
     echo "Installed! Launch 'mineserve' from your application menu or terminal, or run 'mineserve --headless'."
 else
     echo "Installing MineServe for current user to ~/.local/opt/mineserve..."
@@ -91,6 +94,7 @@ cp -a "$PROJECT_ROOT/desktop/build/install/desktop/"* "$PORTABLE_STAGE/"
 cp "$ICON_SRC" "$PORTABLE_STAGE/share/mineserve.png"
 cp "$DESKTOP_ENTRY_SRC" "$PORTABLE_STAGE/share/mineserve.desktop"
 cp "$SYSTEMD_UNIT_SRC" "$PORTABLE_STAGE/share/mineserve.service"
+cp "$SYSUSERS_SRC" "$PORTABLE_STAGE/share/mineserve.sysusers"
 create_install_scripts "$PORTABLE_STAGE"
 
 tar -C "$BUILD_STAGE" -czf "$RELEASE_DIR/${PORTABLE_DIR_NAME}.tar.gz" "$PORTABLE_DIR_NAME"
@@ -117,6 +121,7 @@ fi
 cp "$ICON_SRC" "$SELF_CONTAINED_STAGE/share/mineserve.png"
 cp "$DESKTOP_ENTRY_SRC" "$SELF_CONTAINED_STAGE/share/mineserve.desktop"
 cp "$SYSTEMD_UNIT_SRC" "$SELF_CONTAINED_STAGE/share/mineserve.service"
+cp "$SYSUSERS_SRC" "$SELF_CONTAINED_STAGE/share/mineserve.sysusers"
 create_install_scripts "$SELF_CONTAINED_STAGE"
 
 tar -C "$BUILD_STAGE" -czf "$RELEASE_DIR/${SELF_CONTAINED_NAME}.tar.gz" "$SELF_CONTAINED_NAME"
@@ -130,7 +135,8 @@ mkdir -p "$DEB_ROOT/DEBIAN" \
          "$DEB_ROOT/usr/share/applications" \
          "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps" \
          "$DEB_ROOT/usr/share/pixmaps" \
-         "$DEB_ROOT/lib/systemd/system"
+         "$DEB_ROOT/lib/systemd/system" \
+         "$DEB_ROOT/usr/lib/sysusers.d"
 
 cp -a "$SELF_CONTAINED_STAGE/"* "$DEB_ROOT/opt/mineserve/"
 chmod 755 "$DEB_ROOT/opt/mineserve/bin/mineserve" 2>/dev/null || true
@@ -139,6 +145,22 @@ cp "$DESKTOP_ENTRY_SRC" "$DEB_ROOT/usr/share/applications/mineserve.desktop"
 cp "$ICON_SRC" "$DEB_ROOT/usr/share/icons/hicolor/512x512/apps/mineserve.png"
 cp "$ICON_SRC" "$DEB_ROOT/usr/share/pixmaps/mineserve.png"
 cp "$SYSTEMD_UNIT_SRC" "$DEB_ROOT/lib/systemd/system/mineserve.service"
+cp "$SYSUSERS_SRC" "$DEB_ROOT/usr/lib/sysusers.d/mineserve.conf"
+
+cat > "$DEB_ROOT/DEBIAN/postinst" << 'EOF'
+#!/usr/bin/env bash
+set -e
+if command -v systemd-sysusers >/dev/null 2>&1; then
+    systemd-sysusers /usr/lib/sysusers.d/mineserve.conf || true
+fi
+if ! getent group mineserve >/dev/null 2>&1; then
+    groupadd -r mineserve || true
+fi
+if ! getent passwd mineserve >/dev/null 2>&1; then
+    useradd -r -g mineserve -d /var/lib/mineserve -s /usr/sbin/nologin mineserve || true
+fi
+EOF
+chmod 755 "$DEB_ROOT/DEBIAN/postinst"
 
 INSTALLED_KB=$(du -sk "$DEB_ROOT/opt/mineserve" | awk '{print $1}')
 cat > "$DEB_ROOT/DEBIAN/control" << EOF
@@ -230,24 +252,15 @@ cp -a "$SELF_CONTAINED_STAGE/"* "$RPM_TOP/SOURCES/mineserve-dist/"
 cp "$DESKTOP_ENTRY_SRC" "$RPM_TOP/SOURCES/mineserve.desktop"
 cp "$ICON_SRC" "$RPM_TOP/SOURCES/mineserve.png"
 cp "$SYSTEMD_UNIT_SRC" "$RPM_TOP/SOURCES/mineserve.service"
+cp "$SYSUSERS_SRC" "$RPM_TOP/SOURCES/mineserve.sysusers"
 cp "$PROJECT_ROOT/packaging/linux/mineserve.spec" "$RPM_TOP/SPECS/mineserve.spec"
 sed -i "s/^Version:.*/Version:        ${VERSION_NAME}/" "$RPM_TOP/SPECS/mineserve.spec"
 
 if command -v rpmbuild >/dev/null 2>&1; then
     rpmbuild --define "_topdir $RPM_TOP" -bb "$RPM_TOP/SPECS/mineserve.spec"
     find "$RPM_TOP/RPMS" -name "*.rpm" -exec cp {} "$RELEASE_DIR/" \;
-elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-    echo "  -> Building Fedora/RHEL .rpm via local Docker container..."
-    docker run --rm \
-        -u "$(id -u):$(id -g)" \
-        -v "$RPM_TOP":/rpmbuild \
-        registry.gitlab.com/fdroid/fdroidserver:buildserver-trixie \
-        bash -c '
-            if command -v rpmbuild >/dev/null 2>&1; then
-                rpmbuild --define "_topdir /rpmbuild" -bb /rpmbuild/SPECS/mineserve.spec
-            fi
-        ' 2>/dev/null || true
-    find "$RPM_TOP/RPMS" -name "*.rpm" -exec cp {} "$RELEASE_DIR/" \;
+else
+    echo "  -> Skipping .rpm build: 'rpmbuild' is not installed on this host (install rpm-build/rpm-tools to generate Fedora/RHEL packages)."
 fi
 
 echo ""

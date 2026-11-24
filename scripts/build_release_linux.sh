@@ -74,6 +74,12 @@ if [ -d "$PROJECT_ROOT/app/src/main/jniLibs" ]; then
     cp -a "$PROJECT_ROOT/app/src/main/jniLibs/." "$TMP_JNILIBS_BACKUP/"
 fi
 
+TMP_LOCAL_PROPS_BACKUP=""
+if [ -f "$PROJECT_ROOT/local.properties" ]; then
+    TMP_LOCAL_PROPS_BACKUP=$(mktemp)
+    cp -a "$PROJECT_ROOT/local.properties" "$TMP_LOCAL_PROPS_BACKUP"
+fi
+
 restore_host_state() {
     echo "🔄 Restoring original host files to keep git working tree clean..."
     if [ -n "$TMP_JNILIBS_BACKUP" ] && [ -d "$TMP_JNILIBS_BACKUP" ]; then
@@ -82,8 +88,11 @@ restore_host_state() {
         cp -a "$TMP_JNILIBS_BACKUP/." "$PROJECT_ROOT/app/src/main/jniLibs/"
         rm -rf "$TMP_JNILIBS_BACKUP"
     fi
-    if [ -f "$PROJECT_ROOT/local.properties.host" ]; then
-        mv "$PROJECT_ROOT/local.properties.host" "$PROJECT_ROOT/local.properties"
+    rm -f "$PROJECT_ROOT/local.properties.host" 2>/dev/null || true
+    if [ -n "$TMP_LOCAL_PROPS_BACKUP" ] && [ -f "$TMP_LOCAL_PROPS_BACKUP" ]; then
+        rm -f "$PROJECT_ROOT/local.properties" 2>/dev/null || docker run --rm -v "$PROJECT_ROOT":/app alpine rm -f /app/local.properties 2>/dev/null || true
+        cp -a "$TMP_LOCAL_PROPS_BACKUP" "$PROJECT_ROOT/local.properties"
+        rm -f "$TMP_LOCAL_PROPS_BACKUP"
     fi
 }
 trap restore_host_state EXIT
@@ -144,7 +153,6 @@ docker run --rm \
         ./scripts/build_native_libs.sh /opt/android-sdk/ndk/28.2.13676358
 
         echo "⚙️  Configuring local.properties for Linux build environment..."
-        cp local.properties local.properties.host 2>/dev/null || true
         echo "sdk.dir=/opt/android-sdk" > local.properties
 
         echo "📦 Compiling reproducible release APK with Gradle..."
@@ -190,6 +198,14 @@ if [ -f "$APK_SOURCE" ]; then
     cp "$APK_SOURCE" "$APK_TARGET"
 fi
 
+sha256_file() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
+}
+
 echo ""
 echo "============================================================"
 echo "🎉 Linux Release Build Completed Successfully!"
@@ -199,7 +215,7 @@ echo ""
 
 if [ -f "$AAB_TARGET" ]; then
     AAB_SIZE=$(ls -lh "$AAB_TARGET" | awk '{print $5}')
-    AAB_SHA=$(shasum -a 256 "$AAB_TARGET" | awk '{print $1}')
+    AAB_SHA=$(sha256_file "$AAB_TARGET")
     echo " 📱 [Play Store Bundle] : $AAB_TARGET"
     echo "    Size: $AAB_SIZE | SHA256: $AAB_SHA"
 fi
@@ -208,7 +224,7 @@ echo ""
 
 if [ -f "$APK_TARGET" ]; then
     APK_SIZE=$(ls -lh "$APK_TARGET" | awk '{print $5}')
-    APK_SHA=$(shasum -a 256 "$APK_TARGET" | awk '{print $1}')
+    APK_SHA=$(sha256_file "$APK_TARGET")
     echo " 🤖 [F-Droid / GitHub APK]: $APK_TARGET"
     echo "    Size: $APK_SIZE | SHA256: $APK_SHA"
 fi

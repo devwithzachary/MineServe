@@ -11,13 +11,19 @@ kotlin {
     jvmToolchain(21)
 }
 
+val appVersionName = Regex("""versionName\s*=\s*"([^"]+)"""")
+    .find(rootProject.file("app/build.gradle.kts").readText())
+    ?.groupValues
+    ?.getOrNull(1)
+    ?: "1.8.1"
+
 compose.desktop {
     application {
         mainClass = "com.devwithzachary.mineserve.desktop.MainKt"
         nativeDistributions {
             targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
             packageName = "mineserve"
-            packageVersion = "1.8.0"
+            packageVersion = appVersionName
             description = "MineServe - Native Linux Minecraft Server Manager"
             vendor = "DevWithZachary"
             modules("java.instrument", "java.management", "java.naming", "java.prefs", "java.security.jgss", "jdk.unsupported")

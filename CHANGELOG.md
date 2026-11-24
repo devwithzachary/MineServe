@@ -5,6 +5,11 @@ All notable changes to the MineServe project will be documented in this file.
 ## [1.8.1] - Unreleased
 
 ### 🐛 Bug Fixes
+- **Linux Packaging, Build Scripts, Systemd & Docker (`packaging/linux/`, `scripts/`, `Dockerfile`)**:
+  - Added `-PexcludeAndroid=true` support in `settings.gradle.kts` and `Dockerfile` so Docker builds no longer require an Android SDK or `AndroidManifest.xml`.
+  - Read `packageVersion` dynamically in `desktop/build.gradle.kts`, updated `SystemdServiceInstaller` default binary path to `/usr/bin/mineserve`, added `StateDirectory=mineserve` in `mineserve.service`, and added `mineserve.sysusers` across `.deb` (`DEBIAN/postinst`), `.rpm` (`%pre`), `PKGBUILD`, and tarball `install.sh` so the `mineserve` user and `/var/lib/mineserve` exist before service startup.
+  - Updated `packaging/linux/install.sh` (`--uninstall` icon/systemd cleanup including `512x512`, `pixmaps`, `/etc/systemd/system/mineserve.service`, and `--user` units, plus `--user --headless` user systemd service setup), fixed `PKGBUILD` (`arch=('x86_64')` and GitHub release source URL) and `mineserve.spec` (`512x512` + `pixmaps` icons, `chmod 755`, removed hardcoded `BuildArch`), and removed the broken `fdroidserver` `.rpm` Docker fallback in `scripts/build_linux_packages.sh`.
+  - Fixed `scripts/build_release_linux.sh` to back up `local.properties` on the host cleanly without interactive `mv` prompts, fixed `scripts/build_release.sh` to pass `-PplayStoreBuild=true` when building the Play Store `.aab`, and added portable `sha256sum` with `shasum -a 256` fallback to both release scripts.
 - **Linux Desktop GUI & System Tray Reliability (`:desktop/ui`, `Main.kt`)**:
   - Updated `LinuxSystemTrayManager` to expose `isActive`, initialize the D-Bus SNI helper off the Swing EDT with a 3-second readiness timeout and continuous `stderr` draining, and updated `Main.kt` to stop the tray icon cleanly in shutdown hooks and only hide the window on close when a tray icon is actually active.
   - Updated `DesktopViewModel` to automatically reconcile `selectedServerId` when servers are created or deleted externally, execute `refreshSelectedServerData()` asynchronously on `Dispatchers.IO`, and enforce separator-safe path containment in `importModpackFile()`.

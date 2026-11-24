@@ -5,7 +5,7 @@ import java.io.File
 object SystemdServiceInstaller {
     fun generateServiceUnit(
         user: String = System.getProperty("user.name") ?: "mineserve",
-        execPath: String = "/usr/local/bin/mineserve",
+        execPath: String = "/usr/bin/mineserve",
         dataDir: File = LinuxDataPaths.defaultDataDir(),
         port: Int = 8080,
         bindHost: String = "0.0.0.0"

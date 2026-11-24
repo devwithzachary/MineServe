@@ -8,6 +8,7 @@ Wants=network-online.target
 Type=simple
 User=mineserve
 Group=mineserve
+StateDirectory=mineserve
 WorkingDirectory=/var/lib/mineserve
 ExecStart=/usr/bin/mineserve --headless --bind 0.0.0.0 --port 8080 --data-dir /var/lib/mineserve
 Restart=on-failure

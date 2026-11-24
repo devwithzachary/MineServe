@@ -1,9 +1,9 @@
 # Maintainer: Zachary <https://github.com/devwithzachary/MineServe>
 pkgname=mineserve
-pkgver=1.8.0
+pkgver=1.8.1
 pkgrel=1
 pkgdesc="Native Linux Minecraft Java, Modded, Proxy, and Bedrock Server Manager (Desktop GUI & Headless Web UI)"
-arch=('x86_64' 'aarch64')
+arch=('x86_64')
 url="https://github.com/devwithzachary/MineServe"
 license=('GPL-3.0-or-later')
 depends=('java-runtime>=21' 'hicolor-icon-theme')
@@ -12,7 +12,7 @@ optdepends=(
     'python-gobject: GLib event loop for native D-Bus system tray'
     'xdg-utils: Open server directories and Web Admin URLs in desktop browser'
 )
-source=("MineServe-${pkgver}-linux-portable-nojre.tar.gz")
+source=("https://github.com/devwithzachary/MineServe/releases/download/${pkgver}/MineServe-${pkgver}-linux-portable-nojre.tar.gz")
 sha256sums=('SKIP')
 
 package() {
@@ -31,4 +31,6 @@ package() {
         "${pkgdir}/usr/share/pixmaps/mineserve.png"
     install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.service" \
         "${pkgdir}/usr/lib/systemd/system/mineserve.service"
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.sysusers" \
+        "${pkgdir}/usr/lib/sysusers.d/mineserve.conf"
 }

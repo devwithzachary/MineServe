@@ -29,8 +29,9 @@ if [ ! -f "app/src/main/jniLibs/arm64-v8a/libproot.so" ]; then
     ./scripts/build_native_libs.sh
 fi
 
-# Execute Gradle Clean Build for Release AAB and APK
-./gradlew clean bundleRelease assembleRelease
+# Execute Gradle Clean Build for Release APK and Play Store AAB
+./gradlew clean assembleRelease
+./gradlew bundleRelease -PplayStoreBuild=true
 
 OUT_DIR="$PROJECT_ROOT/release"
 mkdir -p "$OUT_DIR"
@@ -49,6 +50,14 @@ if [ -f "$APK_SOURCE" ]; then
     cp "$APK_SOURCE" "$APK_TARGET"
 fi
 
+sha256_file() {
+    if command -v sha256sum >/dev/null 2>&1; then
+        sha256sum "$1" | awk '{print $1}'
+    else
+        shasum -a 256 "$1" | awk '{print $1}'
+    fi
+}
+
 echo ""
 echo "============================================================"
 echo "🎉 Build Completed Successfully!"
@@ -58,7 +67,7 @@ echo ""
 
 if [ -f "$AAB_TARGET" ]; then
     AAB_SIZE=$(ls -lh "$AAB_TARGET" | awk '{print $5}')
-    AAB_SHA=$(shasum -a 256 "$AAB_TARGET" | awk '{print $1}')
+    AAB_SHA=$(sha256_file "$AAB_TARGET")
     echo " 📱 [Play Store Bundle] : $AAB_TARGET"
     echo "    Size: $AAB_SIZE | SHA256: $AAB_SHA"
 fi
@@ -67,7 +76,7 @@ echo ""
 
 if [ -f "$APK_TARGET" ]; then
     APK_SIZE=$(ls -lh "$APK_TARGET" | awk '{print $5}')
-    APK_SHA=$(shasum -a 256 "$APK_TARGET" | awk '{print $1}')
+    APK_SHA=$(sha256_file "$APK_TARGET")
     echo " 🤖 [F-Droid / GitHub APK]: $APK_TARGET"
     echo "    Size: $APK_SIZE | SHA256: $APK_SHA"
 fi

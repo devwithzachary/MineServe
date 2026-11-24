@@ -76,10 +76,16 @@ run_privileged() {
 if [ "$MODE_UNINSTALL" -eq 1 ]; then
     echo "Uninstalling MineServe (your server worlds in ~/.local/share/mineserve are preserved)..."
     if [ "$MODE_USER" -eq 1 ]; then
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl --user disable --now mineserve.service 2>/dev/null || true
+            systemctl --user daemon-reload 2>/dev/null || true
+        fi
         rm -rf "$HOME/.local/opt/mineserve" \
                "$HOME/.local/bin/mineserve" \
                "$HOME/.local/share/applications/mineserve.desktop" \
-               "$HOME/.local/share/icons/hicolor/256x256/apps/mineserve.png"
+               "$HOME/.local/share/icons/hicolor/256x256/apps/mineserve.png" \
+               "$HOME/.local/share/icons/hicolor/512x512/apps/mineserve.png" \
+               "$HOME/.config/systemd/user/mineserve.service"
     else
         run_privileged systemctl disable --now mineserve.service 2>/dev/null || true
         if command -v pacman >/dev/null 2>&1 && pacman -Qi mineserve >/dev/null 2>&1; then
@@ -91,8 +97,13 @@ if [ "$MODE_UNINSTALL" -eq 1 ]; then
                               /usr/bin/mineserve \
                               /usr/share/applications/mineserve.desktop \
                               /usr/share/icons/hicolor/256x256/apps/mineserve.png \
+                              /usr/share/icons/hicolor/512x512/apps/mineserve.png \
+                              /usr/share/pixmaps/mineserve.png \
+                              /etc/systemd/system/mineserve.service \
                               /lib/systemd/system/mineserve.service \
-                              /usr/lib/systemd/system/mineserve.service
+                              /usr/lib/systemd/system/mineserve.service \
+                              /usr/lib/sysusers.d/mineserve.conf
+        run_privileged systemctl daemon-reload 2>/dev/null || true
     fi
     echo "MineServe uninstalled."
     exit 0
@@ -123,7 +134,7 @@ if [ -z "$TARGET_VERSION" ]; then
     LATEST_JSON="$(curl -fsSL "$GITHUB_API_LATEST" 2>/dev/null || true)"
     RAW_TAG="$(printf '%s' "$LATEST_JSON" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name"\s*:\s*"([^"]+)".*/\1/' || true)"
     if [ -z "$RAW_TAG" ]; then
-        RAW_TAG="1.8.0"
+        RAW_TAG="1.8.1"
     fi
     TARGET_VERSION="${RAW_TAG#v}"
 else
@@ -239,6 +250,34 @@ EOF
         echo "-> Headless service started (systemctl status mineserve.service)"
         echo "-> View initial 'admin' password with: journalctl -u mineserve.service -n 30"
         echo "-> Or reset it anytime with: mineserve --reset-admin"
+    elif [ "$MODE_USER" -eq 1 ] && command -v systemctl >/dev/null 2>&1; then
+        UNIT_FILE="$TMP_DIR/mineserve.service"
+        cat > "$UNIT_FILE" << EOF
+[Unit]
+Description=MineServe Headless Minecraft Server Manager (User)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=${SERVICE_HOME}
+ExecStart=${BIN_PATH} --headless --bind 0.0.0.0 --port 8080 --data-dir ${DATA_DIR}
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=45
+LimitNOFILE=65536
+
+[Install]
+WantedBy=default.target
+EOF
+        install -Dm644 "$UNIT_FILE" "$HOME/.config/systemd/user/mineserve.service"
+        systemctl --user daemon-reload
+        systemctl --user enable --now mineserve.service
+        echo "-> User headless service started (systemctl --user status mineserve.service)"
+        echo "-> View initial 'admin' password with: journalctl --user -u mineserve.service -n 30"
+        echo "-> Or reset it anytime with: ${BIN_PATH} --reset-admin --data-dir ${DATA_DIR}"
+    else
+        echo "-> Warning: 'systemctl' is not available on this host; start headless mode manually with '${BIN_PATH} --headless'."
     fi
 fi
 
