@@ -164,6 +164,10 @@ The 1.9.0 milestone graduates Linux to **Stable**, introduces **Beta** builds fo
 ### 🐧 1. Stable Linux Release & Package Repositories
 - **Production-Ready Linux Builds**:
   - Harden systemd service integration, auto-update flows, headless CLI tooling, and distro packages across Debian/Ubuntu, Fedora, Arch, and Docker.
+- **Linux Runtime Automation, Auto-Networking & Live Discord Events**:
+  - Wire persisted `tunnelConfig.autoStart` and `portForwardConfig.autoForward` triggers into `LinuxProcessManager` server startup/shutdown lifecycle events.
+  - Dispatch live `discordWebhookConfig` notifications (server start, stop, crash, player join/leave, and completed backups) natively from the Linux engine.
+  - Implement the Linux background automation scheduler executing configured `automationConfig` scheduled tasks (backups, restarts, commands), idle sleep, and auto-wake on ping.
 - **Arch User Repository (AUR - `mineserve-bin`)**:
   - Publish and maintain an official `mineserve-bin` package on the AUR (`aur.archlinux.org`) with automated `PKGBUILD` and `.SRCINFO` generation so Arch, CachyOS, EndeavourOS, Manjaro, and SteamOS users can install and update via `paru -S mineserve-bin` or `yay -S mineserve-bin`.
 - **GitHub Container Registry (`ghcr.io`) & Docker Hub Publishing**:
