@@ -1,2 +1,3 @@
-• Google Play Compliance: Removed external donation links on Google Play Store builds to comply with Payments policy requirements.
-• Reliability & Packaging: Includes v1.8.0's Multi-User Web Admin, RBAC, SSE console, File Manager, and smart .mrpack client-mod filtering alongside v1.8.1 maintenance fixes.
+• Google Play Compliance: Removed external donation links and GitHub APK self-update checks on Google Play builds.
+• Android & Core Fixes: Fixed Bore/Cloud tunnels on Android 6-12, made Chunk Pruner fail-safe on 1.20.5+ LZ4/.mcc chunks, wired Keep Screen Awake for the live console, and improved UPnP and Modrinth search.
+• Security & Web UI: Hardened file/upload containment and RBAC session revocation, fixed Web Admin chart fills, cloud backups, and Linux Desktop/packaging issues.

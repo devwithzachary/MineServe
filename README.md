@@ -107,11 +107,11 @@ Every GitHub Release includes pre-built packages for all major Linux distributio
 
 | Format | Target Systems | Install Command |
 | :--- | :--- | :--- |
-| **Debian / Ubuntu (`.deb`)** | Ubuntu, Debian, Linux Mint, Pop!_OS (`amd64`) | `sudo apt install ./mineserve_1.8.0_amd64.deb` |
-| **Arch / CachyOS (`.pkg.tar.zst`)** | Arch Linux, CachyOS, Manjaro, EndeavourOS | `sudo pacman -U mineserve-1.8.0-1-x86_64.pkg.tar.zst` |
-| **AppImage (`.AppImage`)** | Universal single-file portable Desktop GUI | `chmod +x MineServe-1.8.0-x86_64.AppImage && ./MineServe-1.8.0-x86_64.AppImage` |
-| **Self-Contained `.tar.gz`** | Any `x86_64` Linux distro (includes bundled Java runtime) | `tar -xzf MineServe-1.8.0-linux-x64.tar.gz && cd mineserve-1.8.0 && sudo ./install.sh` |
-| **Portable `.tar.gz` (No JRE)** | Any Linux system with Java 17+ (`x86_64` or `arm64`) | `tar -xzf MineServe-1.8.0-linux-portable-nojre.tar.gz` |
+| **Debian / Ubuntu (`.deb`)** | Ubuntu, Debian, Linux Mint, Pop!_OS (`amd64`) | `sudo apt install ./mineserve_1.8.1_amd64.deb` |
+| **Arch / CachyOS (`.pkg.tar.zst`)** | Arch Linux, CachyOS, Manjaro, EndeavourOS | `sudo pacman -U mineserve-1.8.1-1-x86_64.pkg.tar.zst` |
+| **AppImage (`.AppImage`)** | Universal single-file portable Desktop GUI | `chmod +x MineServe-1.8.1-x86_64.AppImage && ./MineServe-1.8.1-x86_64.AppImage` |
+| **Self-Contained `.tar.gz`** | Any `x86_64` Linux distro (includes bundled Java runtime) | `tar -xzf MineServe-1.8.1-linux-x64.tar.gz && cd MineServe-1.8.1-linux-x64 && sudo ./install.sh` |
+| **Portable `.tar.gz` (No JRE)** | Any Linux system with Java 21+ (`x86_64` or `arm64`) | `tar -xzf MineServe-1.8.1-linux-portable-nojre.tar.gz` |
 | **Docker / Docker Compose** | Headless Container (`amd64` & `arm64`) | `docker compose up -d --build` |
 
 ### 🚀 Getting Started on Linux

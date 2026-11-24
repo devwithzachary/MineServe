@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.8.1] - Unreleased
+## [1.8.1] - 2026-11-24
 
 ### 🐛 Bug Fixes
 - **Linux Packaging, Build Scripts, Systemd & Docker (`packaging/linux/`, `scripts/`, `Dockerfile`)**:

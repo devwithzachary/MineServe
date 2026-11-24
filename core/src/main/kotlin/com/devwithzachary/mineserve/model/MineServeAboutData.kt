@@ -266,16 +266,20 @@ object MineServeAboutData {
     val FULL_CHANGELOG_HISTORY: List<PlatformReleaseChangelog> = listOf(
         PlatformReleaseChangelog(
             version = "v1.8.1",
-            date = "In Development",
+            date = "November 24, 2026",
             initialExpanded = true,
             highlights = listOf(
                 PlatformChangelogHighlight(
-                    text = "Play Store Payments Policy Compliance: Hid external Patreon and Buy Me a Coffee donation cards on Google Play Store builds while keeping them available on direct APK and F-Droid releases.",
+                    text = "Play Store Compliance & Android Reliability: Hid external donation links and GitHub APK self-update prompts on Google Play Store builds (retained on direct APK and F-Droid builds), fixed Bore and MineServe Cloud tunnels on Android 6 to 12, wired Keep Screen Awake on the live console, kept the foreground service active while Web Remote Admin is running, and honored custom JVM flags.",
                     platform = ChangelogPlatform.ANDROID
                 ),
                 PlatformChangelogHighlight(
-                    text = "Linux Package Permissions & Desktop Icon Fix: Fixed world-executable permissions (0755) on /opt/mineserve/bin/mineserve and installed the 512x512 app icon into hicolor/512x512/apps and /usr/share/pixmaps so the desktop menu icon and launcher work cleanly on Arch/CachyOS and Debian/Ubuntu.",
+                    text = "Linux Desktop, Headless & Packaging Fixes: Fixed 0755 executable permissions and 512x512/pixmap desktop icons on Arch/CachyOS and Debian/Ubuntu, added graceful blocking server shutdown on Quit/SIGTERM, fixed Playit.gg port detection, added live --reset-admin reload on running daemons, added systemd sysusers/StateDirectory provisioning, fixed Docker builds (-PexcludeAndroid=true), and improved Desktop UI responsiveness, system tray safety, and Web Admin parity.",
                     platform = ChangelogPlatform.LINUX
+                ),
+                PlatformChangelogHighlight(
+                    text = "Security, World & Web Admin Hardening: Made the Chunk Pruner fail-safe on Minecraft 1.20.5+ LZ4 and external .mcc chunks, fixed Forge vs NeoForge and proxy Modrinth searches, hardened file/upload/modpack path containment and RBAC session revocation, and fixed Web UI telemetry chart fills, cloud backup loading, and error toasts.",
+                    platform = ChangelogPlatform.ALL
                 )
             )
         ),

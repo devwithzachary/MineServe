@@ -23,8 +23,8 @@ Binaries:
   https://github.com/devwithzachary/MineServe/releases/download/%v/MineServe-%v-release.apk
 
 Builds:
-  - versionName: 1.8.0
-    versionCode: 14
+  - versionName: 1.8.1
+    versionCode: 15
     commit: 9fa344363c19eab1b44c4f52df563391b8d67d90
     subdir: app
     submodules: true
@@ -46,5 +46,5 @@ AllowedAPKSigningKeys: c532d763fd4ec838fa118005d9eb51ec13ce72167d2b0a1a8452ce36f
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.8.0
-CurrentVersionCode: 14
+CurrentVersion: 1.8.1
+CurrentVersionCode: 15
