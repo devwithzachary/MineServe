@@ -2339,6 +2339,14 @@
       if (state.systemInfo && state.systemInfo.platform === "linux") {
         $("safeguards-card")?.classList.add("hidden");
       }
+      const isPlay = !!state.isPlayStore;
+      $("web-update-check-btn")?.classList.toggle("hidden", isPlay);
+      $("web-update-link-btn")?.classList.toggle("hidden", isPlay);
+      if ($("web-update-status")) {
+        $("web-update-status").textContent = isPlay
+          ? "App updates are managed via Google Play Store."
+          : "Check GitHub Releases for new MineServe versions.";
+      }
       loadHostTools();
       loadJavaRuntimes();
       loadWhatsNewData(false);
@@ -2446,6 +2454,7 @@
 
     // App Updates Checker in App Settings
     $("web-update-check-btn")?.addEventListener("click", async () => {
+      if (state.isPlayStore) return;
       const btn = $("web-update-check-btn");
       const statusEl = $("web-update-status");
       const notesEl = $("web-update-notes");
@@ -2455,7 +2464,9 @@
       notesEl?.classList.add("hidden");
       try {
         const res = await apiFetch("/api/updates/check");
-        if (res.status === "UPDATE_AVAILABLE") {
+        if (res.status === "MANAGED_BY_PLAY_STORE") {
+          statusEl.textContent = res.message || "App updates are managed via Google Play Store.";
+        } else if (res.status === "UPDATE_AVAILABLE") {
           statusEl.textContent = `Update Available: ${res.latestTag} (Current: v${res.currentVersion})`;
           if (res.htmlUrl && $("web-update-link-btn")) {
             $("web-update-link-btn").href = res.htmlUrl;

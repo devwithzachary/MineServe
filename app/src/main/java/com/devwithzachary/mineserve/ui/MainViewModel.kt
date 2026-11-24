@@ -156,7 +156,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             startRootfsSetup(forceReinstall = false)
         }
 
-        if (updatePreferences.isCheckGitHubUpdatesEnabled) {
+        if (!BuildConfig.IS_PLAY_STORE && updatePreferences.isCheckGitHubUpdatesEnabled) {
             checkForGitHubUpdates(isManual = false)
         }
     }
@@ -871,6 +871,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun checkForGitHubUpdates(isManual: Boolean = false) {
+        if (BuildConfig.IS_PLAY_STORE) return
         viewModelScope.launch {
             _isCheckingUpdate.value = true
             if (isManual) {

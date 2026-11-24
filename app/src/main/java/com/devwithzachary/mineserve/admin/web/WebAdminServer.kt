@@ -504,11 +504,11 @@ class WebAdminServer(
                     .put("website", aboutData.WEBSITE_URL)
                     .put("githubRepo", aboutData.GITHUB_REPO_URL)
                     .put("githubIssues", aboutData.GITHUB_ISSUES_URL)
-                    .put("githubReleases", aboutData.GITHUB_RELEASES_URL)
                     .put("discord", aboutData.DISCORD_URL)
                     .put("privacy", aboutData.PRIVACY_URL)
                     .put("license", aboutData.LICENSE_NAME)
                 if (!isPlayStore) {
+                    links.put("githubReleases", aboutData.GITHUB_RELEASES_URL)
                     links.put("patreon", aboutData.PATREON_URL)
                     links.put("buyMeACoffee", aboutData.BUYMEACOFFEE_URL)
                 }
@@ -557,6 +557,14 @@ class WebAdminServer(
             // GitHub Release Update Checker
             if (path == "/api/updates/check" && method == "GET") {
                 val currentVer = com.devwithzachary.mineserve.BuildConfig.VERSION_NAME
+                if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
+                    val resp = JSONObject()
+                        .put("status", "MANAGED_BY_PLAY_STORE")
+                        .put("currentVersion", currentVer)
+                        .put("message", "App updates are managed via Google Play Store.")
+                    sendResponse(out, 200, "OK", "application/json", resp.toString().toByteArray(Charsets.UTF_8))
+                    return
+                }
                 val checker = com.devwithzachary.mineserve.api.GitHubUpdateChecker()
                 val resp = when (val res = checker.checkLatestRelease(currentVer)) {
                     is com.devwithzachary.mineserve.api.UpdateCheckResult.UpToDate -> JSONObject()

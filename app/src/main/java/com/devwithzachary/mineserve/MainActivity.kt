@@ -443,10 +443,12 @@ fun MineServeApp(viewModel: MainViewModel) {
                     updateCheckStatusMessage = updateCheckStatus,
                     onCheckForUpdatesNow = { viewModel.checkForGitHubUpdates(isManual = true) },
                     onOpenGitHubReleases = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/devwithzachary/MineServe/releases"))
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
+                        if (!BuildConfig.IS_PLAY_STORE) {
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/devwithzachary/MineServe/releases"))
+                                context.startActivity(intent)
+                            } catch (_: Exception) {}
+                        }
                     },
                     webAdminEnabled = webAdminConfig.enabled,
                     webAdminLocalUrl = webAdminState.localUrl,
@@ -580,20 +582,22 @@ fun MineServeApp(viewModel: MainViewModel) {
     }
 
     // GitHub Update Dialog Modal
-    availableUpdate?.let { release ->
-        GitHubUpdateDialog(
-            release = release,
-            currentVersion = BuildConfig.VERSION_NAME,
-            onDismiss = { viewModel.dismissUpdateDialog() },
-            onDownload = { url ->
-                try {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    context.startActivity(intent)
-                } catch (_: Exception) {}
-            },
-            onDisableFuturePrompts = {
-                viewModel.disableGitHubUpdatePrompts()
-            }
-        )
+    if (!BuildConfig.IS_PLAY_STORE) {
+        availableUpdate?.let { release ->
+            GitHubUpdateDialog(
+                release = release,
+                currentVersion = BuildConfig.VERSION_NAME,
+                onDismiss = { viewModel.dismissUpdateDialog() },
+                onDownload = { url ->
+                    try {
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                        context.startActivity(intent)
+                    } catch (_: Exception) {}
+                },
+                onDisableFuturePrompts = {
+                    viewModel.disableGitHubUpdatePrompts()
+                }
+            )
+        }
     }
 }
