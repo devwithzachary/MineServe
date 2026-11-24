@@ -110,6 +110,7 @@ docker run --rm \
     --platform linux/amd64 \
     -e HOST_UID="$HOST_UID" \
     -e HOST_GID="$HOST_GID" \
+    -e FDROID_BUILD_DIR="$FDROID_BUILD_DIR" \
     -v "$PROJECT_ROOT":"$FDROID_BUILD_DIR" \
     -v "$HOME/.cache/android-sdk-linux/ndk":/opt/android-sdk/ndk \
     -v "$HOME/.cache/android-sdk-linux/platforms":/opt/android-sdk/platforms \
@@ -124,6 +125,32 @@ docker run --rm \
     "$DOCKER_IMAGE" \
     bash -c '
         set -e
+        TARGET_UID=$(stat -c "%u" "$FDROID_BUILD_DIR" 2>/dev/null || echo "$HOST_UID")
+        TARGET_GID=$(stat -c "%g" "$FDROID_BUILD_DIR" 2>/dev/null || echo "$HOST_GID")
+
+        cleanup_container_state() {
+            rm -rf "$FDROID_BUILD_DIR/app/.cxx" "$FDROID_BUILD_DIR/.cxx" 2>/dev/null || true
+            if [ -n "$TARGET_UID" ] && [ "$TARGET_UID" != "0" ]; then
+                echo "🔄 Restoring file ownership for host user ($TARGET_UID:$TARGET_GID)..."
+                find "$FDROID_BUILD_DIR" -uid 0 -exec chown -h "${TARGET_UID}:${TARGET_GID}" {} + 2>/dev/null || true
+                for cache_dir in \
+                    /opt/android-sdk/ndk \
+                    /opt/android-sdk/platforms \
+                    /opt/android-sdk/build-tools \
+                    /opt/android-sdk/cmake \
+                    /root/.rustup \
+                    /root/.cargo/bin \
+                    /root/.cargo/registry \
+                    /root/.cargo/git \
+                    /root/.gradle/caches; do
+                    if [ -d "$cache_dir" ]; then
+                        find "$cache_dir" -uid 0 -exec chown -h "${TARGET_UID}:${TARGET_GID}" {} + 2>/dev/null || true
+                    fi
+                done
+            fi
+        }
+        trap cleanup_container_state EXIT
+
         echo "🔧 Installing build prerequisites (make, gawk, curl, git, gcc, libc6-dev)..."
         apt-get update -qq
         apt-get install -y -qq make gawk curl git gcc libc6-dev >/dev/null
@@ -175,11 +202,6 @@ docker run --rm \
         APKSIGNER_BIN=$(find /opt/android-sdk/build-tools -name apksigner 2>/dev/null | sort -V | tail -n 1)
         if [ -n "$APKSIGNER_BIN" ]; then
             "$APKSIGNER_BIN" verify --verbose app/build/outputs/apk/release/app-release.apk
-        fi
-
-        if [ -n "$HOST_UID" ] && [ -n "$HOST_GID" ]; then
-            echo "🔄 Restoring file ownership for host user ($HOST_UID:$HOST_GID)..."
-            chown -R "$HOST_UID:$HOST_GID" "$FDROID_BUILD_DIR" 2>/dev/null || true
         fi
     '
 
