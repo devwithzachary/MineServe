@@ -21,6 +21,7 @@ import androidx.compose.ui.window.rememberWindowState
 import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.core.CoreLog
 import com.devwithzachary.mineserve.core.Logger
+import com.devwithzachary.mineserve.designsystem.assets.DesktopBrandAssets
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.desktop.ui.LinuxSystemTrayManager
 import com.devwithzachary.mineserve.desktop.ui.MineServeDesktopApp
@@ -160,10 +161,7 @@ private object FallbackAppIconPainter : Painter() {
 }
 
 private fun loadAppLogoBufferedImage(): BufferedImage? {
-    return runCatching {
-        val stream = object {}.javaClass.getResourceAsStream("/webadmin/logo.png") ?: return null
-        stream.use { ImageIO.read(it) }
-    }.getOrNull()
+    return DesktopBrandAssets.loadWindowIconBufferedImage()
 }
 
 fun main(args: Array<String>) {

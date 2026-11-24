@@ -102,7 +102,9 @@ cp "$PROJECT_ROOT/packaging/linux/PKGBUILD" "$RELEASE_DIR/PKGBUILD"
 sed -i "s/^pkgver=.*/pkgver=${VERSION_NAME}/" "$RELEASE_DIR/PKGBUILD"
 cp "$PROJECT_ROOT/packaging/linux/install.sh" "$RELEASE_DIR/install.sh"
 chmod +x "$PROJECT_ROOT/packaging/linux/install.sh" "$RELEASE_DIR/install.sh"
-if [ -d "$PROJECT_ROOT/../MineServe-web" ]; then
+if [ -d "$PROJECT_ROOT/../MineServer-Web" ]; then
+    cp "$PROJECT_ROOT/packaging/linux/install.sh" "$PROJECT_ROOT/../MineServer-Web/install.sh" 2>/dev/null || true
+elif [ -d "$PROJECT_ROOT/../MineServe-web" ]; then
     cp "$PROJECT_ROOT/packaging/linux/install.sh" "$PROJECT_ROOT/../MineServe-web/install.sh" 2>/dev/null || true
 fi
 

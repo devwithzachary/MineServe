@@ -43,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import com.devwithzachary.mineserve.designsystem.assets.MineServeBrandAssets
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -100,7 +101,7 @@ fun SplashScreen(
         ) {
             // App Logo
             Image(
-                painter = painterResource(id = R.drawable.ic_launcher_logo),
+                painter = MineServeBrandAssets.brandIconPainter(),
                 contentDescription = stringResource(R.string.app_name),
                 modifier = Modifier
                     .size(96.dp)

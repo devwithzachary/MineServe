@@ -28,7 +28,7 @@ compose.desktop {
             vendor = "DevWithZachary"
             modules("java.instrument", "java.management", "java.naming", "java.prefs", "java.security.jgss", "jdk.unsupported")
             linux {
-                iconFile.set(rootProject.file("app/src/main/res/drawable/ic_launcher_logo.png"))
+                iconFile.set(rootProject.file("designsystem/src/commonMain/composeResources/drawable/brand_icon_512.png"))
             }
         }
     }
@@ -87,7 +87,7 @@ tasks.named<ProcessResources>("processResources") {
     from(rootProject.file("app/src/main/assets/webadmin")) {
         into("webadmin")
     }
-    from(rootProject.file("app/src/main/res/drawable/ic_launcher_logo.png")) {
+    from(rootProject.file("designsystem/src/commonMain/composeResources/drawable/brand_icon_512.png")) {
         into("webadmin")
         rename { "logo.png" }
     }
@@ -95,9 +95,10 @@ tasks.named<ProcessResources>("processResources") {
 
 dependencies {
     implementation(project(":core"))
+    implementation(project(":designsystem"))
     implementation(compose.desktop.currentOs)
-    implementation(compose.material3)
-    implementation(compose.materialIconsExtended)
+    implementation(libs.jetbrains.compose.material3)
+    implementation(libs.jetbrains.compose.material.icons.extended)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.kotlinx.serialization.json)

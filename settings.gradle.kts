@@ -26,7 +26,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "MineServe"
-include(":core", ":desktop")
+include(":core", ":designsystem", ":desktop")
 if (providers.gradleProperty("excludeAndroid").orNull != "true") {
     include(":app")
 }

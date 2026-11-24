@@ -55,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import com.devwithzachary.mineserve.designsystem.assets.MineServeBrandAssets
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -143,7 +144,7 @@ fun AboutScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Image(
-                        painter = painterResource(id = R.drawable.ic_launcher_logo),
+                        painter = MineServeBrandAssets.brandIconPainter(),
                         contentDescription = null,
                         modifier = Modifier
                             .size(72.dp)

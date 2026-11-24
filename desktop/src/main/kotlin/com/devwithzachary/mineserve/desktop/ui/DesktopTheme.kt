@@ -1,64 +1,48 @@
 package com.devwithzachary.mineserve.desktop.ui
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.darkColorScheme
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.ServerBadgeState
+import com.devwithzachary.mineserve.designsystem.components.ServerStatusBadge
+import com.devwithzachary.mineserve.designsystem.theme.MineServePalette
+import com.devwithzachary.mineserve.designsystem.theme.MineServeTheme
+import com.devwithzachary.mineserve.designsystem.theme.ThemeMode
 import com.devwithzachary.mineserve.model.ServerStatus
 
+/**
+ * Compatibility facade aliasing the centralized MineServePalette tokens
+ * so existing desktop screens transition cleanly without raw hex literals.
+ */
 object DesktopColors {
-    val Slate950 = Color(0xFF090D16)
-    val Slate900 = Color(0xFF0F172A)
-    val Slate800 = Color(0xFF1E293B)
-    val Slate700 = Color(0xFF334155)
-    val Slate400 = Color(0xFF94A3B8)
-    val Slate300 = Color(0xFFCBD5E1)
-    val ObsidianCard = Color(0xFF111827)
-    val ObsidianCardBorder = Color(0xFF1F2937)
-    val EmeraldPrimary = Color(0xFF10B981)
-    val EmeraldDark = Color(0xFF065F46)
-    val EmeraldLight = Color(0xFF6EE7B7)
-    val RedstonePrimary = Color(0xFFEF4444)
-    val RedstoneLight = Color(0xFFFCA5A5)
-    val AmberWarning = Color(0xFFF59E0B)
-    val AmberLight = Color(0xFFFCD34D)
+    val Slate950 = MineServePalette.DarkSurface
+    val Slate900 = MineServePalette.DarkSurfaceContainerLow
+    val Slate800 = MineServePalette.DarkSecondaryContainer
+    val Slate700 = MineServePalette.DarkOutlineVariant
+    val Slate400 = MineServePalette.DarkOnSurfaceVariant
+    val Slate300 = MineServePalette.DarkOnSurface
+    val ObsidianCard = MineServePalette.DarkSurfaceContainer
+    val ObsidianCardBorder = MineServePalette.DarkOutlineVariant
+    val EmeraldPrimary = MineServePalette.EmeraldSeed
+    val EmeraldDark = MineServePalette.DarkPrimaryContainer
+    val EmeraldLight = MineServePalette.DarkPrimary
+    val RedstonePrimary = MineServePalette.DarkError
+    val RedstoneLight = MineServePalette.DarkOnErrorContainer
+    val AmberWarning = MineServePalette.DarkWarning
+    val AmberLight = MineServePalette.DarkOnWarningContainer
 }
-
-private val MineServeDarkScheme = darkColorScheme(
-    primary = DesktopColors.EmeraldPrimary,
-    onPrimary = Color.Black,
-    secondary = DesktopColors.EmeraldLight,
-    onSecondary = Color.Black,
-    background = DesktopColors.Slate950,
-    onBackground = Color.White,
-    surface = DesktopColors.ObsidianCard,
-    onSurface = Color.White,
-    surfaceVariant = DesktopColors.Slate900,
-    onSurfaceVariant = DesktopColors.Slate300,
-    error = DesktopColors.RedstonePrimary,
-    onError = Color.White
-)
 
 @Composable
 fun MineServeDesktopTheme(
     uiScale: Float = 1.0f,
+    themeMode: ThemeMode = ThemeMode.ObsidianDark,
     content: @Composable () -> Unit
 ) {
     val baseDensity = LocalDensity.current
@@ -67,8 +51,9 @@ fun MineServeDesktopTheme(
         fontScale = baseDensity.fontScale
     )
     CompositionLocalProvider(LocalDensity provides scaledDensity) {
-        MaterialTheme(
-            colorScheme = MineServeDarkScheme,
+        MineServeTheme(
+            themeMode = themeMode,
+            useDynamicColor = false,
             content = content
         )
     }
@@ -77,55 +62,25 @@ fun MineServeDesktopTheme(
 @Composable
 fun DesktopPanelCard(
     modifier: Modifier = Modifier,
-    borderColor: Color = DesktopColors.ObsidianCardBorder,
+    @Suppress("UNUSED_PARAMETER") borderColor: Color = DesktopColors.ObsidianCardBorder,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = DesktopColors.ObsidianCard),
-        border = BorderStroke(1.dp, borderColor),
-        modifier = modifier
-    ) {
-        Column(modifier = Modifier.padding(16.dp), content = content)
-    }
+    MineServeCard(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp),
+        content = content
+    )
 }
 
 @Composable
 fun DesktopStatusBadge(status: ServerStatus) {
-    val (bg, border, fg) = when (status) {
-        ServerStatus.RUNNING -> Triple(
-            DesktopColors.EmeraldPrimary.copy(alpha = 0.16f),
-            DesktopColors.EmeraldPrimary,
-            DesktopColors.EmeraldLight
-        )
-        ServerStatus.STARTING, ServerStatus.STOPPING -> Triple(
-            DesktopColors.AmberWarning.copy(alpha = 0.16f),
-            DesktopColors.AmberWarning,
-            DesktopColors.AmberLight
-        )
-        ServerStatus.ERROR -> Triple(
-            DesktopColors.RedstonePrimary.copy(alpha = 0.16f),
-            DesktopColors.RedstonePrimary,
-            DesktopColors.RedstoneLight
-        )
-        ServerStatus.STOPPED, ServerStatus.STANDBY -> Triple(
-            DesktopColors.Slate800,
-            DesktopColors.ObsidianCardBorder,
-            DesktopColors.Slate400
-        )
+    val badgeState = when (status) {
+        ServerStatus.RUNNING -> ServerBadgeState.Online
+        ServerStatus.STARTING -> ServerBadgeState.Starting
+        ServerStatus.STOPPING -> ServerBadgeState.Stopping
+        ServerStatus.ERROR -> ServerBadgeState.Error
+        ServerStatus.STOPPED,
+        ServerStatus.STANDBY -> ServerBadgeState.Offline
     }
-    Surface(
-        shape = RoundedCornerShape(999.dp),
-        color = bg,
-        border = BorderStroke(1.dp, border)
-    ) {
-        Text(
-            text = status.name,
-            color = fg,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-        )
-    }
+    ServerStatusBadge(state = badgeState)
 }
