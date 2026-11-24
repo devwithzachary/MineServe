@@ -207,122 +207,124 @@ fun AboutScreen(
                 }
             }
 
-            // Support Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            if (!BuildConfig.IS_PLAY_STORE) {
+                // Support Card
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(20.dp))
-                        Text(
-                            text = stringResource(R.string.about_support_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-
-                    Text(
-                        text = stringResource(R.string.about_support_text),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { uriHandler.openUri(patreonUrl) },
-                            colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.credits_patreon),
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        Button(
-                            onClick = { uriHandler.openUri(buymeacoffeeUrl) },
-                            colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.LocalCafe, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = stringResource(R.string.credits_buymeacoffee),
-                                color = Color.Black,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(color = Slate800, thickness = 0.5.dp)
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(20.dp))
                             Text(
-                                text = "Project Supporters",
-                                style = MaterialTheme.typography.labelMedium,
+                                text = stringResource(R.string.about_support_title),
+                                style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = RedstoneLight
+                                color = Color.White
                             )
                         }
 
-                        FlowRow(
+                        Text(
+                            text = stringResource(R.string.about_support_text),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Slate400
+                        )
+
+                        Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            PATREON_SUPPORTERS.forEach { supporter ->
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = Slate900,
-                                    border = BorderStroke(1.dp, Slate800)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            Button(
+                                onClick = { uriHandler.openUri(patreonUrl) },
+                                colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = stringResource(R.string.credits_patreon),
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Button(
+                                onClick = { uriHandler.openUri(buymeacoffeeUrl) },
+                                colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.LocalCafe, contentDescription = null, tint = Color.Black, modifier = Modifier.size(14.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = stringResource(R.string.credits_buymeacoffee),
+                                    color = Color.Black,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        HorizontalDivider(color = Slate800, thickness = 0.5.dp)
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(16.dp))
+                                Text(
+                                    text = "Project Supporters",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = RedstoneLight
+                                )
+                            }
+
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                PATREON_SUPPORTERS.forEach { supporter ->
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Slate900,
+                                        border = BorderStroke(1.dp, Slate800)
                                     ) {
-                                        Text("❤️", fontSize = 12.sp)
-                                        Text(
-                                            text = supporter.name,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text("❤️", fontSize = 12.sp)
+                                            Text(
+                                                text = supporter.name,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }

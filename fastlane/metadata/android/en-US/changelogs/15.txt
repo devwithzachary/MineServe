@@ -1,0 +1,2 @@
+• Google Play Compliance: Removed external donation links on Google Play Store builds to comply with Payments policy requirements.
+• Reliability & Packaging: Includes v1.8.0's Multi-User Web Admin, RBAC, SSE console, File Manager, and smart .mrpack client-mod filtering alongside v1.8.1 maintenance fixes.

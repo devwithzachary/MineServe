@@ -270,6 +270,10 @@ object MineServeAboutData {
             initialExpanded = true,
             highlights = listOf(
                 PlatformChangelogHighlight(
+                    text = "Play Store Payments Policy Compliance: Hid external Patreon and Buy Me a Coffee donation cards on Google Play Store builds while keeping them available on direct APK and F-Droid releases.",
+                    platform = ChangelogPlatform.ANDROID
+                ),
+                PlatformChangelogHighlight(
                     text = "Linux Package Permissions & Desktop Icon Fix: Fixed world-executable permissions (0755) on /opt/mineserve/bin/mineserve and installed the 512x512 app icon into hicolor/512x512/apps and /usr/share/pixmaps so the desktop menu icon and launcher work cleanly on Arch/CachyOS and Debian/Ubuntu.",
                     platform = ChangelogPlatform.LINUX
                 )
@@ -499,7 +503,7 @@ object MineServeAboutData {
     fun getChangelogForPlatform(platform: ChangelogPlatform): List<FilteredReleaseChangelog> {
         val entries = if (platform == ChangelogPlatform.LINUX) {
             // Linux Desktop & Headless launched in v1.8.0; omit pre-1.8.0 Android-only releases
-            FULL_CHANGELOG_HISTORY.filter { it.version == "v1.8.0" }
+            FULL_CHANGELOG_HISTORY.takeWhile { it.version != "v1.7.0" }
         } else {
             FULL_CHANGELOG_HISTORY
         }

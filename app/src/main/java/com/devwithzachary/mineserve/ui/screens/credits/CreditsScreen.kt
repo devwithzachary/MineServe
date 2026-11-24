@@ -61,6 +61,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.model.ChangelogPlatform
 import com.devwithzachary.mineserve.model.MineServeAboutData
@@ -239,144 +240,146 @@ fun CreditsScreen(
                 }
             }
 
-            // Patreon Supporters Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            if (!BuildConfig.IS_PLAY_STORE) {
+                // Patreon Supporters Card
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
+                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(22.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(22.dp))
+                            Text(
+                                text = "Project Supporters",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+
                         Text(
-                            text = "Project Supporters",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            text = "Special thanks to our generous Patreon, YouTube, and Buy Me a Coffee members whose support powers ongoing MineServe development!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Slate400
                         )
-                    }
 
-                    Text(
-                        text = "Special thanks to our generous Patreon, YouTube, and Buy Me a Coffee members whose support powers ongoing MineServe development!",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
-                    )
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        PATREON_SUPPORTERS.forEach { supporter ->
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Slate900,
-                                border = BorderStroke(1.dp, Slate800),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            PATREON_SUPPORTERS.forEach { supporter ->
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Slate900,
+                                    border = BorderStroke(1.dp, Slate800),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(36.dp)
-                                                .clip(CircleShape)
-                                                .background(RedstoneRed.copy(alpha = 0.2f))
-                                                .border(1.dp, RedstoneRed.copy(alpha = 0.4f), CircleShape),
-                                            contentAlignment = Alignment.Center
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(36.dp)
+                                                    .clip(CircleShape)
+                                                    .background(RedstoneRed.copy(alpha = 0.2f))
+                                                    .border(1.dp, RedstoneRed.copy(alpha = 0.4f), CircleShape),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Text(
+                                                    text = "❤️",
+                                                    fontSize = 14.sp
+                                                )
+                                            }
+
+                                            Column {
+                                                Text(
+                                                    text = supporter.name,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                )
+                                                Text(
+                                                    text = supporter.tier,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = EmeraldLight
+                                                )
+                                            }
+                                        }
+
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = RedstoneRed.copy(alpha = 0.15f),
+                                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.3f))
                                         ) {
                                             Text(
-                                                text = "❤️",
-                                                fontSize = 14.sp
-                                            )
-                                        }
-
-                                        Column {
-                                            Text(
-                                                text = supporter.name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                            Text(
-                                                text = supporter.tier,
+                                                text = "Supporter",
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = EmeraldLight
+                                                fontWeight = FontWeight.Bold,
+                                                color = RedstoneLight,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                             )
                                         }
-                                    }
-
-                                    Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = RedstoneRed.copy(alpha = 0.15f),
-                                        border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.3f))
-                                    ) {
-                                        Text(
-                                            text = "Supporter",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = RedstoneLight,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                        )
                                     }
                                 }
                             }
                         }
-                    }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                            onClick = { uriHandler.openUri("https://www.patreon.com/DevWithZachary") },
-                            colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                            modifier = Modifier.weight(1f)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Join Patreon",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                            Button(
+                                onClick = { uriHandler.openUri("https://www.patreon.com/DevWithZachary") },
+                                colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Join Patreon",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
 
-                        Button(
-                            onClick = { uriHandler.openUri("https://www.buymeacoffee.com/devwithzachary") },
-                            colors = ButtonDefaults.buttonColors(containerColor = Slate800),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Buy Me a Coffee",
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                softWrap = false,
-                                overflow = TextOverflow.Ellipsis
-                            )
+                            Button(
+                                onClick = { uriHandler.openUri("https://www.buymeacoffee.com/devwithzachary") },
+                                colors = ButtonDefaults.buttonColors(containerColor = Slate800),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Buy Me a Coffee",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                     }
                 }
