@@ -489,7 +489,7 @@ fun AboutScreen(
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
                         MetadataRow(label = "Container Rootfs", value = "Ubuntu 24.04 LTS (PRoot)")
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
-                        MetadataRow(label = "PRoot Engine", value = "v5.4.0 (arm64-v8a)")
+                        MetadataRow(label = "PRoot Engine", value = "v5.4.0 (${Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"})")
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)
                         MetadataRow(label = "Architecture (ABI)", value = Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a")
                         HorizontalDivider(color = Slate800, thickness = 0.5.dp)

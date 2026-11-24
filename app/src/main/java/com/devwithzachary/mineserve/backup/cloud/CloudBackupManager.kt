@@ -31,7 +31,7 @@ class CloudBackupManager private constructor(
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val webDavClient = WebDavClient()
     private val safStorage = SafBackupStorage(context)
-    private val mineServeCloudManager = MineServeCloudManager(context)
+    private val mineServeCloudManager = MineServeCloudManager.getInstance(context)
 
     private val _syncState = MutableStateFlow<CloudSyncState>(CloudSyncState.Idle)
     val syncState: StateFlow<CloudSyncState> = _syncState.asStateFlow()

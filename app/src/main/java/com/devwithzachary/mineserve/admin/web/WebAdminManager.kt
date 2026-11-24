@@ -159,12 +159,14 @@ class WebAdminManager private constructor(
             activeSessionsCount = security.getActiveSessionsCount()
         )
 
+        MineServeForegroundService.isWebAdminActive = true
         MineServeForegroundService.start(context)
         setupExposure(cfg)
     }
 
     fun stop() {
         Log.i(TAG, "Stopping Web Remote Admin...")
+        MineServeForegroundService.isWebAdminActive = false
         server?.stop()
         server = null
 

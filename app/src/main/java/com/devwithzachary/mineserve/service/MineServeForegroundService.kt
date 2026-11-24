@@ -57,6 +57,9 @@ class MineServeForegroundService : Service() {
         @Volatile
         var rootfsSetupStatusText: String? = null
 
+        @Volatile
+        var isWebAdminActive: Boolean = false
+
         fun start(context: Context) {
             val intent = Intent(context, MineServeForegroundService::class.java).apply {
                 action = ACTION_START
@@ -186,12 +189,13 @@ class MineServeForegroundService : Service() {
             while (isActive) {
                 val runningCount = processManager.getAnyRunningServerCount()
                 val standbyCount = com.devwithzachary.mineserve.engine.StandbyPingManager.instance.getStandbyCount()
-                if (runningCount == 0 && standbyCount == 0 && !isRootfsSetupActive && _isServiceRunning.value) {
+                if (runningCount == 0 && standbyCount == 0 && !isRootfsSetupActive && !isWebAdminActive && _isServiceRunning.value) {
                     // Check once more in 5 seconds before stopping self
                     delay(5000)
                     if (processManager.getAnyRunningServerCount() == 0 &&
                         com.devwithzachary.mineserve.engine.StandbyPingManager.instance.getStandbyCount() == 0 &&
-                        !isRootfsSetupActive) {
+                        !isRootfsSetupActive &&
+                        !isWebAdminActive) {
                         stopForegroundAndSelf()
                         break
                     }

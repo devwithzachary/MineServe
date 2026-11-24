@@ -100,7 +100,11 @@ fun AppSettingsScreen(
     modifier: Modifier = Modifier,
     onAboutClick: (() -> Unit)? = null
 ) {
-    var keepScreenAwake by remember { mutableStateOf(true) }
+    val settingsContext = LocalContext.current
+    val uiPrefs = remember(settingsContext) {
+        settingsContext.getSharedPreferences("mineserve_ui_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    var keepScreenAwake by remember { mutableStateOf(uiPrefs.getBoolean("keep_screen_awake", true)) }
 
     BackHandler(onBack = onBack)
 
@@ -272,7 +276,10 @@ fun AppSettingsScreen(
                             }
                             Switch(
                                 checked = keepScreenAwake,
-                                onCheckedChange = { keepScreenAwake = it },
+                                onCheckedChange = { enabled ->
+                                    keepScreenAwake = enabled
+                                    uiPrefs.edit().putBoolean("keep_screen_awake", enabled).apply()
+                                },
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = EmeraldPrimary,
                                     checkedTrackColor = EmeraldDark

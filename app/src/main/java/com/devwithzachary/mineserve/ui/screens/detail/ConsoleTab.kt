@@ -57,6 +57,18 @@ fun ConsoleTab(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val uiPrefs = remember(context) { context.getSharedPreferences("mineserve_ui_prefs", android.content.Context.MODE_PRIVATE) }
+    val keepScreenAwake = remember { uiPrefs.getBoolean("keep_screen_awake", true) }
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(view, keepScreenAwake) {
+        val previousKeepScreenOn = view.keepScreenOn
+        if (keepScreenAwake) {
+            view.keepScreenOn = true
+        }
+        onDispose {
+            view.keepScreenOn = previousKeepScreenOn
+        }
+    }
     val consolePrefs = remember { ConsolePreferences(context) }
     var macros by remember { mutableStateOf(consolePrefs.getMacros()) }
     var commandHistory by remember { mutableStateOf(consolePrefs.getCommandHistory()) }

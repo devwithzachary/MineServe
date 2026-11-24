@@ -155,6 +155,15 @@ class MineServeCloudManager(context: Context) {
     companion object {
         private const val TAG = "MineServeCloudManager"
         private const val PREFS_NAME = "mineserve_cloud_prefs"
+
+        @Volatile
+        private var INSTANCE: MineServeCloudManager? = null
+
+        fun getInstance(context: Context): MineServeCloudManager {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: MineServeCloudManager(context.applicationContext).also { INSTANCE = it }
+            }
+        }
         private const val KEY_AUTH_TOKEN = "cloud_auth_token"
         private const val KEY_CACHED_PROFILE = "cloud_cached_profile"
 

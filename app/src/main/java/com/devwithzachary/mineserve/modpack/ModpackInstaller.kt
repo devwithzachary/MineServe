@@ -64,6 +64,15 @@ class ModpackInstaller {
         try {
             onProgress(ModpackInstallProgress("Reading Modpack Metadata", "modrinth.index.json", 0, 1, 0f))
 
+            val serverCanonPrefix = serverDir.canonicalPath + File.separator
+            fun safeTarget(relativePath: String): File {
+                val target = File(serverDir, relativePath)
+                if (!target.canonicalPath.startsWith(serverCanonPrefix)) {
+                    throw SecurityException("Modpack entry escapes server directory: $relativePath")
+                }
+                return target
+            }
+
             // 1. First pass: extract modrinth.index.json and apply overrides
             var modpackIndex: ModpackIndex? = null
             streamProvider()?.use { stream ->
@@ -76,14 +85,14 @@ class ModpackInstaller {
                             modpackIndex = json.decodeFromString<ModpackIndex>(jsonStr)
                         } else if (name.startsWith("overrides/") && !entry.isDirectory) {
                             val relativePath = name.removePrefix("overrides/")
-                            val targetFile = File(serverDir, relativePath)
+                            val targetFile = safeTarget(relativePath)
                             targetFile.parentFile?.mkdirs()
                             FileOutputStream(targetFile).use { out ->
                                 zipIn.copyTo(out)
                             }
                         } else if (name.startsWith("server-overrides/") && !entry.isDirectory) {
                             val relativePath = name.removePrefix("server-overrides/")
-                            val targetFile = File(serverDir, relativePath)
+                            val targetFile = safeTarget(relativePath)
                             targetFile.parentFile?.mkdirs()
                             FileOutputStream(targetFile).use { out ->
                                 zipIn.copyTo(out)
@@ -110,7 +119,7 @@ class ModpackInstaller {
             // 3. Download mod files
             for ((idx, fileEntry) in filesToDownload.withIndex()) {
                 val fileName = File(fileEntry.path).name
-                val targetFile = File(serverDir, fileEntry.path)
+                val targetFile = safeTarget(fileEntry.path)
                 targetFile.parentFile?.mkdirs()
 
                 val currentIdx = idx + 1

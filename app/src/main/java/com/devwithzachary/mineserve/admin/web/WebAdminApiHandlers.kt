@@ -283,6 +283,7 @@ internal class WebAdminApiHandlers(
         creationJobs[jobId] = CreationJob("running", 5, "Resolving ${type.displayName} $version...")
 
         scope.launch {
+            var createdServerId: String? = null
             try {
                 val buildInfo = serverSoftwareManager.resolveLatestBuild(type, version)
                 creationJobs[jobId] = CreationJob("running", 20, "Creating server directory...")
@@ -304,6 +305,7 @@ internal class WebAdminApiHandlers(
                     serverBuild = buildInfo?.first,
                     eulaAccepted = true
                 )
+                createdServerId = server.id
 
                 val serverDir = serverRepository.getServerDirectory(server.id)
                 serverSoftwareManager.provisionServerSoftware(server, serverDir, buildInfo?.second) { msg, pct ->
@@ -312,6 +314,9 @@ internal class WebAdminApiHandlers(
 
                 creationJobs[jobId] = CreationJob("done", 100, "Server created successfully!", server.id)
             } catch (e: Exception) {
+                createdServerId?.let { orphanId ->
+                    runCatching { serverRepository.deleteServer(orphanId) }
+                }
                 creationJobs[jobId] = CreationJob("error", 0, e.message ?: "Server creation failed")
             }
         }

@@ -64,7 +64,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val pluginRepository = PluginRepository()
     val serverSoftwareManager = ServerSoftwareManager(serverRepository, backupRepository, processManager, application)
     val tunnelManager = TunnelManager.getInstance(application)
-    val cloudManager = com.devwithzachary.mineserve.cloud.MineServeCloudManager(application)
+    val cloudManager = com.devwithzachary.mineserve.cloud.MineServeCloudManager.getInstance(application)
     val updateChecker = GitHubUpdateChecker()
     val updatePreferences = UpdatePreferences(application)
     val schedulerManager = ServerSchedulerManager.getInstance(application, serverRepository, backupRepository)

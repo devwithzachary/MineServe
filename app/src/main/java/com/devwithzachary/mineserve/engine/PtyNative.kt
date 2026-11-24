@@ -19,7 +19,10 @@ class PtyProcess(
         }
     }
 
+    private val destroyed = java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun destroy() {
+        if (!destroyed.compareAndSet(false, true)) return
         try {
             outputStream.close()
         } catch (_: Exception) {}
@@ -29,7 +32,6 @@ class PtyProcess(
         try {
             parcelFd.close()
         } catch (_: Exception) {}
-        PtyNative.closeFd(masterFdInt)
     }
 }
 

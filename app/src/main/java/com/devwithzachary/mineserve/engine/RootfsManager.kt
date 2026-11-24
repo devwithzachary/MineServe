@@ -889,130 +889,136 @@ class RootfsManager(private val context: Context, private val pRootEngine: PRoot
         targetDir: File,
         onProgress: (suspend (String, Int) -> Unit)? = null
     ) {
-        val gzipIn = GZIPInputStream(BufferedInputStream(tarGzFile.inputStream(), 65536))
+        val targetCanon = targetDir.canonicalPath
+        val targetPrefix = targetCanon + File.separator
         val buffer = ByteArray(512)
         var longName: String? = null
         var extractedFiles = 0
         var lastUpdate = System.currentTimeMillis()
 
-        while (true) {
-            var bytesRead = 0
-            while (bytesRead < 512) {
-                val r = gzipIn.read(buffer, bytesRead, 512 - bytesRead)
-                if (r == -1) break
-                bytesRead += r
-            }
-            if (bytesRead < 512) break
-
-            var isEmpty = true
-            for (i in 0 until 512) {
-                if (buffer[i] != 0.toByte()) {
-                    isEmpty = false
-                    break
+        GZIPInputStream(BufferedInputStream(tarGzFile.inputStream(), 65536)).use { gzipIn ->
+            while (true) {
+                var bytesRead = 0
+                while (bytesRead < 512) {
+                    val r = gzipIn.read(buffer, bytesRead, 512 - bytesRead)
+                    if (r == -1) break
+                    bytesRead += r
                 }
-            }
-            if (isEmpty) break
+                if (bytesRead < 512) break
 
-            val rawName = String(buffer, 0, 100, Charsets.US_ASCII).trimEnd('\u0000', ' ')
-            val prefix = String(buffer, 345, 155, Charsets.US_ASCII).trimEnd('\u0000', ' ')
-            val typeFlag = buffer[156].toInt().toChar()
-            val size = parseOctal(buffer, 124, 12)
-
-            var entryName = longName ?: if (prefix.isNotEmpty()) "$prefix/$rawName" else rawName
-            longName = null
-
-            if (entryName.isEmpty()) {
-                skipBytes(gzipIn, size)
-                continue
-            }
-
-            if (typeFlag == 'L') {
-                val nameBytes = ByteArray(size.toInt())
-                readFully(gzipIn, nameBytes)
-                longName = String(nameBytes, Charsets.UTF_8).trimEnd('\u0000', ' ', '\n', '\r')
-                val remainder = (512 - (size % 512)) % 512
-                if (remainder > 0) skipBytes(gzipIn, remainder)
-                continue
-            }
-
-            if (entryName.startsWith("/")) {
-                entryName = entryName.substring(1)
-            }
-
-            val destFile = File(targetDir, entryName)
-            extractedFiles++
-
-            val now = System.currentTimeMillis()
-            if (onProgress != null && now - lastUpdate > 100) {
-                lastUpdate = now
-                val fileName = entryName.takeLast(30)
-                val percent = ((extractedFiles * 100) / 12000).coerceIn(0, 95)
-                kotlinx.coroutines.runBlocking {
-                    onProgress("Extracting: $fileName", percent)
-                }
-            }
-
-            when (typeFlag) {
-                '5' -> { // Directory
-                    destFile.mkdirs()
-                    destFile.setReadable(true, false)
-                    destFile.setWritable(true, false)
-                    destFile.setExecutable(true, false)
-                    skipBytes(gzipIn, (512 - (size % 512)) % 512)
-                }
-
-                '0', '\u0000' -> { // Regular file
-                    destFile.parentFile?.apply {
-                        mkdirs()
-                        setReadable(true, false)
-                        setWritable(true, false)
-                        setExecutable(true, false)
+                var isEmpty = true
+                for (i in 0 until 512) {
+                    if (buffer[i] != 0.toByte()) {
+                        isEmpty = false
+                        break
                     }
-                    FileOutputStream(destFile).use { out ->
-                        copyBytes(gzipIn, out, size)
+                }
+                if (isEmpty) break
+
+                val rawName = String(buffer, 0, 100, Charsets.US_ASCII).trimEnd('\u0000', ' ')
+                val prefix = String(buffer, 345, 155, Charsets.US_ASCII).trimEnd('\u0000', ' ')
+                val typeFlag = buffer[156].toInt().toChar()
+                val size = parseOctal(buffer, 124, 12)
+
+                var entryName = longName ?: if (prefix.isNotEmpty()) "$prefix/$rawName" else rawName
+                longName = null
+
+                if (entryName.isEmpty()) {
+                    skipBytes(gzipIn, size)
+                    continue
+                }
+
+                if (typeFlag == 'L') {
+                    val nameBytes = ByteArray(size.toInt())
+                    readFully(gzipIn, nameBytes)
+                    longName = String(nameBytes, Charsets.UTF_8).trimEnd('\u0000', ' ', '\n', '\r')
+                    val remainder = (512 - (size % 512)) % 512
+                    if (remainder > 0) skipBytes(gzipIn, remainder)
+                    continue
+                }
+
+                if (entryName.startsWith("/")) {
+                    entryName = entryName.substring(1)
+                }
+
+                val destFile = File(targetDir, entryName)
+                val destCanon = destFile.canonicalPath
+                if (destCanon != targetCanon && !destCanon.startsWith(targetPrefix)) {
+                    throw SecurityException("Tar entry is outside target directory: $entryName")
+                }
+                extractedFiles++
+
+                val now = System.currentTimeMillis()
+                if (onProgress != null && now - lastUpdate > 100) {
+                    lastUpdate = now
+                    val fileName = entryName.takeLast(30)
+                    val percent = ((extractedFiles * 100) / 12000).coerceIn(0, 95)
+                    kotlinx.coroutines.runBlocking {
+                        onProgress("Extracting: $fileName", percent)
                     }
-                    destFile.setReadable(true, false)
-                    val mode = parseOctal(buffer, 100, 8)
-                    val isExec = entryName.contains("bin/") ||
-                            entryName.endsWith(".sh") ||
-                            entryName.contains("lib/") ||
-                            entryName.contains(".so") ||
-                            entryName.contains("libexec/") ||
-                            (mode and 73L != 0L) // 0111 in octal
-                    if (isExec) {
+                }
+
+                when (typeFlag) {
+                    '5' -> { // Directory
+                        destFile.mkdirs()
+                        destFile.setReadable(true, false)
+                        destFile.setWritable(true, false)
                         destFile.setExecutable(true, false)
+                        skipBytes(gzipIn, (512 - (size % 512)) % 512)
                     }
-                    val remainder = (512 - (size % 512)) % 512
-                    if (remainder > 0) skipBytes(gzipIn, remainder)
-                }
 
-                '1', '2' -> { // Symlink / Hardlink
-                    destFile.parentFile?.mkdirs()
-                    val rawLink = String(buffer, 157, 100, Charsets.US_ASCII).trimEnd('\u0000', ' ')
-                    if (rawLink.isNotEmpty()) {
-                        val isTopLevel = (destFile.parentFile?.absolutePath == targetDir.absolutePath)
-                        val isAbsoluteRootfsPath = rawLink.startsWith("usr/") || rawLink.startsWith("etc/") || rawLink.startsWith("var/") || rawLink.startsWith("opt/")
-                        val linkTarget = if (!isTopLevel && isAbsoluteRootfsPath) "/$rawLink" else rawLink
-                        try {
-                            if (destFile.exists()) {
-                                destFile.delete()
-                            }
-                            android.system.Os.symlink(linkTarget, destFile.absolutePath)
-                        } catch (e: Exception) {
-                            Log.w(TAG, "Symlink creation for ${destFile.name} -> $linkTarget: ${e.message}")
+                    '0', '\u0000' -> { // Regular file
+                        destFile.parentFile?.apply {
+                            mkdirs()
+                            setReadable(true, false)
+                            setWritable(true, false)
+                            setExecutable(true, false)
                         }
+                        FileOutputStream(destFile).use { out ->
+                            copyBytes(gzipIn, out, size)
+                        }
+                        destFile.setReadable(true, false)
+                        val mode = parseOctal(buffer, 100, 8)
+                        val isExec = entryName.contains("bin/") ||
+                                entryName.endsWith(".sh") ||
+                                entryName.contains("lib/") ||
+                                entryName.contains(".so") ||
+                                entryName.contains("libexec/") ||
+                                (mode and 73L != 0L) // 0111 in octal
+                        if (isExec) {
+                            destFile.setExecutable(true, false)
+                        }
+                        val remainder = (512 - (size % 512)) % 512
+                        if (remainder > 0) skipBytes(gzipIn, remainder)
                     }
-                    val remainder = (512 - (size % 512)) % 512
-                    if (remainder > 0) skipBytes(gzipIn, remainder)
-                }
 
-                else -> {
-                    val remainder = (512 - (size % 512)) % 512
-                    skipBytes(gzipIn, size + remainder)
+                    '1', '2' -> { // Symlink / Hardlink
+                        destFile.parentFile?.mkdirs()
+                        val rawLink = String(buffer, 157, 100, Charsets.US_ASCII).trimEnd('\u0000', ' ')
+                        if (rawLink.isNotEmpty()) {
+                            val isTopLevel = (destFile.parentFile?.absolutePath == targetDir.absolutePath)
+                            val isAbsoluteRootfsPath = rawLink.startsWith("usr/") || rawLink.startsWith("etc/") || rawLink.startsWith("var/") || rawLink.startsWith("opt/")
+                            val linkTarget = if (!isTopLevel && isAbsoluteRootfsPath) "/$rawLink" else rawLink
+                            try {
+                                if (destFile.exists()) {
+                                    destFile.delete()
+                                }
+                                android.system.Os.symlink(linkTarget, destFile.absolutePath)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Symlink creation for ${destFile.name} -> $linkTarget: ${e.message}")
+                            }
+                        }
+                        val remainder = (512 - (size % 512)) % 512
+                        if (remainder > 0) skipBytes(gzipIn, remainder)
+                    }
+
+                    else -> {
+                        val remainder = (512 - (size % 512)) % 512
+                        skipBytes(gzipIn, size + remainder)
+                    }
                 }
             }
         }
-        gzipIn.close()
     }
 
     private fun parseOctal(buffer: ByteArray, offset: Int, length: Int): Long {

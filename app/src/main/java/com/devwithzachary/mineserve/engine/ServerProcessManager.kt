@@ -368,7 +368,11 @@ class ServerProcessManager private constructor(
         val memArg = "-Xms512M -Xmx${server.allocatedRamMb}M"
         val installerMemArg = "-Xms512M -Xmx${server.allocatedRamMb.coerceAtLeast(1536)}M"
         val deviceTz = try { java.util.TimeZone.getDefault().id.takeIf { it.isNotBlank() } ?: "UTC" } catch (_: Exception) { "UTC" }
-        val flags = "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch -Dmineserve.server_id=${server.id} -Dfile.encoding=UTF-8 -Duser.timezone=$deviceTz -Dterminal.jline=false -Dterminal.ansi=true -Duser.name=mineserve -Duser.home=/home/mineserve"
+        val safeJar = "'" + jarName.replace("'", "'\\''") + "'"
+        val baseFlags = server.jvmArgs.trim().ifBlank {
+            "-XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:+AlwaysPreTouch"
+        }
+        val flags = "$baseFlags -Dmineserve.server_id=${server.id} -Dfile.encoding=UTF-8 -Duser.timezone=$deviceTz -Dterminal.jline=false -Dterminal.ansi=true -Duser.name=mineserve -Duser.home=/home/mineserve"
 
         val launchCommand = buildString {
             append("export TZ='$deviceTz'; ")
@@ -390,10 +394,10 @@ class ServerProcessManager private constructor(
                     append("if [ ! -f run.sh ] && [ -z \"\$(ls forge-*.jar 2>/dev/null | grep -v installer)\" ]; then ")
                     append("  echo -e '\\033[33m[MineServe] Running initial ${server.type.displayName} server installation & library download...\\033[0m'; ")
                     append("  echo -e '\\033[36m[MineServe] Unpacking libraries and applying binary patches. This can take 2 to 4 minutes on Android devices. Please wait...\\033[0m'; ")
-                    append("  touch installer.jar.log \"${jarName}.log\"; ")
-                    append("  tail -n 0 -q -F installer.jar.log \"${jarName}.log\" 2>/dev/null & ")
+                    append("  touch installer.jar.log ${safeJar}.log; ")
+                    append("  tail -n 0 -q -F installer.jar.log ${safeJar}.log 2>/dev/null & ")
                     append("  INSTALL_TAIL_PID=\$!; ")
-                    append("  $javaBin $installerMemArg -jar $jarName --installServer; ")
+                    append("  $javaBin $installerMemArg -jar $safeJar --installServer; ")
                     append("  INSTALL_EXIT=\$?; ")
                     append("  kill \$INSTALL_TAIL_PID 2>/dev/null || true; ")
                     append("  if [ \$INSTALL_EXIT -ne 0 ]; then ")
@@ -413,7 +417,7 @@ class ServerProcessManager private constructor(
                     append("    echo -e '\\033[32m[MineServe] Starting Forge Server via '\$FORGE_JAR'...\\033[0m'; ")
                     append("    exec $javaBin $memArg $flags -jar \"\$FORGE_JAR\" nogui; ")
                     append("  else ")
-                    append("    exec $javaBin $memArg $flags -jar $jarName nogui; ")
+                    append("    exec $javaBin $memArg $flags -jar $safeJar nogui; ")
                     append("  fi; ")
                     append("fi")
                 } else {
@@ -421,7 +425,7 @@ class ServerProcessManager private constructor(
                     append("  chmod +x run.sh; ")
                     append("  exec bash run.sh nogui; ")
                     append("else ")
-                    append("  exec $javaBin $memArg $flags -jar $jarName nogui; ")
+                    append("  exec $javaBin $memArg $flags -jar $safeJar nogui; ")
                     append("fi")
                 }
             }
@@ -507,7 +511,11 @@ class ServerProcessManager private constructor(
                     val statusBeforeExit = _serverStatuses.value[server.id]
                     session.isAutoSleeping = false
                     val autoWakeEnabled = session.server.automationConfig.autoWakeOnPing
-                    sessions.remove(server.id)
+                    session.ptyProcess?.let { pty ->
+                        try { pty.destroy() } catch (_: Exception) {}
+                        try { PtyNative.waitForProcess(pty.pid) } catch (_: Exception) {}
+                    }
+                    sessions.remove(server.id, session)
 
                     val stopMsg = "\r\n\u001B[33m[MineServe] Server process terminated.\u001B[0m\r\n"
                     session.emulator.appendBytes(stopMsg.toByteArray(Charsets.UTF_8), stopMsg.length)
@@ -536,7 +544,7 @@ class ServerProcessManager private constructor(
             val errMsg = "\r\n\u001B[31m[MineServe] Error starting server process: ${e.localizedMessage ?: e.message}\u001B[0m\r\n"
             session.emulator.appendBytes(errMsg.toByteArray(Charsets.UTF_8), errMsg.length)
             triggerRefresh(server.id)
-            sessions.remove(server.id)
+            sessions.remove(server.id, session)
             updateStatus(server.id, ServerStatus.ERROR, onStatusChanged)
             DiscordWebhookClient.notifyServerCrash(session.server, e.localizedMessage ?: e.message)
         }
@@ -552,14 +560,15 @@ class ServerProcessManager private constructor(
             updateStatus(serverId, ServerStatus.STOPPING)
             if (session.ptyProcess != null) {
                 for (i in 0 until 30) {
-                    if (isServerFullyStopped(serverId)) break
+                    if (sessions[serverId] !== session || isServerFullyStopped(serverId)) break
                     delay(500)
                 }
             }
-            if (isProcessActive(serverId) || sessions.containsKey(serverId)) {
+            if (sessions[serverId] !== session) return@launch
+            if (isProcessActive(serverId) || sessions[serverId] === session) {
                 try { session.ptyProcess?.destroy() } catch (_: Exception) {}
                 killProcessesForServer(serverId, session.pid)
-                sessions.remove(serverId)
+                sessions.remove(serverId, session)
                 if (session.server.automationConfig.autoWakeOnPing) {
                     enterStandby(session.server)
                 } else {
@@ -615,7 +624,7 @@ class ServerProcessManager private constructor(
 
         // Stop foreground service if no active servers remain
         val remaining = statusMap.count { it.value == ServerStatus.RUNNING || it.value == ServerStatus.STARTING }
-        if (remaining == 0) {
+        if (remaining == 0 && !MineServeForegroundService.isWebAdminActive) {
             MineServeForegroundService.stop(context)
         }
 
@@ -693,8 +702,10 @@ class ServerProcessManager private constructor(
             try {
                 val formatted = if (command.endsWith("\n")) command else "$command\n"
                 val bytes = formatted.toByteArray(Charsets.UTF_8)
-                proc.outputStream.write(bytes)
-                proc.outputStream.flush()
+                synchronized(proc) {
+                    proc.outputStream.write(bytes)
+                    proc.outputStream.flush()
+                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed sending command to server $serverId", e)
             }
@@ -786,7 +797,7 @@ class ServerProcessManager private constructor(
             MineServeForegroundService.start(context)
         } else if (status == ServerStatus.STOPPED || status == ServerStatus.ERROR) {
             val remaining = current.count { it.value == ServerStatus.RUNNING || it.value == ServerStatus.STARTING || it.value == ServerStatus.STANDBY }
-            if (remaining == 0 && StandbyPingManager.instance.getStandbyCount() == 0) {
+            if (remaining == 0 && StandbyPingManager.instance.getStandbyCount() == 0 && !MineServeForegroundService.isWebAdminActive) {
                 MineServeForegroundService.stop(context)
             }
         }

@@ -511,7 +511,7 @@ fun MineServeApp(viewModel: MainViewModel) {
                     },
                     onUpdateUser = { id, r, restrict, allowed, enabled, newPw ->
                         viewModel.webAdminManager.userRepository.updateUser(id, r, restrict, allowed, enabled, newPw).also { res ->
-                            if (res.isSuccess && !enabled) {
+                            if (res.isSuccess && (!enabled || r != null || restrict != null || allowed != null || !newPw.isNullOrEmpty())) {
                                 viewModel.webAdminManager.security.revokeUserSessions(id)
                             }
                         }

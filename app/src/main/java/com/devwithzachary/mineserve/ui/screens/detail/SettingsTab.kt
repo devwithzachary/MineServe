@@ -1141,7 +1141,7 @@ fun SettingsTab(
                                         isReservingSubdomain = true
                                         cloudTunnelFeedback = null
                                         scope.launch {
-                                            val res = MineServeCloudManager(context).allocateCloudTunnel(
+                                            val res = MineServeCloudManager.getInstance(context).allocateCloudTunnel(
                                                 serverId = server.id,
                                                 subdomain = cloudSubdomain,
                                                 region = cloudRegion,

@@ -41,9 +41,37 @@ class ServerFileRepository(
         )
     }
 
-    suspend fun listDirectory(serverId: String, relativePath: String = ""): List<FileEntry> = withContext(Dispatchers.IO) {
+    private fun isValidServerId(serverId: String): Boolean {
+        return serverId.isNotBlank() &&
+            !serverId.contains('/') &&
+            !serverId.contains('\\') &&
+            serverId != "." &&
+            serverId != ".."
+    }
+
+    private fun resolveSafePath(
+        serverId: String,
+        relativePath: String,
+        allowRoot: Boolean = false
+    ): File? {
+        if (!isValidServerId(serverId)) return null
         val serverDir = File(serversDir, serverId)
-        val targetDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+        val serverCanon = serverDir.canonicalPath
+        val serverPrefix = serverCanon + File.separator
+        if (relativePath.isBlank()) {
+            return if (allowRoot) serverDir else null
+        }
+        val target = File(serverDir, relativePath)
+        val targetCanon = target.canonicalPath
+        return if ((allowRoot && targetCanon == serverCanon) || targetCanon.startsWith(serverPrefix)) {
+            target
+        } else {
+            null
+        }
+    }
+
+    suspend fun listDirectory(serverId: String, relativePath: String = ""): List<FileEntry> = withContext(Dispatchers.IO) {
+        val targetDir = resolveSafePath(serverId, relativePath, allowRoot = true) ?: return@withContext emptyList()
         if (!targetDir.exists() || !targetDir.isDirectory) return@withContext emptyList()
 
         val files = targetDir.listFiles() ?: return@withContext emptyList()
@@ -58,10 +86,14 @@ class ServerFileRepository(
 
     suspend fun createFile(serverId: String, relativePath: String, fileName: String, content: String = ""): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val parentDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+            val cleanName = fileName.trim()
+            if (cleanName.isBlank() || cleanName == "." || cleanName == ".." || cleanName.contains('/') || cleanName.contains('\\')) {
+                return@withContext false
+            }
+            val parentDir = resolveSafePath(serverId, relativePath, allowRoot = true) ?: return@withContext false
+            val targetRel = if (relativePath.isBlank()) cleanName else "$relativePath/$cleanName"
+            val newFile = resolveSafePath(serverId, targetRel, allowRoot = false) ?: return@withContext false
             if (!parentDir.exists()) parentDir.mkdirs()
-            val newFile = File(parentDir, fileName)
             if (newFile.exists()) return@withContext false
             newFile.writeText(content)
             true
@@ -73,9 +105,12 @@ class ServerFileRepository(
 
     suspend fun createDirectory(serverId: String, relativePath: String, dirName: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val parentDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
-            val newDir = File(parentDir, dirName)
+            val cleanName = dirName.trim()
+            if (cleanName.isBlank() || cleanName == "." || cleanName == ".." || cleanName.contains('/') || cleanName.contains('\\')) {
+                return@withContext false
+            }
+            val targetRel = if (relativePath.isBlank()) cleanName else "$relativePath/$cleanName"
+            val newDir = resolveSafePath(serverId, targetRel, allowRoot = false) ?: return@withContext false
             newDir.mkdirs()
         } catch (e: Exception) {
             Log.e(TAG, "Failed creating directory $dirName in $serverId/$relativePath", e)
@@ -85,8 +120,7 @@ class ServerFileRepository(
 
     suspend fun deleteFileOrDirectory(serverId: String, relativePath: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val target = File(serverDir, relativePath)
+            val target = resolveSafePath(serverId, relativePath, allowRoot = false) ?: return@withContext false
             if (!target.exists()) return@withContext false
             if (target.isDirectory) {
                 target.deleteRecursively()
@@ -101,10 +135,15 @@ class ServerFileRepository(
 
     suspend fun renameFileOrDirectory(serverId: String, relativePath: String, newName: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val target = File(serverDir, relativePath)
+            val cleanName = newName.trim()
+            if (cleanName.isBlank() || cleanName == "." || cleanName == ".." || cleanName.contains('/') || cleanName.contains('\\')) {
+                return@withContext false
+            }
+            val serverDir = resolveSafePath(serverId, "", allowRoot = true) ?: return@withContext false
+            val target = resolveSafePath(serverId, relativePath, allowRoot = false) ?: return@withContext false
             if (!target.exists()) return@withContext false
-            val destination = File(target.parentFile, newName)
+            val destination = File(target.parentFile, cleanName)
+            if (!destination.canonicalPath.startsWith(serverDir.canonicalPath + File.separator)) return@withContext false
             target.renameTo(destination)
         } catch (e: Exception) {
             Log.e(TAG, "Failed renaming $relativePath to $newName in $serverId", e)
@@ -114,8 +153,8 @@ class ServerFileRepository(
 
     suspend fun duplicateFile(serverId: String, relativePath: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val source = File(serverDir, relativePath)
+            val serverDir = resolveSafePath(serverId, "", allowRoot = true) ?: return@withContext false
+            val source = resolveSafePath(serverId, relativePath, allowRoot = false) ?: return@withContext false
             if (!source.exists() || source.isDirectory) return@withContext false
             val parent = source.parentFile ?: serverDir
             val nameWithoutExt = source.nameWithoutExtension
@@ -136,8 +175,7 @@ class ServerFileRepository(
 
     suspend fun readFile(serverId: String, relativePath: String): String = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val target = File(serverDir, relativePath)
+            val target = resolveSafePath(serverId, relativePath, allowRoot = false) ?: return@withContext ""
             if (target.exists() && target.isFile) target.readText() else ""
         } catch (e: Exception) {
             Log.e(TAG, "Failed reading $relativePath in $serverId", e)
@@ -147,8 +185,7 @@ class ServerFileRepository(
 
     suspend fun writeFile(serverId: String, relativePath: String, content: String): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val target = File(serverDir, relativePath)
+            val target = resolveSafePath(serverId, relativePath, allowRoot = false) ?: return@withContext false
             target.parentFile?.mkdirs()
             target.writeText(content)
             true
@@ -160,8 +197,7 @@ class ServerFileRepository(
 
     suspend fun importFile(serverId: String, relativePath: String, sourceUri: Uri): Boolean = withContext(Dispatchers.IO) {
         try {
-            val serverDir = File(serversDir, serverId)
-            val targetDir = if (relativePath.isBlank()) serverDir else File(serverDir, relativePath)
+            val targetDir = resolveSafePath(serverId, relativePath, allowRoot = true) ?: return@withContext false
             if (!targetDir.exists()) targetDir.mkdirs()
 
             var fileName = "imported_file"
@@ -189,8 +225,7 @@ class ServerFileRepository(
     }
 
     suspend fun exportFileToDownloads(serverId: String, relativePath: String): Boolean = withContext(Dispatchers.IO) {
-        val serverDir = File(serversDir, serverId)
-        val sourceFile = File(serverDir, relativePath)
+        val sourceFile = resolveSafePath(serverId, relativePath, allowRoot = false) ?: return@withContext false
         FileStorageUtils.exportFileToDownloads(context, sourceFile)
     }
 
@@ -200,17 +235,21 @@ class ServerFileRepository(
         destinationRelativePath: String = "",
         deleteZipAfter: Boolean = false
     ): Result<Int> = withContext(Dispatchers.IO) {
-        val serverDir = File(serversDir, serverId)
-        val zipFile = File(serverDir, relativePath)
+        val serverDir = resolveSafePath(serverId, "", allowRoot = true)
+            ?: return@withContext Result.failure(SecurityException("Invalid server identifier"))
+        val zipFile = resolveSafePath(serverId, relativePath, allowRoot = false)
+            ?: return@withContext Result.failure(SecurityException("Archive path is outside server root"))
         val targetDir = if (destinationRelativePath.isBlank()) {
             zipFile.parentFile ?: serverDir
         } else {
-            File(serverDir, destinationRelativePath)
+            resolveSafePath(serverId, destinationRelativePath, allowRoot = true)
+                ?: return@withContext Result.failure(SecurityException("Destination directory is outside server root"))
         }
 
         val serverCanonicalPath = serverDir.canonicalPath
+        val serverPrefix = serverCanonicalPath + File.separator
         val targetCanonicalPath = targetDir.canonicalPath
-        if (!targetCanonicalPath.startsWith(serverCanonicalPath)) {
+        if (targetCanonicalPath != serverCanonicalPath && !targetCanonicalPath.startsWith(serverPrefix)) {
             return@withContext Result.failure(SecurityException("Destination directory is outside server root"))
         }
 
@@ -218,7 +257,7 @@ class ServerFileRepository(
     }
 
     suspend fun searchFiles(serverId: String, query: String): List<FileEntry> = withContext(Dispatchers.IO) {
-        if (query.isBlank()) return@withContext emptyList()
+        if (query.isBlank() || !isValidServerId(serverId)) return@withContext emptyList()
         val serverDir = File(serversDir, serverId)
         if (!serverDir.exists()) return@withContext emptyList()
 

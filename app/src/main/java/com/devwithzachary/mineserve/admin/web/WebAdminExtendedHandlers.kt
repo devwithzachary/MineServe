@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 private data class ModpackImportJob(
     val id: String,
+    val serverId: String,
     @Volatile var status: String = "INSTALLING",
     @Volatile var message: String = "Starting modpack import...",
     @Volatile var currentFile: String = "",
@@ -71,7 +72,7 @@ internal class WebAdminExtendedHandlers(
 ) {
     private val modrinthClient = ModrinthApiClient()
     private val modpackJobs = ConcurrentHashMap<String, ModpackImportJob>()
-    private val cloudManager by lazy { MineServeCloudManager(context) }
+    private val cloudManager by lazy { MineServeCloudManager.getInstance(context) }
     private val safeguardPrefs by lazy { SafeguardPreferences(context) }
 
     // --- Performance ---
@@ -615,13 +616,14 @@ internal class WebAdminExtendedHandlers(
 
     // --- Proxy Network & Loopback ---
 
-    suspend fun handleGetProxy(serverId: String): WebApiResult {
+    suspend fun handleGetProxy(serverId: String, accessibleServerIds: Set<String>? = null): WebApiResult {
         val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
         if (server.type.isProxy) {
             val allServers = serverRepository.servers.value
             val candidates = JSONArray()
             for (b in allServers) {
                 if (b.id == server.id || b.type.isProxy) continue
+                if (accessibleServerIds != null && !accessibleServerIds.contains(b.id)) continue
                 val existing = server.proxyConfig.routes.firstOrNull { it.targetServerId == b.id }
                 candidates.put(
                     JSONObject()
@@ -650,7 +652,7 @@ internal class WebAdminExtendedHandlers(
         }
     }
 
-    suspend fun handleSaveProxy(serverId: String, body: String): WebApiResult {
+    suspend fun handleSaveProxy(serverId: String, body: String, accessibleServerIds: Set<String>? = null): WebApiResult {
         val server = serverRepository.getServer(serverId) ?: return notFound("Server not found")
         val json = parseJsonObject(body)
         if (server.type.isProxy) {
@@ -659,6 +661,9 @@ internal class WebAdminExtendedHandlers(
             val routes = mutableListOf<ProxyRoute>()
             for (i in 0 until targetIds.length()) {
                 val tid = targetIds.optString(i, "")
+                if (accessibleServerIds != null && !accessibleServerIds.contains(tid)) {
+                    return WebApiResult(403, "Forbidden", JSONObject().put("error", "Access denied to backend server $tid"))
+                }
                 val backend = allServers.firstOrNull { it.id == tid && !it.type.isProxy } ?: continue
                 routes.add(
                     ProxyRoute(
@@ -851,7 +856,7 @@ internal class WebAdminExtendedHandlers(
             return badRequest("This server software does not support modpacks.")
         }
         val jobId = UUID.randomUUID().toString()
-        val job = ModpackImportJob(id = jobId)
+        val job = ModpackImportJob(id = jobId, serverId = serverId)
         modpackJobs[jobId] = job
         val serverDir = serverRepository.getServerDirectory(serverId)
 
@@ -883,8 +888,8 @@ internal class WebAdminExtendedHandlers(
         return ok(JSONObject().put("success", true).put("jobId", jobId))
     }
 
-    fun handleGetModpackJobStatus(jobId: String): WebApiResult {
-        val job = modpackJobs[jobId] ?: return notFound("Modpack import job not found")
+    fun handleGetModpackJobStatus(serverId: String, jobId: String): WebApiResult {
+        val job = modpackJobs[jobId]?.takeIf { it.serverId == serverId } ?: return notFound("Modpack import job not found")
         val obj = JSONObject()
             .put("jobId", job.id)
             .put("status", job.status)

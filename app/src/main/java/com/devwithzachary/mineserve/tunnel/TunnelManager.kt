@@ -48,7 +48,7 @@ class TunnelManager private constructor(
     private val activePlayitClients = ConcurrentHashMap<String, PlayitTunnelClient>()
     private val activeCloudJobs = ConcurrentHashMap<String, Job>()
     private val activeTunnelSpecs = ConcurrentHashMap<String, TunnelSpec>()
-    private val mineServeCloudManager = MineServeCloudManager(context)
+    private val mineServeCloudManager = MineServeCloudManager.getInstance(context)
 
     private val _tunnelStates = MutableStateFlow<Map<String, TunnelState>>(emptyMap())
     val tunnelStates: StateFlow<Map<String, TunnelState>> = _tunnelStates.asStateFlow()

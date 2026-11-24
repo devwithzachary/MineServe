@@ -193,6 +193,19 @@ class WebAdminServer(
                 }
                 val segments = path.removePrefix("/api/servers/").split("/").filter { it.isNotBlank() }
                 val serverId = if (isServerImportUpload) null else (segments.getOrNull(0) ?: "")
+                if (!isServerImportUpload) {
+                    val targetServer = serverId?.let { serverRepository.getServer(it) }
+                    if (targetServer == null) {
+                        sendResponse(
+                            out,
+                            404,
+                            "Not Found",
+                            "application/json",
+                            JSONObject().put("error", "Server not found").toString().toByteArray(Charsets.UTF_8)
+                        )
+                        return
+                    }
+                }
                 val uploadPerm = when {
                     isServerImportUpload -> Permission.MANAGE_HOST
                     isFileUpload -> Permission.SERVER_FILES_WRITE
@@ -237,7 +250,7 @@ class WebAdminServer(
                                 val destFile = File(targetDir, safeName)
                                 val serverCanon = serverDir.canonicalPath
                                 val destCanon = destFile.canonicalPath
-                                if (!destCanon.startsWith(serverCanon)) {
+                                if (!destCanon.startsWith(serverCanon + File.separator)) {
                                     WebApiResult(403, "Forbidden", JSONObject().put("error", "Target path is outside server directory."))
                                 } else {
                                     destFile.parentFile?.mkdirs()
@@ -384,7 +397,7 @@ class WebAdminServer(
                     } else null
                     userRepository.updateUser(targetUserId, role, restrictServers, allowedIds, enabled, newPassword).fold(
                         onSuccess = { updated ->
-                            if (!updated.enabled) {
+                            if (!updated.enabled || role != null || restrictServers != null || allowedIds != null || newPassword != null) {
                                 security.revokeUserSessions(updated.id)
                             }
                             userRepository.recordAudit(
@@ -759,6 +772,7 @@ class WebAdminServer(
                 return
             }
             if (path.startsWith("/api/servers/jobs/") && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 val jobId = path.removePrefix("/api/servers/jobs/").trim('/')
                 sendApiResult(out, apiHandlers.handleGetCreationJob(jobId))
                 return
@@ -898,8 +912,8 @@ class WebAdminServer(
                         }
                     }
 
-                    // 4e. Performance, Automation, World, Live Map, Network, Backups, Plugins
-                    if (action in setOf("performance", "automation", "world", "livemap", "network", "backups", "plugins", "discord", "proxy")) {
+                    // 4e. Performance, Automation, World, Live Map, Network, Backups, Plugins, Modpack
+                    if (action in setOf("performance", "automation", "world", "livemap", "network", "backups", "plugins", "modpack", "discord", "proxy")) {
                         val sub = segments.getOrNull(2)
                         val requiredPerm = when (action) {
                             "performance", "livemap" -> {
@@ -917,7 +931,7 @@ class WebAdminServer(
                         }
                         if (!requirePerm(out, currentUser, requiredPerm, serverId)) return
                     }
-                    if (dispatchExtendedRoutes(out, serverId, action, segments, method, queryParams, body)) {
+                    if (dispatchExtendedRoutes(out, currentUser, serverId, action, segments, method, queryParams, body)) {
                         return
                     }
 
@@ -937,7 +951,10 @@ class WebAdminServer(
                             return
                         } else if (method == "POST") {
                             if (!requirePerm(out, currentUser, Permission.SERVER_CONSOLE_WRITE, serverId)) return
-                            val jsonBody = JSONObject(if (body.isBlank()) "{}" else body)
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrElse {
+                                sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", "Invalid JSON body.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
                             val cmd = jsonBody.optString("command", "").trim()
                             if (cmd.isNotBlank()) {
                                 processManager.sendCommand(serverId, cmd)
@@ -986,7 +1003,10 @@ class WebAdminServer(
                         // POST /api/servers/{id}/files/write
                         if (fileAction == "write" && method == "POST") {
                             if (!requirePerm(out, currentUser, Permission.SERVER_FILES_WRITE, serverId)) return
-                            val jsonBody = JSONObject(if (body.isBlank()) "{}" else body)
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrElse {
+                                sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", "Invalid JSON body.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
                             val targetPath = jsonBody.optString("path", "")
                             val content = jsonBody.optString("content", "")
                             val ok = serverRepository.writeFile(serverId, targetPath, content)
@@ -999,7 +1019,10 @@ class WebAdminServer(
                         // POST /api/servers/{id}/files/delete
                         if (fileAction == "delete" && method == "POST") {
                             if (!requirePerm(out, currentUser, Permission.SERVER_FILES_WRITE, serverId)) return
-                            val jsonBody = JSONObject(if (body.isBlank()) "{}" else body)
+                            val jsonBody = runCatching { JSONObject(if (body.isBlank()) "{}" else body) }.getOrElse {
+                                sendResponse(out, 400, "Bad Request", "application/json", JSONObject().put("error", "Invalid JSON body.").toString().toByteArray(Charsets.UTF_8))
+                                return
+                            }
                             val targetPath = jsonBody.optString("path", "")
                             val ok = serverRepository.deleteFileOrDirectory(serverId, targetPath)
                             if (ok) userRepository.recordAudit(currentUser, "FILE_DELETE", server.name, targetPath, effectiveIp)
@@ -1077,7 +1100,7 @@ class WebAdminServer(
                             val targetPath = queryParams["path"] ?: ""
                             val serverDir = serverRepository.getServerDirectory(serverId)
                             val file = File(serverDir, targetPath)
-                            if (!file.exists() || !file.isFile || !file.canonicalPath.startsWith(serverDir.canonicalPath)) {
+                            if (!file.exists() || !file.isFile || !file.canonicalPath.startsWith(serverDir.canonicalPath + File.separator)) {
                                 sendResponse(out, 404, "Not Found", "application/json", JSONObject().put("error", "File not found.").toString().toByteArray(Charsets.UTF_8))
                                 return
                             }
@@ -1129,7 +1152,14 @@ class WebAdminServer(
             var lastKeepaliveAt = System.currentTimeMillis()
 
             while (isRunning && !socket.isClosed) {
-                if (security.validateSession(token) == null) break
+                val activeSession = security.validateSession(token) ?: break
+                val sseUser = userRepository.getUser(activeSession.userId)?.takeIf { it.enabled } ?: break
+                if (!userRepository.canAccessServer(sseUser, server.id) ||
+                    !userRepository.permissionsFor(sseUser.role).contains(Permission.SERVER_VIEW)
+                ) {
+                    break
+                }
+                if (serverRepository.getServer(server.id) == null) break
 
                 val now = System.currentTimeMillis()
                 val refreshTs = processManager.refreshTriggers.value[server.id] ?: 0L
@@ -1282,6 +1312,13 @@ class WebAdminServer(
         val json = try { JSONObject(if (body.isBlank()) "{}" else body) } catch (_: Exception) { JSONObject() }
         val inputUser = json.optString("username", "").trim()
         val inputPass = json.optString("password", "")
+        val userLockKey = inputUser.lowercase().takeIf { it.isNotBlank() }?.let { "user:$it" }
+
+        if (userLockKey != null && security.isIpLockedOut(userLockKey)) {
+            val errObj = JSONObject().put("error", "Too many failed attempts for this account. Temporary lockout for 5 minutes.")
+            sendResponse(out, 429, "Too Many Requests", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
+            return
+        }
 
         val cfg = configProvider()
         userRepository.ensureDefaultOwner(cfg.username, cfg.password)
@@ -1289,6 +1326,7 @@ class WebAdminServer(
 
         if (authedUser != null) {
             security.resetFailedAttempts(clientIp)
+            if (userLockKey != null) security.resetFailedAttempts(userLockKey)
             val session = security.createSession(authedUser.id, authedUser.username, authedUser.role, clientIp)
             userRepository.recordAudit(authedUser, "LOGIN", authedUser.username, "Signed in (${authedUser.role.displayName})", clientIp)
             val cookie = "session=${session.token}; Path=/; HttpOnly; SameSite=Lax"
@@ -1307,6 +1345,7 @@ class WebAdminServer(
             )
         } else {
             security.recordFailedAttempt(clientIp)
+            if (userLockKey != null) security.recordFailedAttempt(userLockKey)
             val errObj = JSONObject().put("error", "Invalid username or password.")
             sendResponse(out, 401, "Unauthorized", "application/json", errObj.toString().toByteArray(Charsets.UTF_8))
         }
@@ -1349,6 +1388,7 @@ class WebAdminServer(
 
     private suspend fun dispatchExtendedRoutes(
         out: OutputStream,
+        currentUser: PanelUser,
         serverId: String,
         action: String?,
         segments: List<String>,
@@ -1431,8 +1471,15 @@ class WebAdminServer(
                 else -> null
             }
             "proxy" -> when {
-                sub == null && method == "GET" -> extHandlers.handleGetProxy(serverId)
-                sub == null && method == "POST" -> extHandlers.handleSaveProxy(serverId, body)
+                sub == null && method == "GET" -> extHandlers.handleGetProxy(
+                    serverId = serverId,
+                    accessibleServerIds = if (currentUser.restrictServers) currentUser.allowedServerIds.toSet() else null
+                )
+                sub == null && method == "POST" -> extHandlers.handleSaveProxy(
+                    serverId = serverId,
+                    body = body,
+                    accessibleServerIds = if (currentUser.restrictServers) currentUser.allowedServerIds.toSet() else null
+                )
                 else -> null
             }
             "backups" -> when {
@@ -1453,9 +1500,10 @@ class WebAdminServer(
                 sub == "download" && method == "GET" -> {
                     val file = extHandlers.getBackupFile(serverId, queryParams["file"] ?: "")
                     if (file != null) {
-                        sendResponse(
-                            out, 200, "OK", "application/zip", file.readBytes(),
-                            extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"${file.name}\"")
+                        val safeName = file.name.replace("\"", "_")
+                        sendFileStreamResponse(
+                            out, "application/zip", file,
+                            extraHeaders = mapOf("Content-Disposition" to "attachment; filename=\"$safeName\"")
                         )
                         return true
                     }
@@ -1473,7 +1521,7 @@ class WebAdminServer(
             "modpack" -> when {
                 sub == "jobs" && method == "GET" -> {
                     val jobId = segments.getOrNull(3) ?: ""
-                    extHandlers.handleGetModpackJobStatus(jobId)
+                    extHandlers.handleGetModpackJobStatus(serverId, jobId)
                 }
                 else -> null
             }
