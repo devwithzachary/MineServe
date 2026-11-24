@@ -21,6 +21,7 @@ data class WebAuthSession(
 open class WebSessionManager {
     private val activeSessions = ConcurrentHashMap<String, WebAuthSession>()
     private val failedAttempts = ConcurrentHashMap<String, MutableList<Long>>()
+    private val lockedUntil = ConcurrentHashMap<String, Long>()
     private val secureRandom = SecureRandom()
 
     companion object {
@@ -30,34 +31,45 @@ open class WebSessionManager {
     }
 
     fun isIpLockedOut(clientIp: String): Boolean {
-        cleanOldAttempts(clientIp)
-        val attempts = failedAttempts[clientIp] ?: return false
-        synchronized(attempts) {
-            if (attempts.size >= MAX_FAILED_ATTEMPTS) {
-                val lastAttempt = attempts.lastOrNull() ?: 0L
-                return System.currentTimeMillis() - lastAttempt < LOCKOUT_DURATION_MS
-            }
+        val now = System.currentTimeMillis()
+        val until = lockedUntil[clientIp]
+        if (until != null) {
+            if (now < until) return true
+            lockedUntil.remove(clientIp, until)
+            failedAttempts.remove(clientIp)
         }
+        cleanOldAttempts(clientIp)
         return false
     }
 
     fun recordFailedAttempt(clientIp: String) {
         cleanOldAttempts(clientIp)
+        val now = System.currentTimeMillis()
         val list = failedAttempts.getOrPut(clientIp) { mutableListOf() }
         synchronized(list) {
-            list.add(System.currentTimeMillis())
+            list.add(now)
+            if (list.size >= MAX_FAILED_ATTEMPTS) {
+                lockedUntil[clientIp] = now + LOCKOUT_DURATION_MS
+                list.clear()
+            }
         }
     }
 
     fun resetFailedAttempts(clientIp: String) {
         failedAttempts.remove(clientIp)
+        lockedUntil.remove(clientIp)
     }
 
     private fun cleanOldAttempts(clientIp: String) {
         val list = failedAttempts[clientIp] ?: return
         val now = System.currentTimeMillis()
+        var isEmptyAfterClean = false
         synchronized(list) {
-            list.removeAll { now - it > ATTEMPT_WINDOW_MS + LOCKOUT_DURATION_MS }
+            list.removeAll { now - it > ATTEMPT_WINDOW_MS }
+            isEmptyAfterClean = list.isEmpty()
+        }
+        if (isEmptyAfterClean) {
+            failedAttempts.remove(clientIp, list)
         }
     }
 

@@ -62,7 +62,6 @@ class UpnpClient {
                         val location = extractHeader(response, "LOCATION")
                         if (!location.isNullOrBlank()) {
                             locations.add(location.trim())
-                            break // Found a candidate gateway
                         }
                     } catch (_: Exception) {
                         // Socket read timeout or no further packet
@@ -167,7 +166,7 @@ class UpnpClient {
         """.trimIndent()
 
         val response = executeSoap(gateway.controlUrl, gateway.serviceType, "AddPortMapping", soapBody)
-        if (response != null && !response.contains("<s:Fault", ignoreCase = true)) {
+        if (response != null && !isSoapFault(response)) {
             Log.i(TAG, "Successfully added UPnP port mapping $externalPort -> $internalIp:$internalPort ($protocol)")
             true
         } else {
@@ -195,13 +194,17 @@ class UpnpClient {
         """.trimIndent()
 
         val response = executeSoap(gateway.controlUrl, gateway.serviceType, "DeletePortMapping", soapBody)
-        if (response != null && !response.contains("<s:Fault", ignoreCase = true)) {
+        if (response != null && !isSoapFault(response)) {
             Log.i(TAG, "Successfully deleted UPnP port mapping $externalPort ($protocol)")
             true
         } else {
             Log.w(TAG, "Failed deleting UPnP port mapping: $response")
             false
         }
+    }
+
+    private fun isSoapFault(response: String): Boolean {
+        return response.contains(":Fault", ignoreCase = true) || response.contains("<Fault", ignoreCase = true)
     }
 
     private suspend fun executeSoap(
@@ -219,6 +222,10 @@ class UpnpClient {
                 .build()
 
             MineServeHttpClient.client.newCall(req).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    Log.w(TAG, "SOAP HTTP error ${resp.code} for $action")
+                    return@withContext null
+                }
                 resp.body?.string()
             }
         } catch (e: Exception) {

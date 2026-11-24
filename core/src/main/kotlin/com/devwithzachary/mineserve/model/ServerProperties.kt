@@ -107,7 +107,7 @@ data class ServerProperties(
     companion object {
         private fun isStandardKey(key: String): Boolean {
             return key in setOf(
-                "motd", "server-port", "max-players", "gamemode", "difficulty",
+                "motd", "server-ip", "server-port", "max-players", "gamemode", "difficulty",
                 "pvp", "hardcore", "online-mode", "white-list", "enforce-whitelist",
                 "enable-command-block", "spawn-monsters", "spawn-animals", "spawn-npcs",
                 "allow-flight", "allow-nether", "view-distance", "simulation-distance",

@@ -4,6 +4,7 @@ import com.devwithzachary.mineserve.core.CoreLog as Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -37,11 +38,11 @@ class GitHubUpdateChecker(
                 val body = resp.body?.string() ?: return@withContext UpdateCheckResult.Error("Empty response from GitHub")
                 val obj = json.parseToJsonElement(body).jsonObject
 
-                val tagName = obj["tag_name"]?.jsonPrimitive?.content ?: ""
-                val name = obj["name"]?.jsonPrimitive?.content ?: tagName
-                val releaseNotes = obj["body"]?.jsonPrimitive?.content ?: ""
-                val htmlUrl = obj["html_url"]?.jsonPrimitive?.content ?: "https://github.com/devwithzachary/mineserve/releases"
-                val publishedAt = obj["published_at"]?.jsonPrimitive?.content ?: ""
+                val tagName = obj["tag_name"]?.jsonPrimitive?.contentOrNull ?: ""
+                val name = obj["name"]?.jsonPrimitive?.contentOrNull ?: tagName
+                val releaseNotes = obj["body"]?.jsonPrimitive?.contentOrNull ?: ""
+                val htmlUrl = obj["html_url"]?.jsonPrimitive?.contentOrNull ?: "https://github.com/devwithzachary/mineserve/releases"
+                val publishedAt = obj["published_at"]?.jsonPrimitive?.contentOrNull ?: ""
 
                 // Find direct APK download asset if present
                 var apkUrl: String? = null
@@ -49,9 +50,9 @@ class GitHubUpdateChecker(
                 if (assetsArr != null) {
                     for (assetElement in assetsArr) {
                         val assetObj = assetElement.jsonObject
-                        val assetName = assetObj["name"]?.jsonPrimitive?.content ?: ""
+                        val assetName = assetObj["name"]?.jsonPrimitive?.contentOrNull ?: ""
                         if (assetName.endsWith(".apk", ignoreCase = true)) {
-                            apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content
+                            apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.contentOrNull
                             break
                         }
                     }

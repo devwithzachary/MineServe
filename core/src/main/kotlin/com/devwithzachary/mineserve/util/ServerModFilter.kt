@@ -67,7 +67,7 @@ object ServerModFilter {
     )
 
     private val ENVIRONMENT_CLIENT_REGEX = Regex(""""environment"\s*:\s*"client"""", RegexOption.IGNORE_CASE)
-    private val CLIENT_SIDE_ONLY_TOML_REGEX = Regex("""clientSideOnly\s*=\s*true""", RegexOption.IGNORE_CASE)
+    private val CLIENT_SIDE_ONLY_TOML_REGEX = Regex("""^\s*clientSideOnly\s*=\s*true\b""", setOf(RegexOption.IGNORE_CASE, RegexOption.MULTILINE))
 
     /**
      * Scans JAR files in `mods/` under [serverDir], renames any client-only or duplicate mods

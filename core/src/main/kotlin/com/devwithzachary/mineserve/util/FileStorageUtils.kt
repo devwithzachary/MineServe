@@ -52,6 +52,7 @@ object FileStorageUtils {
         }
 
         val targetCanonicalPath = targetDir.canonicalPath
+        val targetPrefix = targetCanonicalPath + File.separator
         var extractedCount = 0
 
         return try {
@@ -64,7 +65,7 @@ object FileStorageUtils {
                     val outputCanonicalPath = outputFile.canonicalPath
 
                     // Zip-Slip protection
-                    if (!outputCanonicalPath.startsWith(targetCanonicalPath)) {
+                    if (outputCanonicalPath != targetCanonicalPath && !outputCanonicalPath.startsWith(targetPrefix)) {
                         throw SecurityException("Zip entry is outside target directory: ${entry.name}")
                     }
 

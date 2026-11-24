@@ -25,8 +25,8 @@ object BoreProtocolSupport {
         val baos = ByteArrayOutputStream()
         while (true) {
             val b = input.read()
-            if (b == -1) return if (baos.size() > 0) baos.toString(Charsets.UTF_8) else null
-            if (b == 0) return baos.toString(Charsets.UTF_8)
+            if (b == -1) return if (baos.size() > 0) String(baos.toByteArray(), Charsets.UTF_8) else null
+            if (b == 0) return String(baos.toByteArray(), Charsets.UTF_8)
             baos.write(b)
         }
     }

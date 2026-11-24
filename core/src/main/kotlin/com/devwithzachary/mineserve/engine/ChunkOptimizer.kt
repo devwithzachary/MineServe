@@ -168,16 +168,24 @@ object ChunkOptimizer {
                 val length = raf.readInt()
                 val compressionType = raf.readByte()
 
-                if (length <= 1 || chunkBytePos + 4 + length > raf.length()) {
+                if (length < 1 || chunkBytePos + 4 + length > raf.length()) {
                     continue
                 }
 
-                val payload = ByteArray(length - 1)
-                raf.readFully(payload)
+                val payload = if (length > 1) {
+                    ByteArray(length - 1).also { raf.readFully(it) }
+                } else {
+                    ByteArray(0)
+                }
 
-                val inhabitedTime = extractInhabitedTime(payload, compressionType.toInt())
+                val isExternal = (compressionType.toInt() and 0x80) != 0
+                val inhabitedTime = if (isExternal) {
+                    null
+                } else {
+                    extractInhabitedTimeOrNull(payload, compressionType.toInt())
+                }
 
-                if (inhabitedTime <= thresholdTicks) {
+                if (inhabitedTime != null && inhabitedTime <= thresholdTicks) {
                     prunedCount++
                 } else {
                     val tsOffset = 4096 + (i * 4)
@@ -214,6 +222,7 @@ object ChunkOptimizer {
         val tempFile = File(mcaFile.parentFile, "${mcaFile.name}.opt")
         try {
             RandomAccessFile(tempFile, "rw").use { outRaf ->
+                outRaf.setLength(0)
                 val newHeader = ByteArray(8192)
                 var currentSector = 2
 
@@ -258,10 +267,13 @@ object ChunkOptimizer {
                 outRaf.write(newHeader)
             }
 
-            // Replace original file atomically
+            // Replace original file atomically without deleting source beforehand
             if (tempFile.exists()) {
-                mcaFile.delete()
-                tempFile.renameTo(mcaFile)
+                java.nio.file.Files.move(
+                    tempFile.toPath(),
+                    mcaFile.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                )
             }
 
             return RegionOptimizeResult(scannedCount, prunedCount, false)
@@ -285,29 +297,38 @@ object ChunkOptimizer {
      * Returns 0L if not found or on decompression error.
      */
     fun extractInhabitedTime(payload: ByteArray, compressionType: Int): Long {
+        return extractInhabitedTimeOrNull(payload, compressionType) ?: 0L
+    }
+
+    /**
+     * Extracts the InhabitedTime (ticks) from a compressed chunk payload, returning null
+     * when compression is unsupported (e.g., LZ4/external .mcc) or parsing fails so
+     * [optimizeRegionFile] fails safe and keeps the chunk.
+     */
+    fun extractInhabitedTimeOrNull(payload: ByteArray, compressionType: Int): Long? {
         return try {
             val inStream: InputStream = when (compressionType) {
                 1 -> java.util.zip.GZIPInputStream(ByteArrayInputStream(payload))
                 2 -> InflaterInputStream(ByteArrayInputStream(payload))
                 3 -> ByteArrayInputStream(payload)
-                else -> return 0L
+                else -> return null
             }
 
             DataInputStream(BufferedInputStream(inStream)).use { dataIn ->
                 parseNbtForInhabitedTime(dataIn)
             }
         } catch (e: Exception) {
-            0L
+            null
         }
     }
 
     /**
      * Lightweight streaming NBT reader that searches specifically for InhabitedTime.
      */
-    private fun parseNbtForInhabitedTime(dis: DataInputStream): Long {
-        try {
+    private fun parseNbtForInhabitedTime(dis: DataInputStream): Long? {
+        return try {
             val rootTag = dis.readByte().toInt()
-            if (rootTag != 10) return 0L // Must be TAG_Compound
+            if (rootTag != 10) return null // Must be TAG_Compound
 
             // Read root name
             val rootNameLen = dis.readShort().toInt() and 0xFFFF
@@ -315,20 +336,21 @@ object ChunkOptimizer {
                 dis.skipBytes(rootNameLen)
             }
 
-            return scanCompound(dis, depth = 0)
+            val result = scanCompound(dis, depth = 0) ?: return null
+            if (result == -1L) 0L else result
         } catch (e: Exception) {
-            return 0L
+            null
         }
     }
 
-    private fun scanCompound(dis: DataInputStream, depth: Int): Long {
-        if (depth > 20) return 0L // Recursion safety limit
+    private fun scanCompound(dis: DataInputStream, depth: Int): Long? {
+        if (depth > 20) return null // Recursion safety limit: fail-safe keep chunk
 
         while (true) {
             val tagType = dis.readByte().toInt()
             if (tagType == 0) {
-                // TAG_End
-                return 0L
+                // TAG_End: cleanly reached end of compound without finding InhabitedTime
+                return -1L
             }
 
             val nameLen = dis.readShort().toInt() and 0xFFFF
@@ -343,7 +365,7 @@ object ChunkOptimizer {
             // If it's a nested compound (e.g. "Level"), scan inside
             if (tagType == 10) {
                 val found = scanCompound(dis, depth + 1)
-                if (found > 0L) return found
+                if (found != -1L) return found
             } else {
                 skipTagPayload(dis, tagType)
             }
@@ -392,6 +414,7 @@ object ChunkOptimizer {
                 val len = dis.readInt()
                 if (len > 0) dis.skipBytes(len * 8)
             }
+            else -> throw IllegalArgumentException("Unknown NBT tag type: $tagType")
         }
     }
 

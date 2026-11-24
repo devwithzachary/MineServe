@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -74,12 +75,18 @@ class ModrinthApiClient(
                 val cleanLoader = loaderFilter.lowercase()
                 if (cleanLoader.contains("fabric")) {
                     facetList.add("[\"categories:fabric\"]")
-                } else if (cleanLoader.contains("neoforge") || cleanLoader.contains("forge")) {
-                    facetList.add("[\"categories:neoforge\",\"categories:forge\"]")
+                } else if (cleanLoader.contains("neoforge")) {
+                    facetList.add("[\"categories:neoforge\"]")
+                } else if (cleanLoader.contains("forge")) {
+                    facetList.add("[\"categories:forge\"]")
                 }
             } else if (!isMod) {
-                // Plugin loaders: paper, spigot, purpur, folia, bukkit
-                facetList.add("[\"categories:paper\",\"categories:spigot\",\"categories:purpur\",\"categories:folia\",\"categories:bukkit\"]")
+                val cleanLoader = loaderFilter?.lowercase().orEmpty()
+                when {
+                    cleanLoader.contains("velocity") -> facetList.add("[\"categories:velocity\"]")
+                    cleanLoader.contains("bungee") -> facetList.add("[\"categories:bungeecord\",\"categories:waterfall\"]")
+                    else -> facetList.add("[\"categories:paper\",\"categories:spigot\",\"categories:purpur\",\"categories:folia\",\"categories:bukkit\"]")
+                }
             }
 
             val facetsParam = "[${facetList.joinToString(",")}]"
@@ -100,17 +107,17 @@ class ModrinthApiClient(
 
                 hits.map {
                     val hit = it.jsonObject
-                    val categories = hit["categories"]?.jsonArray?.map { c -> c.jsonPrimitive.content } ?: emptyList()
-                    val slug = hit["slug"]?.jsonPrimitive?.content ?: "item"
-                    val downloads = hit["downloads"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-                    val iconUrl = hit["icon_url"]?.jsonPrimitive?.content?.takeIf { u -> u.isNotBlank() && u != "null" }
-                    val title = hit["title"]?.jsonPrimitive?.content ?: slug
-                    val desc = hit["description"]?.jsonPrimitive?.content ?: ""
-                    val author = hit["author"]?.jsonPrimitive?.content ?: ""
-                    val latestVer = hit["latest_version"]?.jsonPrimitive?.content ?: ""
+                    val categories = hit["categories"]?.jsonArray?.mapNotNull { c -> c.jsonPrimitive.contentOrNull } ?: emptyList()
+                    val slug = hit["slug"]?.jsonPrimitive?.contentOrNull ?: "item"
+                    val downloads = hit["downloads"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
+                    val iconUrl = hit["icon_url"]?.jsonPrimitive?.contentOrNull?.takeIf { u -> u.isNotBlank() }
+                    val title = hit["title"]?.jsonPrimitive?.contentOrNull ?: slug
+                    val desc = hit["description"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val author = hit["author"]?.jsonPrimitive?.contentOrNull ?: ""
+                    val latestVer = hit["latest_version"]?.jsonPrimitive?.contentOrNull ?: ""
 
                     PluginModEntry(
-                        id = hit["project_id"]?.jsonPrimitive?.content ?: slug,
+                        id = hit["project_id"]?.jsonPrimitive?.contentOrNull ?: slug,
                         fileName = "$slug.jar",
                         name = title,
                         version = latestVer,
@@ -140,20 +147,20 @@ class ModrinthApiClient(
                 val body = resp.body?.string() ?: return@withContext null
                 val obj = json.parseToJsonElement(body).jsonObject
 
-                val id = obj["id"]?.jsonPrimitive?.content ?: projectIdOrSlug
-                val slug = obj["slug"]?.jsonPrimitive?.content ?: projectIdOrSlug
-                val title = obj["title"]?.jsonPrimitive?.content ?: slug
-                val desc = obj["description"]?.jsonPrimitive?.content ?: ""
-                val fullBody = obj["body"]?.jsonPrimitive?.content ?: ""
-                val iconUrl = obj["icon_url"]?.jsonPrimitive?.content?.takeIf { u -> u.isNotBlank() && u != "null" }
-                val downloads = obj["downloads"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-                val followers = obj["followers"]?.jsonPrimitive?.content?.toIntOrNull() ?: 0
-                val categories = obj["categories"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-                val loaders = obj["loaders"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-                val gameVersions = obj["game_versions"]?.jsonArray?.map { it.jsonPrimitive.content } ?: emptyList()
-                val sourceUrl = obj["source_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-                val wikiUrl = obj["wiki_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
-                val issuesUrl = obj["issues_url"]?.jsonPrimitive?.content?.takeIf { it.isNotBlank() }
+                val id = obj["id"]?.jsonPrimitive?.contentOrNull ?: projectIdOrSlug
+                val slug = obj["slug"]?.jsonPrimitive?.contentOrNull ?: projectIdOrSlug
+                val title = obj["title"]?.jsonPrimitive?.contentOrNull ?: slug
+                val desc = obj["description"]?.jsonPrimitive?.contentOrNull ?: ""
+                val fullBody = obj["body"]?.jsonPrimitive?.contentOrNull ?: ""
+                val iconUrl = obj["icon_url"]?.jsonPrimitive?.contentOrNull?.takeIf { u -> u.isNotBlank() }
+                val downloads = obj["downloads"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
+                val followers = obj["followers"]?.jsonPrimitive?.contentOrNull?.toIntOrNull() ?: 0
+                val categories = obj["categories"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                val loaders = obj["loaders"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                val gameVersions = obj["game_versions"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList()
+                val sourceUrl = obj["source_url"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                val wikiUrl = obj["wiki_url"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+                val issuesUrl = obj["issues_url"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
 
                 ModrinthProjectDetails(
                     id = id,
@@ -222,13 +229,13 @@ class ModrinthApiClient(
 
             if (targetLoader != null) {
                 matchedVersion = versionList.firstOrNull { ver ->
-                    val hasLoader = ver.loaders.any { it.lowercase() == targetLoader || (targetLoader.contains("forge") && it.contains("forge")) }
+                    val hasLoader = ver.loaders.any { it.equals(targetLoader, ignoreCase = true) }
                     val hasGameVersion = gameVersion == null || ver.gameVersions.contains(gameVersion)
                     hasLoader && hasGameVersion
                 }
                 if (matchedVersion == null) {
                     matchedVersion = versionList.firstOrNull { ver ->
-                        ver.loaders.any { it.lowercase() == targetLoader || (targetLoader.contains("forge") && it.contains("forge")) }
+                        ver.loaders.any { it.equals(targetLoader, ignoreCase = true) }
                     }
                 }
             }
