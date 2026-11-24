@@ -5,6 +5,11 @@ All notable changes to the MineServe project will be documented in this file.
 ## [1.8.1] - Unreleased
 
 ### 🐛 Bug Fixes
+- **Web Remote Admin UI (`app.js`)**:
+  - Assigned `state.systemInfo` in `loadSystemInfo()` and guarded `/api/safeguards` so the Android-only Safeguards card stays hidden on Linux hosts.
+  - Moved initial `loadCloudAccount()` and auto `loadWhatsNewData()` calls out of unauthenticated startup (`bindEvents()`) into `showApp()` after authentication, preventing premature 401 calls and fixing post-login "What's New" auto-popups and Cloud status detection.
+  - Fixed `loadBackups()` skipping `loadCloudBackups()` when a server has 0 local backups and gated cloud backup loading on `SERVER_BACKUPS_MANAGE`.
+  - Fixed performance telemetry chart area fills (`drawSeries`), closed the file editor layout cleanly when switching servers (`closeFileEditor()`), replaced boolean `true` with `"error"` in error toasts, made plugin upload toast folder text conditional on `data.folder`, and added `try/catch` error handling to the `.mrpack` import poller and unguarded action handlers.
 - **Android Engine, Security & Lifecycle Hardening (`:app`)**:
   - Added path-traversal and `serverId` containment checks across `ServerFileRepository`, `ModpackInstaller`, `RootfsManager.extractTarGzInJava` (including `GZIPInputStream` resource cleanup), and `WebAdminServer` file uploads/downloads (plus streaming backup downloads via `sendFileStreamResponse`).
   - Fixed Web Admin RBAC and lifecycle gaps: revoked active user sessions upon role/restriction/password/enablement changes in `WebAdminServer` and `MainActivity`, enforced `Permission.MANAGE_HOST` on `/api/servers/jobs/{jobId}`, scoped proxy & modpack job lookups (`handleGetModpackJobStatus`, `handleGetProxy`, `handleSaveProxy`), added per-username login rate limiting alongside IP tracking, re-validated user permissions/existence inside SSE console streams, returned `400 Bad Request` on malformed JSON payloads, and cleaned up orphaned server records if provisioning fails in `WebAdminApiHandlers.handleCreateServer`.

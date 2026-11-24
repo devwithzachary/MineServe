@@ -11,7 +11,10 @@
     cmdHistoryIdx: -1,
     pollTimer: null,
     softwareTypes: [],
-    perfHistory: {}
+    perfHistory: {},
+    systemInfo: null,
+    cloudLinked: false,
+    whatsNewChecked: false
   };
 
   const $ = (id) => document.getElementById(id);
@@ -126,6 +129,8 @@
       clearInterval(state.pollTimer);
       state.pollTimer = null;
     }
+    state.whatsNewChecked = false;
+    state.cloudLinked = false;
     $("app-view").classList.add("hidden");
     $("login-view").classList.remove("hidden");
   }
@@ -135,6 +140,13 @@
     $("app-view").classList.remove("hidden");
     loadSystemInfo();
     loadServers();
+    if (hasPerm("MANAGE_HOST")) {
+      loadCloudAccount();
+    }
+    if (!state.whatsNewChecked) {
+      state.whatsNewChecked = true;
+      setTimeout(() => loadWhatsNewData(true, false), 900);
+    }
     if (!state.pollTimer) {
       state.pollTimer = setInterval(pollActiveData, 2500);
     }
@@ -277,10 +289,12 @@
   async function loadSystemInfo() {
     try {
       const info = await apiFetch("/api/system");
+      state.systemInfo = info;
       state.isPlayStore = !!info.isPlayStore;
       $("system-info").textContent = info.platform === "linux"
         ? info.device
         : `${info.device} (Android ${info.android})`;
+      $("safeguards-card")?.classList.toggle("hidden", info.platform === "linux");
       applyUserPermissionsUi();
       syncCloudUnlinkedCallouts();
       if (info.maxAllocatableRamMb) {
@@ -383,7 +397,7 @@
       document.execCommand("copy");
       showToast(`Copied ${label}: ${text}`);
     } catch (_) {
-      showToast("Unable to copy to clipboard", true);
+      showToast("Unable to copy to clipboard", "error");
     }
     document.body.removeChild(ta);
   }
@@ -453,9 +467,7 @@
   function selectServer(serverId) {
     state.selectedServerId = serverId;
     state.currentPath = "";
-    state.editingFile = null;
-    $("file-editor-pane").classList.add("hidden");
-    $("files-layout")?.classList?.remove("editing");
+    closeFileEditor();
     renderServerList();
 
     if (!serverId) {
@@ -677,8 +689,8 @@
 
   function closeFileEditor() {
     state.editingFile = null;
-    $("file-editor-pane").classList.add("hidden");
-    document.querySelector(".files-layout").classList.remove("editing");
+    $("file-editor-pane")?.classList.add("hidden");
+    document.querySelector(".files-layout")?.classList.remove("editing");
   }
 
   // Settings & Properties
@@ -932,7 +944,7 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      if (fillAlpha > 0 && values.length > 1) {
+      if (fillAlpha && values.length > 1) {
         const lastX = padL + plotW;
         ctx.lineTo(lastX, padT + plotH);
         ctx.lineTo(padL, padT + plotH);
@@ -1016,18 +1028,26 @@
 
       list.querySelectorAll(".task-toggle-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          await apiFetch(`/api/servers/${state.selectedServerId}/automation/tasks/toggle`, {
-            method: "POST", body: JSON.stringify({ taskId: b.dataset.id })
-          });
-          loadAutomation();
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/automation/tasks/toggle`, {
+              method: "POST", body: JSON.stringify({ taskId: b.dataset.id })
+            });
+            loadAutomation();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
         });
       });
       list.querySelectorAll(".task-del-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          await apiFetch(`/api/servers/${state.selectedServerId}/automation/tasks/delete`, {
-            method: "POST", body: JSON.stringify({ taskId: b.dataset.id })
-          });
-          loadAutomation();
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/automation/tasks/delete`, {
+              method: "POST", body: JSON.stringify({ taskId: b.dataset.id })
+            });
+            loadAutomation();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
         });
       });
     } catch (e) {
@@ -1352,10 +1372,9 @@
       const backups = data.backups || [];
       if (backups.length === 0) {
         list.innerHTML = `<div class="player-sub">No backups yet.</div>`;
-        return;
-      }
-      const canManageBackups = hasPerm("SERVER_BACKUPS_MANAGE");
-      list.innerHTML = backups.map((b) => `
+      } else {
+        const canManageBackups = hasPerm("SERVER_BACKUPS_MANAGE");
+        list.innerHTML = backups.map((b) => `
         <div class="player-row">
           <div>
             <div>${escapeHtml(b.fileName)}</div>
@@ -1372,56 +1391,64 @@
         </div>
       `).join("");
 
-      list.querySelectorAll(".backup-cloud-upload-btn").forEach((b) => {
-        b.addEventListener("click", async () => {
-          b.disabled = true;
-          b.textContent = "Uploading...";
-          try {
-            await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud/upload`, {
-              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
-            });
-            showToast("Uploaded to MineServe Cloud");
-            loadCloudBackups();
-          } catch (err) {
-            showToast(err.message, "error");
-          } finally {
-            b.disabled = false;
-            b.textContent = "Cloud Sync";
-          }
-        });
-      });
-
-      list.querySelectorAll(".backup-restore-btn").forEach((b) => {
-        b.addEventListener("click", async () => {
-          if (!confirm(`Restore "${b.dataset.file}"? Stop the server first.`)) return;
-          try {
-            await apiFetch(`/api/servers/${state.selectedServerId}/backups/restore`, {
-              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
-            });
-            showToast("Backup restored");
-          } catch (err) {
-            showToast(err.message, "error");
-          }
-        });
-      });
-      list.querySelectorAll(".backup-del-btn").forEach((b) => {
-        b.addEventListener("click", async () => {
-          if (!confirm(`Delete backup "${b.dataset.file}"?`)) return;
-          await apiFetch(`/api/servers/${state.selectedServerId}/backups/delete`, {
-            method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+        list.querySelectorAll(".backup-cloud-upload-btn").forEach((b) => {
+          b.addEventListener("click", async () => {
+            b.disabled = true;
+            b.textContent = "Uploading...";
+            try {
+              await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud/upload`, {
+                method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+              });
+              showToast("Uploaded to MineServe Cloud");
+              loadCloudBackups();
+            } catch (err) {
+              showToast(err.message, "error");
+            } finally {
+              b.disabled = false;
+              b.textContent = "Cloud Sync";
+            }
           });
-          showToast("Backup deleted");
-          loadBackups();
         });
-      });
+
+        list.querySelectorAll(".backup-restore-btn").forEach((b) => {
+          b.addEventListener("click", async () => {
+            if (!confirm(`Restore "${b.dataset.file}"? Stop the server first.`)) return;
+            try {
+              await apiFetch(`/api/servers/${state.selectedServerId}/backups/restore`, {
+                method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+              });
+              showToast("Backup restored");
+            } catch (err) {
+              showToast(err.message, "error");
+            }
+          });
+        });
+        list.querySelectorAll(".backup-del-btn").forEach((b) => {
+          b.addEventListener("click", async () => {
+            if (!confirm(`Delete backup "${b.dataset.file}"?`)) return;
+            try {
+              await apiFetch(`/api/servers/${state.selectedServerId}/backups/delete`, {
+                method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+              });
+              showToast("Backup deleted");
+              loadBackups();
+            } catch (err) {
+              showToast(err.message, "error");
+            }
+          });
+        });
+      }
     } catch (e) {
       showToast(e.message, "error");
+    } finally {
+      if (hasPerm("SERVER_BACKUPS_MANAGE")) {
+        loadCloudBackups();
+      }
     }
-    loadCloudBackups();
   }
 
   async function loadCloudBackups() {
-    if (!state.selectedServerId) return;
+    if (!state.selectedServerId || !hasPerm("SERVER_BACKUPS_MANAGE")) return;
     const list = $("cloud-backups-list");
     const statusEl = $("cloud-backups-status");
     try {
@@ -1510,19 +1537,27 @@
 
       list.querySelectorAll(".plug-toggle-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          await apiFetch(`/api/servers/${state.selectedServerId}/plugins/toggle`, {
-            method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
-          });
-          loadPlugins();
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/plugins/toggle`, {
+              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+            });
+            loadPlugins();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
         });
       });
       list.querySelectorAll(".plug-del-btn").forEach((b) => {
         b.addEventListener("click", async () => {
           if (!confirm(`Delete "${b.dataset.file}"?`)) return;
-          await apiFetch(`/api/servers/${state.selectedServerId}/plugins/delete`, {
-            method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
-          });
-          loadPlugins();
+          try {
+            await apiFetch(`/api/servers/${state.selectedServerId}/plugins/delete`, {
+              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+            });
+            loadPlugins();
+          } catch (err) {
+            showToast(err.message, "error");
+          }
         });
       });
     } catch (e) {
@@ -1602,6 +1637,84 @@
     }
   }
 
+  async function loadCloudAccount() {
+    try {
+      const c = await apiFetch("/api/cloud/status");
+      if (typeof c.isPlayStore === "boolean") {
+        state.isPlayStore = c.isPlayStore;
+        applyUserPermissionsUi();
+      }
+      state.cloudLinked = !!c.isLinked;
+      const signinBox = $("cloud-signin-box");
+      const logoutBtn = $("cloud-logout-btn");
+      const badge = $("cloud-tier-badge");
+      if (c.isLinked) {
+        const usedMb = ((c.storageUsedBytes || 0) / (1024 * 1024)).toFixed(1);
+        const quotaGb = ((c.storageQuotaBytes || 0) / (1024 * 1024 * 1024)).toFixed(0);
+        $("cloud-status-summary").textContent = `Signed in as ${c.email || "user"} · Tier: ${c.tier} · Cloud Storage: ${usedMb} MB / ${quotaGb} GB · Active Subdomains: ${(c.activeSubdomains || []).join(", ") || "none"}`;
+        if (badge) badge.textContent = `${c.tier || "FREE"} PLAN`;
+        signinBox?.classList.add("hidden");
+        logoutBtn?.classList.remove("hidden");
+      } else {
+        $("cloud-status-summary").textContent = "Your host runs Minecraft servers 100% free forever (with Bore, Playit.gg, UPnP, and local/WebDAV backups). MineServe Cloud is an optional add-on that adds custom *.play.mineserve.app addresses, remote browser Web Admin from anywhere, and encrypted Cloudflare R2 backups.";
+        if (badge) badge.textContent = "OPTIONAL ADD-ON";
+        signinBox?.classList.remove("hidden");
+        logoutBtn?.classList.add("hidden");
+      }
+      syncCloudUnlinkedCallouts();
+    } catch (err) {
+      $("cloud-status-summary").textContent = err.message || "Unable to load cloud status.";
+    }
+  }
+
+  function renderWhatsNewModal(data) {
+    if (!data) return;
+    if ($("whatsnew-title")) $("whatsnew-title").textContent = data.headline || "What's New in MineServe";
+    if ($("whatsnew-version-badge")) $("whatsnew-version-badge").textContent = data.displayVersion || "v1.8";
+    if ($("whatsnew-subtitle")) $("whatsnew-subtitle").textContent = data.subtitle || "";
+    if ($("open-whatsnew-from-settings-btn")) {
+      $("open-whatsnew-from-settings-btn").textContent = `What's New in ${data.displayVersion || "v1.8"}`;
+    }
+    const showEnabled = data.showOnUpdateEnabled !== false;
+    if ($("settings-whatsnew-autoshow")) $("settings-whatsnew-autoshow").checked = showEnabled;
+    if ($("whatsnew-never-show-chk")) $("whatsnew-never-show-chk").checked = !showEnabled;
+
+    const listEl = $("whatsnew-features-list");
+    if (listEl) {
+      const features = data.features || [];
+      listEl.innerHTML = features.map((f) => `
+          <div class="panel-card" style="padding:14px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+              <span class="status-badge RUNNING">${escapeHtml(f.badge || "NEW")}</span>
+              <strong style="font-size:15px;color:var(--text-primary);">${escapeHtml(f.title || "")}</strong>
+            </div>
+            <div class="player-sub" style="line-height:1.55;margin-bottom:10px;">${escapeHtml(f.summary || "")}</div>
+            <div style="background:rgba(9,13,22,0.65);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;">
+              <div style="font-size:11px;font-weight:700;color:var(--emerald);text-transform:uppercase;margin-bottom:6px;">Where to find it</div>
+              <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--text-primary);line-height:1.6;">
+                ${(f.stepsToFind || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
+              </ol>
+            </div>
+          </div>
+        `).join("");
+    }
+  }
+
+  async function loadWhatsNewData(openModalIfAutoOrForced = false, forceOpen = false) {
+    try {
+      const data = await apiFetch("/api/whats-new");
+      renderWhatsNewModal(data);
+      if (forceOpen || (openModalIfAutoOrForced && data.shouldAutoShow)) {
+        $("whatsnew-modal")?.classList.remove("hidden");
+        // Immediately mark seen on the host so neither Desktop/Android nor Web UI auto-pops it again
+        await apiFetch("/api/whats-new", {
+          method: "POST",
+          body: JSON.stringify({ markSeen: true })
+        });
+      }
+    } catch (_) {}
+  }
+
   // Event Listeners
   function bindEvents() {
     $("login-form").addEventListener("submit", async (e) => {
@@ -1652,21 +1765,33 @@
     // Server lifecycle controls
     $("btn-start").addEventListener("click", async () => {
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/start`, { method: "POST" });
-      showToast("Start requested");
-      loadServerDetails();
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/start`, { method: "POST" });
+        showToast("Start requested");
+        loadServerDetails();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
     $("btn-stop").addEventListener("click", async () => {
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/stop`, { method: "POST" });
-      showToast("Stop requested");
-      loadServerDetails();
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/stop`, { method: "POST" });
+        showToast("Stop requested");
+        loadServerDetails();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
     $("btn-restart").addEventListener("click", async () => {
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/restart`, { method: "POST" });
-      showToast("Restart requested");
-      loadServerDetails();
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/restart`, { method: "POST" });
+        showToast("Restart requested");
+        loadServerDetails();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
     $("btn-copy-public-addr")?.addEventListener("click", () => {
       const addr = $("btn-copy-public-addr")?.dataset?.addr || "";
@@ -1846,42 +1971,54 @@
     // Performance, Automation, World, Live Map, Network, Backups, Plugins
     $("apply-aikar-btn").addEventListener("click", async () => {
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/performance/aikar`, { method: "POST" });
-      showToast("Aikar's G1GC flags applied");
-      loadPerformance();
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/performance/aikar`, { method: "POST" });
+        showToast("Aikar's G1GC flags applied");
+        loadPerformance();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
 
     $("automation-power-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/automation`, {
-        method: "POST",
-        body: JSON.stringify({
-          idleSleepEnabled: $("auto-idle-sleep").checked,
-          idleSleepTimeoutMinutes: parseInt($("auto-idle-mins").value, 10) || 10,
-          autoWakeOnPing: $("auto-wake-ping").checked
-        })
-      });
-      showToast("Automation settings saved");
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/automation`, {
+          method: "POST",
+          body: JSON.stringify({
+            idleSleepEnabled: $("auto-idle-sleep").checked,
+            idleSleepTimeoutMinutes: parseInt($("auto-idle-mins").value, 10) || 10,
+            autoWakeOnPing: $("auto-wake-ping").checked
+          })
+        });
+        showToast("Automation settings saved");
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
 
     $("automation-task-form").addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/automation/tasks/add`, {
-        method: "POST",
-        body: JSON.stringify({
-          name: $("task-name").value.trim(),
-          taskType: $("task-type").value,
-          frequency: $("task-freq").value,
-          intervalMinutes: parseInt($("task-interval").value, 10) || 360,
-          command: $("task-cmd").value.trim()
-        })
-      });
-      $("task-name").value = "";
-      $("task-cmd").value = "";
-      showToast("Scheduled task added");
-      loadAutomation();
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/automation/tasks/add`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: $("task-name").value.trim(),
+            taskType: $("task-type").value,
+            frequency: $("task-freq").value,
+            intervalMinutes: parseInt($("task-interval").value, 10) || 360,
+            command: $("task-cmd").value.trim()
+          })
+        });
+        $("task-name").value = "";
+        $("task-cmd").value = "";
+        showToast("Scheduled task added");
+        loadAutomation();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
 
     $("perf-clear-chart-btn").addEventListener("click", () => {
@@ -1996,29 +2133,37 @@
     });
     $("livemap-uninstall-btn").addEventListener("click", async () => {
       if (!state.selectedServerId || !confirm("Uninstall Squaremap?")) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/livemap/uninstall`, { method: "POST" });
-      showToast("Squaremap removed");
-      loadLiveMap();
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/livemap/uninstall`, { method: "POST" });
+        showToast("Squaremap removed");
+        loadLiveMap();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
 
     const sendTunnelAction = async (action) => {
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/network/tunnel`, {
-        method: "POST",
-        body: JSON.stringify({
-          action,
-          provider: $("net-tunnel-provider").value,
-          autoStart: $("net-tunnel-autostart").checked,
-          customRelayHost: $("net-bore-host").value.trim(),
-          customRelayPort: parseInt($("net-bore-port").value, 10) || 7835,
-          playitSecret: $("net-playit-secret").value.trim(),
-          cloudSubdomain: $("net-cloud-subdomain").value.trim().toLowerCase(),
-          cloudRegion: $("net-cloud-region").value,
-          cloudDomain: $("net-cloud-domain").value
-        })
-      });
-      showToast(action === "start" ? "Tunnel starting..." : (action === "stop" ? "Tunnel stopped" : "Tunnel settings saved"));
-      setTimeout(loadNetwork, 400);
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/network/tunnel`, {
+          method: "POST",
+          body: JSON.stringify({
+            action,
+            provider: $("net-tunnel-provider").value,
+            autoStart: $("net-tunnel-autostart").checked,
+            customRelayHost: $("net-bore-host").value.trim(),
+            customRelayPort: parseInt($("net-bore-port").value, 10) || 7835,
+            playitSecret: $("net-playit-secret").value.trim(),
+            cloudSubdomain: $("net-cloud-subdomain").value.trim().toLowerCase(),
+            cloudRegion: $("net-cloud-region").value,
+            cloudDomain: $("net-cloud-domain").value
+          })
+        });
+        showToast(action === "start" ? "Tunnel starting..." : (action === "stop" ? "Tunnel stopped" : "Tunnel settings saved"));
+        setTimeout(loadNetwork, 400);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     };
     $("net-tunnel-provider").addEventListener("change", updateTunnelProviderFields);
     $("tunnel-start-btn").addEventListener("click", () => sendTunnelAction("start"));
@@ -2027,17 +2172,21 @@
 
     const sendPfAction = async (action) => {
       if (!state.selectedServerId) return;
-      await apiFetch(`/api/servers/${state.selectedServerId}/network/portforward`, {
-        method: "POST",
-        body: JSON.stringify({
-          action,
-          protocol: $("net-pf-protocol").value,
-          leaseDurationSeconds: parseInt($("net-pf-lease").value, 10) || 0,
-          autoForward: $("net-pf-auto").checked
-        })
-      });
-      showToast(action === "start" ? "Mapping router port..." : (action === "stop" ? "Port released" : "Port forwarding settings saved"));
-      setTimeout(loadNetwork, 400);
+      try {
+        await apiFetch(`/api/servers/${state.selectedServerId}/network/portforward`, {
+          method: "POST",
+          body: JSON.stringify({
+            action,
+            protocol: $("net-pf-protocol").value,
+            leaseDurationSeconds: parseInt($("net-pf-lease").value, 10) || 0,
+            autoForward: $("net-pf-auto").checked
+          })
+        });
+        showToast(action === "start" ? "Mapping router port..." : (action === "stop" ? "Port released" : "Port forwarding settings saved"));
+        setTimeout(loadNetwork, 400);
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     };
     $("pf-start-btn").addEventListener("click", () => sendPfAction("start"));
     $("pf-stop-btn").addEventListener("click", () => sendPfAction("stop"));
@@ -2131,7 +2280,8 @@
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `Upload failed (${res.status})`);
-        showToast(`Uploaded ${data.fileName} to ${data.folder}/`);
+        const targetFolder = data.folder ? ` to ${data.folder}/` : "";
+        showToast(`Uploaded ${data.fileName || file.name}${targetFolder}`);
         input.value = "";
         loadPlugins();
       } catch (err) {
@@ -2168,20 +2318,27 @@
         const jobId = startData.jobId;
         btn.textContent = "Importing...";
         const pollJob = async () => {
-          const job = await apiFetch(`/api/servers/${serverId}/modpack/jobs/${jobId}`);
-          statusEl.textContent = `${job.message || "Importing..."} ${job.currentFile ? "(" + job.currentFile + ")" : ""} - ${job.progressPercent || 0}%`;
-          if (job.status === "DONE") {
-            showToast(job.message || "Modpack imported!");
-            input.value = "";
-            loadPlugins();
+          try {
+            const job = await apiFetch(`/api/servers/${serverId}/modpack/jobs/${jobId}`);
+            statusEl.textContent = `${job.message || "Importing..."} ${job.currentFile ? "(" + job.currentFile + ")" : ""} - ${job.progressPercent || 0}%`;
+            if (job.status === "DONE") {
+              showToast(job.message || "Modpack imported!");
+              input.value = "";
+              loadPlugins();
+              btn.disabled = false;
+              btn.textContent = "Import .mrpack";
+            } else if (job.status === "ERROR") {
+              showToast(job.error || "Modpack import failed", "error");
+              btn.disabled = false;
+              btn.textContent = "Import .mrpack";
+            } else {
+              setTimeout(pollJob, 1000);
+            }
+          } catch (err) {
+            statusEl.textContent = err.message;
+            showToast(err.message, "error");
             btn.disabled = false;
             btn.textContent = "Import .mrpack";
-          } else if (job.status === "ERROR") {
-            showToast(job.error || "Modpack import failed", "error");
-            btn.disabled = false;
-            btn.textContent = "Import .mrpack";
-          } else {
-            setTimeout(pollJob, 1000);
           }
         };
         setTimeout(pollJob, 800);
@@ -2283,38 +2440,9 @@
     });
 
     // Host Tools (Cloud, Safeguards, Diagnostics)
-    const loadCloudAccount = async () => {
-      try {
-        const c = await apiFetch("/api/cloud/status");
-        if (typeof c.isPlayStore === "boolean") {
-          state.isPlayStore = c.isPlayStore;
-          applyUserPermissionsUi();
-        }
-        state.cloudLinked = !!c.isLinked;
-        const signinBox = $("cloud-signin-box");
-        const logoutBtn = $("cloud-logout-btn");
-        const badge = $("cloud-tier-badge");
-        if (c.isLinked) {
-          const usedMb = ((c.storageUsedBytes || 0) / (1024 * 1024)).toFixed(1);
-          const quotaGb = ((c.storageQuotaBytes || 0) / (1024 * 1024 * 1024)).toFixed(0);
-          $("cloud-status-summary").textContent = `Signed in as ${c.email || "user"} · Tier: ${c.tier} · Cloud Storage: ${usedMb} MB / ${quotaGb} GB · Active Subdomains: ${(c.activeSubdomains || []).join(", ") || "none"}`;
-          if (badge) badge.textContent = `${c.tier || "FREE"} PLAN`;
-          signinBox?.classList.add("hidden");
-          logoutBtn?.classList.remove("hidden");
-        } else {
-          $("cloud-status-summary").textContent = "Your host runs Minecraft servers 100% free forever (with Bore, Playit.gg, UPnP, and local/WebDAV backups). MineServe Cloud is an optional add-on that adds custom *.play.mineserve.app addresses, remote browser Web Admin from anywhere, and encrypted Cloudflare R2 backups.";
-          if (badge) badge.textContent = "OPTIONAL ADD-ON";
-          signinBox?.classList.remove("hidden");
-          logoutBtn?.classList.add("hidden");
-        }
-        syncCloudUnlinkedCallouts();
-      } catch (err) {
-        $("cloud-status-summary").textContent = err.message || "Unable to load cloud status.";
-      }
-    };
-
     const loadHostTools = async () => {
       await loadCloudAccount();
+      if (state.systemInfo && state.systemInfo.platform === "linux") return;
       try {
         const sg = await apiFetch("/api/safeguards");
         $("sg-battery-enabled").checked = !!sg.batteryAutoStopEnabled;
@@ -2336,9 +2464,7 @@
 
     const openHostToolsModal = () => {
       $("host-tools-modal").classList.remove("hidden");
-      if (state.systemInfo && state.systemInfo.platform === "linux") {
-        $("safeguards-card")?.classList.add("hidden");
-      }
+      $("safeguards-card")?.classList.toggle("hidden", !!(state.systemInfo && state.systemInfo.platform === "linux"));
       const isPlay = !!state.isPlayStore;
       $("web-update-check-btn")?.classList.toggle("hidden", isPlay);
       $("web-update-link-btn")?.classList.toggle("hidden", isPlay);
@@ -2352,57 +2478,8 @@
       loadWhatsNewData(false);
     };
     $("open-host-tools-btn")?.addEventListener("click", openHostToolsModal);
-    loadCloudAccount();
 
     // What's New Feature Guide Modal (Synced with Desktop & Android UI)
-    const renderWhatsNewModal = (data) => {
-      if (!data) return;
-      if ($("whatsnew-title")) $("whatsnew-title").textContent = data.headline || "What's New in MineServe";
-      if ($("whatsnew-version-badge")) $("whatsnew-version-badge").textContent = data.displayVersion || "v1.8";
-      if ($("whatsnew-subtitle")) $("whatsnew-subtitle").textContent = data.subtitle || "";
-      if ($("open-whatsnew-from-settings-btn")) {
-        $("open-whatsnew-from-settings-btn").textContent = `What's New in ${data.displayVersion || "v1.8"}`;
-      }
-      const showEnabled = data.showOnUpdateEnabled !== false;
-      if ($("settings-whatsnew-autoshow")) $("settings-whatsnew-autoshow").checked = showEnabled;
-      if ($("whatsnew-never-show-chk")) $("whatsnew-never-show-chk").checked = !showEnabled;
-
-      const listEl = $("whatsnew-features-list");
-      if (listEl) {
-        const features = data.features || [];
-        listEl.innerHTML = features.map((f) => `
-          <div class="panel-card" style="padding:14px;">
-            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-              <span class="status-badge RUNNING">${escapeHtml(f.badge || "NEW")}</span>
-              <strong style="font-size:15px;color:var(--text-primary);">${escapeHtml(f.title || "")}</strong>
-            </div>
-            <div class="player-sub" style="line-height:1.55;margin-bottom:10px;">${escapeHtml(f.summary || "")}</div>
-            <div style="background:rgba(9,13,22,0.65);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;">
-              <div style="font-size:11px;font-weight:700;color:var(--emerald);text-transform:uppercase;margin-bottom:6px;">Where to find it</div>
-              <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--text-primary);line-height:1.6;">
-                ${(f.stepsToFind || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
-              </ol>
-            </div>
-          </div>
-        `).join("");
-      }
-    };
-
-    const loadWhatsNewData = async (openModalIfAutoOrForced = false, forceOpen = false) => {
-      try {
-        const data = await apiFetch("/api/whats-new");
-        renderWhatsNewModal(data);
-        if (forceOpen || (openModalIfAutoOrForced && data.shouldAutoShow)) {
-          $("whatsnew-modal")?.classList.remove("hidden");
-          // Immediately mark seen on the host so neither Desktop/Android nor Web UI auto-pops it again
-          await apiFetch("/api/whats-new", {
-            method: "POST",
-            body: JSON.stringify({ markSeen: true })
-          });
-        }
-      } catch (_) {}
-    };
-
     const closeWhatsNewModal = async () => {
       $("whatsnew-modal")?.classList.add("hidden");
       const neverShow = !!$("whatsnew-never-show-chk")?.checked;
@@ -2448,9 +2525,6 @@
       $("about-modal")?.classList.add("hidden");
       loadWhatsNewData(false, true);
     });
-
-    // Check auto-show What's New once authenticated
-    setTimeout(() => loadWhatsNewData(true, false), 900);
 
     // App Updates Checker in App Settings
     $("web-update-check-btn")?.addEventListener("click", async () => {
@@ -3019,7 +3093,7 @@
         showToast("User account created");
         await Promise.all([loadPanelUsers(), loadAuditLog()]);
       } catch (err) {
-        showToast(err.message, true);
+        showToast(err.message, "error");
       }
     });
 
@@ -3044,7 +3118,7 @@
         $("password-modal").classList.add("hidden");
         showToast("Password updated successfully");
       } catch (err) {
-        showToast(err.message, true);
+        showToast(err.message, "error");
       }
     });
   }
@@ -3106,7 +3180,7 @@
             showToast(currentlyEnabled ? "User disabled" : "User enabled");
             await Promise.all([loadPanelUsers(), loadActiveSessions(), loadAuditLog()]);
           } catch (err) {
-            showToast(err.message, true);
+            showToast(err.message, "error");
           }
         });
       });
@@ -3125,7 +3199,7 @@
             showToast(`Password reset for ${uname}`);
             loadAuditLog();
           } catch (err) {
-            showToast(err.message, true);
+            showToast(err.message, "error");
           }
         });
       });
@@ -3140,7 +3214,7 @@
             showToast(`Deleted user ${uname}`);
             await Promise.all([loadPanelUsers(), loadActiveSessions(), loadAuditLog()]);
           } catch (err) {
-            showToast(err.message, true);
+            showToast(err.message, "error");
           }
         });
       });
@@ -3182,7 +3256,7 @@
             showToast("Session revoked");
             await Promise.all([loadActiveSessions(), loadAuditLog()]);
           } catch (err) {
-            showToast(err.message, true);
+            showToast(err.message, "error");
           }
         });
       });
