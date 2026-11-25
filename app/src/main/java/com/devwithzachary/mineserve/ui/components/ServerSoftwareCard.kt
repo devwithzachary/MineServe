@@ -1,13 +1,11 @@
 package com.devwithzachary.mineserve.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.background
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,40 +13,22 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.clickable
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.SystemUpdateAlt
-import androidx.compose.material.icons.filled.Upgrade
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.Upgrade
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -57,37 +37,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerBuildInfo
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
-import com.devwithzachary.mineserve.model.determineJavaVersion
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import com.devwithzachary.mineserve.ui.components.software.UpdateBuildModal
 import com.devwithzachary.mineserve.ui.components.software.UpgradeVersionModal
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ServerSoftwareCard(
     server: MinecraftServer,
@@ -100,11 +66,13 @@ fun ServerSoftwareCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
     val scope = rememberCoroutineScope()
+
     var showUpdateModal by remember { mutableStateOf(false) }
     var showUpgradeModal by remember { mutableStateOf(false) }
 
-    // Update Modal State
     var isCheckingBuild by remember { mutableStateOf(false) }
     var buildInfo by remember { mutableStateOf<ServerBuildInfo?>(null) }
     var updateBackupChecked by remember { mutableStateOf(true) }
@@ -113,7 +81,6 @@ fun ServerSoftwareCard(
     var updateStatusText by remember { mutableStateOf("") }
     var updateErrorText by remember { mutableStateOf<String?>(null) }
 
-    // Upgrade Modal State
     var isLoadingVersions by remember { mutableStateOf(false) }
     var availableVersions by remember { mutableStateOf<List<String>>(emptyList()) }
     var selectedTargetVersion by remember { mutableStateOf(server.version) }
@@ -122,112 +89,97 @@ fun ServerSoftwareCard(
     var upgradeProgressPercent by remember { mutableIntStateOf(0) }
     var upgradeStatusText by remember { mutableStateOf("") }
     var upgradeErrorText by remember { mutableStateOf<String?>(null) }
-    var versionDropdownExpanded by remember { mutableStateOf(false) }
 
     var showJavaVersionDialog by remember { mutableStateOf(false) }
-
     val isRunning = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
 
-    Card(
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-        border = BorderStroke(1.dp, ObsidianCardBorder),
-        modifier = modifier.fillMaxWidth()
+    MineServeCard(
+        modifier = modifier.fillMaxWidth(),
+        shape = ShapeDefaults.Large,
+        containerColor = colorScheme.surfaceContainer,
+        contentPadding = PaddingValues(16.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            // Header
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SystemUpdateAlt,
-                        contentDescription = null,
-                        tint = EmeraldPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.software_card_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+                Icon(
+                    imageVector = Icons.Rounded.SystemUpdateAlt,
+                    contentDescription = null,
+                    tint = colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.software_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = colorScheme.onSurface
+                )
             }
 
             Text(
                 text = stringResource(R.string.software_card_desc),
                 style = MaterialTheme.typography.bodySmall,
-                color = Slate400,
-                fontSize = 12.sp
+                color = colorScheme.onSurfaceVariant
             )
 
-            // Metadata Chips
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Platform chip
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = EmeraldDark.copy(alpha = 0.35f),
-                    border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                    shape = ShapeDefaults.Small,
+                    color = colorScheme.primaryContainer,
+                    contentColor = colorScheme.onPrimaryContainer,
+                    border = null
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Icon(Icons.Default.Code, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(12.dp))
-                        Text(server.type.displayName, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+                        Icon(Icons.Rounded.Code, contentDescription = null, modifier = Modifier.size(13.dp))
+                        Text(
+                            text = server.type.displayName,
+                            style = MaterialTheme.typography.labelMedium
+                        )
                     }
                 }
 
-                // Version chip
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Slate800,
-                    border = BorderStroke(1.dp, ObsidianCardBorder)
+                    shape = ShapeDefaults.Small,
+                    color = colorScheme.surfaceContainerHigh,
+                    contentColor = colorScheme.onSurface,
+                    border = null
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(stringResource(R.string.software_mc_version, server.version), color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                    }
+                    Text(
+                        text = stringResource(R.string.software_mc_version, server.version),
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
 
-                // Build chip
                 Surface(
-                    shape = RoundedCornerShape(6.dp),
-                    color = Slate800,
-                    border = BorderStroke(1.dp, ObsidianCardBorder)
+                    shape = ShapeDefaults.Small,
+                    color = colorScheme.surfaceContainerHigh,
+                    contentColor = if (server.serverBuild != null) colorScheme.primary else colorScheme.onSurfaceVariant,
+                    border = null
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        val buildLabel = server.serverBuild?.let { stringResource(R.string.software_build_chip, it) } ?: stringResource(R.string.software_build_unknown)
-                        Text(buildLabel, color = if (server.serverBuild != null) EmeraldLight else Slate400, fontSize = 11.sp)
-                    }
+                    val buildLabel = server.serverBuild?.let { stringResource(R.string.software_build_chip, it) }
+                        ?: stringResource(R.string.software_build_unknown)
+                    Text(
+                        text = buildLabel,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
 
-                // Java chip (clickable when not running to allow manual override)
                 if (!server.type.isBedrockNative) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Slate800,
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        shape = ShapeDefaults.Small,
+                        color = colorScheme.tertiaryContainer,
+                        contentColor = colorScheme.onTertiaryContainer,
+                        border = null,
                         modifier = Modifier.clickable(enabled = onUpdateJavaVersion != null && !isRunning) {
                             showJavaVersionDialog = true
                         }
@@ -237,23 +189,25 @@ fun ServerSoftwareCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(12.dp))
-                            Text(stringResource(R.string.software_java_chip, server.javaVersion), color = DiamondLight, fontSize = 11.sp)
+                            Icon(Icons.Rounded.Memory, contentDescription = null, modifier = Modifier.size(13.dp))
+                            Text(
+                                text = stringResource(R.string.software_java_chip, server.javaVersion),
+                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont)
+                            )
                             if (onUpdateJavaVersion != null && !isRunning) {
-                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = Slate400, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, modifier = Modifier.size(14.dp))
                             }
                         }
                     }
                 }
             }
 
-            // Action Buttons
             if (server.type != ServerType.CUSTOM) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = {
                             showUpdateModal = true
                             isCheckingBuild = true
@@ -264,25 +218,18 @@ fun ServerSoftwareCard(
                                 isCheckingBuild = false
                             }
                         },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f))
+                        shape = ShapeDefaults.Medium,
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CloudDownload,
+                            imageVector = Icons.Rounded.CloudDownload,
                             contentDescription = null,
-                            tint = EmeraldPrimary,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.software_btn_update_build),
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            softWrap = false
+                            maxLines = 1
                         )
                     }
 
@@ -295,31 +242,27 @@ fun ServerSoftwareCard(
                                 val list = onFetchVersions(server.type)
                                 availableVersions = list
                                 if (list.isNotEmpty()) {
-                                    val firstDifferent = list.firstOrNull { it != server.version } ?: list.first()
-                                    selectedTargetVersion = firstDifferent
+                                    selectedTargetVersion = list.firstOrNull { it != server.version } ?: list.first()
                                 }
                                 isLoadingVersions = false
                             }
                         },
-                        modifier = Modifier.weight(1f),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(8.dp)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.primary,
+                            contentColor = colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Medium,
+                        modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Upgrade,
+                            imageVector = Icons.Rounded.Upgrade,
                             contentDescription = null,
-                            tint = Color.Black,
                             modifier = Modifier.size(16.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.software_btn_upgrade_version),
-                            color = Color.Black,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1,
-                            softWrap = false
+                            maxLines = 1
                         )
                     }
                 }
@@ -327,7 +270,6 @@ fun ServerSoftwareCard(
         }
     }
 
-    // Modal 1: Update Server Build Dialog
     if (showUpdateModal) {
         UpdateBuildModal(
             server = server,
@@ -363,7 +305,6 @@ fun ServerSoftwareCard(
         )
     }
 
-    // Modal 2: Upgrade Minecraft Version Dialog
     if (showUpgradeModal) {
         UpgradeVersionModal(
             server = server,
@@ -402,90 +343,58 @@ fun ServerSoftwareCard(
         )
     }
 
-    // Modal 3: Manual Java Runtime Version Override
     if (showJavaVersionDialog && onUpdateJavaVersion != null) {
         val supportedJavaVersions = listOf(8, 17, 21, 25)
-        AlertDialog(
+        MineServeDialog(
             onDismissRequest = { showJavaVersionDialog = false },
-            title = {
+            title = "Select Java Runtime",
+            confirmLabel = "Done",
+            onConfirm = { showJavaVersionDialog = false },
+            dismissLabel = null,
+            icon = Icons.Rounded.Memory
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "Select Java Runtime",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    text = "Choose the OpenJDK version used to launch ${server.name}. The selected runtime will be auto-installed if not already present.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
                 )
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "Choose the OpenJDK version used to launch ${server.name}. The selected runtime will be auto-installed if not already present on device.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    supportedJavaVersions.forEach { jVer ->
-                        val isCurrent = server.javaVersion == jVer
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isCurrent) EmeraldDark.copy(alpha = 0.35f) else Slate800,
-                            border = BorderStroke(
-                                1.dp,
-                                if (isCurrent) EmeraldPrimary else ObsidianCardBorder
-                            ),
+                Spacer(modifier = Modifier.height(4.dp))
+                supportedJavaVersions.forEach { jVer ->
+                    val isCurrent = server.javaVersion == jVer
+                    Surface(
+                        onClick = {
+                            onUpdateJavaVersion(jVer)
+                            showJavaVersionDialog = false
+                        },
+                        shape = ShapeDefaults.Small,
+                        color = if (isCurrent) colorScheme.primaryContainer else colorScheme.surfaceContainer,
+                        contentColor = if (isCurrent) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+                        border = null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable {
-                                    onUpdateJavaVersion(jVer)
-                                    showJavaVersionDialog = false
-                                }
+                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Memory,
-                                        contentDescription = null,
-                                        tint = if (isCurrent) EmeraldLight else DiamondLight,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Text(
-                                        text = "Java $jVer (OpenJDK $jVer)",
-                                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isCurrent) EmeraldLight else Color.White,
-                                        fontSize = 13.sp
-                                    )
-                                }
-                                if (isCurrent) {
-                                    Text(
-                                        text = "ACTIVE",
-                                        fontWeight = FontWeight.Bold,
-                                        color = EmeraldLight,
-                                        fontSize = 11.sp
-                                    )
-                                }
+                            Text(
+                                text = "Java $jVer (OpenJDK $jVer)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal
+                            )
+                            if (isCurrent) {
+                                Text(
+                                    text = "ACTIVE",
+                                    style = MaterialTheme.typography.labelSmall
+                                )
                             }
                         }
                     }
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { showJavaVersionDialog = false },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(text = stringResource(R.string.cancel), color = Color.White)
-                }
-            },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+            }
+        }
     }
 }

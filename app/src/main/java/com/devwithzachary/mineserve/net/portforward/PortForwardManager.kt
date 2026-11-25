@@ -28,7 +28,7 @@ class PortForwardManager private constructor(
 
         fun getInstance(context: Context): PortForwardManager {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: PortForwardManager(context.applicationContext).also { INSTANCE = it }
+                INSTANCE ?: PortForwardManager(context.applicationContext ?: context).also { INSTANCE = it }
             }
         }
     }

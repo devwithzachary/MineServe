@@ -1,16 +1,10 @@
 package com.devwithzachary.mineserve.ui.screens.detail
 
-import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -19,38 +13,29 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,13 +48,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.ChunkPruneOptions
 import com.devwithzachary.mineserve.model.ChunkPruneResult
 import com.devwithzachary.mineserve.model.DimensionType
@@ -77,7 +62,6 @@ import com.devwithzachary.mineserve.model.InhabitedTimeThreshold
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
-import com.devwithzachary.mineserve.model.WorldDimensionInfo
 import com.devwithzachary.mineserve.model.WorldSummary
 import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPreGenCard
 import com.devwithzachary.mineserve.ui.screens.detail.world.ChunkPruneDialog
@@ -87,26 +71,12 @@ import com.devwithzachary.mineserve.ui.screens.detail.world.DimensionRowCard
 import com.devwithzachary.mineserve.ui.screens.detail.world.RegionInspectorCard
 import com.devwithzachary.mineserve.ui.screens.detail.world.WorldImportDialog
 import com.devwithzachary.mineserve.ui.screens.detail.world.formatWorldFileSize
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.launch
-import java.io.File
 import java.io.OutputStream
-import java.text.DecimalFormat
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -120,13 +90,16 @@ fun WorldTab(
     onPruneChunks: suspend (ChunkPruneOptions, (String, Int) -> Unit) -> ChunkPruneResult,
     onSendCommand: (String) -> Unit = {},
     onNavigateToLiveMap: () -> Unit,
+    initialWorldSummary: WorldSummary? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isInspection = androidx.compose.ui.platform.LocalInspectionMode.current
     val scope = rememberCoroutineScope()
+    val monoFont = LocalMineServeMonoFontFamily.current
 
-    var worldSummary by remember { mutableStateOf<WorldSummary?>(null) }
-    var isLoadingSummary by remember { mutableStateOf(true) }
+    var worldSummary by remember { mutableStateOf(initialWorldSummary) }
+    var isLoadingSummary by remember { mutableStateOf(initialWorldSummary == null) }
 
     fun refreshSummary() {
         scope.launch {
@@ -137,15 +110,15 @@ fun WorldTab(
     }
 
     LaunchedEffect(server.id) {
-        refreshSummary()
+        if (!(isInspection && initialWorldSummary != null)) {
+            refreshSummary()
+        }
     }
 
-    // Reset Modal State
     var dimensionToReset by remember { mutableStateOf<DimensionType?>(null) }
     var resetBackupChecked by remember { mutableStateOf(true) }
     var isResettingDimension by remember { mutableStateOf(false) }
 
-    // Import State
     var selectedImportUri by remember { mutableStateOf<Uri?>(null) }
     var showImportConfirmDialog by remember { mutableStateOf(false) }
     var importBackupChecked by remember { mutableStateOf(true) }
@@ -154,12 +127,10 @@ fun WorldTab(
     var importStatusText by remember { mutableStateOf("") }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Export State
     var isExportingWorld by remember { mutableStateOf(false) }
     var exportProgressPercent by remember { mutableIntStateOf(0) }
     var exportStatusText by remember { mutableStateOf("") }
 
-    // Chunk Prune State
     var selectedThreshold by remember { mutableStateOf(InhabitedTimeThreshold.UNTOUCHED) }
     var pruneNetherChecked by remember { mutableStateOf(true) }
     var pruneEndChecked by remember { mutableStateOf(true) }
@@ -170,7 +141,6 @@ fun WorldTab(
     var pruneStatusText by remember { mutableStateOf("") }
     var pruneResultDialogData by remember { mutableStateOf<ChunkPruneResult?>(null) }
 
-    // SAF Launchers
     val importFilePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -195,7 +165,7 @@ fun WorldTab(
                             exportProgressPercent = percent
                         }
                     } ?: false
-                } catch (e: Exception) {
+                } catch (_: Exception) {
                     false
                 }
                 isExportingWorld = false
@@ -217,58 +187,54 @@ fun WorldTab(
             .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding),
         verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
-        // Top Shortcut Banner to Live Map (Only for plugin/mod capable servers, not Vanilla)
         val supportsLiveMap = server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
         if (supportsLiveMap) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate900),
-                border = BorderStroke(1.dp, DiamondCyan.copy(alpha = 0.4f)),
+            MineServeCard(
+                containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Map,
+                            imageVector = Icons.Rounded.Map,
                             contentDescription = null,
-                            tint = DiamondCyan,
+                            tint = MaterialTheme.colorScheme.tertiary,
                             modifier = Modifier.size(24.dp)
                         )
-                        Column {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = stringResource(R.string.map_shortcut_banner_title),
                                 style = MaterialTheme.typography.titleSmall,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
                                 text = stringResource(R.string.map_shortcut_banner_desc),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400,
-                                fontSize = 11.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    Button(
+                    FilledTonalButton(
                         onClick = onNavigateToLiveMap,
-                        colors = ButtonDefaults.buttonColors(containerColor = DiamondCyan),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                        ),
                         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = ShapeDefaults.Small
                     ) {
                         Text(
                             text = stringResource(R.string.map_shortcut_banner_btn),
-                            color = Color.Black,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -277,16 +243,8 @@ fun WorldTab(
         }
 
         // Section 1: World Footprint & Overview
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -296,77 +254,82 @@ fun WorldTab(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Public, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(20.dp))
+                        Icon(
+                            imageVector = Icons.Rounded.Public,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
                         Text(
                             text = stringResource(R.string.world_card_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                     }
 
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = { refreshSummary() },
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, Slate700)
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        shape = ShapeDefaults.Small
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = null, tint = Slate400, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(stringResource(R.string.refresh), color = Slate400, fontSize = 11.sp)
+                        Text(stringResource(R.string.refresh), style = MaterialTheme.typography.labelMedium)
                     }
                 }
 
                 Text(
                     text = stringResource(R.string.world_card_desc),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Total Footprint Highlight
                 Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Slate800,
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    shape = ShapeDefaults.Medium,
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(12.dp),
+                            .padding(14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = stringResource(R.string.world_total_size),
-                                color = Slate400,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             val totalSize = worldSummary?.totalSizeBytes ?: 0L
                             Text(
                                 text = formatWorldFileSize(totalSize),
-                                color = EmeraldLight,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold
+                                style = MaterialTheme.typography.titleLarge,
+                                fontFamily = monoFont,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
 
                         if (isLoadingSummary) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = EmeraldLight)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         } else {
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = EmeraldDark.copy(alpha = 0.35f),
-                                border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                                shape = ShapeDefaults.Small,
+                                color = MaterialTheme.colorScheme.primaryContainer
                             ) {
                                 Text(
-                                    text = "Active Level: ${worldSummary?.levelName ?: "world"}",
-                                    color = Color.White,
-                                    fontSize = 11.sp,
+                                    text = "Level: ${worldSummary?.levelName ?: "world"}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontFamily = monoFont,
                                     fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
@@ -374,7 +337,6 @@ fun WorldTab(
                     }
                 }
 
-                // Dimension breakdown cards
                 worldSummary?.dimensions?.forEach { dimInfo ->
                     DimensionRowCard(
                         dimInfo = dimInfo,
@@ -386,25 +348,22 @@ fun WorldTab(
         }
 
         // Section 2: World Import & Export Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.Folder, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.Folder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text(
                         text = stringResource(R.string.world_io_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -412,31 +371,32 @@ fun WorldTab(
                 Text(
                     text = stringResource(R.string.world_io_desc),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedButton(
+                    FilledTonalButton(
                         onClick = {
                             importFilePickerLauncher.launch(
                                 arrayOf("application/zip", "application/octet-stream", "*/*")
                             )
                         },
                         modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                        shape = RoundedCornerShape(8.dp),
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.7f))
+                        shape = ShapeDefaults.Small
                     ) {
-                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.world_btn_import),
-                            color = Color.White,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 1
                         )
@@ -444,21 +404,23 @@ fun WorldTab(
 
                     Button(
                         onClick = {
-                            val timeStamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
+                            val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
                             val suggestedName = "world_${server.name.replace(" ", "_")}_$timeStamp.zip"
                             exportFilePickerLauncher.launch(suggestedName)
                         },
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(8.dp)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Small
                     ) {
-                        Icon(Icons.Default.CloudUpload, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
                             text = stringResource(R.string.world_btn_export),
-                            color = Color.Black,
-                            fontSize = 12.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1
                         )
@@ -468,25 +430,22 @@ fun WorldTab(
         }
 
         // Section 3: Chunk Pruner & Storage Optimizer
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(Icons.Default.CleaningServices, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(20.dp))
+                    Icon(
+                        imageVector = Icons.Rounded.CleaningServices,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(20.dp)
+                    )
                     Text(
                         text = stringResource(R.string.world_pruner_title),
-                        style = MaterialTheme.typography.titleSmall,
-                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -494,51 +453,41 @@ fun WorldTab(
                 Text(
                     text = stringResource(R.string.world_pruner_desc),
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Threshold Selection
                 Text(
                     text = stringResource(R.string.world_pruner_threshold_label),
-                    color = Slate400,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     InhabitedTimeThreshold.values().forEach { thresh ->
-                        val isSelected = selectedThreshold == thresh
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (isSelected) DiamondCyan.copy(alpha = 0.2f) else Slate800,
-                            border = BorderStroke(
-                                1.dp,
-                                if (isSelected) DiamondCyan else ObsidianCardBorder
-                            ),
-                            onClick = { selectedThreshold = thresh }
-                        ) {
-                            Text(
-                                text = thresh.label,
-                                color = if (isSelected) DiamondCyan else Color.White,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        FilterChip(
+                            selected = selectedThreshold == thresh,
+                            onClick = { selectedThreshold = thresh },
+                            label = { Text(thresh.label) },
+                            border = null,
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                labelColor = MaterialTheme.colorScheme.onSurface
                             )
-                        }
+                        )
                     }
                 }
 
                 Text(
                     text = selectedThreshold.description,
-                    color = Slate400,
-                    fontSize = 11.sp
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // Checkboxes
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -546,10 +495,13 @@ fun WorldTab(
                     ) {
                         Checkbox(
                             checked = pruneNetherChecked,
-                            onCheckedChange = { pruneNetherChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = DiamondCyan)
+                            onCheckedChange = { pruneNetherChecked = it }
                         )
-                        Text("Include Nether dimension", color = Color.White, fontSize = 12.sp)
+                        Text(
+                            text = "Include Nether dimension",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
 
                     Row(
@@ -558,10 +510,13 @@ fun WorldTab(
                     ) {
                         Checkbox(
                             checked = pruneEndChecked,
-                            onCheckedChange = { pruneEndChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = DiamondCyan)
+                            onCheckedChange = { pruneEndChecked = it }
                         )
-                        Text("Include The End dimension", color = Color.White, fontSize = 12.sp)
+                        Text(
+                            text = "Include The End dimension",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
 
                     Row(
@@ -570,31 +525,31 @@ fun WorldTab(
                     ) {
                         Checkbox(
                             checked = pruneBackupChecked,
-                            onCheckedChange = { pruneBackupChecked = it },
-                            colors = CheckboxDefaults.colors(checkedColor = DiamondCyan)
+                            onCheckedChange = { pruneBackupChecked = it }
                         )
                         Text(
-                            stringResource(R.string.world_pruner_backup_checkbox),
-                            color = Color.White,
-                            fontSize = 12.sp
+                            text = stringResource(R.string.world_pruner_backup_checkbox),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
 
-                Button(
+                FilledTonalButton(
                     onClick = { showPruneConfirmDialog = true },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = DiamondCyan),
-                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                    ),
+                    shape = ShapeDefaults.Small,
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
-                    Icon(Icons.Default.CleaningServices, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.CleaningServices, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = stringResource(R.string.world_pruner_btn),
-                        color = Color.Black,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -615,7 +570,6 @@ fun WorldTab(
         )
     }
 
-    // Modal: Dimension Reset Confirmation
     if (dimensionToReset != null) {
         val targetDim = dimensionToReset!!
         DimensionResetDialog(
@@ -642,7 +596,6 @@ fun WorldTab(
         )
     }
 
-    // Modal: World Import Confirmation
     if (showImportConfirmDialog && selectedImportUri != null) {
         WorldImportDialog(
             isRunning = isRunning,
@@ -675,7 +628,6 @@ fun WorldTab(
         )
     }
 
-    // Modal: Chunk Pruning Confirmation & Progress
     if (showPruneConfirmDialog) {
         ChunkPruneDialog(
             isRunning = isRunning,
@@ -705,7 +657,6 @@ fun WorldTab(
         )
     }
 
-    // Modal: Chunk Pruning Results Dialog
     if (pruneResultDialogData != null) {
         ChunkPruneResultDialog(
             result = pruneResultDialogData!!,
@@ -714,3 +665,20 @@ fun WorldTab(
     }
 }
 
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun WorldTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        WorldTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            status = ServerStatus.RUNNING,
+            onGetWorldSummary = { com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleWorldSummary },
+            onImportWorld = { _, _, _ -> Result.success("") },
+            onExportWorld = { _, _ -> true },
+            onResetDimension = { _, _ -> true },
+            onPruneChunks = { _, _ -> com.devwithzachary.mineserve.model.ChunkPruneResult(0, 0, 0, 0, 0L, 0L) },
+            onNavigateToLiveMap = {},
+            initialWorldSummary = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleWorldSummary
+        )
+    }
+}

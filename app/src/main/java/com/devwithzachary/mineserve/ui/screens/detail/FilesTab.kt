@@ -5,10 +5,6 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,90 +14,57 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderZip
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material.icons.rounded.FolderOff
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeEmptyState
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.CrashDiagnosticReport
-import com.devwithzachary.mineserve.model.CrashSeverity
 import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.QuickFixAction
-import com.devwithzachary.mineserve.model.QuickFixType
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import com.devwithzachary.mineserve.ui.components.editor.AdvancedCodeEditor
 import com.devwithzachary.mineserve.ui.screens.detail.files.CrashDiagnosticSheet
 import com.devwithzachary.mineserve.ui.screens.detail.files.CreateFileDialog
@@ -110,25 +73,7 @@ import com.devwithzachary.mineserve.ui.screens.detail.files.DeleteFileDialog
 import com.devwithzachary.mineserve.ui.screens.detail.files.FileListItem
 import com.devwithzachary.mineserve.ui.screens.detail.files.RenameFileDialog
 import com.devwithzachary.mineserve.ui.screens.detail.files.UnzipArchiveDialog
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,15 +94,19 @@ fun FilesTab(
     onSearchFiles: suspend (String) -> List<FileEntry>,
     onAnalyzeCrash: suspend () -> CrashDiagnosticReport?,
     onApplyQuickFix: suspend (QuickFixAction) -> Boolean,
+    initialFiles: List<FileEntry>? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isInspection = androidx.compose.ui.platform.LocalInspectionMode.current
     val scope = rememberCoroutineScope()
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     // Navigation & Path state
     var currentPath by remember { mutableStateOf("") }
-    var files by remember { mutableStateOf<List<FileEntry>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var files by remember { mutableStateOf(initialFiles ?: emptyList()) }
+    var isLoading by remember { mutableStateOf(initialFiles == null) }
 
     // Search state
     var isSearchActive by remember { mutableStateOf(false) }
@@ -166,13 +115,8 @@ fun FilesTab(
 
     // Dialog states
     var showNewFileDialog by remember { mutableStateOf(false) }
-    var newFileName by remember { mutableStateOf("") }
     var showNewFolderDialog by remember { mutableStateOf(false) }
-    var newFolderName by remember { mutableStateOf("") }
-
     var fileToRename by remember { mutableStateOf<FileEntry?>(null) }
-    var renameTargetName by remember { mutableStateOf("") }
-
     var fileToDelete by remember { mutableStateOf<FileEntry?>(null) }
     var fileToUnzip by remember { mutableStateOf<FileEntry?>(null) }
     var isUnzipping by remember { mutableStateOf(false) }
@@ -195,10 +139,11 @@ fun FilesTab(
     }
 
     LaunchedEffect(currentPath) {
-        refreshFiles()
+        if (!(isInspection && initialFiles != null)) {
+            refreshFiles()
+        }
     }
 
-    // Import file launcher (supports single or multiple files)
     val importFileLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
@@ -238,7 +183,6 @@ fun FilesTab(
         return
     }
 
-    // New File Dialog
     if (showNewFileDialog) {
         CreateFileDialog(
             onDismiss = { showNewFileDialog = false },
@@ -256,7 +200,6 @@ fun FilesTab(
         )
     }
 
-    // New Folder Dialog
     if (showNewFolderDialog) {
         CreateFolderDialog(
             onDismiss = { showNewFolderDialog = false },
@@ -274,7 +217,6 @@ fun FilesTab(
         )
     }
 
-    // Rename Dialog
     if (fileToRename != null) {
         RenameFileDialog(
             target = fileToRename!!,
@@ -294,7 +236,6 @@ fun FilesTab(
         )
     }
 
-    // Delete Confirmation Dialog
     if (fileToDelete != null) {
         val target = fileToDelete!!
         DeleteFileDialog(
@@ -314,7 +255,6 @@ fun FilesTab(
         )
     }
 
-    // Unzip Archive Dialog
     if (fileToUnzip != null) {
         val target = fileToUnzip!!
         UnzipArchiveDialog(
@@ -343,28 +283,32 @@ fun FilesTab(
         )
     }
 
-    // Unzipping Progress Modal
     if (isUnzipping) {
-        AppAlertDialog(
-            onDismissRequest = { /* Prevent dismiss while extracting */ },
-            title = { Text("Extracting Archive", fontWeight = FontWeight.Bold, color = Color.White) },
-            text = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.padding(vertical = 8.dp)
-                ) {
-                    CircularProgressIndicator(color = EmeraldPrimary, modifier = Modifier.size(28.dp))
-                    Text("Extracting files, please wait...", color = Slate400, fontSize = 14.sp)
-                }
-            },
-            confirmButton = {},
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+        MineServeDialog(
+            onDismissRequest = {},
+            title = "Extracting Archive",
+            confirmLabel = "Please Wait",
+            onConfirm = {},
+            confirmEnabled = false
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Text(
+                    text = "Extracting files, please wait...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 
-    // Crash Diagnostics Modal BottomSheet
     if (showCrashModal && crashReport != null) {
         CrashDiagnosticSheet(
             report = crashReport!!,
@@ -382,7 +326,6 @@ fun FilesTab(
         )
     }
 
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -395,7 +338,6 @@ fun FilesTab(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left: Breadcrumbs Bar
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -406,9 +348,13 @@ fun FilesTab(
                     modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Home,
+                        imageVector = Icons.Rounded.Home,
                         contentDescription = "Root",
-                        tint = if (currentPath.isEmpty()) EmeraldPrimary else Slate400,
+                        tint = if (currentPath.isEmpty()) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -420,7 +366,12 @@ fun FilesTab(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         items(segments) { segment ->
-                            Text("/", color = Slate700, fontSize = 12.sp)
+                            Text(
+                                text = "/",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontFamily = monoFont,
+                                color = MaterialTheme.colorScheme.outline
+                            )
                             TextButton(
                                 onClick = {
                                     val index = segments.indexOf(segment)
@@ -429,9 +380,13 @@ fun FilesTab(
                             ) {
                                 Text(
                                     text = segment,
-                                    color = if (segment == segments.last()) EmeraldLight else Slate400,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontFamily = monoFont,
+                                    color = if (segment == segments.last()) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
                                     fontWeight = if (segment == segments.last()) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
@@ -440,21 +395,19 @@ fun FilesTab(
                 } else {
                     Text(
                         text = "root",
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontFamily = monoFont,
                         fontWeight = FontWeight.Bold,
-                        color = EmeraldLight
+                        color = MaterialTheme.colorScheme.primary
                     )
                 }
             }
 
-            // Right: Actions
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Crash Analyzer Button
-                Button(
+                FilledTonalButton(
                     onClick = {
                         scope.launch {
                             isAnalyzingCrash = true
@@ -468,28 +421,44 @@ fun FilesTab(
                             }
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Slate800),
-                    shape = RoundedCornerShape(8.dp)
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = extColors.warningContainer,
+                        contentColor = extColors.onWarningContainer
+                    ),
+                    shape = ShapeDefaults.Small,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     if (isAnalyzingCrash) {
-                        CircularProgressIndicator(modifier = Modifier.size(14.dp), color = GoldYellow)
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            color = extColors.onWarningContainer,
+                            strokeWidth = 2.dp
+                        )
                     } else {
-                        Icon(Icons.Default.BugReport, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.BugReport, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text("Diagnostics", color = GoldYellow, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                        Text("Diagnostics", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
                 IconButton(onClick = { isSearchActive = !isSearchActive }) {
                     Icon(
-                        Icons.Default.Search,
+                        imageVector = Icons.Rounded.Search,
                         contentDescription = "Search",
-                        tint = if (isSearchActive) EmeraldPrimary else Slate400
+                        tint = if (isSearchActive) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
 
                 IconButton(onClick = { refreshFiles() }) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Slate400)
+                    Icon(
+                        imageVector = Icons.Rounded.Refresh,
+                        contentDescription = "Refresh",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
@@ -508,16 +477,12 @@ fun FilesTab(
                         searchResults = emptyList()
                     }
                 },
-                placeholder = { Text("Search files & folders...", fontSize = 13.sp, color = Slate400) },
+                placeholder = { Text("Search files & folders...") },
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null, tint = Slate400, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp))
                 },
                 singleLine = true,
-                textStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 13.sp, color = Color.White),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = EmeraldPrimary,
-                    unfocusedBorderColor = Slate800
-                ),
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -525,59 +490,80 @@ fun FilesTab(
         // Action Buttons Row: New File, New Folder, Import
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedButton(
+            FilledTonalButton(
                 onClick = { showNewFileDialog = true },
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Slate800),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                shape = ShapeDefaults.Small,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(3.dp))
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "New File",
-                    color = Color.White,
-                    fontSize = 11.5.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            OutlinedButton(
+            FilledTonalButton(
                 onClick = { showNewFolderDialog = true },
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Slate800),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                shape = ShapeDefaults.Small,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.CreateNewFolder, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(3.dp))
+                Icon(
+                    imageVector = Icons.Rounded.CreateNewFolder,
+                    contentDescription = null,
+                    tint = extColors.warning,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "New Folder",
-                    color = Color.White,
-                    fontSize = 11.5.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
                 )
             }
 
-            OutlinedButton(
+            FilledTonalButton(
                 onClick = { importFileLauncher.launch("*/*") },
-                shape = RoundedCornerShape(8.dp),
-                border = BorderStroke(1.dp, Slate800),
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                shape = ShapeDefaults.Small,
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(Icons.Default.UploadFile, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(15.dp))
-                Spacer(modifier = Modifier.width(3.dp))
+                Icon(
+                    imageVector = Icons.Rounded.UploadFile,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
                     text = "Import",
-                    color = Color.White,
-                    fontSize = 11.5.sp,
+                    style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     softWrap = false,
                     overflow = TextOverflow.Ellipsis
@@ -586,17 +572,15 @@ fun FilesTab(
         }
 
         // File List Card
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
+        MineServeCard(
+            contentPadding = PaddingValues(0.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
         ) {
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = EmeraldPrimary)
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                 }
             } else {
                 val displayList = if (isSearchActive && searchQuery.isNotBlank()) searchResults else files
@@ -608,26 +592,14 @@ fun FilesTab(
                             .padding(24.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Folder,
-                                contentDescription = null,
-                                tint = Slate700,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Text(
-                                text = if (isSearchActive) "No matching files found" else "This directory is empty",
-                                color = Slate400,
-                                fontSize = 14.sp
-                            )
-                        }
+                        MineServeEmptyState(
+                            icon = Icons.Rounded.FolderOff,
+                            title = if (isSearchActive) "No matching files found" else "This directory is empty",
+                            supportingText = if (isSearchActive) "Try a different filename or path." else "Create a file, folder, or import an archive."
+                        )
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        // Parent directory jump item if inside subdirectory
                         if (currentPath.isNotEmpty() && !isSearchActive) {
                             item {
                                 Row(
@@ -642,25 +614,28 @@ fun FilesTab(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
                                     Icon(
-                                        Icons.AutoMirrored.Filled.ArrowBack,
+                                        imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                                         contentDescription = "Up",
-                                        tint = EmeraldLight,
+                                        tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Text(
                                         text = "..",
-                                        fontFamily = FontFamily.Monospace,
+                                        fontFamily = monoFont,
                                         fontWeight = FontWeight.Bold,
-                                        color = EmeraldLight
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                 }
-                                HorizontalDivider(color = Slate900)
+                                HorizontalDivider(
+                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                                )
                             }
                         }
 
-                        items(displayList) { entry ->
+                        itemsIndexed(displayList) { index, entry ->
                             FileListItem(
                                 entry = entry,
+                                showDivider = index < displayList.lastIndex,
                                 onOpenFolder = {
                                     currentPath = entry.relativePath
                                 },
@@ -681,7 +656,6 @@ fun FilesTab(
                                 },
                                 onRename = {
                                     fileToRename = entry
-                                    renameTargetName = entry.name
                                 },
                                 onDuplicate = {
                                     scope.launch {
@@ -706,7 +680,6 @@ fun FilesTab(
                                     fileToUnzip = entry
                                 }
                             )
-                            HorizontalDivider(color = Slate900.copy(alpha = 0.5f))
                         }
                     }
                 }
@@ -715,3 +688,26 @@ fun FilesTab(
     }
 }
 
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun FilesTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        FilesTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            onListDirectory = { emptyList() },
+            onCreateFile = { _, _, _ -> true },
+            onCreateDirectory = { _, _ -> true },
+            onDeleteFile = { true },
+            onRenameFile = { _, _ -> true },
+            onDuplicateFile = { true },
+            onReadFile = { "" },
+            onWriteFile = { _, _ -> true },
+            onImportFile = { _, _ -> true },
+            onExportFile = { true },
+            onSearchFiles = { emptyList() },
+            onAnalyzeCrash = { null },
+            onApplyQuickFix = { true },
+            initialFiles = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleFiles
+        )
+    }
+}

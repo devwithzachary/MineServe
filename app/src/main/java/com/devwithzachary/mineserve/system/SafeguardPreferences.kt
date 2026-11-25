@@ -15,7 +15,7 @@ data class SafeguardConfig(
 
 class SafeguardPreferences(context: Context) {
     private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences("mineserve_safeguard_prefs", Context.MODE_PRIVATE)
+        (context.applicationContext ?: context).getSharedPreferences("mineserve_safeguard_prefs", Context.MODE_PRIVATE)
 
     private val _config = MutableStateFlow(load())
     val config: StateFlow<SafeguardConfig> = _config.asStateFlow()

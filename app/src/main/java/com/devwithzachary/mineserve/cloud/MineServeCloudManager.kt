@@ -161,7 +161,7 @@ class MineServeCloudManager(context: Context) {
 
         fun getInstance(context: Context): MineServeCloudManager {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: MineServeCloudManager(context.applicationContext).also { INSTANCE = it }
+                INSTANCE ?: MineServeCloudManager(context.applicationContext ?: context).also { INSTANCE = it }
             }
         }
         private const val KEY_AUTH_TOKEN = "cloud_auth_token"

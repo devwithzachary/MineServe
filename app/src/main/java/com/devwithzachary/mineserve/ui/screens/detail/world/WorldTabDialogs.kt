@@ -1,50 +1,31 @@
 package com.devwithzachary.mineserve.ui.screens.detail.world
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CleaningServices
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.Warning
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CleaningServices
+import androidx.compose.material.icons.rounded.CloudDownload
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.ChunkPruneResult
 import com.devwithzachary.mineserve.model.DimensionType
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate950
 
 @Composable
 fun DimensionResetDialog(
@@ -56,97 +37,61 @@ fun DimensionResetDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AppAlertDialog(
+    MineServeDialog(
         onDismissRequest = { if (!isResetting) onDismiss() },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = null,
-                tint = RedstoneRed,
-                modifier = Modifier.size(32.dp)
-            )
+        title = if (targetDim == DimensionType.NETHER) {
+            stringResource(R.string.world_reset_nether_title)
+        } else {
+            stringResource(R.string.world_reset_end_title)
         },
-        title = {
+        confirmLabel = if (isResetting) "Resetting..." else stringResource(R.string.world_reset_confirm_btn),
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.cancel),
+        icon = Icons.Rounded.Warning,
+        isDestructive = true,
+        confirmEnabled = !isResetting
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
                 text = if (targetDim == DimensionType.NETHER) {
-                    stringResource(R.string.world_reset_nether_title)
+                    stringResource(R.string.world_reset_nether_desc)
                 } else {
-                    stringResource(R.string.world_reset_end_title)
+                    stringResource(R.string.world_reset_end_desc)
                 },
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = if (targetDim == DimensionType.NETHER) {
-                        stringResource(R.string.world_reset_nether_desc)
-                    } else {
-                        stringResource(R.string.world_reset_end_desc)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
-                )
 
-                if (isRunning) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = RedstoneRed.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.world_reset_running_warning),
-                            color = RedstoneLight,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+            if (isRunning) {
+                Surface(
+                    shape = ShapeDefaults.Small,
+                    color = MaterialTheme.colorScheme.errorContainer
                 ) {
-                    Checkbox(
-                        checked = resetBackupChecked,
-                        onCheckedChange = onResetBackupCheckedChange,
-                        colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                    )
                     Text(
-                        text = stringResource(R.string.world_reset_backup_checkbox),
-                        color = Color.White,
-                        fontSize = 12.sp
+                        text = stringResource(R.string.world_reset_running_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(10.dp)
                     )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = !isResetting,
-                colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                shape = RoundedCornerShape(8.dp)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                if (isResetting) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
-                } else {
-                    Text(stringResource(R.string.world_reset_confirm_btn), color = Color.White, fontWeight = FontWeight.Bold)
-                }
+                Checkbox(
+                    checked = resetBackupChecked,
+                    onCheckedChange = onResetBackupCheckedChange
+                )
+                Text(
+                    text = stringResource(R.string.world_reset_backup_checkbox),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
-        },
-        dismissButton = {
-            if (!isResetting) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
-            }
-        },
-        containerColor = Slate950
-    )
+        }
+    }
 }
 
 @Composable
@@ -161,109 +106,79 @@ fun WorldImportDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AppAlertDialog(
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    MineServeDialog(
         onDismissRequest = { if (!isImporting) onDismiss() },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.CloudDownload,
-                contentDescription = null,
-                tint = EmeraldPrimary,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = {
+        title = stringResource(R.string.world_import_title),
+        confirmLabel = if (isImporting) "Importing..." else "Import World",
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.cancel),
+        icon = Icons.Rounded.CloudDownload,
+        confirmEnabled = !isImporting
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
-                text = stringResource(R.string.world_import_title),
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = stringResource(R.string.world_import_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = stringResource(R.string.world_import_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
-                )
 
-                if (isRunning) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = RedstoneRed.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.world_import_running_warning),
-                            color = RedstoneLight,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
+            if (isRunning) {
+                Surface(
+                    shape = ShapeDefaults.Small,
+                    color = MaterialTheme.colorScheme.errorContainer
                 ) {
-                    Checkbox(
-                        checked = importBackupChecked,
-                        onCheckedChange = onImportBackupCheckedChange,
-                        colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                    )
                     Text(
-                        text = stringResource(R.string.world_import_backup_checkbox),
-                        color = Color.White,
-                        fontSize = 12.sp
-                    )
-                }
-
-                if (isImporting) {
-                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        LinearProgressIndicator(
-                            progress = { importProgressPercent / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = EmeraldPrimary,
-                            trackColor = Slate800
-                        )
-                        Text(text = importStatusText, color = EmeraldLight, fontSize = 11.sp)
-                    }
-                }
-
-                if (importErrorMessage != null) {
-                    Text(
-                        text = importErrorMessage,
-                        color = RedstoneRed,
-                        fontSize = 12.sp
+                        text = stringResource(R.string.world_import_running_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(10.dp)
                     )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = !isImporting,
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                if (isImporting) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
-                } else {
-                    Text("Import World", color = Color.Black, fontWeight = FontWeight.Bold)
+                Checkbox(
+                    checked = importBackupChecked,
+                    onCheckedChange = onImportBackupCheckedChange
+                )
+                Text(
+                    text = stringResource(R.string.world_import_backup_checkbox),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            if (isImporting) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LinearProgressIndicator(
+                        progress = { importProgressPercent / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+                    Text(
+                        text = importStatusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = monoFont,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
-        },
-        dismissButton = {
-            if (!isImporting) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
+
+            if (importErrorMessage != null) {
+                Text(
+                    text = importErrorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
             }
-        },
-        containerColor = Slate950
-    )
+        }
+    }
 }
 
 @Composable
@@ -275,85 +190,56 @@ fun ChunkPruneDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AppAlertDialog(
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    MineServeDialog(
         onDismissRequest = { if (!isPruning) onDismiss() },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.CleaningServices,
-                contentDescription = null,
-                tint = DiamondCyan,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = {
+        title = stringResource(R.string.world_pruner_confirm_title),
+        confirmLabel = if (isPruning) "Optimizing..." else "Start Optimization",
+        onConfirm = onConfirm,
+        dismissLabel = stringResource(R.string.cancel),
+        icon = Icons.Rounded.CleaningServices,
+        confirmEnabled = !isPruning
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(
-                text = stringResource(R.string.world_pruner_confirm_title),
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = stringResource(R.string.world_pruner_confirm_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    text = stringResource(R.string.world_pruner_confirm_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
-                )
 
-                if (isRunning) {
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = RedstoneRed.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.5f))
-                    ) {
-                        Text(
-                            text = stringResource(R.string.world_pruner_running_warning),
-                            color = RedstoneLight,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(8.dp)
-                        )
-                    }
-                }
-
-                if (isPruning) {
-                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        LinearProgressIndicator(
-                            progress = { pruneProgressPercent / 100f },
-                            modifier = Modifier.fillMaxWidth(),
-                            color = DiamondCyan,
-                            trackColor = Slate800
-                        )
-                        Text(text = pruneStatusText, color = DiamondLight, fontSize = 11.sp)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                enabled = !isPruning,
-                colors = ButtonDefaults.buttonColors(containerColor = DiamondCyan),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                if (isPruning) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.Black)
-                } else {
-                    Text("Start Optimization", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            }
-        },
-        dismissButton = {
-            if (!isPruning) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(8.dp)
+            if (isRunning) {
+                Surface(
+                    shape = ShapeDefaults.Small,
+                    color = MaterialTheme.colorScheme.errorContainer
                 ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
+                    Text(
+                        text = stringResource(R.string.world_pruner_running_warning),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        modifier = Modifier.padding(10.dp)
+                    )
                 }
             }
-        },
-        containerColor = Slate950
-    )
+
+            if (isPruning) {
+                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LinearProgressIndicator(
+                        progress = { pruneProgressPercent / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.tertiary,
+                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                    )
+                    Text(
+                        text = pruneStatusText,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = monoFont,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -361,49 +247,26 @@ fun ChunkPruneResultDialog(
     result: ChunkPruneResult,
     onDismiss: () -> Unit
 ) {
-    AppAlertDialog(
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.CheckCircle,
-                contentDescription = null,
-                tint = EmeraldPrimary,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = {
-            Text(
-                text = stringResource(R.string.world_pruner_success_title),
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = stringResource(
-                        R.string.world_pruner_success_desc,
-                        result.scannedRegions,
-                        result.scannedChunks,
-                        result.prunedChunks,
-                        result.deletedRegions,
-                        formatWorldFileSize(result.bytesFreed),
-                        result.percentFreed
-                    ),
-                    color = Color.White,
-                    fontSize = 13.sp
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Done", color = Color.Black, fontWeight = FontWeight.Bold)
-            }
-        },
-        containerColor = Slate950
-    )
+        title = stringResource(R.string.world_pruner_success_title),
+        confirmLabel = "Done",
+        onConfirm = onDismiss,
+        dismissLabel = "",
+        icon = Icons.Rounded.CheckCircle
+    ) {
+        Text(
+            text = stringResource(
+                R.string.world_pruner_success_desc,
+                result.scannedRegions,
+                result.scannedChunks,
+                result.prunedChunks,
+                result.deletedRegions,
+                formatWorldFileSize(result.bytesFreed),
+                result.percentFreed
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
 }

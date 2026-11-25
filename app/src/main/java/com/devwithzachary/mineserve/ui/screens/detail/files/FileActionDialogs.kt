@@ -1,6 +1,5 @@
 package com.devwithzachary.mineserve.ui.screens.detail.files
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -10,21 +9,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FolderZip
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,22 +26,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.FileEntry
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
 
 @Composable
 fun CreateFileDialog(
@@ -55,47 +40,36 @@ fun CreateFileDialog(
     onConfirm: (String) -> Unit
 ) {
     var newFileName by remember { mutableStateOf("") }
-    AppAlertDialog(
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create New File", fontWeight = FontWeight.Bold, color = Color.White) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Enter file name with extension (e.g. config.yml):", color = Slate400, fontSize = 13.sp)
-                OutlinedTextField(
-                    value = newFileName,
-                    onValueChange = { newFileName = it },
-                    placeholder = { Text("filename.yml", color = Slate400) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        unfocusedBorderColor = Slate700
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+        title = "Create New File",
+        confirmLabel = "Create",
+        onConfirm = {
+            val name = newFileName.trim()
+            if (name.isNotBlank()) {
+                onConfirm(name)
             }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val name = newFileName.trim()
-                    if (name.isNotBlank()) {
-                        onConfirm(name)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Create", color = Color.Black, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate400)
-            }
-        },
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(16.dp)
-    )
+        confirmEnabled = newFileName.trim().isNotBlank()
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "Enter file name with extension (e.g. config.yml):",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = newFileName,
+                onValueChange = { newFileName = it },
+                placeholder = { Text("filename.yml", fontFamily = monoFont) },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
 
 @Composable
@@ -104,47 +78,36 @@ fun CreateFolderDialog(
     onConfirm: (String) -> Unit
 ) {
     var newFolderName by remember { mutableStateOf("") }
-    AppAlertDialog(
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Create New Folder", fontWeight = FontWeight.Bold, color = Color.White) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Enter folder name:", color = Slate400, fontSize = 13.sp)
-                OutlinedTextField(
-                    value = newFolderName,
-                    onValueChange = { newFolderName = it },
-                    placeholder = { Text("folder_name", color = Slate400) },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        unfocusedBorderColor = Slate700
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
+        title = "Create New Folder",
+        confirmLabel = "Create",
+        onConfirm = {
+            val name = newFolderName.trim()
+            if (name.isNotBlank()) {
+                onConfirm(name)
             }
         },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val name = newFolderName.trim()
-                    if (name.isNotBlank()) {
-                        onConfirm(name)
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Create", color = Color.Black, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate400)
-            }
-        },
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(16.dp)
-    )
+        confirmEnabled = newFolderName.trim().isNotBlank()
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = "Enter folder name:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedTextField(
+                value = newFolderName,
+                onValueChange = { newFolderName = it },
+                placeholder = { Text("folder_name", fontFamily = monoFont) },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
 }
 
 @Composable
@@ -154,45 +117,30 @@ fun RenameFileDialog(
     onConfirm: (String) -> Unit
 ) {
     var renameTargetName by remember { mutableStateOf(target.name) }
-    AppAlertDialog(
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Rename ${if (target.isDirectory) "Folder" else "File"}", fontWeight = FontWeight.Bold, color = Color.White) },
-        text = {
-            OutlinedTextField(
-                value = renameTargetName,
-                onValueChange = { renameTargetName = it },
-                singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = EmeraldPrimary,
-                    unfocusedBorderColor = Slate700
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val newName = renameTargetName.trim()
-                    if (newName.isNotBlank() && newName != target.name) {
-                        onConfirm(newName)
-                    } else {
-                        onDismiss()
-                    }
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Rename", color = Color.Black, fontWeight = FontWeight.Bold)
+        title = "Rename ${if (target.isDirectory) "Folder" else "File"}",
+        confirmLabel = "Rename",
+        onConfirm = {
+            val newName = renameTargetName.trim()
+            if (newName.isNotBlank() && newName != target.name) {
+                onConfirm(newName)
+            } else {
+                onDismiss()
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate400)
-            }
-        },
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(16.dp)
-    )
+        confirmEnabled = renameTargetName.trim().isNotBlank()
+    ) {
+        OutlinedTextField(
+            value = renameTargetName,
+            onValueChange = { renameTargetName = it },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable
@@ -201,37 +149,24 @@ fun DeleteFileDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    AppAlertDialog(
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        icon = {
-            Icon(Icons.Default.Delete, contentDescription = null, tint = RedstoneRed, modifier = Modifier.size(32.dp))
-        },
-        title = { Text("Delete ${target.name}?", fontWeight = FontWeight.Bold, color = Color.White) },
-        text = {
-            Text(
-                if (target.isDirectory) "This will permanently delete this folder and all its contents."
-                else "This will permanently delete this file from the server.",
-                color = Slate400,
-                fontSize = 13.sp
-            )
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate400)
-            }
-        },
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(16.dp)
-    )
+        title = "Delete ${target.name}?",
+        confirmLabel = "Delete",
+        onConfirm = onConfirm,
+        icon = Icons.Rounded.Delete,
+        isDestructive = true
+    ) {
+        Text(
+            text = if (target.isDirectory) {
+                "This will permanently delete this folder and all its contents."
+            } else {
+                "This will permanently delete this file from the server."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
 }
 
 @Composable
@@ -241,6 +176,7 @@ fun UnzipArchiveDialog(
     onDismiss: () -> Unit,
     onConfirm: (destinationPath: String, deleteZipAfter: Boolean) -> Unit
 ) {
+    val monoFont = LocalMineServeMonoFontFamily.current
     val parentDir = remember(target.relativePath) {
         if (target.relativePath.contains('/')) {
             target.relativePath.substringBeforeLast('/')
@@ -267,176 +203,130 @@ fun UnzipArchiveDialog(
         if (resolvedDestination.isBlank()) "/" else "/$resolvedDestination/"
     }
 
-    AppAlertDialog(
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        icon = {
-            Icon(
-                imageVector = Icons.Default.FolderZip,
-                contentDescription = null,
-                tint = DiamondCyan,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = { Text("Extract Archive", fontWeight = FontWeight.Bold, color = Color.White) },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+        title = "Extract Archive",
+        confirmLabel = "Extract",
+        onConfirm = { onConfirm(resolvedDestination, deleteZipAfter) },
+        icon = Icons.Rounded.FolderZip
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Surface(
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = ShapeDefaults.Small,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Archive Info Card
-                Surface(
-                    color = Slate900,
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Slate800),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.FolderZip,
-                            contentDescription = null,
-                            tint = DiamondCyan,
-                            modifier = Modifier.size(28.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = target.name,
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 14.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = target.formattedSize,
-                                color = Slate400,
-                                fontSize = 12.sp
-                            )
-                        }
-                    }
-                }
-
-                // Destination Directory info
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Destination:",
-                        color = Slate400,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
+                    Icon(
+                        imageVector = Icons.Rounded.FolderZip,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary,
+                        modifier = Modifier.size(26.dp)
                     )
-                    Surface(
-                        color = Slate900,
-                        shape = RoundedCornerShape(6.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = displayDestination,
-                            color = EmeraldLight,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            text = target.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontFamily = monoFont,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        MineServeTableMonoText(
+                            text = target.formattedSize,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
+            }
 
-                // Extract to subfolder checkbox
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { extractToSubfolder = !extractToSubfolder }
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "Destination",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shape = ShapeDefaults.Small,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Checkbox(
-                        checked = extractToSubfolder,
-                        onCheckedChange = { extractToSubfolder = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = EmeraldPrimary,
-                            uncheckedColor = Slate700,
-                            checkmarkColor = Color.Black
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Extract into subfolder",
-                        color = Color.White,
-                        fontSize = 13.sp
+                        text = displayDestination,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontFamily = monoFont,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                }
-
-                if (extractToSubfolder) {
-                    OutlinedTextField(
-                        value = subfolderName,
-                        onValueChange = { subfolderName = it },
-                        label = { Text("Subfolder name", fontSize = 12.sp) },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = Slate700,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-
-                // Delete archive checkbox
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { deleteZipAfter = !deleteZipAfter }
-                ) {
-                    Checkbox(
-                        checked = deleteZipAfter,
-                        onCheckedChange = { deleteZipAfter = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = EmeraldPrimary,
-                            uncheckedColor = Slate700,
-                            checkmarkColor = Color.Black
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Column {
-                        Text(
-                            text = "Delete archive after unzip",
-                            color = Color.White,
-                            fontSize = 13.sp
-                        )
-                        Text(
-                            text = "Saves storage once extracted",
-                            color = Slate400,
-                            fontSize = 11.sp
-                        )
-                    }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm(resolvedDestination, deleteZipAfter)
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { extractToSubfolder = !extractToSubfolder }
             ) {
-                Text("Extract", color = Color.Black, fontWeight = FontWeight.Bold)
+                Checkbox(
+                    checked = extractToSubfolder,
+                    onCheckedChange = { extractToSubfolder = it }
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "Extract into subfolder",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate400)
-            }
-        },
-        containerColor = ObsidianCard,
-        shape = RoundedCornerShape(16.dp)
-    )
-}
 
+            if (extractToSubfolder) {
+                OutlinedTextField(
+                    value = subfolderName,
+                    onValueChange = { subfolderName = it },
+                    label = { Text("Subfolder name") },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { deleteZipAfter = !deleteZipAfter }
+            ) {
+                Checkbox(
+                    checked = deleteZipAfter,
+                    onCheckedChange = { deleteZipAfter = it }
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Column {
+                    Text(
+                        text = "Delete archive after unzip",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Saves storage once extracted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}

@@ -1,7 +1,5 @@
 package com.devwithzachary.mineserve.ui.components.software
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,16 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Upgrade
-import androidx.compose.material.icons.filled.Warning
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Upgrade
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,9 +24,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,27 +36,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.WebMapPluginType
 import com.devwithzachary.mineserve.model.determineJavaVersion
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,6 +68,10 @@ fun UpgradeVersionModal(
     onConfirmUpgrade: () -> Unit
 ) {
     val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
     var versionDropdownExpanded by remember { mutableStateOf(false) }
     val hasLiveMap = remember(server.id) {
         val serverDir = File(context.filesDir, "servers/${server.id}")
@@ -93,255 +81,232 @@ fun UpgradeVersionModal(
         determineJavaVersion(selectedTargetVersion, server.type)
     }
 
-    AppAlertDialog(
-        onDismissRequest = {
-            if (!isUpgradingVersion) onDismiss()
-        },
-        icon = {
-            Icon(
-                imageVector = Icons.Default.Upgrade,
-                contentDescription = null,
-                tint = EmeraldPrimary,
-                modifier = Modifier.size(32.dp)
-            )
-        },
-        title = {
+    MineServeDialog(
+        onDismissRequest = { if (!isUpgradingVersion) onDismiss() },
+        title = stringResource(R.string.software_upgrade_dialog_title),
+        confirmLabel = stringResource(R.string.software_btn_confirm_upgrade),
+        onConfirm = onConfirmUpgrade,
+        dismissLabel = if (!isUpgradingVersion) stringResource(R.string.cancel) else null,
+        onDismiss = onDismiss,
+        icon = Icons.Rounded.Upgrade,
+        confirmEnabled = !isLoadingVersions && !isUpgradingVersion && selectedTargetVersion.isNotBlank()
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
             Text(
-                text = stringResource(R.string.software_upgrade_dialog_title),
-                fontWeight = FontWeight.Bold,
-                color = Color.White
+                text = stringResource(R.string.software_current_version, server.type.displayName, server.version),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
             )
-        },
-        text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+
+            if (isLoadingVersions) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(vertical = 8.dp)
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = colorScheme.primary)
+                    Text(
+                        text = stringResource(R.string.software_loading_versions),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (availableVersions.isNotEmpty()) {
+                ExposedDropdownMenuBox(
+                    expanded = versionDropdownExpanded,
+                    onExpandedChange = { if (!isUpgradingVersion) versionDropdownExpanded = it }
+                ) {
+                    OutlinedTextField(
+                        value = selectedTargetVersion,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(stringResource(R.string.software_select_version_label)) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = versionDropdownExpanded) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                        shape = ShapeDefaults.Medium,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = colorScheme.primary,
+                            unfocusedBorderColor = colorScheme.outlineVariant,
+                            focusedContainerColor = colorScheme.surfaceContainer,
+                            unfocusedContainerColor = colorScheme.surfaceContainer,
+                            focusedTextColor = colorScheme.onSurface,
+                            unfocusedTextColor = colorScheme.onSurface
+                        ),
+                        modifier = Modifier
+                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                            .fillMaxWidth()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = versionDropdownExpanded,
+                        onDismissRequest = { versionDropdownExpanded = false },
+                        containerColor = colorScheme.surfaceContainerHighest
+                    ) {
+                        availableVersions.forEach { ver ->
+                            DropdownMenuItem(
+                                text = {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = ver,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                            color = if (ver == selectedTargetVersion) colorScheme.primary else colorScheme.onSurface
+                                        )
+                                        if (ver == server.version) {
+                                            Text(
+                                                text = stringResource(R.string.software_version_current_tag),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    onSelectTargetVersion(ver)
+                                    versionDropdownExpanded = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                Surface(
+                    shape = ShapeDefaults.Small,
+                    color = colorScheme.tertiaryContainer,
+                    contentColor = colorScheme.onTertiaryContainer,
+                    border = null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Rounded.Memory, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Text(
+                            text = stringResource(R.string.software_target_java_notice, targetJava),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            Surface(
+                shape = ShapeDefaults.Small,
+                color = colorScheme.surfaceContainer,
+                contentColor = colorScheme.onSurfaceVariant,
+                border = null,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(R.string.software_current_version, server.type.displayName, server.version),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Slate400
-                )
-
-                if (isLoadingVersions) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = EmeraldPrimary)
-                        Text(stringResource(R.string.software_loading_versions), color = Slate400, fontSize = 13.sp)
-                    }
-                } else if (availableVersions.isNotEmpty()) {
-                    // Dropdown selection for Minecraft Version
-                    ExposedDropdownMenuBox(
-                        expanded = versionDropdownExpanded,
-                        onExpandedChange = { if (!isUpgradingVersion) versionDropdownExpanded = it }
-                    ) {
-                        OutlinedTextField(
-                            value = selectedTargetVersion,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text(stringResource(R.string.software_select_version_label)) },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = versionDropdownExpanded) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldPrimary,
-                                unfocusedBorderColor = ObsidianCardBorder,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
-                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true).fillMaxWidth()
-                        )
-
-                        ExposedDropdownMenu(
-                            expanded = versionDropdownExpanded,
-                            onDismissRequest = { versionDropdownExpanded = false },
-                            modifier = Modifier.background(Slate900)
-                        ) {
-                            availableVersions.forEach { ver ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Text(ver, color = if (ver == selectedTargetVersion) EmeraldPrimary else Color.White)
-                                            if (ver == server.version) {
-                                                Text(stringResource(R.string.software_version_current_tag), color = Slate400, fontSize = 11.sp)
-                                            }
-                                        }
-                                    },
-                                    onClick = {
-                                        onSelectTargetVersion(ver)
-                                        versionDropdownExpanded = false
-                                    }
-                                )
-                            }
-                        }
-                    }
-
-                    // Java version requirement chip
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Slate800,
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(Icons.Default.Memory, contentDescription = null, tint = DiamondLight, modifier = Modifier.size(16.dp))
-                            Text(
-                                text = stringResource(R.string.software_target_java_notice, targetJava),
-                                color = DiamondLight,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
-
-                // World preservation guarantee
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Slate900,
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.Shield, contentDescription = null, tint = DiamondCyan, modifier = Modifier.size(18.dp))
-                        Text(
-                            text = stringResource(R.string.software_safe_notice),
-                            color = Slate400,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-
-                // Plugins & Mods manual upgrade advisory notice
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = Slate900,
-                    border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.5f)),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.Info, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(18.dp))
-                        Text(
-                            text = if (hasLiveMap) {
-                                stringResource(R.string.software_upgrade_plugins_mods_live_map_notice, selectedTargetVersion)
-                            } else {
-                                stringResource(R.string.software_upgrade_plugins_mods_notice, selectedTargetVersion)
-                            },
-                            color = Slate400,
-                            fontSize = 11.sp
-                        )
-                    }
-                }
-
-                // Running warning
-                if (isRunning) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = RedstoneRed.copy(alpha = 0.15f),
-                        border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.6f)),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(Icons.Default.Warning, contentDescription = null, tint = RedstoneRed, modifier = Modifier.size(16.dp))
-                            Text(
-                                text = stringResource(R.string.software_running_warning),
-                                color = RedstoneRed,
-                                fontSize = 11.sp
-                            )
-                        }
-                    }
-                }
-
-                // Backup checkbox
-                if (!isUpgradingVersion) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Checkbox(
-                            checked = upgradeBackupChecked,
-                            onCheckedChange = onUpgradeBackupCheckedChange,
-                            colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                        )
-                        Text(
-                            text = stringResource(R.string.software_backup_checkbox),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                // Progress bar while upgrading
-                if (isUpgradingVersion) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        LinearProgressIndicator(
-                            progress = { upgradeProgressPercent / 100f },
-                            modifier = Modifier.fillMaxWidth().height(6.dp),
-                            color = EmeraldPrimary,
-                            trackColor = Slate800
-                        )
-                        Text(
-                            text = upgradeStatusText,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = EmeraldLight,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-
-                if (upgradeErrorText != null) {
+                    Icon(Icons.Rounded.Shield, contentDescription = null, tint = colorScheme.tertiary, modifier = Modifier.size(18.dp))
                     Text(
-                        text = upgradeErrorText,
-                        color = RedstoneRed,
-                        fontSize = 12.sp
+                        text = stringResource(R.string.software_safe_notice),
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = onConfirmUpgrade,
-                enabled = !isLoadingVersions && !isUpgradingVersion && selectedTargetVersion.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
+
+            Surface(
+                shape = ShapeDefaults.Small,
+                color = extended.warningContainer,
+                contentColor = extended.onWarningContainer,
+                border = null,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(R.string.software_btn_confirm_upgrade),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.Black
-                )
-            }
-        },
-        dismissButton = {
-            if (!isUpgradingVersion) {
-                OutlinedButton(
-                    onClick = onDismiss,
-                    shape = RoundedCornerShape(8.dp)
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
+                    Icon(Icons.Rounded.Info, contentDescription = null, tint = extended.warning, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = if (hasLiveMap) {
+                            stringResource(R.string.software_upgrade_plugins_mods_live_map_notice, selectedTargetVersion)
+                        } else {
+                            stringResource(R.string.software_upgrade_plugins_mods_notice, selectedTargetVersion)
+                        },
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
-        },
-        containerColor = Slate950
-    )
+
+            if (isRunning) {
+                Surface(
+                    shape = ShapeDefaults.Small,
+                    color = colorScheme.errorContainer,
+                    contentColor = colorScheme.onErrorContainer,
+                    border = null,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(Icons.Rounded.Warning, contentDescription = null, tint = colorScheme.error, modifier = Modifier.size(16.dp))
+                        Text(
+                            text = stringResource(R.string.software_running_warning),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            if (!isUpgradingVersion) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = upgradeBackupChecked,
+                        onCheckedChange = onUpgradeBackupCheckedChange,
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = colorScheme.primary,
+                            checkmarkColor = colorScheme.onPrimary
+                        )
+                    )
+                    Text(
+                        text = stringResource(R.string.software_backup_checkbox),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurface
+                    )
+                }
+            }
+
+            if (isUpgradingVersion) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LinearProgressIndicator(
+                        progress = { upgradeProgressPercent / 100f },
+                        modifier = Modifier.fillMaxWidth().height(6.dp),
+                        color = colorScheme.primary,
+                        trackColor = colorScheme.surfaceContainerHighest,
+                        strokeCap = StrokeCap.Round
+                    )
+                    Text(
+                        text = upgradeStatusText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.primary
+                    )
+                }
+            }
+
+            if (upgradeErrorText != null) {
+                Text(
+                    text = upgradeErrorText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.error
+                )
+            }
+        }
+    }
 }

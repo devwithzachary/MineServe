@@ -1,39 +1,30 @@
 package com.devwithzachary.mineserve.ui.screens.dashboard
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Dns
-import androidx.compose.material.icons.outlined.Memory
-import androidx.compose.material.icons.outlined.PowerSettingsNew
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Memory
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.devwithzachary.mineserve.R
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.Slate400
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 
 @Composable
 fun DashboardMetricsHeader(
@@ -42,87 +33,89 @@ fun DashboardMetricsHeader(
     totalRamAllocatedMb: Int,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-        border = BorderStroke(1.dp, ObsidianCardBorder),
-        modifier = modifier.fillMaxWidth()
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    val formattedActiveRam = if (totalRamAllocatedMb > 1000) {
+        val gb = totalRamAllocatedMb / 1024.0
+        val formatted = String.format(java.util.Locale.US, "%.1f", gb)
+        if (formatted.endsWith(".0")) "${formatted.substringBefore(".")} GB" else "$formatted GB"
+    } else {
+        "$totalRamAllocatedMb MB"
+    }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically
+        Surface(
+            shape = ShapeDefaults.Small,
+            color = colorScheme.surfaceContainer,
+            contentColor = colorScheme.onSurface,
+            border = null
         ) {
-            // Total Servers
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Outlined.Dns,
-                    contentDescription = null,
-                    tint = DiamondCyan,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "$totalServersCount",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(if (runningCount > 0) extended.onlineEmerald else colorScheme.outline)
                 )
                 Text(
-                    text = stringResource(R.string.dash_total_servers),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    text = "Active Servers",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant
+                )
+                Text(
+                    text = "$runningCount / $totalServersCount",
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = monoFont,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = if (runningCount > 0) colorScheme.primary else colorScheme.onSurface
                 )
             }
+        }
 
-            // Running
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = ShapeDefaults.Small,
+            color = colorScheme.surfaceContainer,
+            contentColor = colorScheme.onSurface,
+            border = null
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Icon(
-                    Icons.Outlined.PowerSettingsNew,
+                    imageVector = Icons.Rounded.Memory,
                     contentDescription = null,
-                    tint = EmeraldPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "$runningCount",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = if (runningCount > 0) EmeraldLight else Color.White
+                    tint = colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = stringResource(R.string.dash_active_online),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    text = "Allocated RAM",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = colorScheme.onSurfaceVariant
                 )
-            }
-
-            // RAM Active
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    Icons.Outlined.Memory,
-                    contentDescription = null,
-                    tint = GoldYellow,
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                val formattedActiveRam = if (totalRamAllocatedMb > 1000) {
-                    val gb = totalRamAllocatedMb / 1024.0
-                    val formatted = String.format(java.util.Locale.US, "%.1f", gb)
-                    if (formatted.endsWith(".0")) "${formatted.substringBefore(".")} GB" else "$formatted GB"
-                } else {
-                    "$totalRamAllocatedMb MB"
-                }
                 Text(
                     text = formattedActiveRam,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = stringResource(R.string.dash_active_ram),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = monoFont,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    color = colorScheme.onSurface
                 )
             }
         }

@@ -1,6 +1,5 @@
 package com.devwithzachary.mineserve.ui.components.player
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -12,21 +11,22 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.rounded.Brush
+import androidx.compose.material.icons.rounded.Explore
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,44 +38,39 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.PlayerActionTarget
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
 
 @Composable
 fun ServerOfflineNotice() {
-    Surface(
-        shape = RoundedCornerShape(10.dp),
-        color = Slate900,
-        border = BorderStroke(1.dp, ObsidianCardBorder),
+    MineServeCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Icon(Icons.Default.Info, contentDescription = null, tint = Slate400, modifier = Modifier.size(20.dp))
+            Icon(
+                imageVector = Icons.Rounded.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp)
+            )
             Text(
                 text = stringResource(R.string.player_action_requires_running),
                 style = MaterialTheme.typography.bodySmall,
-                color = Slate400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -95,6 +90,11 @@ fun PlayerQuickActionsSection(
 ) {
     var kickReason by remember { mutableStateOf("") }
     var banReason by remember { mutableStateOf("") }
+    var showOpConfirm by remember { mutableStateOf(false) }
+    var showWhitelistConfirm by remember { mutableStateOf(false) }
+    var showKickConfirm by remember { mutableStateOf(false) }
+    var showBanConfirm by remember { mutableStateOf(false) }
+    val extColors = LocalMineServeColors.current
 
     val presetBanReasons = remember {
         listOf(
@@ -106,42 +106,41 @@ fun PlayerQuickActionsSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         // Whitelist & OP Quick Toggles Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = stringResource(R.string.player_action_tab_actions),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    OutlinedButton(
-                        onClick = {
-                            val newState = !target.isWhitelisted
-                            onToggleWhitelist(target.username, newState)
-                            onActionFeedback(if (newState) "Added ${target.username} to whitelist" else "Removed ${target.username} from whitelist")
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (target.isWhitelisted) RedstoneLight else EmeraldPrimary
+                    FilledTonalButton(
+                        onClick = { showWhitelistConfirm = true },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (target.isWhitelisted) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            },
+                            contentColor = if (target.isWhitelisted) {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            }
                         ),
-                        border = BorderStroke(1.dp, if (target.isWhitelisted) RedstoneLight.copy(alpha = 0.5f) else EmeraldPrimary.copy(alpha = 0.5f)),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = stringResource(if (target.isWhitelisted) R.string.player_action_remove_whitelist else R.string.player_action_add_whitelist),
-                            fontSize = 12.sp,
+                            text = stringResource(
+                                if (target.isWhitelisted) R.string.player_action_remove_whitelist
+                                else R.string.player_action_add_whitelist
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             softWrap = false,
@@ -149,22 +148,29 @@ fun PlayerQuickActionsSection(
                         )
                     }
 
-                    OutlinedButton(
-                        onClick = {
-                            val newState = !target.isOp
-                            onToggleOp(target.username, newState)
-                            onActionFeedback(if (newState) "Granted OP to ${target.username}" else "Removed OP from ${target.username}")
-                        },
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = if (target.isOp) RedstoneLight else GoldYellow
+                    FilledTonalButton(
+                        onClick = { showOpConfirm = true },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (target.isOp) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                extColors.warningContainer
+                            },
+                            contentColor = if (target.isOp) {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else {
+                                extColors.onWarningContainer
+                            }
                         ),
-                        border = BorderStroke(1.dp, if (target.isOp) RedstoneLight.copy(alpha = 0.5f) else GoldYellow.copy(alpha = 0.5f)),
-                        shape = RoundedCornerShape(8.dp),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
-                            text = stringResource(if (target.isOp) R.string.player_action_deop else R.string.player_action_make_op),
-                            fontSize = 12.sp,
+                            text = stringResource(
+                                if (target.isOp) R.string.player_action_deop
+                                else R.string.player_action_make_op
+                            ),
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1,
                             softWrap = false,
@@ -177,21 +183,13 @@ fun PlayerQuickActionsSection(
 
         // Kick Section (if server is running)
         if (isServerRunning) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate900),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = stringResource(R.string.player_action_kick),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     OutlinedTextField(
                         value = kickReason,
@@ -199,22 +197,15 @@ fun PlayerQuickActionsSection(
                         label = { Text(stringResource(R.string.player_action_kick_reason_label)) },
                         placeholder = { Text(stringResource(R.string.player_action_kick_default_reason)) },
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
-                    Button(
-                        onClick = {
-                            val reason = kickReason.trim().ifBlank { "Kicked by an operator" }
-                            onSendCommand("kick ${target.username} $reason")
-                            onActionFeedback("Kicked ${target.username}")
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = Slate800, contentColor = RedstoneLight),
-                        shape = RoundedCornerShape(8.dp),
+                    FilledTonalButton(
+                        onClick = { showKickConfirm = true },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        ),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.player_action_kick), fontWeight = FontWeight.Bold)
@@ -224,21 +215,21 @@ fun PlayerQuickActionsSection(
         }
 
         // Ban / Pardon Section
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
-                    text = if (target.isBanned) stringResource(R.string.player_action_pardon) else stringResource(R.string.player_action_ban),
+                    text = if (target.isBanned) {
+                        stringResource(R.string.player_action_pardon)
+                    } else {
+                        stringResource(R.string.player_action_ban)
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = if (target.isBanned) EmeraldPrimary else RedstoneRed
+                    color = if (target.isBanned) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    }
                 )
 
                 if (!target.isBanned) {
@@ -248,12 +239,6 @@ fun PlayerQuickActionsSection(
                         label = { Text(stringResource(R.string.player_action_ban_reason_label)) },
                         placeholder = { Text(stringResource(R.string.player_action_ban_default_reason)) },
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = RedstoneRed,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -267,25 +252,25 @@ fun PlayerQuickActionsSection(
                             FilterChip(
                                 selected = banReason == text,
                                 onClick = { banReason = text },
-                                label = { Text(text, fontSize = 11.sp) },
+                                label = { Text(text, style = MaterialTheme.typography.labelMedium) },
+                                border = null,
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = RedstoneRed.copy(alpha = 0.2f),
-                                    selectedLabelColor = RedstoneLight,
-                                    containerColor = Slate800,
-                                    labelColor = Color.White
+                                    selectedContainerColor = MaterialTheme.colorScheme.errorContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onErrorContainer,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
                     }
 
                     Button(
-                        onClick = {
-                            val reason = banReason.trim().ifBlank { "Banned by an operator" }
-                            onBanPlayer(target.username, reason)
-                            onActionFeedback("Banned ${target.username}")
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed, contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp),
+                        onClick = { showBanConfirm = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.player_action_ban), fontWeight = FontWeight.Bold)
@@ -296,14 +281,119 @@ fun PlayerQuickActionsSection(
                             onPardonPlayer(target.username)
                             onActionFeedback("Pardoned ${target.username}")
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.Black),
-                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.player_action_pardon), fontWeight = FontWeight.Bold)
                     }
                 }
             }
+        }
+    }
+
+    if (showWhitelistConfirm) {
+        val adding = !target.isWhitelisted
+        MineServeDialog(
+            onDismissRequest = { showWhitelistConfirm = false },
+            title = stringResource(
+                if (adding) R.string.player_action_add_whitelist else R.string.player_action_remove_whitelist
+            ),
+            confirmLabel = stringResource(
+                if (adding) R.string.players_dialog_add_btn else R.string.players_remove
+            ),
+            onConfirm = {
+                showWhitelistConfirm = false
+                onToggleWhitelist(target.username, adding)
+                onActionFeedback(
+                    if (adding) "Added ${target.username} to whitelist"
+                    else "Removed ${target.username} from whitelist"
+                )
+            },
+            dismissLabel = stringResource(R.string.players_dialog_cancel_btn),
+            isDestructive = !adding
+        ) {
+            Text(
+                text = target.username,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    if (showOpConfirm) {
+        val granting = !target.isOp
+        MineServeDialog(
+            onDismissRequest = { showOpConfirm = false },
+            title = stringResource(
+                if (granting) R.string.player_action_make_op else R.string.player_action_deop
+            ),
+            confirmLabel = stringResource(
+                if (granting) R.string.player_action_make_op else R.string.player_action_deop
+            ),
+            onConfirm = {
+                showOpConfirm = false
+                onToggleOp(target.username, granting)
+                onActionFeedback(
+                    if (granting) "Granted OP to ${target.username}"
+                    else "Removed OP from ${target.username}"
+                )
+            },
+            dismissLabel = stringResource(R.string.players_dialog_cancel_btn),
+            isDestructive = !granting
+        ) {
+            Text(
+                text = target.username,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    if (showKickConfirm) {
+        val reason = kickReason.trim().ifBlank { "Kicked by an operator" }
+        MineServeDialog(
+            onDismissRequest = { showKickConfirm = false },
+            title = "${stringResource(R.string.player_action_kick)} ${target.username}?",
+            confirmLabel = stringResource(R.string.player_action_kick),
+            onConfirm = {
+                showKickConfirm = false
+                onSendCommand("kick ${target.username} $reason")
+                onActionFeedback("Kicked ${target.username}")
+            },
+            dismissLabel = stringResource(R.string.players_dialog_cancel_btn),
+            isDestructive = true
+        ) {
+            Text(
+                text = reason,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    if (showBanConfirm) {
+        val reason = banReason.trim().ifBlank { "Banned by an operator" }
+        MineServeDialog(
+            onDismissRequest = { showBanConfirm = false },
+            title = "${stringResource(R.string.player_action_ban)} ${target.username}?",
+            confirmLabel = stringResource(R.string.player_action_ban),
+            onConfirm = {
+                showBanConfirm = false
+                onBanPlayer(target.username, reason)
+                onActionFeedback("Banned ${target.username}")
+            },
+            dismissLabel = stringResource(R.string.players_dialog_cancel_btn),
+            isDestructive = true
+        ) {
+            Text(
+                text = reason,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -325,32 +415,27 @@ fun PlayerGamemodeSection(
             text = stringResource(R.string.player_action_gamemode_title),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         val modes = listOf(
-            "survival" to (R.string.player_action_gamemode_survival to "⚔️"),
-            "creative" to (R.string.player_action_gamemode_creative to "🧱"),
-            "adventure" to (R.string.player_action_gamemode_adventure to "🗺️"),
-            "spectator" to (R.string.player_action_gamemode_spectator to "👁️")
+            "survival" to (R.string.player_action_gamemode_survival to Icons.Rounded.Shield),
+            "creative" to (R.string.player_action_gamemode_creative to Icons.Rounded.Brush),
+            "adventure" to (R.string.player_action_gamemode_adventure to Icons.Rounded.Explore),
+            "spectator" to (R.string.player_action_gamemode_spectator to Icons.Rounded.Visibility)
         )
 
         for ((modeKey, info) in modes) {
-            val (labelRes, iconEmoji) = info
-            Button(
+            val (labelRes, icon) = info
+            MineServeCard(
                 onClick = {
                     onSendCommand("gamemode $modeKey $username")
                     onActionFeedback("Changed gamemode to $modeKey for $username")
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = Slate900, contentColor = Color.White),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -358,13 +443,22 @@ fun PlayerGamemodeSection(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(iconEmoji, fontSize = 20.sp)
-                        Text(stringResource(labelRes), fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = stringResource(labelRes),
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
-                    Text(
+                    MineServeTableMonoText(
                         text = "/gamemode $modeKey",
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -391,45 +485,40 @@ fun PlayerTeleportSection(
     var targetTpPlayer by remember {
         mutableStateOf(allOnlinePlayers.firstOrNull { it != username } ?: "")
     }
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = stringResource(R.string.player_action_teleport_title),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         // Teleport to World Spawn
-        Button(
+        FilledTonalButton(
             onClick = {
                 onSendCommand("tp $username 0 ~ 0")
                 onActionFeedback("Teleported $username to spawn")
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Slate900, contentColor = EmeraldPrimary),
-            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
-            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.filledTonalButtonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+            ),
+            shape = ShapeDefaults.Medium,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(stringResource(R.string.player_action_tp_spawn), fontWeight = FontWeight.Bold, fontSize = 14.sp)
+            Text(stringResource(R.string.player_action_tp_spawn), fontWeight = FontWeight.Bold)
         }
 
         // Teleport to Coordinates
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(
                     text = stringResource(R.string.player_action_tp_coords),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -439,42 +528,27 @@ fun PlayerTeleportSection(
                         value = coordX,
                         onValueChange = { coordX = it },
                         label = { Text(stringResource(R.string.player_action_coord_x)) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = coordY,
                         onValueChange = { coordY = it },
                         label = { Text(stringResource(R.string.player_action_coord_y)) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = coordZ,
                         onValueChange = { coordZ = it },
                         label = { Text(stringResource(R.string.player_action_coord_z)) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -486,8 +560,11 @@ fun PlayerTeleportSection(
                         onSendCommand("tp $username $x $y $z")
                         onActionFeedback("Teleported $username to $x $y $z")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.Black),
-                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = ShapeDefaults.Small,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(stringResource(R.string.player_action_tp_btn), fontWeight = FontWeight.Bold)
@@ -498,21 +575,13 @@ fun PlayerTeleportSection(
         // Teleport to another online player
         val otherPlayers = allOnlinePlayers.filter { it != username }
         if (otherPlayers.isNotEmpty()) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate900),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
                         text = stringResource(R.string.player_action_tp_target),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -523,9 +592,12 @@ fun PlayerTeleportSection(
                                 selected = targetTpPlayer == p,
                                 onClick = { targetTpPlayer = p },
                                 label = { Text(p) },
+                                border = null,
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = EmeraldPrimary,
-                                    selectedLabelColor = Color.Black
+                                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
@@ -538,8 +610,11 @@ fun PlayerTeleportSection(
                             }
                         },
                         enabled = targetTpPlayer.isNotBlank(),
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.Black),
-                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
@@ -568,6 +643,7 @@ fun PlayerGiveItemsSection(
 
     var itemId by remember { mutableStateOf("minecraft:diamond") }
     var itemAmount by remember { mutableIntStateOf(1) }
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     val popularItems = remember {
         listOf(
@@ -587,20 +663,15 @@ fun PlayerGiveItemsSection(
             text = stringResource(R.string.player_action_give_title),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         OutlinedTextField(
             value = itemId,
             onValueChange = { itemId = it },
             label = { Text(stringResource(R.string.player_action_give_item_id)) },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = EmeraldPrimary,
-                unfocusedBorderColor = ObsidianCardBorder,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
-            ),
             modifier = Modifier.fillMaxWidth()
         )
 
@@ -614,26 +685,20 @@ fun PlayerGiveItemsSection(
                     selected = itemId == id,
                     onClick = { itemId = id },
                     label = { Text(label) },
+                    border = null,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldPrimary,
-                        selectedLabelColor = Color.Black,
-                        containerColor = Slate800,
-                        labelColor = Color.White
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        labelColor = MaterialTheme.colorScheme.onSurface
                     )
                 )
             }
         }
 
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Slate900),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -641,25 +706,34 @@ fun PlayerGiveItemsSection(
                     text = "${stringResource(R.string.player_action_give_amount)}: $itemAmount",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     val amounts = listOf(1, 16, 32, 64)
                     for (amt in amounts) {
+                        val selected = itemAmount == amt
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = if (itemAmount == amt) EmeraldPrimary else Slate800,
-                            border = BorderStroke(1.dp, if (itemAmount == amt) EmeraldPrimary else ObsidianCardBorder),
+                            shape = ShapeDefaults.Small,
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
                             modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
+                                .clip(ShapeDefaults.Small)
                                 .clickable { itemAmount = amt }
                         ) {
                             Text(
                                 text = amt.toString(),
-                                color = if (itemAmount == amt) Color.Black else Color.White,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontFamily = monoFont,
                                 fontWeight = FontWeight.Bold,
+                                color = if (selected) {
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -675,12 +749,14 @@ fun PlayerGiveItemsSection(
                 onActionFeedback("Gave $itemAmount x $cleanId to $username")
             },
             enabled = itemId.isNotBlank(),
-            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.Black),
-            shape = RoundedCornerShape(8.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            shape = ShapeDefaults.Small,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.player_action_give_btn), fontWeight = FontWeight.Bold)
         }
     }
 }
-

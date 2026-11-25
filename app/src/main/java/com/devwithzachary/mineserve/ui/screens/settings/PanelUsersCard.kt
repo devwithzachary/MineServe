@@ -1,48 +1,39 @@
 package com.devwithzachary.mineserve.ui.screens.settings
 
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Group
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,29 +41,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.auth.AuditLogEntry
 import com.devwithzachary.mineserve.auth.PanelUser
 import com.devwithzachary.mineserve.auth.UserRole
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -90,6 +73,9 @@ fun PanelUsersCard(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
     var showCreateDialog by remember { mutableStateOf(false) }
     var editingUser by remember { mutableStateOf<PanelUser?>(null) }
     var deletingUser by remember { mutableStateOf<PanelUser?>(null) }
@@ -97,16 +83,8 @@ fun PanelUsersCard(
 
     val serverNameById = remember(servers) { servers.associate { it.id to it.name } }
 
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-        border = BorderStroke(1.dp, ObsidianCardBorder),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+    MineServeCard(modifier = modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -117,44 +95,47 @@ fun PanelUsersCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Group,
+                        imageVector = Icons.Rounded.Group,
                         contentDescription = null,
-                        tint = EmeraldLight,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         text = "Panel Users & Roles (${users.size})",
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Button(
+                FilledTonalButton(
                     onClick = { showCreateDialog = true },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    shape = ShapeDefaults.Small,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Add User", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Add User", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
 
             Text(
                 text = "Create separate Web Admin logins with role-based permissions (Owner, Admin, Moderator, Viewer) and optional per-server access limits.",
                 style = MaterialTheme.typography.bodySmall,
-                color = Slate400
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (user in users) {
-                    val roleColor = when (user.role) {
-                        UserRole.OWNER -> EmeraldLight
-                        UserRole.ADMIN -> DiamondLight
-                        UserRole.MODERATOR -> GoldYellow
-                        UserRole.VIEWER -> Slate400
+            MineServeTableContainer {
+                users.forEachIndexed { index, user ->
+                    val (roleContainer, roleContent) = when (user.role) {
+                        UserRole.OWNER -> MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
+                        UserRole.ADMIN -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+                        UserRole.MODERATOR -> extColors.warningContainer to extColors.onWarningContainer
+                        UserRole.VIEWER -> MaterialTheme.colorScheme.surfaceContainerHighest to MaterialTheme.colorScheme.onSurfaceVariant
                     }
                     val scopeText = if (user.role == UserRole.OWNER || !user.restrictServers) {
                         "All servers"
@@ -163,114 +144,102 @@ fun PanelUsersCard(
                         if (names.isEmpty()) "No servers assigned" else "Scoped: ${names.joinToString(", ")}"
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Slate900,
-                        border = BorderStroke(1.dp, Slate800),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    MineServeTableRow(showDivider = index < users.lastIndex) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(3.dp)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                Text(
+                                    text = user.username,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Surface(
+                                    shape = ShapeDefaults.Small,
+                                    color = roleContainer
                                 ) {
                                     Text(
-                                        text = user.username,
-                                        color = Color.White,
+                                        text = user.role.displayName.uppercase(),
+                                        color = roleContent,
+                                        style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
+                                }
+                                if (!user.enabled) {
                                     Surface(
-                                        shape = RoundedCornerShape(6.dp),
-                                        color = roleColor.copy(alpha = 0.16f),
-                                        border = BorderStroke(1.dp, roleColor.copy(alpha = 0.45f))
+                                        shape = ShapeDefaults.Small,
+                                        color = MaterialTheme.colorScheme.errorContainer
                                     ) {
                                         Text(
-                                            text = user.role.displayName.uppercase(),
-                                            color = roleColor,
-                                            fontSize = 9.sp,
+                                            text = "DISABLED",
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            style = MaterialTheme.typography.labelSmall,
                                             fontWeight = FontWeight.Bold,
                                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
                                     }
-                                    if (!user.enabled) {
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = RedstoneLight.copy(alpha = 0.16f)
-                                        ) {
-                                            Text(
-                                                text = "DISABLED",
-                                                color = RedstoneLight,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                            )
-                                        }
-                                    }
                                 }
-                                Text(
-                                    text = scopeText,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400
+                            }
+                            Text(
+                                text = scopeText,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            IconButton(
+                                onClick = { editingUser = user },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Edit,
+                                    contentDescription = "Edit user",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
-
-                            Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                                IconButton(
-                                    onClick = { editingUser = user },
-                                    modifier = Modifier.size(34.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Edit,
-                                        contentDescription = "Edit user",
-                                        tint = Slate400,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                IconButton(
-                                    onClick = { deletingUser = user },
-                                    modifier = Modifier.size(34.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete user",
-                                        tint = RedstoneLight,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
+                            IconButton(
+                                onClick = { deletingUser = user },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Delete,
+                                    contentDescription = "Delete user",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
                         }
                     }
                 }
             }
 
-            HorizontalDivider(color = ObsidianCardBorder)
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
-            OutlinedButton(
+            FilledTonalButton(
                 onClick = {
                     showAuditLog = !showAuditLog
                     if (showAuditLog) onRefresh()
                 },
-                border = BorderStroke(1.dp, Slate700),
-                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                shape = ShapeDefaults.Small,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Icon(Icons.Default.History, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
                     text = if (showAuditLog) "Hide Recent Audit Log" else "View Recent Audit Log (${auditEntries.size})",
-                    color = Color.White,
-                    fontSize = 12.sp
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
 
@@ -280,19 +249,15 @@ fun PanelUsersCard(
                     Text(
                         text = "No audit events recorded yet.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        for (entry in auditEntries.take(15)) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Slate950,
-                                border = BorderStroke(1.dp, Slate800),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
+                    val entries = auditEntries.take(15)
+                    MineServeTableContainer {
+                        entries.forEachIndexed { index, entry ->
+                            MineServeTableRow(showDivider = index < entries.lastIndex) {
                                 Column(
-                                    modifier = Modifier.padding(10.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     Row(
@@ -301,25 +266,25 @@ fun PanelUsersCard(
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Text(
-                                            text = "${entry.action} · ${entry.username}",
-                                            color = Color.White,
+                                            text = "${entry.action} - ${entry.username}",
+                                            color = MaterialTheme.colorScheme.onSurface,
                                             fontWeight = FontWeight.SemiBold,
-                                            fontSize = 11.5.sp
+                                            style = MaterialTheme.typography.bodySmall
                                         )
-                                        Text(
+                                        MineServeTableMonoText(
                                             text = fmt.format(Date(entry.timestamp)),
-                                            color = Slate400,
-                                            fontSize = 10.sp
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                     val detailLine = listOf(entry.target, entry.details, entry.clientIp)
                                         .filter { it.isNotBlank() }
-                                        .joinToString(" · ")
+                                        .joinToString(" - ")
                                     if (detailLine.isNotBlank()) {
                                         Text(
                                             text = detailLine,
-                                            color = Slate400,
-                                            fontSize = 10.5.sp
+                                            fontFamily = monoFont,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.labelSmall
                                         )
                                     }
                                 }
@@ -379,42 +344,31 @@ fun PanelUsersCard(
     }
 
     deletingUser?.let { target ->
-        AlertDialog(
+        MineServeDialog(
             onDismissRequest = { deletingUser = null },
-            containerColor = ObsidianCard,
-            title = { Text("Delete '${target.username}'?", color = Color.White, fontWeight = FontWeight.Bold) },
-            text = {
-                Text(
-                    text = "This user will immediately lose access to Web Remote Admin and any active sessions will be revoked.",
-                    color = Slate400,
-                    style = MaterialTheme.typography.bodySmall
+            title = "Delete '${target.username}'?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                onDeleteUser(target.id).fold(
+                    onSuccess = {
+                        deletingUser = null
+                        onRefresh()
+                        Toast.makeText(context, "Deleted ${target.username}", Toast.LENGTH_SHORT).show()
+                    },
+                    onFailure = { err ->
+                        Toast.makeText(context, err.message ?: "Cannot delete user", Toast.LENGTH_LONG).show()
+                    }
                 )
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDeleteUser(target.id).fold(
-                            onSuccess = {
-                                deletingUser = null
-                                onRefresh()
-                                Toast.makeText(context, "Deleted ${target.username}", Toast.LENGTH_SHORT).show()
-                            },
-                            onFailure = { err ->
-                                Toast.makeText(context, err.message ?: "Cannot delete user", Toast.LENGTH_LONG).show()
-                            }
-                        )
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneLight)
-                ) {
-                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { deletingUser = null }) {
-                    Text("Cancel", color = Slate400)
-                }
-            }
-        )
+            icon = Icons.Rounded.Delete,
+            isDestructive = true
+        ) {
+            Text(
+                text = "This user will immediately lose access to Web Remote Admin and any active sessions will be revoked.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
     }
 }
 
@@ -441,189 +395,151 @@ private fun UserEditorDialog(
         UserRole.VIEWER -> "Read-only console, live performance metrics, and Live Map."
     }
 
-    AlertDialog(
+    MineServeDialog(
         onDismissRequest = onDismiss,
-        containerColor = ObsidianCard,
-        title = {
-            Text(
-                text = if (isEditing) "Edit User: ${existingUser!!.username}" else "Add Panel User",
-                color = Color.White,
-                fontWeight = FontWeight.Bold
+        title = if (isEditing) "Edit User: ${existingUser!!.username}" else "Add Panel User",
+        confirmLabel = if (isEditing) "Save" else "Create",
+        onConfirm = {
+            onSave(
+                username.trim(),
+                password,
+                selectedRole,
+                restrictServers,
+                selectedServerIds.toList(),
+                enabled
             )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (!isEditing) {
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    placeholder = { Text("alex_mod") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            OutlinedTextField(
+                value = password,
+                onValueChange = { password = it },
+                label = { Text(if (isEditing) "New Password (optional)" else "Password (min 6 chars)") },
+                visualTransformation = PasswordVisualTransformation(),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text(
+                text = "Role",
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.labelLarge
+            )
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                if (!isEditing) {
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        label = { Text("Username") },
-                        placeholder = { Text("alex_mod") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = Slate700,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                UserRole.entries.forEach { role ->
+                    FilterChip(
+                        selected = selectedRole == role,
+                        onClick = { selectedRole = role },
+                        label = { Text(role.displayName, style = MaterialTheme.typography.labelSmall) },
+                        border = null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            labelColor = MaterialTheme.colorScheme.onSurface
+                        )
+                    )
+                }
+            }
+            Text(
+                text = roleDescription,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            if (selectedRole != UserRole.OWNER) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Restrict to specific servers",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = restrictServers,
+                        onCheckedChange = { restrictServers = it }
                     )
                 }
 
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text(if (isEditing) "New Password (optional)" else "Password (min 6 chars)") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        unfocusedBorderColor = Slate700,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Text("Role", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    UserRole.entries.forEach { role ->
-                        FilterChip(
-                            selected = selectedRole == role,
-                            onClick = { selectedRole = role },
-                            label = { Text(role.displayName, fontSize = 12.sp) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldDark.copy(alpha = 0.45f),
-                                selectedLabelColor = EmeraldLight,
-                                labelColor = Slate400
-                            )
-                        )
-                    }
-                }
-                Text(
-                    text = roleDescription,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 11.sp
-                )
-
-                if (selectedRole != UserRole.OWNER) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                if (restrictServers) {
+                    if (servers.isEmpty()) {
                         Text(
-                            text = "Restrict to specific servers",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            modifier = Modifier.weight(1f)
+                            text = "No servers created yet.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall
                         )
-                        Switch(
-                            checked = restrictServers,
-                            onCheckedChange = { restrictServers = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = EmeraldPrimary,
-                                checkedTrackColor = Slate800,
-                                checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f),
-                                uncheckedThumbColor = Slate400,
-                                uncheckedTrackColor = Slate900,
-                                uncheckedBorderColor = Slate700
-                            )
-                        )
-                    }
-
-                    if (restrictServers) {
-                        if (servers.isEmpty()) {
-                            Text("No servers created yet.", color = Slate400, fontSize = 12.sp)
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                for (srv in servers) {
-                                    val checked = selectedServerIds.contains(srv.id)
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Checkbox(
-                                            checked = checked,
-                                            onCheckedChange = { isChecked ->
-                                                selectedServerIds = if (isChecked) {
-                                                    selectedServerIds + srv.id
-                                                } else {
-                                                    selectedServerIds - srv.id
-                                                }
-                                            },
-                                            colors = CheckboxDefaults.colors(checkedColor = EmeraldPrimary)
-                                        )
-                                        Text(
-                                            text = srv.name,
-                                            color = Color.White,
-                                            fontSize = 13.sp
-                                        )
-                                    }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            for (srv in servers) {
+                                val checked = selectedServerIds.contains(srv.id)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Checkbox(
+                                        checked = checked,
+                                        onCheckedChange = { isChecked ->
+                                            selectedServerIds = if (isChecked) {
+                                                selectedServerIds + srv.id
+                                            } else {
+                                                selectedServerIds - srv.id
+                                            }
+                                        }
+                                    )
+                                    Text(
+                                        text = srv.name,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
                                 }
                             }
                         }
                     }
                 }
+            }
 
-                if (isEditing) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Account Enabled",
-                            color = Color.White,
-                            fontSize = 13.sp,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Switch(
-                            checked = enabled,
-                            onCheckedChange = { enabled = it },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = EmeraldPrimary,
-                                checkedTrackColor = Slate800,
-                                checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f),
-                                uncheckedThumbColor = Slate400,
-                                uncheckedTrackColor = Slate900,
-                                uncheckedBorderColor = Slate700
-                            )
-                        )
-                    }
+            if (isEditing) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Account Enabled",
+                        color = MaterialTheme.colorScheme.onSurface,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = enabled,
+                        onCheckedChange = { enabled = it }
+                    )
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onSave(
-                        username.trim(),
-                        password,
-                        selectedRole,
-                        restrictServers,
-                        selectedServerIds.toList(),
-                        enabled
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
-            ) {
-                Text(if (isEditing) "Save" else "Create", color = Color.Black, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Slate400)
-            }
         }
-    )
+    }
 }

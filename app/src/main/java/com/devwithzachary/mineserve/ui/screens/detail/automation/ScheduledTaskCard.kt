@@ -3,40 +3,33 @@ package com.devwithzachary.mineserve.ui.screens.detail.automation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Campaign
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Terminal
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.Campaign
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.Terminal
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.model.ScheduledTask
 import com.devwithzachary.mineserve.model.ScheduledTaskType
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate900
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -48,81 +41,93 @@ fun ScheduledTaskCard(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Slate900),
-        shape = RoundedCornerShape(10.dp),
+    val extColors = LocalMineServeColors.current
+
+    val (containerColor, contentColor, icon) = when (task.taskType) {
+        ScheduledTaskType.WORLD_BACKUP, ScheduledTaskType.FULL_BACKUP -> Triple(
+            MaterialTheme.colorScheme.primaryContainer,
+            MaterialTheme.colorScheme.onPrimaryContainer,
+            Icons.Rounded.Archive
+        )
+        ScheduledTaskType.RESTART_SERVER -> Triple(
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.onErrorContainer,
+            Icons.Rounded.RestartAlt
+        )
+        ScheduledTaskType.BROADCAST_MESSAGE -> Triple(
+            extColors.warningContainer,
+            extColors.onWarningContainer,
+            Icons.Rounded.Campaign
+        )
+        ScheduledTaskType.CUSTOM_COMMAND -> Triple(
+            MaterialTheme.colorScheme.tertiaryContainer,
+            MaterialTheme.colorScheme.onTertiaryContainer,
+            Icons.Rounded.Terminal
+        )
+    }
+
+    MineServeCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = ShapeDefaults.Medium,
+        contentPadding = PaddingValues(12.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Surface(
-                color = when (task.taskType) {
-                    ScheduledTaskType.WORLD_BACKUP, ScheduledTaskType.FULL_BACKUP -> EmeraldPrimary.copy(alpha = 0.15f)
-                    ScheduledTaskType.RESTART_SERVER -> RedstoneRed.copy(alpha = 0.15f)
-                    ScheduledTaskType.BROADCAST_MESSAGE -> GoldYellow.copy(alpha = 0.15f)
-                    ScheduledTaskType.CUSTOM_COMMAND -> DiamondCyan.copy(alpha = 0.15f)
-                },
-                shape = RoundedCornerShape(8.dp),
+                color = containerColor,
+                shape = ShapeDefaults.Small,
                 modifier = Modifier.size(40.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
-                    val icon = when (task.taskType) {
-                        ScheduledTaskType.WORLD_BACKUP, ScheduledTaskType.FULL_BACKUP -> Icons.Default.Archive
-                        ScheduledTaskType.RESTART_SERVER -> Icons.Default.RestartAlt
-                        ScheduledTaskType.BROADCAST_MESSAGE -> Icons.Default.Campaign
-                        ScheduledTaskType.CUSTOM_COMMAND -> Icons.Default.Terminal
-                    }
-                    val iconTint = when (task.taskType) {
-                        ScheduledTaskType.WORLD_BACKUP, ScheduledTaskType.FULL_BACKUP -> EmeraldPrimary
-                        ScheduledTaskType.RESTART_SERVER -> RedstoneRed
-                        ScheduledTaskType.BROADCAST_MESSAGE -> GoldYellow
-                        ScheduledTaskType.CUSTOM_COMMAND -> DiamondCyan
-                    }
-                    Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
 
-            Column(modifier = Modifier.weight(1f)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = task.name,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    fontSize = 14.sp
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 val retentionInfo = if (task.taskType == ScheduledTaskType.WORLD_BACKUP || task.taskType == ScheduledTaskType.FULL_BACKUP) {
-                    if (task.backupRetentionCount > 0) " • Keep latest ${task.backupRetentionCount}" else " • Keep all"
+                    if (task.backupRetentionCount > 0) " - Keep latest ${task.backupRetentionCount}" else " - Keep all"
                 } else ""
                 Text(
-                    text = "${task.taskType.displayName} • ${task.frequencyDescription}$retentionInfo",
-                    color = Slate400,
-                    fontSize = 12.sp
+                    text = "${task.taskType.displayName} - ${task.frequencyDescription}$retentionInfo",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (task.lastRunTimestamp > 0L) {
                     val dateStr = SimpleDateFormat("MMM d, HH:mm", Locale.getDefault()).format(Date(task.lastRunTimestamp))
-                    Text(
+                    MineServeTableMonoText(
                         text = "Last executed: $dateStr",
-                        color = Slate400.copy(alpha = 0.7f),
-                        fontSize = 11.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
             Switch(
                 checked = task.enabled,
-                onCheckedChange = onToggleEnabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = EmeraldPrimary,
-                    checkedTrackColor = EmeraldPrimary.copy(alpha = 0.5f)
-                )
+                onCheckedChange = onToggleEnabled
             )
 
-            IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete Task", tint = Slate400, modifier = Modifier.size(18.dp))
+            IconButton(onClick = onDelete, modifier = Modifier.size(34.dp)) {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "Delete Task",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }

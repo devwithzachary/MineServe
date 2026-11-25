@@ -36,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.devwithzachary.mineserve.R
+import androidx.compose.material3.ShapeDefaults
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
@@ -118,6 +120,8 @@ fun RamSlider(
 
     var textValue by remember(allocatedMb) { mutableStateOf(allocatedMb.toString()) }
 
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
     val steps = ((maxAllocatableMb - 512) / 256).coerceAtLeast(0)
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -129,13 +133,16 @@ fun RamSlider(
             Text(
                 text = stringResource(if (showTitle) R.string.ram_allocation_label else R.string.ram_current_allocation),
                 style = if (showTitle) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-                color = if (showTitle) Color.White else Slate400
+                color = if (showTitle) colorScheme.onSurface else colorScheme.onSurfaceVariant
             )
             Text(
                 text = if (allocatedMb >= 1024) String.format(java.util.Locale.US, "%.1f GB", allocatedMb / 1024.0) else "$allocatedMb MB",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontFamily = monoFont,
+                    fontFeatureSettings = "tnum"
+                ),
                 fontWeight = FontWeight.Bold,
-                color = EmeraldPrimary
+                color = colorScheme.primary
             )
         }
 
@@ -143,22 +150,22 @@ fun RamSlider(
         Text(
             text = stringResource(R.string.ram_device_info_format, formatDeviceTotalRamGb(totalDeviceRamMb)),
             style = MaterialTheme.typography.bodySmall,
-            color = Slate400
+            color = colorScheme.onSurfaceVariant
         )
 
         Spacer(modifier = Modifier.height(12.dp))
         Slider(
             value = allocatedMb.coerceIn(512, maxAllocatableMb).toFloat(),
-            onValueChange = { 
+            onValueChange = {
                 val rounded = (it.toInt() / 256) * 256
-                onValueChange(rounded) 
+                onValueChange(rounded)
             },
             valueRange = 512f..maxAllocatableMb.toFloat(),
             steps = steps,
             colors = SliderDefaults.colors(
-                thumbColor = EmeraldPrimary,
-                activeTrackColor = EmeraldPrimary,
-                inactiveTrackColor = Slate700
+                thumbColor = colorScheme.primary,
+                activeTrackColor = colorScheme.primary,
+                inactiveTrackColor = colorScheme.surfaceContainerHighest
             )
         )
 
@@ -175,27 +182,28 @@ fun RamSlider(
             },
             label = { Text(stringResource(R.string.ram_manual_label)) },
             placeholder = { Text(stringResource(R.string.ram_manual_placeholder)) },
+            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = monoFont),
             trailingIcon = {
                 Text(
                     text = stringResource(R.string.ram_unit_mb),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Slate400,
+                    color = colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(end = 12.dp)
                 )
             },
             singleLine = true,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = EmeraldPrimary,
-                unfocusedBorderColor = ObsidianCardBorder,
-                focusedLabelColor = EmeraldPrimary,
-                unfocusedLabelColor = Slate400,
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White,
-                unfocusedContainerColor = Slate900,
-                focusedContainerColor = Slate900
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.outlineVariant,
+                focusedLabelColor = colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface,
+                unfocusedContainerColor = colorScheme.surfaceContainerLow,
+                focusedContainerColor = colorScheme.surfaceContainerLow
             ),
-            shape = RoundedCornerShape(10.dp),
+            shape = ShapeDefaults.Medium,
             modifier = Modifier.fillMaxWidth()
         )
     }

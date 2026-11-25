@@ -1,9 +1,6 @@
 package com.devwithzachary.mineserve.ui.screens.detail
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -12,26 +9,24 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,13 +38,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PlayerActionTarget
 import com.devwithzachary.mineserve.model.PlayerManagementTab
@@ -66,13 +61,7 @@ import com.devwithzachary.mineserve.ui.screens.detail.players.BannedPlayersSecti
 import com.devwithzachary.mineserve.ui.screens.detail.players.OnlinePlayersSection
 import com.devwithzachary.mineserve.ui.screens.detail.players.OpsSection
 import com.devwithzachary.mineserve.ui.screens.detail.players.WhitelistSection
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
 import kotlinx.coroutines.launch
 
 @Composable
@@ -90,21 +79,22 @@ fun PlayersTab(
     onRemoveBannedPlayer: (suspend (String) -> Boolean)? = null,
     onAddBannedIp: (suspend (String, String) -> Boolean)? = null,
     onRemoveBannedIp: (suspend (String) -> Boolean)? = null,
+    initialPlayerLists: ServerPlayerLists? = null,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
     val scope = rememberCoroutineScope()
-    var selectedSection by remember { mutableStateOf(PlayerManagementTab.ONLINE) }
-    var playerLists by remember { mutableStateOf(ServerPlayerLists()) }
-    var isLoadingLists by remember { mutableStateOf(true) }
 
-    // Dialog states
+    var selectedSection by remember { mutableStateOf(PlayerManagementTab.ONLINE) }
+    var playerLists by remember { mutableStateOf(initialPlayerLists ?: ServerPlayerLists()) }
+
     var selectedPlayerForAction by remember { mutableStateOf<PlayerActionTarget?>(null) }
     var showAddWhitelistDialog by remember { mutableStateOf(false) }
     var showAddOpDialog by remember { mutableStateOf(false) }
     var showBanPlayerDialog by remember { mutableStateOf(false) }
     var showBanIpDialog by remember { mutableStateOf(false) }
 
-    // Quick Command text input
     var newPlayerName by remember { mutableStateOf("") }
     val onlineList = metrics?.onlinePlayers ?: emptyList()
     val isRunning = status == ServerStatus.RUNNING || status == ServerStatus.STARTING
@@ -112,9 +102,7 @@ fun PlayersTab(
     fun refreshLists() {
         if (onLoadPlayerLists != null) {
             scope.launch {
-                isLoadingLists = true
                 playerLists = onLoadPlayerLists()
-                isLoadingLists = false
             }
         }
     }
@@ -130,7 +118,6 @@ fun PlayersTab(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
     ) {
-        // Section Selector Bar with Badge Counts
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -158,39 +145,49 @@ fun PlayersTab(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(tab.title, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                Text(
+                                    text = tab.title,
+                                    style = MaterialTheme.typography.labelMedium
+                                )
                                 Surface(
                                     shape = CircleShape,
-                                    color = if (isSelected) Color.Black.copy(alpha = 0.25f) else Slate800
+                                    color = if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh,
+                                    contentColor = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
+                                    border = null
                                 ) {
                                     Text(
                                         text = count.toString(),
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.Black else Slate400,
+                                        style = MaterialTheme.typography.labelSmall.copy(
+                                            fontFamily = monoFont,
+                                            fontWeight = FontWeight.SemiBold,
+                                            fontFeatureSettings = "tnum"
+                                        ),
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
                             }
                         },
+                        shape = ShapeDefaults.Small,
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldPrimary,
-                            selectedLabelColor = Color.Black
-                        )
+                            containerColor = colorScheme.surfaceContainer,
+                            labelColor = colorScheme.onSurfaceVariant,
+                            selectedContainerColor = colorScheme.secondaryContainer,
+                            selectedLabelColor = colorScheme.onSecondaryContainer
+                        ),
+                        border = null
                     )
                 }
             }
 
             IconButton(onClick = { refreshLists() }) {
                 Icon(
-                    imageVector = Icons.Default.Refresh,
+                    imageVector = Icons.Rounded.Refresh,
                     contentDescription = stringResource(R.string.players_refresh),
-                    tint = Slate400
+                    tint = colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        // Active Section Content
         when (selectedSection) {
             PlayerManagementTab.ONLINE -> {
                 OnlinePlayersSection(
@@ -290,35 +287,44 @@ fun PlayersTab(
             }
         }
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
-        // Quick Command Bar (Preserved & Enhanced)
         Text(
             text = stringResource(R.string.players_manage_commands),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
+            style = MaterialTheme.typography.labelLarge,
+            color = colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 4.dp)
         )
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
+
+        MineServeCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = ShapeDefaults.Large,
+            containerColor = colorScheme.surfaceContainer,
+            contentPadding = PaddingValues(16.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(
                     value = newPlayerName,
                     onValueChange = { newPlayerName = it.filterNot { c -> c.isWhitespace() } },
                     label = { Text(stringResource(R.string.players_username_label)) },
                     singleLine = true,
+                    shape = ShapeDefaults.Medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = colorScheme.primary,
+                        unfocusedBorderColor = colorScheme.outlineVariant,
+                        focusedContainerColor = colorScheme.surfaceContainerLow,
+                        unfocusedContainerColor = colorScheme.surfaceContainerLow,
+                        focusedTextColor = colorScheme.onSurface,
+                        unfocusedTextColor = colorScheme.onSurface
+                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Button(
+                    FilledTonalButton(
                         onClick = {
                             if (newPlayerName.isNotBlank()) {
                                 scope.launch {
@@ -332,23 +338,19 @@ fun PlayersTab(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = Color.Black),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        shape = ShapeDefaults.Medium,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
                             text = stringResource(R.string.players_op),
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
 
-                    Button(
+                    FilledTonalButton(
                         onClick = {
                             if (newPlayerName.isNotBlank()) {
                                 scope.launch {
@@ -362,16 +364,12 @@ fun PlayersTab(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        shape = ShapeDefaults.Medium,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
                             text = stringResource(R.string.players_whitelist),
-                            color = Color.Black,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis
@@ -392,16 +390,16 @@ fun PlayersTab(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed, contentColor = Color.White),
-                        shape = RoundedCornerShape(8.dp),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.errorContainer,
+                            contentColor = colorScheme.onErrorContainer
+                        ),
+                        shape = ShapeDefaults.Medium,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(
                             text = stringResource(R.string.players_ban),
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.5.sp,
                             maxLines = 1,
                             softWrap = false,
                             overflow = TextOverflow.Ellipsis
@@ -412,7 +410,6 @@ fun PlayersTab(
         }
     }
 
-    // Player Action Dialog
     selectedPlayerForAction?.let { target ->
         PlayerActionDialog(
             target = target,
@@ -450,7 +447,6 @@ fun PlayersTab(
         )
     }
 
-    // Add Modals
     if (showAddWhitelistDialog) {
         AddWhitelistDialog(
             onDismiss = { showAddWhitelistDialog = false },
@@ -500,6 +496,20 @@ fun PlayersTab(
                     refreshLists()
                 }
             }
+        )
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun PlayersTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        PlayersTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            status = ServerStatus.RUNNING,
+            metrics = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleRunningMetrics,
+            onSendCommand = {},
+            initialPlayerLists = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.samplePlayerLists
         )
     }
 }

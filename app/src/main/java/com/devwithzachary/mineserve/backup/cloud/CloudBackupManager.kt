@@ -23,7 +23,7 @@ class CloudBackupManager private constructor(
 
         fun getInstance(context: Context): CloudBackupManager {
             return INSTANCE ?: synchronized(this) {
-                INSTANCE ?: CloudBackupManager(context.applicationContext).also { INSTANCE = it }
+                INSTANCE ?: CloudBackupManager(context.applicationContext ?: context).also { INSTANCE = it }
             }
         }
     }

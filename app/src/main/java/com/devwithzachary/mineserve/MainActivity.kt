@@ -51,8 +51,8 @@ import com.devwithzachary.mineserve.ui.screens.settings.RemoteAdminScreen
 import com.devwithzachary.mineserve.ui.screens.splash.SplashScreen
 import com.devwithzachary.mineserve.ui.screens.whatsnew.WhatsNewScreen
 import com.devwithzachary.mineserve.ui.screens.wizard.CreateServerWizardScreen
+import androidx.compose.material3.MaterialTheme
 import com.devwithzachary.mineserve.ui.theme.MineServeTheme
-import com.devwithzachary.mineserve.ui.theme.Slate950
 
 sealed class Screen {
     data object Splash : Screen()
@@ -88,10 +88,15 @@ class MainActivity : ComponentActivity() {
         handleIncomingDeepLink(intent)
 
         setContent {
-            MineServeTheme {
+            val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val useDynamicColor by viewModel.useDynamicColor.collectAsStateWithLifecycle()
+            MineServeTheme(
+                themeMode = themeMode,
+                useDynamicColor = useDynamicColor
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Slate950
+                    color = MaterialTheme.colorScheme.surface
                 ) {
                     MineServeApp(viewModel = viewModel)
                 }
@@ -155,6 +160,8 @@ fun MineServeApp(viewModel: MainViewModel) {
     val javaInstallError by viewModel.javaInstallError.collectAsStateWithLifecycle()
     val webAdminState by viewModel.webAdminState.collectAsStateWithLifecycle()
     val webAdminConfig by viewModel.webAdminConfig.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val useDynamicColor by viewModel.useDynamicColor.collectAsStateWithLifecycle()
 
     val backStack = remember {
         if (!viewModel.rootfsManager.isInstalled()) {
@@ -474,8 +481,13 @@ fun MineServeApp(viewModel: MainViewModel) {
                     isShowWhatsNewOnUpdateEnabled = isShowWhatsNewOnUpdateEnabled,
                     onToggleShowWhatsNewOnUpdate = { viewModel.toggleShowWhatsNewOnUpdate(it) },
                     onOpenWhatsNew = { navigateTo(Screen.WhatsNew) },
+                    themeMode = themeMode,
+                    onThemeModeChange = { viewModel.setThemeMode(it) },
+                    useDynamicColor = useDynamicColor,
+                    onDynamicColorChange = { viewModel.setUseDynamicColor(it) },
                     onBack = { navigateBack() },
-                    onAboutClick = { navigateTo(Screen.About) }
+                    onAboutClick = { navigateTo(Screen.About) },
+                    onCreditsClick = { navigateTo(Screen.Credits) }
                 )
             }
 

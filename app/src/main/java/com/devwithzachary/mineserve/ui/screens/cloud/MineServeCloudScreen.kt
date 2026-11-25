@@ -1,6 +1,5 @@
 package com.devwithzachary.mineserve.ui.screens.cloud
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,28 +11,26 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,25 +44,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.cloud.CloudAccountProfile
 import com.devwithzachary.mineserve.cloud.CloudAccountState
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
+import com.devwithzachary.mineserve.cloud.CloudPricing
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -81,12 +73,14 @@ fun MineServeCloudScreen(
     onVerifyCloudOtp: (email: String, code: String, onResult: (Result<CloudAccountProfile>) -> Unit) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
+    val monoFont = LocalMineServeMonoFontFamily.current
     var otpEmail by remember { mutableStateOf("") }
     var otpCode by remember { mutableStateOf("") }
     var otpSent by remember { mutableStateOf(false) }
     var otpBusy by remember { mutableStateOf(false) }
     var otpFeedback by remember { mutableStateOf<String?>(null) }
     var otpIsError by remember { mutableStateOf(false) }
+    var showSignOutConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(cloudState.isLinked) {
         if (cloudState.isLinked) {
@@ -111,31 +105,34 @@ fun MineServeCloudScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("MineServe Cloud", fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("MineServe Cloud", fontWeight = FontWeight.Bold)
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = EmeraldDark.copy(alpha = 0.4f),
-                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                            shape = ShapeDefaults.Small,
+                            color = MaterialTheme.colorScheme.tertiaryContainer
                         ) {
                             Text(
-                                text = "NEW",
-                                color = EmeraldLight,
-                                fontSize = 10.sp,
+                                text = "CLOUD",
+                                color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                             )
                         }
                     }
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate950)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -147,16 +144,8 @@ fun MineServeCloudScreen(
             verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
         ) {
             // Account Status Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -166,7 +155,12 @@ fun MineServeCloudScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Default.Cloud, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(22.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.Cloud,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.tertiary,
+                                modifier = Modifier.size(22.dp)
+                            )
                             Text(
                                 text = when {
                                     cloudState.isLinked -> "Linked Account"
@@ -175,21 +169,20 @@ fun MineServeCloudScreen(
                                 },
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                         if (cloudState.isLinked && profile != null) {
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = EmeraldDark.copy(alpha = 0.35f),
-                                border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                                shape = ShapeDefaults.Small,
+                                color = MaterialTheme.colorScheme.tertiaryContainer
                             ) {
                                 Text(
                                     text = profile.tier,
-                                    color = EmeraldLight,
-                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
                         }
@@ -200,7 +193,7 @@ fun MineServeCloudScreen(
                             Text(
                                 text = "Sign in with an existing MineServe Cloud account to sync custom *.play.mineserve.app addresses, remote Web Admin access, and encrypted off-device backups. Local hosting is 100% free. Purchases and plan changes are not available in this app.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
 
                             OutlinedTextField(
@@ -213,15 +206,6 @@ fun MineServeCloudScreen(
                                 singleLine = true,
                                 enabled = !otpBusy && !otpSent,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = ObsidianCardBorder,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White,
-                                    disabledTextColor = Slate400,
-                                    focusedLabelColor = EmeraldLight,
-                                    unfocusedLabelColor = Slate400
-                                ),
                                 modifier = Modifier.fillMaxWidth()
                             )
 
@@ -254,19 +238,22 @@ fun MineServeCloudScreen(
                                         }
                                     },
                                     enabled = !otpBusy && otpEmail.isNotBlank(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    shape = ShapeDefaults.Medium,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     if (otpBusy) {
                                         CircularProgressIndicator(
-                                            color = Color.Black,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             strokeWidth = 2.dp,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                     }
-                                    Text("Send Sign-In Code", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text("Send Sign-In Code", fontWeight = FontWeight.Bold)
                                 }
                             } else {
                                 OutlinedTextField(
@@ -276,17 +263,10 @@ fun MineServeCloudScreen(
                                         if (otpIsError) otpFeedback = null
                                     },
                                     label = { Text("6-digit verification code") },
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                                     singleLine = true,
                                     enabled = !otpBusy,
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = ObsidianCardBorder,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White,
-                                        focusedLabelColor = EmeraldLight,
-                                        unfocusedLabelColor = Slate400
-                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
@@ -312,19 +292,22 @@ fun MineServeCloudScreen(
                                         }
                                     },
                                     enabled = !otpBusy && otpCode.length == 6,
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    shape = ShapeDefaults.Medium,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     if (otpBusy) {
                                         CircularProgressIndicator(
-                                            color = Color.Black,
+                                            color = MaterialTheme.colorScheme.onPrimary,
                                             strokeWidth = 2.dp,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                     }
-                                    Text("Verify & Sign In", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text("Verify & Sign In", fontWeight = FontWeight.Bold)
                                 }
 
                                 Row(
@@ -340,7 +323,7 @@ fun MineServeCloudScreen(
                                         },
                                         enabled = !otpBusy
                                     ) {
-                                        Text("Change Email", color = Slate400, fontSize = 12.sp)
+                                        Text("Change Email")
                                     }
                                     TextButton(
                                         onClick = {
@@ -363,7 +346,7 @@ fun MineServeCloudScreen(
                                         },
                                         enabled = !otpBusy
                                     ) {
-                                        Text("Resend Code", color = EmeraldLight, fontSize = 12.sp)
+                                        Text("Resend Code")
                                     }
                                 }
                             }
@@ -372,42 +355,45 @@ fun MineServeCloudScreen(
                                 Text(
                                     text = msg,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = if (otpIsError) RedstoneLight else EmeraldLight
+                                    color = if (otpIsError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                                 )
                             }
                         } else {
                             Text(
                                 text = "Your Android phone hosts your Minecraft servers 100% free forever (with Bore, Playit.gg, UPnP, and local/WebDAV backups). MineServe Cloud is an optional add-on (not 24/7 cloud hosting) that adds a custom *.play.mineserve.app address, remote browser Web Admin from anywhere, and encrypted R2 backups. Try Plus free for 7 days.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     text = "How linking works:",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "1. Sign in or pick a plan in the Cloud Portal.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
                                     text = "2. Tap 'Open MineServe App' in your browser to link this phone.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                             Button(
                                 onClick = onOpenCloudPortal,
-                                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                shape = ShapeDefaults.Medium,
                                 modifier = Modifier.fillMaxWidth()
                             ) {
-                                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Sign In / Link Account", color = Color.Black, fontWeight = FontWeight.Bold)
+                                Text("Sign In / Link Account", fontWeight = FontWeight.Bold)
                             }
                         }
                     } else {
@@ -415,41 +401,46 @@ fun MineServeCloudScreen(
                             text = profile?.email ?: "Account linked",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
 
                         if (profile != null && profile.storageQuotaBytes > 0L) {
                             val usedMb = profile.storageUsedBytes / (1024.0 * 1024.0)
                             val quotaGb = profile.storageQuotaBytes / (1024L * 1024L * 1024L)
                             val progress = (profile.storageUsedBytes.toFloat() / profile.storageQuotaBytes.toFloat()).coerceIn(0f, 1f)
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                MineServeTableMonoText(
                                     text = String.format(Locale.US, "Cloud Backups: %.1f MB / %d GB", usedMb, quotaGb),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 LinearProgressIndicator(
                                     progress = { progress },
-                                    color = EmeraldPrimary,
-                                    trackColor = Slate800,
-                                    modifier = Modifier.fillMaxWidth().height(6.dp)
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(6.dp)
                                 )
                             }
                         }
 
                         if (profile != null && profile.activeSubdomains.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("Active Addresses:", style = MaterialTheme.typography.labelSmall, color = Slate400)
-                                profile.activeSubdomains.forEach { sub ->
+                            Text(
+                                text = "Active Addresses",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            MineServeTableContainer {
+                                profile.activeSubdomains.forEachIndexed { index, sub ->
                                     val info = profile.activeSubdomainDetails.firstOrNull { it.subdomain.equals(sub, ignoreCase = true) }
                                     val dom = info?.domain?.ifBlank { "play.mineserve.app" } ?: "play.mineserve.app"
                                     val reg = info?.region?.let { " ($it)" }.orEmpty()
-                                    Text(
-                                        text = "$sub.$dom$reg",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = EmeraldLight,
-                                        fontWeight = FontWeight.Medium
-                                    )
+                                    MineServeTableRow(showDivider = index < profile.activeSubdomains.lastIndex) {
+                                        MineServeTableMonoText(
+                                            text = "$sub.$dom$reg",
+                                            color = MaterialTheme.colorScheme.tertiary
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -458,22 +449,28 @@ fun MineServeCloudScreen(
                             if (!BuildConfig.IS_PLAY_STORE) {
                                 Button(
                                     onClick = onOpenCloudPortal,
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                    shape = RoundedCornerShape(10.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    shape = ShapeDefaults.Small,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Open Portal", color = Color.Black, fontWeight = FontWeight.Bold)
+                                    Text("Open Portal", fontWeight = FontWeight.Bold)
                                 }
                             }
-                            OutlinedButton(
-                                onClick = onSignOutCloud,
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, ObsidianCardBorder),
+                            FilledTonalButton(
+                                onClick = { showSignOutConfirm = true },
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                ),
+                                shape = ShapeDefaults.Small,
                                 modifier = if (BuildConfig.IS_PLAY_STORE) Modifier.fillMaxWidth() else Modifier
                             ) {
-                                Text("Sign Out", color = RedstoneLight)
+                                Text("Sign Out", fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -487,7 +484,7 @@ fun MineServeCloudScreen(
                     text = "How to Use Cloud Features",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 4.dp)
                 )
 
@@ -507,50 +504,41 @@ fun MineServeCloudScreen(
                         "1. Open any server and go to the Backups tab -> Cloud Backup Sync.",
                         "2. Turn on Enable Cloud Backup Sync (and optionally Auto-Sync on Backup Creation).",
                         "3. Tap the MineServe Cloud storage provider chip.",
-                        "4. Tap the cloud icon on any local backup to upload, or manage and restore snapshots under MineServe Cloud Snapshots."
+                        "4. Tap Cloud on any local backup to upload, or manage and restore snapshots under MineServe Cloud Snapshots."
                     )
                 )
             } else if (BuildConfig.IS_PLAY_STORE) {
                 if (cloudState.isLinked) {
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(18.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
+                    MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
                                 text = "Free Plan Active",
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = "Your account is currently on the Free plan. Custom cloud addresses, remote Web Admin relays, and encrypted cloud backups require an active MineServe Plus or Pro membership. Account upgrades and purchases are not available in this app.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
                 }
             } else {
-                // Transparent Plan Comparison (Non-Play Store builds only)
-                val pricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
+                val pricing = remember { CloudPricing.current() }
                 Text(
                     text = "Plans & Pricing",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 if (pricing.isEstimatedLocal) {
                     Text(
                         text = "Estimated local pricing (${pricing.currencyCode}) - Stripe Checkout confirms your exact local currency.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
@@ -594,17 +582,40 @@ fun MineServeCloudScreen(
                     )
                 )
 
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = onOpenCloudPortal,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    shape = ShapeDefaults.Medium,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Start 7-Day Free Trial in Browser Portal", color = EmeraldLight, fontWeight = FontWeight.SemiBold)
+                    Text("Start 7-Day Free Trial in Browser Portal", fontWeight = FontWeight.SemiBold)
                 }
             }
+        }
+    }
+
+    if (showSignOutConfirm) {
+        MineServeDialog(
+            onDismissRequest = { showSignOutConfirm = false },
+            title = "Sign Out of MineServe Cloud?",
+            confirmLabel = "Sign Out",
+            onConfirm = {
+                showSignOutConfirm = false
+                onSignOutCloud()
+            },
+            icon = Icons.Rounded.Logout,
+            isDestructive = true
+        ) {
+            Text(
+                text = "This unlinks your device from MineServe Cloud. Local servers and backups are not affected.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -614,19 +625,20 @@ private fun CloudSetupGuideCard(
     title: String,
     steps: List<String>
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-        border = BorderStroke(1.dp, ObsidianCardBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = EmeraldLight)
+    MineServeCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
             steps.forEach { step ->
-                Text(step, style = MaterialTheme.typography.bodySmall, color = Slate400)
+                Text(
+                    text = step,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -641,48 +653,69 @@ private fun CloudPlanCard(
     highlighted: Boolean = false,
     isCurrent: Boolean = false
 ) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-        border = BorderStroke(1.dp, if (highlighted) EmeraldPrimary else ObsidianCardBorder),
+    MineServeCard(
+        containerColor = if (highlighted) {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        } else {
+            MaterialTheme.colorScheme.surfaceContainer
+        },
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 if (isCurrent) {
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Slate900,
-                        border = BorderStroke(1.dp, ObsidianCardBorder)
+                        shape = ShapeDefaults.Small,
+                        color = MaterialTheme.colorScheme.primaryContainer
                     ) {
                         Text(
                             text = "CURRENT",
-                            color = EmeraldLight,
-                            fontSize = 10.sp,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
                         )
                     }
                 }
             }
-            Text(price, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, color = EmeraldLight)
-            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Slate400)
+            Text(
+                text = price,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.ExtraBold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 features.forEach { feat ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(14.dp))
-                        Text(feat, style = MaterialTheme.typography.bodySmall, color = Slate400)
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Text(
+                            text = feat,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }
@@ -690,3 +723,30 @@ private fun CloudPlanCard(
     }
 }
 
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun MineServeCloudLinkedPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        MineServeCloudScreen(
+            cloudState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleCloudLinkedState,
+            onBack = {},
+            onOpenCloudPortal = {},
+            onRefreshCloud = {},
+            onSignOutCloud = {}
+        )
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun MineServeCloudUnlinkedPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        MineServeCloudScreen(
+            cloudState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleCloudUnlinkedState,
+            onBack = {},
+            onOpenCloudPortal = {},
+            onRefreshCloud = {},
+            onSignOutCloud = {}
+        )
+    }
+}

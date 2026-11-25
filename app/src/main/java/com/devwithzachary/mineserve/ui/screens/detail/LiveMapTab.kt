@@ -10,38 +10,32 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.OpenInBrowser
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Layers
+import androidx.compose.material.icons.rounded.Map
+import androidx.compose.material.icons.rounded.OpenInBrowser
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -50,21 +44,22 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerStatus
-import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.WebMapPluginType
 import com.devwithzachary.mineserve.model.WebMapState
 import com.devwithzachary.mineserve.ui.screens.detail.map.LiveMapFullRenderDialog
@@ -72,22 +67,6 @@ import com.devwithzachary.mineserve.ui.screens.detail.map.LiveMapPortDialog
 import com.devwithzachary.mineserve.ui.screens.detail.map.LiveMapUninstallDialog
 import com.devwithzachary.mineserve.ui.screens.detail.map.ServerStoppedMapView
 import com.devwithzachary.mineserve.ui.screens.detail.map.SquaremapInstallView
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
@@ -104,7 +83,9 @@ fun LiveMapTab(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
+    val isInspection = LocalInspectionMode.current
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     var mapState by remember { mutableStateOf(onGetWebMapState()) }
     var webViewRef by remember { mutableStateOf<WebView?>(null) }
@@ -114,6 +95,7 @@ fun LiveMapTab(
     var showPortDialog by remember { mutableStateOf(false) }
     var showUninstallDialog by remember { mutableStateOf(false) }
     var showRenderDialog by remember { mutableStateOf(false) }
+
     fun refreshState() {
         mapState = onGetWebMapState()
     }
@@ -127,12 +109,11 @@ fun LiveMapTab(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Slate950)
+            .background(MaterialTheme.colorScheme.surface)
     ) {
         // Top Toolbar
         Surface(
-            color = ObsidianCard,
-            border = BorderStroke(1.dp, ObsidianCardBorder),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -142,16 +123,14 @@ fun LiveMapTab(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Plugin & Port Badge
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     if (mapState.installedPlugin != null) {
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = EmeraldDark.copy(alpha = 0.35f),
-                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
+                            shape = ShapeDefaults.Small,
+                            color = MaterialTheme.colorScheme.primaryContainer
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
@@ -159,25 +138,23 @@ fun LiveMapTab(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Map,
+                                    imageVector = Icons.Rounded.Map,
                                     contentDescription = null,
-                                    tint = EmeraldLight,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Text(
                                     text = "Squaremap (2D)",
-                                    color = Color.White,
-                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
 
-                        // Port clicker
                         Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Slate800,
-                            border = BorderStroke(1.dp, Slate700),
+                            shape = ShapeDefaults.Small,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             onClick = { showPortDialog = true }
                         ) {
                             Row(
@@ -187,14 +164,15 @@ fun LiveMapTab(
                             ) {
                                 Text(
                                     text = ":${mapState.port}",
-                                    color = DiamondLight,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    fontFamily = monoFont,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                                 Icon(
-                                    imageVector = Icons.Default.Settings,
+                                    imageVector = Icons.Rounded.Settings,
                                     contentDescription = "Edit Port",
-                                    tint = Slate400,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(12.dp)
                                 )
                             }
@@ -202,14 +180,13 @@ fun LiveMapTab(
                     } else {
                         Text(
                             text = "Live World Map",
-                            color = Color.White,
-                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                // Action icons
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -222,12 +199,12 @@ fun LiveMapTab(
                                     isWebViewLoading = true
                                     webViewRef?.reload()
                                 },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(34.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Refresh,
+                                    imageVector = Icons.Rounded.Refresh,
                                     contentDescription = "Reload",
-                                    tint = Slate400,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -237,38 +214,37 @@ fun LiveMapTab(
                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(mapState.webMapUrl))
                                     context.startActivity(intent)
                                 },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(34.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.OpenInBrowser,
+                                    imageVector = Icons.Rounded.OpenInBrowser,
                                     contentDescription = "Open in Browser",
-                                    tint = Slate400,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
 
                             IconButton(
                                 onClick = { showRenderDialog = true },
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(34.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Layers,
+                                    imageVector = Icons.Rounded.Layers,
                                     contentDescription = stringResource(R.string.map_full_render_btn),
-                                    tint = EmeraldPrimary,
+                                    tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                         }
 
-                        // Uninstall button
                         IconButton(
                             onClick = { showUninstallDialog = true },
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(34.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.Delete,
+                                imageVector = Icons.Rounded.Delete,
                                 contentDescription = "Uninstall Squaremap",
-                                tint = RedstoneLight,
+                                tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -284,7 +260,6 @@ fun LiveMapTab(
                 .fillMaxWidth()
         ) {
             when {
-                // Scenario 1: No map plugin installed
                 mapState.installedPlugin == null -> {
                     SquaremapInstallView(
                         isInstalling = isInstallingSquaremap,
@@ -307,7 +282,6 @@ fun LiveMapTab(
                     )
                 }
 
-                // Scenario 2: Server is stopped
                 !isRunning -> {
                     ServerStoppedMapView(
                         port = mapState.port,
@@ -316,9 +290,43 @@ fun LiveMapTab(
                     )
                 }
 
-                // Scenario 3: Server running and plugin installed -> Embedded WebView
                 else -> {
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    if (isInspection) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Map,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                    Text(
+                                        text = "Live Squaremap WebView Preview",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = mapState.webMapUrl,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontFamily = monoFont,
+                                        color = MaterialTheme.colorScheme.tertiary
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        Box(modifier = Modifier.fillMaxSize()) {
                         AndroidView(
                             factory = { ctx ->
                                 WebView(ctx).apply {
@@ -369,49 +377,43 @@ fun LiveMapTab(
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // Loading progress indicator
                         if (isWebViewLoading) {
                             LinearProgressIndicator(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .align(Alignment.TopCenter),
-                                color = EmeraldPrimary,
+                                color = MaterialTheme.colorScheme.primary,
                                 trackColor = Color.Transparent
                             )
                         }
 
-                        // Error / Initializing notice
                         if (webViewError != null) {
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = Slate900.copy(alpha = 0.95f),
-                                border = BorderStroke(1.dp, Slate700),
+                            MineServeCard(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 modifier = Modifier
                                     .align(Alignment.Center)
                                     .padding(24.dp)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(16.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Warning,
+                                        imageVector = Icons.Rounded.Warning,
                                         contentDescription = null,
-                                        tint = GoldYellow,
+                                        tint = extColors.warning,
                                         modifier = Modifier.size(32.dp)
                                     )
                                     Text(
                                         text = "Connecting to Squaremap...",
+                                        style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
-                                        fontSize = 14.sp
+                                        color = MaterialTheme.colorScheme.onSurface
                                     )
                                     Text(
                                         text = "The Minecraft web map server may still be initializing tiles on port ${mapState.port}. Please wait a moment and tap Retry.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Slate400,
-                                        fontSize = 12.sp
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Button(
                                         onClick = {
@@ -419,23 +421,26 @@ fun LiveMapTab(
                                             isWebViewLoading = true
                                             webViewRef?.loadUrl(mapState.webMapUrl)
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                        shape = RoundedCornerShape(8.dp)
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        ),
+                                        shape = ShapeDefaults.Small
                                     ) {
-                                        Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Retry Connection", color = Color.Black, fontWeight = FontWeight.Bold)
+                                        Text("Retry Connection", fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
                         }
+                    }
                     }
                 }
             }
         }
     }
 
-    // Modal: Port Configuration Dialog
     if (showPortDialog) {
         LiveMapPortDialog(
             initialPort = mapState.port,
@@ -448,7 +453,6 @@ fun LiveMapTab(
         )
     }
 
-    // Modal: Uninstall Confirmation Dialog
     if (showUninstallDialog) {
         LiveMapUninstallDialog(
             onDismiss = { showUninstallDialog = false },
@@ -469,7 +473,6 @@ fun LiveMapTab(
         )
     }
 
-    // Modal: Full World Render Dialog
     if (showRenderDialog) {
         LiveMapFullRenderDialog(
             onDismiss = { showRenderDialog = false },
@@ -481,5 +484,21 @@ fun LiveMapTab(
         onDispose {
             webViewRef?.destroy()
         }
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun LiveMapTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        LiveMapTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            status = ServerStatus.RUNNING,
+            onGetWebMapState = { com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleWebMapStateRunning },
+            onSetWebMapPort = {},
+            onInstallWebMapPlugin = { _, _ -> },
+            onUninstallWebMapPlugin = { true },
+            onStartServer = {}
+        )
     }
 }

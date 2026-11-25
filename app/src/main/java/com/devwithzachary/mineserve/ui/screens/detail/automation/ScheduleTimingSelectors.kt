@@ -7,28 +7,20 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate900
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import java.util.Calendar
 import java.util.Locale
 
@@ -39,10 +31,21 @@ fun TimeOfDaySelector(
     dailyMinute: Int,
     onTimeSelected: (Int, Int) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(text = "Execution Time", color = Slate400, fontSize = 12.sp)
+    val monoFont = LocalMineServeMonoFontFamily.current
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
 
-        // Time quick preset chips
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Execution Time",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             val commonTimes = listOf(
                 Pair(2, 0) to "02:00 AM",
@@ -55,21 +58,16 @@ fun TimeOfDaySelector(
                 FilterChip(
                     selected = dailyHour == time.first && dailyMinute == time.second,
                     onClick = { onTimeSelected(time.first, time.second) },
-                    label = { Text(label, fontSize = 11.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldPrimary,
-                        selectedLabelColor = Color.Black,
-                        containerColor = Slate900,
-                        labelColor = Color.White
-                    )
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall, fontFamily = monoFont) },
+                    border = null,
+                    colors = chipColors
                 )
             }
         }
 
-        // Stepper / manual adjustment row
         Surface(
-            color = Slate900,
-            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shape = ShapeDefaults.Small,
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -82,8 +80,9 @@ fun TimeOfDaySelector(
                 Text(
                     text = String.format(Locale.US, "Time: %02d:%02d", dailyHour, dailyMinute),
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    fontSize = 14.sp
+                    fontFamily = monoFont,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    style = MaterialTheme.typography.bodyMedium
                 )
 
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -93,7 +92,7 @@ fun TimeOfDaySelector(
                             onTimeSelected(prevHour, dailyMinute)
                         }
                     ) {
-                        Text("-1h", color = Slate400, fontSize = 12.sp)
+                        Text("-1h", fontFamily = monoFont, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     TextButton(
                         onClick = {
@@ -101,7 +100,7 @@ fun TimeOfDaySelector(
                             onTimeSelected(nextHour, dailyMinute)
                         }
                     ) {
-                        Text("+1h", color = EmeraldLight, fontSize = 12.sp)
+                        Text("+1h", fontFamily = monoFont, color = MaterialTheme.colorScheme.primary)
                     }
                     TextButton(
                         onClick = {
@@ -109,7 +108,7 @@ fun TimeOfDaySelector(
                             onTimeSelected(dailyHour, nextMin)
                         }
                     ) {
-                        Text("+15m", color = DiamondCyan, fontSize = 12.sp)
+                        Text("+15m", fontFamily = monoFont, color = MaterialTheme.colorScheme.tertiary)
                     }
                 }
             }
@@ -125,8 +124,20 @@ fun IntervalScheduleSection(
     onValueChange: (String) -> Unit,
     onUnitChange: (Boolean) -> Unit
 ) {
+    val monoFont = LocalMineServeMonoFontFamily.current
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(text = "Repeat Every", color = Slate400, fontSize = 12.sp)
+        Text(
+            text = "Repeat Every",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
 
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -137,13 +148,8 @@ fun IntervalScheduleSection(
                 value = intervalValueText,
                 onValueChange = { onValueChange(it.filter { ch -> ch.isDigit() }) },
                 label = { Text("Value") },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                 singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = EmeraldPrimary,
-                    unfocusedBorderColor = ObsidianCardBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                ),
                 modifier = Modifier.weight(1f)
             )
 
@@ -151,29 +157,24 @@ fun IntervalScheduleSection(
                 selected = !intervalIsHours,
                 onClick = { onUnitChange(false) },
                 label = { Text("Minutes") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = EmeraldPrimary,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                border = null,
+                colors = chipColors
             )
 
             FilterChip(
                 selected = intervalIsHours,
                 onClick = { onUnitChange(true) },
                 label = { Text("Hours") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = EmeraldPrimary,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                border = null,
+                colors = chipColors
             )
         }
 
-        // Quick interval preset chips
-        Text(text = "Quick Presets", color = Slate400, fontSize = 11.sp)
+        Text(
+            text = "Quick Presets",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             val intervalPresets = listOf(
                 "15m" to Pair("15", false),
@@ -193,13 +194,9 @@ fun IntervalScheduleSection(
                         onValueChange(config.first)
                         onUnitChange(config.second)
                     },
-                    label = { Text(label, fontSize = 11.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = DiamondCyan,
-                        selectedLabelColor = Color.Black,
-                        containerColor = Slate900,
-                        labelColor = Color.White
-                    )
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall, fontFamily = monoFont) },
+                    border = null,
+                    colors = chipColors
                 )
             }
         }
@@ -214,8 +211,20 @@ fun EveryXDaysScheduleSection(
     onDayIntervalChange: (String) -> Unit,
     onTimeSelected: (Int, Int) -> Unit
 ) {
+    val monoFont = LocalMineServeMonoFontFamily.current
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(text = "Day Interval", color = Slate400, fontSize = 12.sp)
+        Text(
+            text = "Day Interval",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -225,13 +234,8 @@ fun EveryXDaysScheduleSection(
                 value = dayIntervalText,
                 onValueChange = { onDayIntervalChange(it.filter { ch -> ch.isDigit() }) },
                 label = { Text("Every N Days") },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                 singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = EmeraldPrimary,
-                    unfocusedBorderColor = ObsidianCardBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                ),
                 modifier = Modifier.weight(1f)
             )
 
@@ -239,28 +243,19 @@ fun EveryXDaysScheduleSection(
                 selected = dayIntervalText == "1",
                 onClick = { onDayIntervalChange("1") },
                 label = { Text("Daily (1)") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = EmeraldPrimary,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                border = null,
+                colors = chipColors
             )
 
             FilterChip(
                 selected = dayIntervalText == "2",
                 onClick = { onDayIntervalChange("2") },
                 label = { Text("Every 2d") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = EmeraldPrimary,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                border = null,
+                colors = chipColors
             )
         }
 
-        // Time of Day selector
         TimeOfDaySelector(
             dailyHour = dailyHour,
             dailyMinute = dailyMinute,
@@ -280,10 +275,21 @@ fun WeeklyDaysScheduleSection(
     onWeekIntervalChange: (String) -> Unit,
     onTimeSelected: (Int, Int) -> Unit
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(text = "Days of Week", color = Slate400, fontSize = 12.sp)
+    val monoFont = LocalMineServeMonoFontFamily.current
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
 
-        // Day of week chips
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "Days of Week",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
         val days = listOf(
             Calendar.SUNDAY to "Sun",
             Calendar.MONDAY to "Mon",
@@ -306,47 +312,41 @@ fun WeeklyDaysScheduleSection(
                         }
                         onDaysChange(updated)
                     },
-                    label = { Text(dayName, fontSize = 12.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = EmeraldPrimary,
-                        selectedLabelColor = Color.Black,
-                        containerColor = Slate900,
-                        labelColor = Color.White
-                    )
+                    label = { Text(dayName, style = MaterialTheme.typography.labelSmall) },
+                    border = null,
+                    colors = chipColors
                 )
             }
         }
 
-        // Day quick presets
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(
                 selected = selectedDays == setOf(Calendar.SATURDAY, Calendar.SUNDAY),
                 onClick = { onDaysChange(setOf(Calendar.SATURDAY, Calendar.SUNDAY)) },
-                label = { Text("Weekends", fontSize = 11.sp) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = DiamondCyan,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                label = { Text("Weekends", style = MaterialTheme.typography.labelSmall) },
+                border = null,
+                colors = chipColors
             )
             FilterChip(
-                selected = selectedDays == setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY),
+                selected = selectedDays == setOf(
+                    Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY
+                ),
                 onClick = {
-                    onDaysChange(setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY))
+                    onDaysChange(
+                        setOf(Calendar.MONDAY, Calendar.TUESDAY, Calendar.WEDNESDAY, Calendar.THURSDAY, Calendar.FRIDAY)
+                    )
                 },
-                label = { Text("Weekdays", fontSize = 11.sp) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = DiamondCyan,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                label = { Text("Weekdays", style = MaterialTheme.typography.labelSmall) },
+                border = null,
+                colors = chipColors
             )
         }
 
-        // Week interval
-        Text(text = "Week Cadence", color = Slate400, fontSize = 12.sp)
+        Text(
+            text = "Week Cadence",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -356,13 +356,8 @@ fun WeeklyDaysScheduleSection(
                 value = weekIntervalText,
                 onValueChange = { onWeekIntervalChange(it.filter { ch -> ch.isDigit() }) },
                 label = { Text("Every N Weeks") },
+                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                 singleLine = true,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = EmeraldPrimary,
-                    unfocusedBorderColor = ObsidianCardBorder,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                ),
                 modifier = Modifier.weight(1f)
             )
 
@@ -370,28 +365,19 @@ fun WeeklyDaysScheduleSection(
                 selected = weekIntervalText == "1",
                 onClick = { onWeekIntervalChange("1") },
                 label = { Text("Weekly (1)") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = EmeraldPrimary,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                border = null,
+                colors = chipColors
             )
 
             FilterChip(
                 selected = weekIntervalText == "2",
                 onClick = { onWeekIntervalChange("2") },
                 label = { Text("Bi-Weekly (2)") },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = EmeraldPrimary,
-                    selectedLabelColor = Color.Black,
-                    containerColor = Slate900,
-                    labelColor = Color.White
-                )
+                border = null,
+                colors = chipColors
             )
         }
 
-        // Time of Day selector
         TimeOfDaySelector(
             dailyHour = dailyHour,
             dailyMinute = dailyMinute,
@@ -407,38 +393,43 @@ fun CustomCronScheduleSection(
     isCronValid: Boolean,
     onCronChange: (String) -> Unit
 ) {
+    val monoFont = LocalMineServeMonoFontFamily.current
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(text = "Cron Expression", color = Slate400, fontSize = 12.sp)
+        Text(
+            text = "Cron Expression",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         OutlinedTextField(
             value = cronExpressionText,
             onValueChange = onCronChange,
             label = { Text("5-Field Cron") },
-            placeholder = { Text("0 4 * * *") },
+            placeholder = { Text("0 4 * * *", fontFamily = monoFont) },
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+            isError = !isCronValid,
             singleLine = true,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = if (isCronValid) EmeraldPrimary else RedstoneRed,
-                unfocusedBorderColor = if (isCronValid) ObsidianCardBorder else RedstoneRed.copy(alpha = 0.5f),
-                focusedTextColor = Color.White,
-                unfocusedTextColor = Color.White
-            ),
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Validation and format hint
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Text(
-                text = if (isCronValid) "✓ Valid cron expression" else "⚠️ Invalid syntax: minute hour day month weekday",
-                color = if (isCronValid) EmeraldLight else RedstoneRed,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium
-            )
-        }
+        Text(
+            text = if (isCronValid) "Valid cron expression" else "Invalid syntax: minute hour day month weekday",
+            color = if (isCronValid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium
+        )
 
-        // Cron presets
-        Text(text = "Common Cron Presets", color = Slate400, fontSize = 11.sp)
+        Text(
+            text = "Common Cron Presets",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             val cronPresets = listOf(
                 "Every 30m" to "*/30 * * * *",
@@ -451,16 +442,11 @@ fun CustomCronScheduleSection(
                 FilterChip(
                     selected = cronExpressionText == expr,
                     onClick = { onCronChange(expr) },
-                    label = { Text(label, fontSize = 11.sp) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = DiamondCyan,
-                        selectedLabelColor = Color.Black,
-                        containerColor = Slate900,
-                        labelColor = Color.White
-                    )
+                    label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                    border = null,
+                    colors = chipColors
                 )
             }
         }
     }
 }
-

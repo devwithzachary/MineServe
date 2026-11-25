@@ -36,6 +36,8 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.ui.components.AppAlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -112,6 +114,9 @@ fun AdvancedCodeEditor(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     var textFieldValue by remember { mutableStateOf(TextFieldValue(initialContent)) }
@@ -416,8 +421,7 @@ fun AdvancedCodeEditor(
         bottomBar = {
             // Status bar footer
             Surface(
-                color = Slate900,
-                border = BorderStroke(1.dp, Slate800),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -497,8 +501,7 @@ fun AdvancedCodeEditor(
                 exit = shrinkVertically() + fadeOut()
             ) {
                 Surface(
-                    color = ObsidianCard,
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(
@@ -620,10 +623,10 @@ fun AdvancedCodeEditor(
             }
 
             // Editor Canvas with Line Numbers Gutter
-            Card(
+            Surface(
                 shape = RoundedCornerShape(0.dp),
-                colors = CardDefaults.cardColors(containerColor = Slate950),
-                border = BorderStroke(1.dp, Slate900),
+                color = extended.terminalSurface,
+                border = null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
@@ -636,17 +639,17 @@ fun AdvancedCodeEditor(
                     // Line numbers gutter
                     Column(
                         modifier = Modifier
-                            .background(Slate900.copy(alpha = 0.5f))
+                            .background(colorScheme.surfaceContainerLow)
                             .padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalAlignment = Alignment.End
                     ) {
                         for (i in 1..lineCount) {
                             Text(
                                 text = "$i",
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = monoFont,
                                 fontSize = 13.sp,
                                 lineHeight = 20.sp,
-                                color = Slate700
+                                color = colorScheme.outline
                             )
                         }
                     }
@@ -656,7 +659,7 @@ fun AdvancedCodeEditor(
                         modifier = Modifier
                             .width(1.dp)
                             .fillMaxHeight()
-                            .background(Slate800)
+                            .background(colorScheme.outlineVariant.copy(alpha = 0.4f))
                     )
 
                     // Code text editing area
@@ -675,12 +678,12 @@ fun AdvancedCodeEditor(
                             },
                             visualTransformation = syntaxTransformation,
                             textStyle = TextStyle(
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = monoFont,
                                 fontSize = 13.sp,
                                 lineHeight = 20.sp,
-                                color = Color(0xFFE2E8F0)
+                                color = extended.terminalOnSurface
                             ),
-                            cursorBrush = SolidColor(EmeraldPrimary),
+                            cursorBrush = SolidColor(colorScheme.primary),
                             modifier = Modifier.fillMaxWidth()
                         )
                     }

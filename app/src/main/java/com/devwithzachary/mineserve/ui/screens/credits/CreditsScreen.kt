@@ -1,10 +1,7 @@
 package com.devwithzachary.mineserve.ui.screens.credits
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,27 +18,25 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.Handshake
-import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Groups
+import androidx.compose.material.icons.rounded.Handshake
+import androidx.compose.material.icons.rounded.VolunteerActivism
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -54,31 +49,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.ChangelogPlatform
 import com.devwithzachary.mineserve.model.MineServeAboutData
 import com.devwithzachary.mineserve.model.SharedCreditCategory
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 
 data class PatreonSupporter(
     val name: String,
@@ -131,6 +117,8 @@ fun CreditsScreen(
     modifier: Modifier = Modifier
 ) {
     val uriHandler = LocalUriHandler.current
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
     var selectedCategory by remember { mutableStateOf(CreditCategory.ALL) }
 
     val filteredCredits = remember(selectedCategory) {
@@ -150,23 +138,25 @@ fun CreditsScreen(
                     Text(
                         text = stringResource(R.string.credits_page_title),
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                            tint = Color.White
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate950)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -177,40 +167,36 @@ fun CreditsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
         ) {
-            // Contributors & Community Section (At the Top)
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
+            // Contributors & Community Section
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Icon(Icons.Default.Groups, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(22.dp))
+                        Icon(
+                            imageVector = Icons.Rounded.Groups,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
                         Text(
                             text = stringResource(R.string.credits_contributors_title),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
                     Text(
                         text = stringResource(R.string.credits_contributors_desc),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Slate900,
-                        border = BorderStroke(1.dp, Slate800),
+                        shape = ShapeDefaults.Medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
@@ -218,120 +204,112 @@ fun CreditsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Default.Handshake, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(20.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.Handshake,
+                                contentDescription = null,
+                                tint = extColors.warning,
+                                modifier = Modifier.size(20.dp)
+                            )
                             Text(
                                 text = "Submit a PR or report an issue on GitHub to join the credits list!",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.9f)
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
 
-                    Button(
+                    FilledTonalButton(
                         onClick = { uriHandler.openUri("https://github.com/devwithzachary/MineServe") },
-                        colors = ButtonDefaults.buttonColors(containerColor = Slate800),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        shape = ShapeDefaults.Small,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Code, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Code, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Contribute on GitHub", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Contribute on GitHub", fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
             if (!BuildConfig.IS_PLAY_STORE) {
-                // Patreon Supporters Card
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
+                MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Icon(Icons.Default.Favorite, contentDescription = null, tint = RedstoneLight, modifier = Modifier.size(22.dp))
+                            Icon(
+                                imageVector = Icons.Rounded.Favorite,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(22.dp)
+                            )
                             Text(
                                 text = "Project Supporters",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                         }
 
                         Text(
                             text = "Special thanks to our generous Patreon, YouTube, and Buy Me a Coffee members whose support powers ongoing MineServe development!",
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Slate400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            PATREON_SUPPORTERS.forEach { supporter ->
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Slate900,
-                                    border = BorderStroke(1.dp, Slate800),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
+                        MineServeTableContainer {
+                            PATREON_SUPPORTERS.forEachIndexed { index, supporter ->
+                                MineServeTableRow(showDivider = index < PATREON_SUPPORTERS.lastIndex) {
                                     Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
+                                        modifier = Modifier.weight(1f),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                                     ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                        Box(
+                                            modifier = Modifier
+                                                .size(34.dp)
+                                                .clip(CircleShape)
+                                                .background(MaterialTheme.colorScheme.errorContainer),
+                                            contentAlignment = Alignment.Center
                                         ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(CircleShape)
-                                                    .background(RedstoneRed.copy(alpha = 0.2f))
-                                                    .border(1.dp, RedstoneRed.copy(alpha = 0.4f), CircleShape),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = "❤️",
-                                                    fontSize = 14.sp
-                                                )
-                                            }
-
-                                            Column {
-                                                Text(
-                                                    text = supporter.name,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color.White
-                                                )
-                                                Text(
-                                                    text = supporter.tier,
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = EmeraldLight
-                                                )
-                                            }
-                                        }
-
-                                        Surface(
-                                            shape = RoundedCornerShape(6.dp),
-                                            color = RedstoneRed.copy(alpha = 0.15f),
-                                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.3f))
-                                        ) {
-                                            Text(
-                                                text = "Supporter",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                fontWeight = FontWeight.Bold,
-                                                color = RedstoneLight,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                            Icon(
+                                                imageVector = Icons.Rounded.Favorite,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                modifier = Modifier.size(16.dp)
                                             )
                                         }
+
+                                        Column {
+                                            Text(
+                                                text = supporter.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                text = supporter.tier,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+
+                                    Surface(
+                                        shape = ShapeDefaults.Small,
+                                        color = MaterialTheme.colorScheme.errorContainer
+                                    ) {
+                                        Text(
+                                            text = "Supporter",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                        )
                                     }
                                 }
                             }
@@ -341,40 +319,44 @@ fun CreditsScreen(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Button(
+                            FilledTonalButton(
                                 onClick = { uriHandler.openUri("https://www.patreon.com/DevWithZachary") },
-                                colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                ),
+                                shape = ShapeDefaults.Small,
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(Icons.Default.Favorite, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.Favorite, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Join Patreon",
-                                    color = Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.labelMedium,
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis
                                 )
                             }
 
-                            Button(
+                            FilledTonalButton(
                                 onClick = { uriHandler.openUri("https://www.buymeacoffee.com/devwithzachary") },
-                                colors = ButtonDefaults.buttonColors(containerColor = Slate800),
-                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = extColors.warningContainer,
+                                    contentColor = extColors.onWarningContainer
+                                ),
+                                shape = ShapeDefaults.Small,
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 10.dp),
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Icon(Icons.Default.VolunteerActivism, contentDescription = null, tint = GoldYellow, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.VolunteerActivism, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = "Buy Me a Coffee",
-                                    color = Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp,
+                                    style = MaterialTheme.typography.labelMedium,
                                     maxLines = 1,
                                     softWrap = false,
                                     overflow = TextOverflow.Ellipsis
@@ -400,17 +382,12 @@ fun CreditsScreen(
                                 fontWeight = if (selectedCategory == cat) FontWeight.Bold else FontWeight.Normal
                             )
                         },
+                        border = null,
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = EmeraldPrimary,
-                            selectedLabelColor = Color.Black,
-                            containerColor = Slate900,
-                            labelColor = Slate400
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            borderColor = ObsidianCardBorder,
-                            selectedBorderColor = EmeraldPrimary,
-                            enabled = true,
-                            selected = selectedCategory == cat
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     )
                 }
@@ -418,18 +395,11 @@ fun CreditsScreen(
 
             // Software Credits Cards
             filteredCredits.forEach { credit ->
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { uriHandler.openUri(credit.url) }
+                MineServeCard(
+                    onClick = { uriHandler.openUri(credit.url) },
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -440,23 +410,24 @@ fun CreditsScreen(
                                     text = credit.name,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = credit.tag,
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = EmeraldLight
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
 
                             Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Slate800
+                                shape = ShapeDefaults.Small,
+                                color = MaterialTheme.colorScheme.surfaceContainerHighest
                             ) {
                                 Text(
                                     text = credit.license,
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400,
+                                    fontFamily = monoFont,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                 )
                             }
@@ -465,7 +436,7 @@ fun CreditsScreen(
                         Text(
                             text = credit.description,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = Slate400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Row(
@@ -476,12 +447,12 @@ fun CreditsScreen(
                                 text = "Visit Project",
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = EmeraldPrimary
+                                color = MaterialTheme.colorScheme.primary
                             )
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                                 contentDescription = null,
-                                tint = EmeraldPrimary,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)
                             )
                         }
@@ -491,5 +462,13 @@ fun CreditsScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun CreditsScreenPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        CreditsScreen(onBack = {})
     }
 }

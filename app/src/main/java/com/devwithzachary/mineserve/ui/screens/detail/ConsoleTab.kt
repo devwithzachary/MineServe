@@ -1,66 +1,47 @@
 package com.devwithzachary.mineserve.ui.screens.detail
 
+import android.content.Context
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.designsystem.components.ConsoleTerminalPane
 import com.devwithzachary.mineserve.engine.TerminalEmulator
 import com.devwithzachary.mineserve.repository.ConsolePreferences
 import com.devwithzachary.mineserve.ui.components.CommandAutoCompleteRibbon
 import com.devwithzachary.mineserve.ui.components.CustomMacroBar
-import com.devwithzachary.mineserve.ui.components.TerminalCanvasView
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 
 @Composable
 fun ConsoleTab(
     emulator: TerminalEmulator,
     refreshTrigger: Long,
     onSendCommand: (String) -> Unit,
-    onResizeTerminal: (Int, Int) -> Unit,
+    @Suppress("UNUSED_PARAMETER") onResizeTerminal: (Int, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val uiPrefs = remember(context) { context.getSharedPreferences("mineserve_ui_prefs", android.content.Context.MODE_PRIVATE) }
+    val colorScheme = MaterialTheme.colorScheme
+    val uiPrefs = remember(context) {
+        context.getSharedPreferences("mineserve_ui_prefs", Context.MODE_PRIVATE)
+    }
     val keepScreenAwake = remember { uiPrefs.getBoolean("keep_screen_awake", true) }
-    val view = androidx.compose.ui.platform.LocalView.current
-    androidx.compose.runtime.DisposableEffect(view, keepScreenAwake) {
+    val view = LocalView.current
+    DisposableEffect(view, keepScreenAwake) {
         val previousKeepScreenOn = view.keepScreenOn
         if (keepScreenAwake) {
             view.keepScreenOn = true
@@ -69,26 +50,28 @@ fun ConsoleTab(
             view.keepScreenOn = previousKeepScreenOn
         }
     }
+
     val consolePrefs = remember { ConsolePreferences(context) }
     var macros by remember { mutableStateOf(consolePrefs.getMacros()) }
-    var commandHistory by remember { mutableStateOf(consolePrefs.getCommandHistory()) }
-    var historyIndex by remember { mutableIntStateOf(-1) }
     var commandText by remember { mutableStateOf("") }
+
+    val logLines = remember(emulator, refreshTrigger) {
+        emulator.getRecentLines(maxLines = 500)
+    }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF0F172A))
+            .background(colorScheme.surface)
             .imePadding()
     ) {
-        // Customizable Macro bar above live terminal
+        // Horizontally scrollable M3 SuggestionChip quick-action bar
         CustomMacroBar(
             macros = macros,
             onMacroClicked = { macro ->
                 if (macro.autoExecute) {
                     onSendCommand(macro.command)
-                    commandHistory = consolePrefs.addCommandToHistory(macro.command)
-                    historyIndex = -1
+                    consolePrefs.addCommandToHistory(macro.command)
                 } else {
                     commandText = macro.command
                 }
@@ -102,23 +85,9 @@ fun ConsoleTab(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp)
+                .padding(top = 6.dp, bottom = 6.dp)
         )
 
-        // Terminal Canvas
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            TerminalCanvasView(
-                emulator = emulator,
-                refreshTrigger = refreshTrigger,
-                onResizeTerminal = onResizeTerminal
-            )
-        }
-
-        // Auto-completion ribbon when typing /
         CommandAutoCompleteRibbon(
             commandText = commandText,
             onSuggestionSelected = { completedText ->
@@ -126,113 +95,24 @@ fun ConsoleTab(
             }
         )
 
-        // Command Input Bar & History Recall
-        Surface(
-            color = Slate900,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                // Command History Navigation Buttons
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(2.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = {
-                            if (commandHistory.isNotEmpty()) {
-                                val nextIndex = (historyIndex + 1).coerceAtMost(commandHistory.size - 1)
-                                historyIndex = nextIndex
-                                commandText = commandHistory[nextIndex]
-                            }
-                        },
-                        enabled = commandHistory.isNotEmpty() && historyIndex < commandHistory.size - 1,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.KeyboardArrowUp,
-                            contentDescription = "Previous Command",
-                            tint = if (commandHistory.isNotEmpty() && historyIndex < commandHistory.size - 1) Color.White else Slate800
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {
-                            if (historyIndex > 0) {
-                                historyIndex--
-                                commandText = commandHistory[historyIndex]
-                            } else if (historyIndex == 0) {
-                                historyIndex = -1
-                                commandText = ""
-                            }
-                        },
-                        enabled = historyIndex >= 0,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.KeyboardArrowDown,
-                            contentDescription = "Next Command",
-                            tint = if (historyIndex >= 0) Color.White else Slate800
-                        )
-                    }
+        ConsoleTerminalPane(
+            lines = logLines,
+            commandInput = commandText,
+            onCommandInputChange = { commandText = it },
+            onSendCommand = {
+                val cmd = commandText.trim()
+                if (cmd.isNotEmpty()) {
+                    onSendCommand(cmd)
+                    consolePrefs.addCommandToHistory(cmd)
+                    commandText = ""
                 }
-
-                OutlinedTextField(
-                    value = commandText,
-                    onValueChange = {
-                        commandText = it
-                        historyIndex = -1
-                    },
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.console_input_placeholder),
-                            color = Slate400,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        unfocusedBorderColor = ObsidianCardBorder,
-                        focusedContainerColor = Slate950,
-                        unfocusedContainerColor = Slate950,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
-                    modifier = Modifier.weight(1f)
-                )
-
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = EmeraldPrimary,
-                    modifier = Modifier.size(46.dp)
-                ) {
-                    IconButton(
-                        onClick = {
-                            if (commandText.isNotBlank()) {
-                                val cmd = commandText.trim()
-                                onSendCommand(cmd)
-                                commandHistory = consolePrefs.addCommandToHistory(cmd)
-                                historyIndex = -1
-                                commandText = ""
-                            }
-                        }
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Send,
-                            contentDescription = stringResource(R.string.console_send),
-                            tint = Color.Black
-                        )
-                    }
-                }
-            }
-        }
+            },
+            commandPlaceholder = stringResource(R.string.console_input_placeholder),
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .padding(bottom = 8.dp)
+        )
     }
 }

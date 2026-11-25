@@ -8,9 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -24,40 +22,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudSync
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,39 +58,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.backup.cloud.CloudBackupConfig
 import com.devwithzachary.mineserve.backup.cloud.CloudBackupManager
 import com.devwithzachary.mineserve.backup.cloud.CloudProviderType
-import com.devwithzachary.mineserve.backup.cloud.CloudSyncState
 import com.devwithzachary.mineserve.cloud.CloudAccountState
 import com.devwithzachary.mineserve.cloud.CloudBackupItem
+import com.devwithzachary.mineserve.cloud.CloudPricing
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeEmptyState
+import com.devwithzachary.mineserve.designsystem.components.MineServePreferenceRow
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -130,7 +118,10 @@ fun BackupsTab(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isInspection = LocalInspectionMode.current
     val scope = rememberCoroutineScope()
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     LaunchedEffect(server?.id) {
         onRefreshBackups()
@@ -148,9 +139,11 @@ fun BackupsTab(
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var isStatusError by remember { mutableStateOf(false) }
 
-    // Cloud Backup Sync States
-    val cloudManager = remember { CloudBackupManager.getInstance(context) }
-    val cloudSyncState by cloudManager.syncState.collectAsStateWithLifecycle()
+    val cloudManager = remember(isInspection) {
+        if (isInspection) null else CloudBackupManager.getInstance(context)
+    }
+    val cloudSyncState by (cloudManager?.syncState?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(com.devwithzachary.mineserve.backup.cloud.CloudSyncState.Idle) })
 
     var cloudConfig by remember(server?.cloudBackupConfig) {
         mutableStateOf(server?.cloudBackupConfig ?: CloudBackupConfig())
@@ -168,7 +161,6 @@ fun BackupsTab(
         }
     }
 
-    // SAF folder picker launcher
     val safFolderPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
@@ -200,134 +192,81 @@ fun BackupsTab(
         }
     }
 
-    // Restore Confirmation Dialog
     if (backupToRestore != null) {
         val target = backupToRestore!!
-        AppAlertDialog(
+        MineServeDialog(
             onDismissRequest = { backupToRestore = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = GoldYellow,
-                    modifier = Modifier.size(36.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = "Restore World Backup?",
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Text(
-                    text = "Restoring '${target.name}' will overwrite your current world with this snapshot.\n\n⚠️ Any unsaved changes or new blocks placed since this backup was created will be replaced.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Slate400
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val backup = target
-                        backupToRestore = null
-                        restoringBackupId = backup.id
-                        onRestoreBackup(backup) { success ->
-                            restoringBackupId = null
-                            if (success) {
-                                showFeedback("World successfully restored from ${backup.name}")
-                            } else {
-                                showFeedback("Failed to restore backup", isError = true)
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = GoldYellow),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Restore World", color = Color.Black, fontWeight = FontWeight.Bold)
+            title = "Restore World Backup?",
+            confirmLabel = "Restore World",
+            onConfirm = {
+                val backup = target
+                backupToRestore = null
+                restoringBackupId = backup.id
+                onRestoreBackup(backup) { success ->
+                    restoringBackupId = null
+                    if (success) {
+                        showFeedback("World successfully restored from ${backup.name}")
+                    } else {
+                        showFeedback("Failed to restore backup", isError = true)
+                    }
                 }
             },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { backupToRestore = null },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
-            },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+            dismissLabel = stringResource(R.string.cancel),
+            icon = Icons.Rounded.Warning,
+            isDestructive = true
+        ) {
+            Text(
+                text = "Restoring '${target.name}' will overwrite your current world with this snapshot. Any unsaved changes or blocks placed since this backup was created will be replaced.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 
-    // Delete Confirmation Dialog
     if (backupToDelete != null) {
         val target = backupToDelete!!
-        AppAlertDialog(
+        MineServeDialog(
             onDismissRequest = { backupToDelete = null },
-            icon = {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = null,
-                    tint = RedstoneRed,
-                    modifier = Modifier.size(36.dp)
-                )
-            },
-            title = {
-                Text(
-                    text = stringResource(R.string.backups_delete_dialog_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            },
-            text = {
-                Text(
-                    text = stringResource(R.string.backups_delete_dialog_desc, target.name, target.formattedSize),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Slate400
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val backup = target
-                        backupToDelete = null
-                        deletingBackupId = backup.id
-                        onDeleteBackup(backup) { success ->
-                            deletingBackupId = null
-                            if (success) {
-                                showFeedback("Deleted backup: ${backup.name}")
-                            } else {
-                                showFeedback("Failed to delete backup", isError = true)
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.backups_delete), color = Color.White, fontWeight = FontWeight.Bold)
+            title = stringResource(R.string.backups_delete_dialog_title),
+            confirmLabel = stringResource(R.string.backups_delete),
+            onConfirm = {
+                val backup = target
+                backupToDelete = null
+                deletingBackupId = backup.id
+                onDeleteBackup(backup) { success ->
+                    deletingBackupId = null
+                    if (success) {
+                        showFeedback("Deleted backup: ${backup.name}")
+                    } else {
+                        showFeedback("Failed to delete backup", isError = true)
+                    }
                 }
             },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = { backupToDelete = null },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text(stringResource(R.string.cancel), color = Color.White)
-                }
-            },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+            dismissLabel = stringResource(R.string.cancel),
+            icon = Icons.Rounded.Delete,
+            isDestructive = true
+        ) {
+            Text(
+                text = stringResource(R.string.backups_delete_dialog_desc, target.name, target.formattedSize),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
+
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
 
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Section Header
         Row(
@@ -339,12 +278,11 @@ fun BackupsTab(
                 text = stringResource(R.string.backups_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Text(
-                text = "${backups.size} Snapshot(s) Available",
-                style = MaterialTheme.typography.bodySmall,
-                color = Slate400
+            MineServeTableMonoText(
+                text = "${backups.size} snapshot(s)",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
 
@@ -364,28 +302,26 @@ fun BackupsTab(
                 }
             },
             enabled = !isCreatingBackup,
-            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-            shape = RoundedCornerShape(10.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ),
+            shape = ShapeDefaults.Medium,
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             if (isCreatingBackup) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                CircularProgressIndicator(
+                    modifier = Modifier.size(16.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Zipping World...", color = Color.Black, fontWeight = FontWeight.Bold)
+                Text("Zipping World...", fontWeight = FontWeight.Bold)
             } else {
-                Icon(
-                    Icons.Default.Backup,
-                    contentDescription = null,
-                    tint = Color.Black,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.Rounded.Backup, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = stringResource(R.string.backups_create_world_btn),
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(stringResource(R.string.backups_create_world_btn), fontWeight = FontWeight.Bold)
             }
         }
 
@@ -396,9 +332,12 @@ fun BackupsTab(
             exit = fadeOut()
         ) {
             Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = if (isStatusError) RedstoneRed.copy(alpha = 0.2f) else EmeraldDark.copy(alpha = 0.3f),
-                border = BorderStroke(1.dp, if (isStatusError) RedstoneLight else EmeraldPrimary),
+                shape = ShapeDefaults.Small,
+                color = if (isStatusError) {
+                    MaterialTheme.colorScheme.errorContainer
+                } else {
+                    MaterialTheme.colorScheme.primaryContainer
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -407,177 +346,95 @@ fun BackupsTab(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        imageVector = if (isStatusError) Icons.Default.Warning else Icons.Default.CheckCircle,
+                        imageVector = if (isStatusError) Icons.Rounded.Warning else Icons.Rounded.CheckCircle,
                         contentDescription = null,
-                        tint = if (isStatusError) RedstoneLight else EmeraldLight,
+                        tint = if (isStatusError) {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        },
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         text = statusMessage ?: "",
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = if (isStatusError) RedstoneLight else EmeraldLight
+                        color = if (isStatusError) {
+                            MaterialTheme.colorScheme.onErrorContainer
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        }
                     )
                 }
             }
         }
 
-        // Section: Cloud Backup Sync (F-Droid Compliant)
-        Card(
-            shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CloudSync,
-                        contentDescription = null,
-                        tint = EmeraldLight,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Cloud Backup Sync",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                }
+        // Section: Cloud Backup Sync
+        MineServeSettingsGroup(title = "Cloud Backup Sync") {
+            MineServePreferenceRow(
+                title = "Enable Cloud Backup Sync",
+                subtitle = "Sync world backups off-device using Nextcloud, ownCloud, WebDAV, or an Android storage folder.",
+                checked = cloudConfig.enabled,
+                onCheckedChange = {
+                    val updated = cloudConfig.copy(enabled = it)
+                    cloudConfig = updated
+                    if (server != null && onSaveServer != null) {
+                        onSaveServer(server.copy(cloudBackupConfig = updated))
+                    }
+                },
+                icon = Icons.Rounded.CloudSync
+            )
 
-                Text(
-                    text = "Sync world backups off-device using Nextcloud, ownCloud, WebDAV, or any connected Android storage folder (such as Google Drive or SD card).",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
+            if (cloudConfig.enabled) {
+                MineServePreferenceRow(
+                    title = "Auto-Sync on Backup Creation",
+                    subtitle = "Upload automatically when a new world snapshot is zipped",
+                    checked = cloudConfig.autoSyncOnBackup,
+                    onCheckedChange = {
+                        val updated = cloudConfig.copy(autoSyncOnBackup = it)
+                        cloudConfig = updated
+                        if (server != null && onSaveServer != null) {
+                            onSaveServer(server.copy(cloudBackupConfig = updated))
+                        }
+                    }
                 )
 
-                // Enable Toggle
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        "Enable Cloud Backup Sync",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
-                        modifier = Modifier.weight(1f).padding(end = 12.dp)
+                        text = "Storage Provider",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Switch(
-                        checked = cloudConfig.enabled,
-                        onCheckedChange = {
-                            val updated = cloudConfig.copy(enabled = it)
-                            cloudConfig = updated
-                            if (server != null && onSaveServer != null) {
-                                onSaveServer(server.copy(cloudBackupConfig = updated))
-                            }
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = EmeraldPrimary,
-                            checkedTrackColor = EmeraldDark,
-                            uncheckedTrackColor = Slate800
-                        )
-                    )
-                }
-
-                if (cloudConfig.enabled) {
-                    HorizontalDivider(color = ObsidianCardBorder)
-
-                    // Auto Sync Switch
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(
-                            modifier = Modifier.weight(1f).padding(end = 12.dp)
-                        ) {
-                            Text("Auto-Sync on Backup Creation", style = MaterialTheme.typography.bodyMedium, color = Color.White)
-                            Text("Upload automatically when a new world snapshot is zipped", style = MaterialTheme.typography.labelSmall, color = Slate400)
-                        }
-                        Switch(
-                            checked = cloudConfig.autoSyncOnBackup,
-                            onCheckedChange = {
-                                val updated = cloudConfig.copy(autoSyncOnBackup = it)
-                                cloudConfig = updated
-                                if (server != null && onSaveServer != null) {
-                                    onSaveServer(server.copy(cloudBackupConfig = updated))
-                                }
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = EmeraldPrimary,
-                                checkedTrackColor = EmeraldDark,
-                                uncheckedTrackColor = Slate800
-                            )
-                        )
-                    }
-
-                    // Provider Selection Chips
-                    Text("Storage Provider:", style = MaterialTheme.typography.labelSmall, color = Slate400)
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        FilterChip(
-                            selected = cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD,
-                            onClick = {
-                                val updated = cloudConfig.copy(provider = CloudProviderType.MINESERVE_CLOUD)
-                                cloudConfig = updated
-                                if (server != null && onSaveServer != null) {
-                                    onSaveServer(server.copy(cloudBackupConfig = updated))
-                                }
-                            },
-                            label = { Text("MineServe Cloud") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldDark,
-                                selectedLabelColor = EmeraldLight
+                        listOf(
+                            CloudProviderType.MINESERVE_CLOUD to "MineServe Cloud",
+                            CloudProviderType.WEBDAV to "Nextcloud / WebDAV",
+                            CloudProviderType.SAF_FOLDER to "Android Cloud / SAF Folder"
+                        ).forEach { (provider, label) ->
+                            FilterChip(
+                                selected = cloudConfig.provider == provider,
+                                onClick = {
+                                    val updated = cloudConfig.copy(provider = provider)
+                                    cloudConfig = updated
+                                    if (server != null && onSaveServer != null) {
+                                        onSaveServer(server.copy(cloudBackupConfig = updated))
+                                    }
+                                },
+                                label = { Text(label) },
+                                border = null,
+                                colors = chipColors
                             )
-                        )
-
-                        FilterChip(
-                            selected = cloudConfig.provider == CloudProviderType.WEBDAV,
-                            onClick = {
-                                val updated = cloudConfig.copy(provider = CloudProviderType.WEBDAV)
-                                cloudConfig = updated
-                                if (server != null && onSaveServer != null) {
-                                    onSaveServer(server.copy(cloudBackupConfig = updated))
-                                }
-                            },
-                            label = { Text("Nextcloud / WebDAV") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldDark,
-                                selectedLabelColor = EmeraldLight
-                            )
-                        )
-
-                        FilterChip(
-                            selected = cloudConfig.provider == CloudProviderType.SAF_FOLDER,
-                            onClick = {
-                                val updated = cloudConfig.copy(provider = CloudProviderType.SAF_FOLDER)
-                                cloudConfig = updated
-                                if (server != null && onSaveServer != null) {
-                                    onSaveServer(server.copy(cloudBackupConfig = updated))
-                                }
-                            },
-                            label = { Text("Android Cloud / SAF Folder") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldDark,
-                                selectedLabelColor = EmeraldLight
-                            )
-                        )
+                        }
                     }
 
                     if (cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD) {
                         val profile = cloudAccountState.profile
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Slate900.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            shape = ShapeDefaults.Medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -589,22 +446,20 @@ fun BackupsTab(
                                         text = "MineServe Cloud Not Linked",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = GoldYellow
+                                        color = extColors.warning
                                     )
                                     Text(
                                         text = "Sign in to MineServe Cloud in Settings to sync world backups to encrypted Cloudflare R2 storage (10 GB on Plus, 50 GB on Pro).",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = Slate400
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    OutlinedButton(
+                                    FilledTonalButton(
                                         onClick = onOpenCloudPortal,
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = ShapeDefaults.Small,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text(
-                                            text = if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) "Sign In to MineServe Cloud" else "Open MineServe Cloud Portal",
-                                            color = Color.White,
-                                            fontSize = 12.sp
+                                            text = if (BuildConfig.IS_PLAY_STORE) "Sign In to MineServe Cloud" else "Open MineServe Cloud Portal"
                                         )
                                     }
                                 } else {
@@ -615,47 +470,45 @@ fun BackupsTab(
                                         text = "${profile?.email ?: "Linked Account"} ($tier)",
                                         style = MaterialTheme.typography.bodySmall,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = EmeraldLight
+                                        color = MaterialTheme.colorScheme.primary
                                     )
                                     if (tier == "FREE") {
-                                        if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
+                                        if (BuildConfig.IS_PLAY_STORE) {
                                             Text(
                                                 text = "Encrypted Cloud Backups require an active MineServe Plus or Pro membership. Plan changes and purchases are not available in this app.",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = GoldYellow
+                                                color = extColors.warning
                                             )
                                         } else {
-                                            val pricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
+                                            val pricing = remember { CloudPricing.current() }
                                             Text(
                                                 text = "Encrypted Cloud Backups require MineServe Plus (7-day free trial, then ${pricing.plusMonthly}/mo, 10 GB) or Pro (${pricing.proMonthly}/mo, 50 GB).",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = GoldYellow
+                                                color = extColors.warning
                                             )
-                                            OutlinedButton(
+                                            FilledTonalButton(
                                                 onClick = onOpenCloudPortal,
-                                                shape = RoundedCornerShape(8.dp),
+                                                shape = ShapeDefaults.Small,
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
-                                                Text("Start 7-Day Free Trial in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                                Text("Start 7-Day Free Trial in Cloud Portal")
                                             }
                                         }
                                     } else {
-                                        Text(
+                                        MineServeTableMonoText(
                                             text = String.format(
                                                 Locale.US,
                                                 "Cloud Storage: %.1f MB / %d GB used",
                                                 usedMb,
                                                 quotaGb
                                             ),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Slate400
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                             }
                         }
                     } else if (cloudConfig.provider == CloudProviderType.WEBDAV) {
-                        // WebDAV Inputs
                         OutlinedTextField(
                             value = cloudConfig.webDavUrl,
                             onValueChange = {
@@ -666,13 +519,9 @@ fun BackupsTab(
                                 }
                             },
                             label = { Text("WebDAV Server URL") },
-                            placeholder = { Text("https://cloud.example.com/remote.php/dav/files/user/", color = Slate400) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldPrimary,
-                                unfocusedBorderColor = ObsidianCardBorder,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
+                            placeholder = { Text("https://cloud.example.com/remote.php/dav/files/user/", fontFamily = monoFont) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                            singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -687,12 +536,7 @@ fun BackupsTab(
                                     }
                                 },
                                 label = { Text("Username") },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = ObsidianCardBorder,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
+                                singleLine = true,
                                 modifier = Modifier.weight(1f)
                             )
 
@@ -705,23 +549,17 @@ fun BackupsTab(
                                         onSaveServer(server.copy(cloudBackupConfig = updated))
                                     }
                                 },
-                                label = { Text("Password / App Token") },
+                                label = { Text("Password / Token") },
+                                singleLine = true,
                                 visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                                 trailingIcon = {
                                     IconButton(onClick = { showPassword = !showPassword }) {
                                         Icon(
-                                            imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = null,
-                                            tint = Slate400
+                                            imageVector = if (showPassword) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                            contentDescription = null
                                         )
                                     }
                                 },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = ObsidianCardBorder,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
                                 modifier = Modifier.weight(1f)
                             )
                         }
@@ -736,49 +574,40 @@ fun BackupsTab(
                                 }
                             },
                             label = { Text("Remote Folder Path") },
-                            placeholder = { Text("/MineServe/Backups", color = Slate400) },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldPrimary,
-                                unfocusedBorderColor = ObsidianCardBorder,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
+                            placeholder = { Text("/MineServe/Backups", fontFamily = monoFont) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                            singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
 
-                        // Test Connection Button
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = {
                                 isTestingConnection = true
                                 scope.launch {
-                                    val result = cloudManager.testWebDavConnection(cloudConfig)
+                                    val result = cloudManager?.testWebDavConnection(cloudConfig)
+                                        ?: Result.failure(IllegalStateException("Unavailable in preview"))
                                     isTestingConnection = false
                                     result.fold(
-                                        onSuccess = { msg ->
-                                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                        },
-                                        onFailure = { err ->
-                                            Toast.makeText(context, "Connection failed: ${err.message}", Toast.LENGTH_LONG).show()
-                                        }
+                                        onSuccess = { msg -> Toast.makeText(context, msg, Toast.LENGTH_SHORT).show() },
+                                        onFailure = { err -> Toast.makeText(context, "Connection failed: ${err.message}", Toast.LENGTH_LONG).show() }
                                     )
                                 }
                             },
                             enabled = !isTestingConnection && cloudConfig.webDavUrl.isNotBlank(),
-                            shape = RoundedCornerShape(8.dp),
+                            shape = ShapeDefaults.Small,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             if (isTestingConnection) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Testing WebDAV Connection...", fontSize = 12.sp)
+                                Text("Testing WebDAV Connection...")
                             } else {
-                                Icon(Icons.Default.CloudSync, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Rounded.CloudSync, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Test WebDAV Connection", color = Color.White, fontSize = 12.sp)
+                                Text("Test WebDAV Connection")
                             }
                         }
                     } else {
-                        // SAF Folder Picker
                         val safUri = cloudConfig.safFolderUri
                         val selectedFolderName = if (!safUri.isNullOrBlank()) {
                             try {
@@ -790,9 +619,8 @@ fun BackupsTab(
                         } else null
 
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Slate900.copy(alpha = 0.5f),
-                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            shape = ShapeDefaults.Medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -803,22 +631,27 @@ fun BackupsTab(
                                     text = if (selectedFolderName != null) "Folder: $selectedFolderName" else "No cloud/storage folder linked yet.",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = if (selectedFolderName != null) EmeraldLight else Slate400
+                                    color = if (selectedFolderName != null) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
                                 )
 
-                                Button(
+                                FilledTonalButton(
                                     onClick = { safFolderPickerLauncher.launch(null) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    shape = ShapeDefaults.Small,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Default.FolderOpen, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Rounded.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = if (selectedFolderName != null) "Change Storage Folder" else "Pick Cloud / SD Folder",
-                                        color = Color.Black,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp
+                                        fontWeight = FontWeight.SemiBold
                                     )
                                 }
                             }
@@ -828,219 +661,197 @@ fun BackupsTab(
             }
         }
 
-        // Backups List
+        // Local Backups List
         if (backups.isEmpty()) {
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Backup,
-                        contentDescription = null,
-                        tint = Slate400,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Text(
-                        text = "No Backups Yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text(
-                        text = "Create a world backup snapshot above before updating plugins, modifying world configs, or making major changes.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Slate400
-                    )
-                }
-            }
+            MineServeEmptyState(
+                icon = Icons.Rounded.Backup,
+                title = "No Backups Yet",
+                supportingText = "Create a world backup snapshot above before updating plugins, modifying world configs, or making major changes."
+            )
         } else {
-            for (b in backups) {
-                val isRestoringThis = restoringBackupId == b.id
-                val isExportingThis = exportingBackupId == b.id
-                val isDeletingThis = deletingBackupId == b.id
-                val isSyncingThis = syncingBackupId == b.id
-                val formattedDate = SimpleDateFormat("MMM dd, yyyy • HH:mm:ss", Locale.getDefault()).format(Date(b.timestamp))
+            val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy - HH:mm:ss", Locale.getDefault()) }
+            MineServeTableContainer {
+                backups.forEachIndexed { index, b ->
+                    val isRestoringThis = restoringBackupId == b.id
+                    val isExportingThis = exportingBackupId == b.id
+                    val isDeletingThis = deletingBackupId == b.id
+                    val isSyncingThis = syncingBackupId == b.id
+                    val formattedDate = dateFormat.format(Date(b.timestamp))
 
-                Card(
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(14.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Row(
+                    MineServeTableRow(showDivider = index < backups.lastIndex) {
+                        Column(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = b.name,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.White,
-                                    fontSize = 14.sp
-                                )
-                                Text(
-                                    text = formattedDate,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400
-                                )
-                            }
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = Slate800
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = b.formattedSize,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = EmeraldLight,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                                )
-                            }
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // Restore Button
-                            OutlinedButton(
-                                onClick = { backupToRestore = b },
-                                enabled = !isRestoringThis && !isExportingThis && !isSyncingThis,
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                if (isRestoringThis) {
-                                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Restoring...", fontSize = 12.sp, maxLines = 1, softWrap = false)
-                                } else {
-                                    Icon(Icons.Default.Restore, contentDescription = null, modifier = Modifier.size(15.dp), tint = GoldYellow)
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
-                                        text = stringResource(R.string.backups_restore),
-                                        fontSize = 12.sp,
+                                        text = b.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontFamily = monoFont,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface,
                                         maxLines = 1,
-                                        softWrap = false,
                                         overflow = TextOverflow.Ellipsis
+                                    )
+                                    MineServeTableMonoText(
+                                        text = formattedDate,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Surface(
+                                    shape = ShapeDefaults.Small,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHighest
+                                ) {
+                                    Text(
+                                        text = b.formattedSize,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontFamily = monoFont,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
                             }
 
-                            // Sync to Cloud Button
-                            if (cloudConfig.enabled && onSyncBackupToCloud != null) {
-                                OutlinedButton(
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                FilledTonalButton(
+                                    onClick = { backupToRestore = b },
+                                    enabled = !isRestoringThis && !isExportingThis && !isSyncingThis,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = extColors.warningContainer,
+                                        contentColor = extColors.onWarningContainer
+                                    ),
+                                    shape = ShapeDefaults.Small,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    if (isRestoringThis) {
+                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Icon(Icons.Rounded.Restore, contentDescription = null, modifier = Modifier.size(15.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = stringResource(R.string.backups_restore),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                if (cloudConfig.enabled && onSyncBackupToCloud != null) {
+                                    FilledTonalButton(
+                                        onClick = {
+                                            syncingBackupId = b.id
+                                            onSyncBackupToCloud(b) { res ->
+                                                syncingBackupId = null
+                                                res.fold(
+                                                    onSuccess = { msg -> showFeedback(msg) },
+                                                    onFailure = { err -> showFeedback("Sync failed: ${err.message}", isError = true) }
+                                                )
+                                            }
+                                        },
+                                        enabled = !isRestoringThis && !isExportingThis && !isSyncingThis,
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                        ),
+                                        shape = ShapeDefaults.Small,
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        if (isSyncingThis) {
+                                            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                        } else {
+                                            Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(15.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Cloud", style = MaterialTheme.typography.labelMedium, maxLines = 1)
+                                        }
+                                    }
+                                }
+
+                                FilledTonalButton(
                                     onClick = {
-                                        syncingBackupId = b.id
-                                        onSyncBackupToCloud(b) { res ->
-                                            syncingBackupId = null
-                                            res.fold(
-                                                onSuccess = { msg -> showFeedback(msg) },
-                                                onFailure = { err -> showFeedback("Sync failed: ${err.message}", isError = true) }
-                                            )
+                                        exportingBackupId = b.id
+                                        onExportBackup(b) { path ->
+                                            exportingBackupId = null
+                                            if (path != null) {
+                                                showFeedback("Saved to $path")
+                                            } else {
+                                                showFeedback("Export failed", isError = true)
+                                            }
                                         }
                                     },
                                     enabled = !isRestoringThis && !isExportingThis && !isSyncingThis,
-                                    shape = RoundedCornerShape(8.dp),
-                                    contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    shape = ShapeDefaults.Small,
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    if (isSyncingThis) {
-                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp, color = EmeraldLight)
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Syncing...", fontSize = 12.sp, maxLines = 1, softWrap = false)
+                                    if (isExportingThis) {
+                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                                     } else {
-                                        Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(15.dp), tint = EmeraldLight)
+                                        Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(15.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Cloud", fontSize = 12.sp, maxLines = 1, softWrap = false)
+                                        Text(
+                                            text = stringResource(R.string.backups_export),
+                                            style = MaterialTheme.typography.labelMedium,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
                                     }
                                 }
-                            }
 
-                            // Export Button
-                            OutlinedButton(
-                                onClick = {
-                                    exportingBackupId = b.id
-                                    onExportBackup(b) { path ->
-                                        exportingBackupId = null
-                                        if (path != null) {
-                                            showFeedback("Saved to $path")
+                                IconButton(
+                                    onClick = {
+                                        val shareIntent = onGetShareIntent(b)
+                                        if (shareIntent != null) {
+                                            context.startActivity(Intent.createChooser(shareIntent, "Share Backup"))
                                         } else {
-                                            showFeedback("Export failed", isError = true)
+                                            showFeedback("Unable to open share sheet", isError = true)
                                         }
                                     }
-                                },
-                                enabled = !isRestoringThis && !isExportingThis && !isSyncingThis,
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                if (isExportingThis) {
-                                    CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Exporting...", fontSize = 12.sp, maxLines = 1, softWrap = false)
-                                } else {
-                                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(15.dp), tint = EmeraldLight)
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = stringResource(R.string.backups_export),
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        softWrap = false,
-                                        overflow = TextOverflow.Ellipsis
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Share,
+                                        contentDescription = "Share",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
-                            }
 
-                            // Share Button
-                            OutlinedButton(
-                                onClick = {
-                                    val shareIntent = onGetShareIntent(b)
-                                    if (shareIntent != null) {
-                                        context.startActivity(Intent.createChooser(shareIntent, "Share Backup"))
+                                IconButton(
+                                    onClick = { backupToDelete = b },
+                                    enabled = !isRestoringThis && !isExportingThis && !isDeletingThis && !isSyncingThis
+                                ) {
+                                    if (isDeletingThis) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = MaterialTheme.colorScheme.error,
+                                            strokeWidth = 2.dp
+                                        )
                                     } else {
-                                        showFeedback("Unable to open share sheet", isError = true)
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = stringResource(R.string.backups_delete),
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                            ) {
-                                Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(15.dp), tint = Color.White)
-                            }
-
-                            // Delete Button
-                            OutlinedButton(
-                                onClick = { backupToDelete = b },
-                                enabled = !isRestoringThis && !isExportingThis && !isDeletingThis && !isSyncingThis,
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp)
-                            ) {
-                                if (isDeletingThis) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(15.dp),
-                                        color = RedstoneRed,
-                                        strokeWidth = 2.dp
-                                    )
-                                } else {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = stringResource(R.string.backups_delete),
-                                        modifier = Modifier.size(15.dp),
-                                        tint = RedstoneRed
-                                    )
                                 }
                             }
                         }
@@ -1050,120 +861,97 @@ fun BackupsTab(
         }
 
         if (cloudAccountState.isLinked && cloudConfig.provider == CloudProviderType.MINESERVE_CLOUD) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "MineServe Cloud Snapshots",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        if (isCloudBackupsLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp),
-                                color = EmeraldPrimary,
-                                strokeWidth = 2.dp
-                            )
-                        }
-                    }
+                Text(
+                    text = "MineServe Cloud Snapshots",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                if (isCloudBackupsLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = MaterialTheme.colorScheme.primary,
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
 
-                    if (cloudBackups.isEmpty() && !isCloudBackupsLoading) {
-                        Text(
-                            text = "No cloud snapshots stored for this server yet. Tap the cloud icon on any local backup above to upload it.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
-                        )
-                    } else {
-                        val cloudDateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
-                        cloudBackups.forEach { item ->
-                            val isRestoringItem = restoringCloudBackupId == item.backupId
-                            val isDeletingItem = deletingCloudBackupId == item.backupId
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Slate900.copy(alpha = 0.6f),
-                                border = BorderStroke(1.dp, ObsidianCardBorder),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
+            if (cloudBackups.isEmpty() && !isCloudBackupsLoading) {
+                MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "No cloud snapshots stored for this server yet. Tap Cloud on any local backup above to upload it.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (cloudBackups.isNotEmpty()) {
+                val cloudDateFormat = remember { SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()) }
+                MineServeTableContainer {
+                    cloudBackups.forEachIndexed { index, item ->
+                        val isRestoringItem = restoringCloudBackupId == item.backupId
+                        val isDeletingItem = deletingCloudBackupId == item.backupId
+                        val sizeMb = item.sizeBytes / (1024.0 * 1024.0)
+
+                        MineServeTableRow(showDivider = index < cloudBackups.lastIndex) {
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text(
+                                    text = item.fileName,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontFamily = monoFont,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                MineServeTableMonoText(
+                                    text = String.format(
+                                        Locale.US,
+                                        "%.1f MB - %s",
+                                        sizeMb,
+                                        cloudDateFormat.format(Date(item.createdAtEpochMs))
+                                    ),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                                FilledTonalButton(
+                                    onClick = { cloudBackupToRestore = item },
+                                    enabled = !isRestoringItem && !isDeletingItem,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    shape = ShapeDefaults.Small,
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = item.fileName,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = Color.White,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        val sizeMb = item.sizeBytes / (1024.0 * 1024.0)
-                                        Text(
-                                            text = String.format(
-                                                Locale.US,
-                                                "%.1f MB - %s",
-                                                sizeMb,
-                                                cloudDateFormat.format(Date(item.createdAtEpochMs))
-                                            ),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = Slate400
-                                        )
+                                    if (isRestoringItem) {
+                                        CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
+                                    } else {
+                                        Text("Restore", style = MaterialTheme.typography.labelMedium)
                                     }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        OutlinedButton(
-                                            onClick = { cloudBackupToRestore = item },
-                                            enabled = !isRestoringItem && !isDeletingItem,
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                        ) {
-                                            if (isRestoringItem) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(14.dp),
-                                                    color = EmeraldPrimary,
-                                                    strokeWidth = 2.dp
-                                                )
-                                            } else {
-                                                Text("Restore", fontSize = 11.sp, color = EmeraldLight)
-                                            }
-                                        }
-                                        OutlinedButton(
-                                            onClick = { cloudBackupToDelete = item },
-                                            enabled = !isRestoringItem && !isDeletingItem,
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp)
-                                        ) {
-                                            if (isDeletingItem) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(14.dp),
-                                                    color = RedstoneRed,
-                                                    strokeWidth = 2.dp
-                                                )
-                                            } else {
-                                                Icon(
-                                                    Icons.Default.Delete,
-                                                    contentDescription = "Delete Cloud Snapshot",
-                                                    modifier = Modifier.size(14.dp),
-                                                    tint = RedstoneRed
-                                                )
-                                            }
-                                        }
+                                }
+                                IconButton(
+                                    onClick = { cloudBackupToDelete = item },
+                                    enabled = !isRestoringItem && !isDeletingItem
+                                ) {
+                                    if (isDeletingItem) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(14.dp),
+                                            color = MaterialTheme.colorScheme.error,
+                                            strokeWidth = 2.dp
+                                        )
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = "Delete Cloud Snapshot",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
                                 }
                             }
@@ -1175,76 +963,69 @@ fun BackupsTab(
     }
 
     cloudBackupToRestore?.let { item ->
-        AppAlertDialog(
+        MineServeDialog(
             onDismissRequest = { cloudBackupToRestore = null },
-            title = { Text("Restore Cloud Snapshot?") },
-            text = {
-                Text(
-                    "Download ${item.fileName} from MineServe Cloud and restore it over your current server files?",
-                    color = Slate400
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val target = item
-                        cloudBackupToRestore = null
-                        restoringCloudBackupId = target.backupId
-                        onRestoreCloudBackup(target) { res ->
-                            restoringCloudBackupId = null
-                            res.fold(
-                                onSuccess = { showFeedback("Restored ${target.fileName} from MineServe Cloud") },
-                                onFailure = { err -> showFeedback(err.message ?: "Cloud restore failed", isError = true) }
-                            )
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary)
-                ) {
-                    Text("Restore", color = Color.Black, fontWeight = FontWeight.Bold)
+            title = "Restore Cloud Snapshot?",
+            confirmLabel = "Restore",
+            onConfirm = {
+                val target = item
+                cloudBackupToRestore = null
+                restoringCloudBackupId = target.backupId
+                onRestoreCloudBackup(target) { res ->
+                    restoringCloudBackupId = null
+                    res.fold(
+                        onSuccess = { showFeedback("Restored ${target.fileName} from MineServe Cloud") },
+                        onFailure = { err -> showFeedback(err.message ?: "Cloud restore failed", isError = true) }
+                    )
                 }
             },
-            dismissButton = {
-                OutlinedButton(onClick = { cloudBackupToRestore = null }) {
-                    Text("Cancel", color = Color.White)
-                }
-            }
-        )
+            isDestructive = true
+        ) {
+            Text(
+                text = "Download ${item.fileName} from MineServe Cloud and restore it over your current server files?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 
     cloudBackupToDelete?.let { item ->
-        AppAlertDialog(
+        MineServeDialog(
             onDismissRequest = { cloudBackupToDelete = null },
-            title = { Text("Delete Cloud Snapshot?") },
-            text = {
-                Text(
-                    "Permanently delete ${item.fileName} from MineServe Cloud storage? Local backups will remain untouched.",
-                    color = Slate400
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val target = item
-                        cloudBackupToDelete = null
-                        deletingCloudBackupId = target.backupId
-                        onDeleteCloudBackup(target) { res ->
-                            deletingCloudBackupId = null
-                            res.fold(
-                                onSuccess = { showFeedback("Deleted ${target.fileName} from MineServe Cloud") },
-                                onFailure = { err -> showFeedback(err.message ?: "Failed to delete cloud snapshot", isError = true) }
-                            )
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed)
-                ) {
-                    Text("Delete", color = Color.White, fontWeight = FontWeight.Bold)
+            title = "Delete Cloud Snapshot?",
+            confirmLabel = "Delete",
+            onConfirm = {
+                val target = item
+                cloudBackupToDelete = null
+                deletingCloudBackupId = target.backupId
+                onDeleteCloudBackup(target) { res ->
+                    deletingCloudBackupId = null
+                    res.fold(
+                        onSuccess = { showFeedback("Deleted ${target.fileName} from MineServe Cloud") },
+                        onFailure = { err -> showFeedback(err.message ?: "Failed to delete cloud snapshot", isError = true) }
+                    )
                 }
             },
-            dismissButton = {
-                OutlinedButton(onClick = { cloudBackupToDelete = null }) {
-                    Text("Cancel", color = Color.White)
-                }
-            }
+            isDestructive = true
+        ) {
+            Text(
+                text = "Permanently delete ${item.fileName} from MineServe Cloud storage? Local backups will remain untouched.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun BackupsTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        BackupsTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            backups = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleBackups,
+            cloudAccountState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleCloudLinkedState,
+            cloudBackups = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleCloudBackups
         )
     }
 }

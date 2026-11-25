@@ -1,6 +1,5 @@
 package com.devwithzachary.mineserve.ui.screens.settings
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,29 +8,31 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Terminal
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.devwithzachary.mineserve.R
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import java.util.Locale
 
 @Composable
 fun ContainerRuntimeCard(
@@ -39,71 +40,103 @@ fun ContainerRuntimeCard(
     onReinstallRuntime: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+    var showConfirmReinstall by remember { mutableStateOf(false) }
+
+    MineServeSettingsGroup(
+        title = stringResource(R.string.settings_runtime_section),
+        modifier = modifier
     ) {
-        Text(
-            text = stringResource(R.string.settings_runtime_section),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-        )
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 8.dp)
-                    ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Terminal,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(
                             text = "Ubuntu Linux Container",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         val formattedStorage = if (storageUsedMb >= 1024) {
-                            String.format(java.util.Locale.US, "%.1f GB", storageUsedMb / 1024.0)
+                            String.format(Locale.US, "%.1f GB", storageUsedMb / 1024.0)
                         } else {
                             "$storageUsedMb MB"
                         }
-                        Text(
+                        MineServeTableMonoText(
                             text = "${stringResource(R.string.settings_rootfs_storage_label)}: $formattedStorage",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
-                        )
-                    }
-                    Surface(shape = RoundedCornerShape(8.dp), color = Slate800) {
-                        Text(
-                            text = stringResource(R.string.status_online),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = EmeraldLight,
-                            maxLines = 1,
-                            softWrap = false,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                OutlinedButton(
-                    onClick = onReinstallRuntime,
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                Surface(
+                    shape = ShapeDefaults.Small,
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
-                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = stringResource(R.string.settings_reinstall_runtime_btn))
+                    Text(
+                        text = stringResource(R.string.status_online),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
                 }
             }
+
+            FilledTonalButton(
+                onClick = { showConfirmReinstall = true },
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                shape = ShapeDefaults.Small,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(text = stringResource(R.string.settings_reinstall_runtime_btn))
+            }
+        }
+    }
+
+    if (showConfirmReinstall) {
+        MineServeDialog(
+            onDismissRequest = { showConfirmReinstall = false },
+            title = stringResource(R.string.settings_reinstall_runtime_btn),
+            confirmLabel = "Reinstall",
+            onConfirm = {
+                showConfirmReinstall = false
+                onReinstallRuntime()
+            },
+            dismissLabel = stringResource(R.string.cancel),
+            icon = Icons.Rounded.Download,
+            isDestructive = true
+        ) {
+            Text(
+                text = "Reinstalling the Ubuntu Linux container will refresh the PRoot rootfs environment. Server worlds and files are preserved.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -2,13 +2,13 @@ package com.devwithzachary.mineserve.ui.screens.detail
 
 import android.content.Intent
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,40 +17,44 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QrCode2
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Wifi
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.QrCode2
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShapeDefaults
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -58,22 +62,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.cloud.CloudAccountState
 import com.devwithzachary.mineserve.cloud.CloudBackupItem
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.engine.TerminalEmulator
 import com.devwithzachary.mineserve.model.BackupEntry
 import com.devwithzachary.mineserve.model.CrashDiagnosticReport
@@ -88,25 +95,15 @@ import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.tunnel.TunnelState
 import com.devwithzachary.mineserve.ui.components.ServerShareDialog
 import com.devwithzachary.mineserve.ui.components.TunnelSecurityWarningCard
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.DiamondLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
+import kotlinx.coroutines.launch
 import java.net.NetworkInterface
 
 private enum class DetailTab {
-    CONSOLE, PERFORMANCE, AUTOMATION, FILES, WORLD, LIVE_MAP, SETTINGS, PLAYERS, BACKUPS, PLUGINS_MODS
+    CONSOLE, PERFORMANCE, PLAYERS, SETTINGS
+}
+
+private enum class SettingsSubSection {
+    GENERAL, PLUGINS_MODS, FILES, WORLD, LIVE_MAP, BACKUPS, AUTOMATION
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -139,7 +136,7 @@ fun ServerDetailScreen(
     onDuplicateFile: suspend (String) -> Boolean = { false },
     onReadFile: suspend (String) -> String = { "" },
     onWriteFile: suspend (String, String) -> Boolean = { _, _ -> false },
-    onImportFile: suspend (String, android.net.Uri) -> Boolean = { _, _ -> false },
+    onImportFile: suspend (String, Uri) -> Boolean = { _, _ -> false },
     onExportFile: suspend (String) -> Boolean = { false },
     onUnzipFile: suspend (String, String, Boolean) -> Result<Int> = { _, _, _ -> Result.success(0) },
     onSearchFiles: suspend (String) -> List<FileEntry> = { emptyList() },
@@ -163,8 +160,8 @@ fun ServerDetailScreen(
     onTogglePlugin: (PluginModEntry) -> Unit,
     onDeletePlugin: (PluginModEntry) -> Unit,
     onInstallPluginOrMod: (fileName: String, downloadUrl: String, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
-    onImportJar: (android.net.Uri, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
-    onImportModpack: ((android.net.Uri, (com.devwithzachary.mineserve.modpack.ModpackInstallProgress) -> Unit, (Result<com.devwithzachary.mineserve.modpack.ModpackIndex>) -> Unit) -> Unit)? = null,
+    onImportJar: (Uri, isMod: Boolean, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
+    onImportModpack: ((Uri, (com.devwithzachary.mineserve.modpack.ModpackInstallProgress) -> Unit, (Result<com.devwithzachary.mineserve.modpack.ModpackIndex>) -> Unit) -> Unit)? = null,
     isStandbyActive: Boolean = false,
     onSaveAutomationConfig: (com.devwithzachary.mineserve.model.ServerAutomationConfig) -> Unit = {},
     onEnterStandby: () -> Unit = {},
@@ -174,7 +171,7 @@ fun ServerDetailScreen(
     onUpdateBuild: (createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
     onUpgradeVersion: (newVersion: String, createBackup: Boolean, onProgress: (String, Int) -> Unit, onComplete: (Boolean) -> Unit) -> Unit = { _, _, _, _ -> },
     onGetWorldSummary: suspend () -> com.devwithzachary.mineserve.model.WorldSummary = { com.devwithzachary.mineserve.model.WorldSummary("world", 0L, emptyList()) },
-    onImportWorld: suspend (android.net.Uri, Boolean, (String, Int) -> Unit) -> Result<String> = { _, _, _ -> Result.success("") },
+    onImportWorld: suspend (Uri, Boolean, (String, Int) -> Unit) -> Result<String> = { _, _, _ -> Result.success("") },
     onExportWorld: suspend (java.io.OutputStream, (String, Int) -> Unit) -> Boolean = { _, _ -> true },
     onResetDimension: suspend (com.devwithzachary.mineserve.model.DimensionType, Boolean) -> Boolean = { _, _ -> true },
     onPruneChunks: suspend (com.devwithzachary.mineserve.model.ChunkPruneOptions, (String, Int) -> Unit) -> com.devwithzachary.mineserve.model.ChunkPruneResult = { _, _ -> com.devwithzachary.mineserve.model.ChunkPruneResult(0, 0, 0, 0, 0L, 0L) },
@@ -192,97 +189,100 @@ fun ServerDetailScreen(
     onAddBannedIp: suspend (String, String) -> Boolean = { _, _ -> false },
     onRemoveBannedIp: suspend (String) -> Boolean = { false },
     onDeleteServer: () -> Unit,
+    initialTab: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    var selectedTab by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+    @Suppress("DEPRECATION")
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    var selectedTab by remember { mutableIntStateOf(initialTab) }
+    var selectedSettingsSection by remember { mutableStateOf(SettingsSubSection.GENERAL) }
+    var showOverflowMenu by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showShareDialog by remember { mutableStateOf(false) }
 
     BackHandler(onBack = onBack)
 
-    val showPluginsOrModsTab = server.type.supportsPlugins || server.type.supportsMods
-    val pluginModTabName = when {
+    val topTabs = listOf(
+        DetailTab.CONSOLE to stringResource(R.string.tab_console),
+        DetailTab.PERFORMANCE to stringResource(R.string.tab_performance),
+        DetailTab.PLAYERS to stringResource(R.string.tab_players),
+        DetailTab.SETTINGS to stringResource(R.string.tab_settings)
+    )
+
+    val showPluginsOrMods = server.type.supportsPlugins || server.type.supportsMods
+    val pluginModLabel = when {
         server.type.supportsMods && !server.type.supportsPlugins -> stringResource(R.string.tab_mods)
         server.type == ServerType.CUSTOM -> stringResource(R.string.tab_plugins_mods)
         else -> stringResource(R.string.tab_plugins)
     }
-
-    val consoleStr = stringResource(R.string.tab_console)
-    val perfStr = stringResource(R.string.tab_performance)
-    val automationStr = stringResource(R.string.tab_automation)
-    val filesStr = stringResource(R.string.tab_files)
-    val worldStr = stringResource(R.string.tab_world)
-    val liveMapStr = stringResource(R.string.tab_live_map)
-    val settingsStr = stringResource(R.string.tab_settings)
-    val playersStr = stringResource(R.string.tab_players)
-    val backupsStr = stringResource(R.string.tab_backups)
-
-    val showLiveMapTab = !server.type.isProxy && !server.type.isBedrockNative &&
+    val showWorld = !server.type.isProxy && !server.type.isBedrockNative
+    val showLiveMap = !server.type.isProxy && !server.type.isBedrockNative &&
         server.type != ServerType.VANILLA && (server.type.supportsPlugins || server.type.supportsMods)
-    val showWorldTab = !server.type.isProxy && !server.type.isBedrockNative
 
-    val tabList = remember(server.type, pluginModTabName, showLiveMapTab, showWorldTab) {
+    val settingsSubSections = remember(server.type, pluginModLabel, showPluginsOrMods, showWorld, showLiveMap) {
         buildList {
-            add(DetailTab.CONSOLE to consoleStr)
-            add(DetailTab.PERFORMANCE to perfStr)
-            add(DetailTab.AUTOMATION to automationStr)
-            add(DetailTab.FILES to filesStr)
-            if (showWorldTab) {
-                add(DetailTab.WORLD to worldStr)
-            }
-            if (showLiveMapTab) {
-                add(DetailTab.LIVE_MAP to liveMapStr)
-            }
-            add(DetailTab.SETTINGS to settingsStr)
-            add(DetailTab.PLAYERS to playersStr)
-            add(DetailTab.BACKUPS to backupsStr)
-            if (showPluginsOrModsTab) {
-                add(DetailTab.PLUGINS_MODS to pluginModTabName)
-            }
+            add(SettingsSubSection.GENERAL to "General")
+            if (showPluginsOrMods) add(SettingsSubSection.PLUGINS_MODS to pluginModLabel)
+            add(SettingsSubSection.FILES to context.getString(R.string.tab_files))
+            if (showWorld) add(SettingsSubSection.WORLD to context.getString(R.string.tab_world))
+            if (showLiveMap) add(SettingsSubSection.LIVE_MAP to context.getString(R.string.tab_live_map))
+            add(SettingsSubSection.BACKUPS to context.getString(R.string.tab_backups))
+            add(SettingsSubSection.AUTOMATION to context.getString(R.string.tab_automation))
         }
     }
 
-    // Safety: ensure selectedTab is within range if tabs list shrinks
-    if (selectedTab >= tabList.size) {
-        selectedTab = 0
+    if (settingsSubSections.none { it.first == selectedSettingsSection }) {
+        selectedSettingsSection = SettingsSubSection.GENERAL
     }
 
     val isRunning = status == ServerStatus.RUNNING
     val isStarting = status == ServerStatus.STARTING
     val isStopping = status == ServerStatus.STOPPING
+    val isActive = isRunning || isStarting || isStopping
 
-    val statusColor = when (status) {
-        ServerStatus.RUNNING -> EmeraldPrimary
-        ServerStatus.STARTING -> GoldYellow
-        ServerStatus.STOPPING -> RedstoneLight
-        ServerStatus.ERROR -> RedstoneRed
-        ServerStatus.STOPPED -> Slate400
-        ServerStatus.STANDBY -> DiamondCyan
+    val statusLabel = when (status) {
+        ServerStatus.RUNNING -> stringResource(R.string.status_online)
+        ServerStatus.STARTING -> stringResource(R.string.status_starting)
+        ServerStatus.STOPPING -> stringResource(R.string.status_stopping)
+        ServerStatus.ERROR -> stringResource(R.string.status_error)
+        ServerStatus.STOPPED -> stringResource(R.string.status_offline)
+        ServerStatus.STANDBY -> "Standby"
+    }
+
+    val isInspection = androidx.compose.ui.platform.LocalInspectionMode.current
+    val localIp = remember(isInspection) {
+        if (isInspection) "192.168.1.42" else getLocalIpAddress() ?: "127.0.0.1"
     }
 
     if (showDeleteDialog) {
-        AppAlertDialog(
+        AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             icon = {
                 Icon(
-                    imageVector = Icons.Default.DeleteForever,
+                    imageVector = Icons.Rounded.DeleteForever,
                     contentDescription = null,
-                    tint = RedstoneRed,
-                    modifier = Modifier.size(36.dp)
+                    tint = colorScheme.error,
+                    modifier = Modifier.size(32.dp)
                 )
             },
             title = {
                 Text(
                     text = stringResource(R.string.detail_delete_confirm_title),
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = colorScheme.onSurface
                 )
             },
             text = {
                 Text(
                     text = stringResource(R.string.detail_delete_confirm_msg, server.name),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Slate400
+                    color = colorScheme.onSurfaceVariant
                 )
             },
             confirmButton = {
@@ -291,34 +291,29 @@ fun ServerDetailScreen(
                         showDeleteDialog = false
                         onDeleteServer()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = RedstoneRed),
-                    shape = RoundedCornerShape(8.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.error,
+                        contentColor = colorScheme.onError
+                    ),
+                    shape = ShapeDefaults.Medium
                 ) {
-                    Text(
-                        text = stringResource(R.string.detail_delete_confirm_btn),
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                    Text(text = stringResource(R.string.detail_delete_confirm_btn))
                 }
             },
             dismissButton = {
-                OutlinedButton(
-                    onClick = { showDeleteDialog = false },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
+                TextButton(onClick = { showDeleteDialog = false }) {
                     Text(
                         text = stringResource(R.string.cancel),
-                        color = Color.White
+                        color = colorScheme.onSurfaceVariant
                     )
                 }
             },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
+            containerColor = colorScheme.surfaceContainerHighest,
+            shape = ShapeDefaults.ExtraLarge
         )
     }
 
     if (showShareDialog) {
-        val localIp = remember { getLocalIpAddress() ?: "127.0.0.1" }
         ServerShareDialog(
             server = server,
             tunnelState = tunnelState,
@@ -329,84 +324,393 @@ fun ServerDetailScreen(
     }
 
     Scaffold(
+        modifier = modifier,
+        containerColor = colorScheme.surface,
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = server.name,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(6.dp)
-                                    .clip(CircleShape)
-                                    .background(statusColor)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "${server.type.displayName} ${server.version} • Port ${server.port}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
-                            )
-                        }
-                    }
-                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                            tint = Color.White
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
+                title = {
+                    val statusDotColor = when (status) {
+                        ServerStatus.RUNNING -> extended.onlineEmerald
+                        ServerStatus.STARTING, ServerStatus.STOPPING, ServerStatus.STANDBY -> extended.warning
+                        ServerStatus.ERROR -> colorScheme.error
+                        ServerStatus.STOPPED -> colorScheme.onSurfaceVariant
+                    }
+                    val statusTextColor = when (status) {
+                        ServerStatus.RUNNING -> extended.onlineEmerald
+                        ServerStatus.STARTING, ServerStatus.STOPPING, ServerStatus.STANDBY -> extended.warning
+                        ServerStatus.ERROR -> colorScheme.error
+                        ServerStatus.STOPPED -> colorScheme.onSurfaceVariant
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = server.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(statusDotColor)
+                            )
+                            Text(
+                                text = statusLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = statusTextColor,
+                                maxLines = 1
+                            )
+                            Text(
+                                text = "• ${server.type.displayName} ${server.version}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                },
                 actions = {
-                    // Power Button
-                    if (isRunning || isStarting || isStopping) {
-                        IconButton(onClick = onStopServer, enabled = !isStopping) {
-                            Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.btn_stop_server), tint = RedstoneRed)
+                    if (isActive) {
+                        FilledTonalButton(
+                            onClick = onStopServer,
+                            enabled = !isStopping,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = colorScheme.errorContainer,
+                                contentColor = colorScheme.onErrorContainer,
+                                disabledContainerColor = colorScheme.surfaceContainerHighest,
+                                disabledContentColor = colorScheme.onSurfaceVariant
+                            ),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                            shape = ShapeDefaults.Medium,
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Stop,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = stringResource(R.string.btn_stop_server))
                         }
                     } else {
-                        IconButton(onClick = onStartServer) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.btn_start_server), tint = EmeraldPrimary)
+                        FilledTonalButton(
+                            onClick = onStartServer,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = colorScheme.primaryContainer,
+                                contentColor = colorScheme.onPrimaryContainer
+                            ),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 0.dp),
+                            shape = ShapeDefaults.Medium,
+                            modifier = Modifier.height(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = stringResource(R.string.btn_start_server))
                         }
                     }
 
-                    IconButton(onClick = { showDeleteDialog = true }) {
-                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.detail_delete_server), tint = Slate400)
+                    Box {
+                        IconButton(onClick = { showOverflowMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = "Server options"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showOverflowMenu,
+                            onDismissRequest = { showOverflowMenu = false },
+                            containerColor = colorScheme.surfaceContainerHighest
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Share & QR Code", color = colorScheme.onSurface) },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.QrCode2,
+                                        contentDescription = null,
+                                        tint = colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showShareDialog = true
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    val tunnelMenuLabel = if (tunnelState is TunnelState.Connected || tunnelState is TunnelState.Connecting) {
+                                        "Disable Public Tunnel"
+                                    } else {
+                                        "Enable Public Tunnel"
+                                    }
+                                    Text(tunnelMenuLabel, color = colorScheme.onSurface)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Public,
+                                        contentDescription = null,
+                                        tint = if (tunnelState is TunnelState.Connected) colorScheme.tertiary else colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    onToggleTunnel()
+                                }
+                            )
+                            HorizontalDivider(color = colorScheme.outlineVariant)
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = stringResource(R.string.detail_delete_server),
+                                        color = colorScheme.error
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Rounded.DeleteForever,
+                                        contentDescription = null,
+                                        tint = colorScheme.error
+                                    )
+                                },
+                                onClick = {
+                                    showOverflowMenu = false
+                                    showDeleteDialog = true
+                                }
+                            )
+                        }
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate950)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colorScheme.surface,
+                    titleContentColor = colorScheme.onSurface,
+                    navigationIconContentColor = colorScheme.onSurface,
+                    actionIconContentColor = colorScheme.onSurfaceVariant
+                )
             )
-        },
-        containerColor = Slate950,
-        modifier = modifier
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Always-Visible Network Address & Public Tunnel Card
-            NetworkAddressCard(
-                server = server,
-                tunnelState = tunnelState,
-                onToggleTunnel = onToggleTunnel,
-                onOpenShareDialog = { showShareDialog = true }
-            )
+            // Connection Card: Stacked LAN IP and Remote Tunnel rows
+            val lanAddress = "$localIp:${server.port}"
+            MineServeCard(
+                contentPadding = PaddingValues(0.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 6.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                clipboard.setText(AnnotatedString(lanAddress))
+                                scope.launch { snackbarHostState.showSnackbar("Copied $lanAddress") }
+                            }
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Lan,
+                            contentDescription = null,
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "LAN",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(52.dp)
+                        )
+                        Text(
+                            text = lanAddress,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontFamily = monoFont,
+                                fontWeight = FontWeight.Medium,
+                                fontFeatureSettings = "tnum"
+                            ),
+                            color = colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = Icons.Rounded.ContentCopy,
+                            contentDescription = "Copy LAN address",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+
+                    HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.35f))
+
+                    when (tunnelState) {
+                        is TunnelState.Connected -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        clipboard.setText(AnnotatedString(tunnelState.fullAddress))
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Copied ${tunnelState.fullAddress}")
+                                        }
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Public,
+                                    contentDescription = null,
+                                    tint = colorScheme.tertiary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Remote",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.tertiary,
+                                    modifier = Modifier.width(52.dp)
+                                )
+                                Text(
+                                    text = tunnelState.fullAddress,
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = monoFont,
+                                        fontWeight = FontWeight.Medium,
+                                        fontFeatureSettings = "tnum"
+                                    ),
+                                    color = colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Icon(
+                                    imageVector = Icons.Rounded.ContentCopy,
+                                    contentDescription = "Copy remote address",
+                                    tint = colorScheme.tertiary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                            }
+                        }
+                        is TunnelState.Connecting -> {
+                            val claimUrl = tunnelState.claimUrl
+                            val connectingTint = if (claimUrl != null) colorScheme.tertiary else extended.warning
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = claimUrl != null) {
+                                        if (claimUrl != null) {
+                                            runCatching {
+                                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(claimUrl)))
+                                            }
+                                        }
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Public,
+                                    contentDescription = null,
+                                    tint = connectingTint,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Remote",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = connectingTint,
+                                    modifier = Modifier.width(52.dp)
+                                )
+                                Text(
+                                    text = if (claimUrl != null) "Tap to claim public tunnel" else "Connecting public tunnel...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
+                        else -> {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(onClick = onToggleTunnel)
+                                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Public,
+                                    contentDescription = null,
+                                    tint = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = "Remote",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.width(52.dp)
+                                )
+                                Text(
+                                    text = "Tunnel off",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "Enable",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (tunnelState is TunnelState.Connected || tunnelState is TunnelState.Connecting) {
+                Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
+                    TunnelSecurityWarningCard()
+                }
+            }
 
             if (server.type.isBedrockNative) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = GoldYellow.copy(alpha = 0.15f),
-                    border = BorderStroke(1.dp, GoldYellow.copy(alpha = 0.4f)),
+                    shape = ShapeDefaults.Medium,
+                    color = extended.warningContainer,
+                    contentColor = extended.onWarningContainer,
+                    border = null,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = LayoutManager.screenHorizontalPadding)
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
                 ) {
                     Row(
                         modifier = Modifier.padding(12.dp),
@@ -414,58 +718,66 @@ fun ServerDetailScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Warning,
+                            imageVector = Icons.Rounded.Warning,
                             contentDescription = null,
-                            tint = GoldYellow,
+                            tint = extended.warning,
                             modifier = Modifier.size(20.dp)
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = "Bedrock Dedicated Server (Beta)",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = GoldYellow
+                                style = MaterialTheme.typography.labelMedium
                             )
                             Text(
-                                text = "Native Bedrock hosting is currently experimental. On ARM64 devices, it runs via user-mode qemu-x86_64 emulation. Performance or connection anomalies may occur.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color.White.copy(alpha = 0.9f)
+                                text = "Native Bedrock hosting is currently experimental. On ARM64 devices, it runs via user-mode qemu-x86_64 emulation.",
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
                 }
             }
 
-            // Tab Row
+            // M3 PrimaryScrollableTabRow: Console, Performance, Players, Settings
             PrimaryScrollableTabRow(
                 selectedTabIndex = selectedTab,
-                containerColor = Slate900,
-                contentColor = EmeraldPrimary,
-                edgePadding = LayoutManager.tabEdgePadding,
-                indicator = {}
+                containerColor = colorScheme.surfaceContainerLow,
+                contentColor = colorScheme.primary,
+                edgePadding = 16.dp,
+                indicator = {
+                    TabRowDefaults.PrimaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(selectedTab, matchContentSize = true),
+                        width = Dp.Unspecified,
+                        color = colorScheme.primary
+                    )
+                },
+                divider = {
+                    HorizontalDivider(color = colorScheme.outlineVariant)
+                }
             ) {
-                tabList.forEachIndexed { index, pair ->
+                topTabs.forEachIndexed { index, pair ->
                     Tab(
                         selected = selectedTab == index,
                         onClick = { selectedTab = index },
+                        selectedContentColor = colorScheme.primary,
+                        unselectedContentColor = colorScheme.onSurfaceVariant,
                         text = {
                             Text(
                                 text = pair.second,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Normal,
-                                color = if (selectedTab == index) EmeraldLight else Slate400
+                                style = MaterialTheme.typography.titleSmall,
+                                maxLines = 1,
+                                softWrap = false
                             )
                         }
                     )
                 }
             }
 
-            // Tab Content
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
             ) {
-                when (tabList.getOrNull(selectedTab)?.first) {
+                when (topTabs[selectedTab].first) {
                     DetailTab.CONSOLE -> ConsoleTab(
                         emulator = emulator,
                         refreshTrigger = refreshTrigger,
@@ -478,71 +790,6 @@ fun ServerDetailScreen(
                         metrics = metrics,
                         storageBytes = storageBytes,
                         onUpdateServer = onSaveServer
-                    )
-                    DetailTab.AUTOMATION -> AutomationTab(
-                        server = server,
-                        status = status,
-                        isStandbyActive = isStandbyActive,
-                        onSaveAutomationConfig = onSaveAutomationConfig,
-                        onEnterStandby = onEnterStandby,
-                        onExitStandby = onExitStandby
-                    )
-                    DetailTab.FILES -> FilesTab(
-                        server = server,
-                        onListDirectory = onListDirectory,
-                        onCreateFile = onCreateFile,
-                        onCreateDirectory = onCreateDirectory,
-                        onDeleteFile = onDeleteFile,
-                        onRenameFile = onRenameFile,
-                        onDuplicateFile = onDuplicateFile,
-                        onReadFile = onReadFile,
-                        onWriteFile = onWriteFile,
-                        onImportFile = onImportFile,
-                        onExportFile = onExportFile,
-                        onUnzipFile = onUnzipFile,
-                        onSearchFiles = onSearchFiles,
-                        onAnalyzeCrash = onAnalyzeCrash,
-                        onApplyQuickFix = onApplyQuickFix
-                    )
-                    DetailTab.WORLD -> WorldTab(
-                        server = server,
-                        status = status,
-                        onGetWorldSummary = onGetWorldSummary,
-                        onImportWorld = onImportWorld,
-                        onExportWorld = onExportWorld,
-                        onResetDimension = onResetDimension,
-                        onPruneChunks = onPruneChunks,
-                        onSendCommand = onSendCommand,
-                        onNavigateToLiveMap = {
-                            val mapIdx = tabList.indexOfFirst { it.first == DetailTab.LIVE_MAP }
-                            if (mapIdx >= 0) selectedTab = mapIdx
-                        }
-                    )
-                    DetailTab.LIVE_MAP -> LiveMapTab(
-                        server = server,
-                        status = status,
-                        levelName = properties.levelName,
-                        onSendCommand = onSendCommand,
-                        onGetWebMapState = onGetWebMapState,
-                        onSetWebMapPort = onSetWebMapPort,
-                        onInstallWebMapPlugin = onInstallWebMapPlugin,
-                        onUninstallWebMapPlugin = onUninstallWebMapPlugin,
-                        onStartServer = onStartServer
-                    )
-                    DetailTab.SETTINGS -> SettingsTab(
-                        server = server,
-                        allServers = allServers,
-                        status = status,
-                        initialProperties = properties,
-                        onSaveProperties = onSaveProperties,
-                        onSaveServer = onSaveServer,
-                        onCheckForUpdate = onCheckForUpdate,
-                        onFetchVersions = onFetchVersions,
-                        onUpdateBuild = onUpdateBuild,
-                        onUpgradeVersion = onUpgradeVersion,
-                        cloudAccountState = cloudAccountState,
-                        onOpenCloudPortal = onOpenCloudPortal,
-                        onRefreshCloudAccount = onRefreshCloudAccount
                     )
                     DetailTab.PLAYERS -> PlayersTab(
                         server = server,
@@ -559,347 +806,141 @@ fun ServerDetailScreen(
                         onAddBannedIp = onAddBannedIp,
                         onRemoveBannedIp = onRemoveBannedIp
                     )
-                    DetailTab.BACKUPS -> BackupsTab(
-                        server = server,
-                        backups = backups,
-                        onCreateBackup = onCreateBackup,
-                        onRestoreBackup = onRestoreBackup,
-                        onExportBackup = onExportBackup,
-                        onDeleteBackup = onDeleteBackup,
-                        onGetShareIntent = onGetShareIntent,
-                        onRefreshBackups = onRefreshBackups,
-                        onSaveServer = onSaveServer,
-                        onSyncBackupToCloud = onSyncBackupToCloud,
-                        cloudAccountState = cloudAccountState,
-                        cloudBackups = cloudBackups,
-                        isCloudBackupsLoading = isCloudBackupsLoading,
-                        onRefreshCloudBackups = onRefreshCloudBackups,
-                        onRestoreCloudBackup = onRestoreCloudBackup,
-                        onDeleteCloudBackup = onDeleteCloudBackup,
-                        onOpenCloudPortal = onOpenCloudPortal
-                    )
-                    DetailTab.PLUGINS_MODS -> {
-                        if (showPluginsOrModsTab) {
-                            PluginsTab(
-                                server = server,
-                                plugins = plugins,
-                                onTogglePlugin = onTogglePlugin,
-                                onDeletePlugin = onDeletePlugin,
-                                onInstallPluginOrMod = onInstallPluginOrMod,
-                                onImportJar = onImportJar,
-                                onImportModpack = onImportModpack
-                            )
-                        }
-                    }
-                    null -> {}
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun NetworkAddressCard(
-    server: MinecraftServer,
-    tunnelState: TunnelState,
-    onToggleTunnel: () -> Unit,
-    onOpenShareDialog: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    val clipboardManager = LocalClipboardManager.current
-    val localIp = remember { getLocalIpAddress() ?: "127.0.0.1" }
-    val localAddress = "$localIp:${server.port}"
-
-    Card(
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-        border = BorderStroke(1.dp, ObsidianCardBorder),
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = 6.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // Local LAN Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = EmeraldDark.copy(alpha = 0.3f),
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.4f)),
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Wifi,
-                                contentDescription = null,
-                                tint = EmeraldPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
-
-                    Column {
-                        Text(
-                            text = "LOCAL WI-FI (LAN)",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Slate400,
-                            fontSize = 10.sp
-                        )
-                        Text(
-                            text = localAddress,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                    }
-                }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    IconButton(
-                        onClick = {
-                            clipboardManager.setText(AnnotatedString(localAddress))
-                            Toast.makeText(context, "Copied LAN: $localAddress", Toast.LENGTH_SHORT).show()
-                        },
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Copy LAN Address",
-                            tint = EmeraldLight,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onOpenShareDialog,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.QrCode2,
-                            contentDescription = "Share & QR Code",
-                            tint = EmeraldPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-            }
-
-            HorizontalDivider(color = Slate800, thickness = 0.5.dp)
-
-            // Public Online Link (Tunnel) Row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = when (tunnelState) {
-                            is TunnelState.Connected -> EmeraldDark.copy(alpha = 0.4f)
-                            is TunnelState.Connecting -> GoldYellow.copy(alpha = 0.2f)
-                            else -> Slate800
-                        },
-                        border = BorderStroke(
-                            1.dp,
-                            when (tunnelState) {
-                                is TunnelState.Connected -> EmeraldPrimary
-                                is TunnelState.Connecting -> GoldYellow
-                                else -> ObsidianCardBorder
+                    DetailTab.SETTINGS -> {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                items(settingsSubSections) { (section, label) ->
+                                    val selected = selectedSettingsSection == section
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = { selectedSettingsSection = section },
+                                        label = {
+                                            Text(
+                                                text = label,
+                                                style = MaterialTheme.typography.labelMedium
+                                            )
+                                        },
+                                        shape = ShapeDefaults.Small,
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            containerColor = colorScheme.surfaceContainer,
+                                            labelColor = colorScheme.onSurfaceVariant,
+                                            selectedContainerColor = colorScheme.secondaryContainer,
+                                            selectedLabelColor = colorScheme.onSecondaryContainer
+                                        ),
+                                        border = null
+                                    )
+                                }
                             }
-                        ),
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = Icons.Default.Language,
-                                contentDescription = null,
-                                tint = when (tunnelState) {
-                                    is TunnelState.Connected -> EmeraldLight
-                                    is TunnelState.Connecting -> GoldYellow
-                                    else -> Slate400
-                                },
-                                modifier = Modifier.size(18.dp)
-                            )
-                        }
-                    }
 
-                    Column {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = "PUBLIC ONLINE LINK",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Slate400,
-                                fontSize = 10.sp
-                            )
-                            when (tunnelState) {
-                                is TunnelState.Connected -> {
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = EmeraldDark
-                                    ) {
-                                        Text(
-                                            text = "ONLINE",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = EmeraldLight,
-                                            fontSize = 9.sp,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                        )
-                                    }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            ) {
+                                when (selectedSettingsSection) {
+                                    SettingsSubSection.GENERAL -> SettingsTab(
+                                        server = server,
+                                        allServers = allServers,
+                                        status = status,
+                                        initialProperties = properties,
+                                        onSaveProperties = onSaveProperties,
+                                        onSaveServer = onSaveServer,
+                                        onCheckForUpdate = onCheckForUpdate,
+                                        onFetchVersions = onFetchVersions,
+                                        onUpdateBuild = onUpdateBuild,
+                                        onUpgradeVersion = onUpgradeVersion,
+                                        cloudAccountState = cloudAccountState,
+                                        onOpenCloudPortal = onOpenCloudPortal,
+                                        onRefreshCloudAccount = onRefreshCloudAccount
+                                    )
+                                    SettingsSubSection.PLUGINS_MODS -> PluginsTab(
+                                        server = server,
+                                        plugins = plugins,
+                                        onTogglePlugin = onTogglePlugin,
+                                        onDeletePlugin = onDeletePlugin,
+                                        onInstallPluginOrMod = onInstallPluginOrMod,
+                                        onImportJar = onImportJar,
+                                        onImportModpack = onImportModpack
+                                    )
+                                    SettingsSubSection.FILES -> FilesTab(
+                                        server = server,
+                                        onListDirectory = onListDirectory,
+                                        onCreateFile = onCreateFile,
+                                        onCreateDirectory = onCreateDirectory,
+                                        onDeleteFile = onDeleteFile,
+                                        onRenameFile = onRenameFile,
+                                        onDuplicateFile = onDuplicateFile,
+                                        onReadFile = onReadFile,
+                                        onWriteFile = onWriteFile,
+                                        onImportFile = onImportFile,
+                                        onExportFile = onExportFile,
+                                        onUnzipFile = onUnzipFile,
+                                        onSearchFiles = onSearchFiles,
+                                        onAnalyzeCrash = onAnalyzeCrash,
+                                        onApplyQuickFix = onApplyQuickFix
+                                    )
+                                    SettingsSubSection.WORLD -> WorldTab(
+                                        server = server,
+                                        status = status,
+                                        onGetWorldSummary = onGetWorldSummary,
+                                        onImportWorld = onImportWorld,
+                                        onExportWorld = onExportWorld,
+                                        onResetDimension = onResetDimension,
+                                        onPruneChunks = onPruneChunks,
+                                        onSendCommand = onSendCommand,
+                                        onNavigateToLiveMap = {
+                                            if (showLiveMap) {
+                                                selectedSettingsSection = SettingsSubSection.LIVE_MAP
+                                            }
+                                        }
+                                    )
+                                    SettingsSubSection.LIVE_MAP -> LiveMapTab(
+                                        server = server,
+                                        status = status,
+                                        levelName = properties.levelName,
+                                        onSendCommand = onSendCommand,
+                                        onGetWebMapState = onGetWebMapState,
+                                        onSetWebMapPort = onSetWebMapPort,
+                                        onInstallWebMapPlugin = onInstallWebMapPlugin,
+                                        onUninstallWebMapPlugin = onUninstallWebMapPlugin,
+                                        onStartServer = onStartServer
+                                    )
+                                    SettingsSubSection.BACKUPS -> BackupsTab(
+                                        server = server,
+                                        backups = backups,
+                                        onCreateBackup = onCreateBackup,
+                                        onRestoreBackup = onRestoreBackup,
+                                        onExportBackup = onExportBackup,
+                                        onDeleteBackup = onDeleteBackup,
+                                        onGetShareIntent = onGetShareIntent,
+                                        onRefreshBackups = onRefreshBackups,
+                                        onSaveServer = onSaveServer,
+                                        onSyncBackupToCloud = onSyncBackupToCloud,
+                                        cloudAccountState = cloudAccountState,
+                                        cloudBackups = cloudBackups,
+                                        isCloudBackupsLoading = isCloudBackupsLoading,
+                                        onRefreshCloudBackups = onRefreshCloudBackups,
+                                        onRestoreCloudBackup = onRestoreCloudBackup,
+                                        onDeleteCloudBackup = onDeleteCloudBackup,
+                                        onOpenCloudPortal = onOpenCloudPortal
+                                    )
+                                    SettingsSubSection.AUTOMATION -> AutomationTab(
+                                        server = server,
+                                        status = status,
+                                        isStandbyActive = isStandbyActive,
+                                        onSaveAutomationConfig = onSaveAutomationConfig,
+                                        onEnterStandby = onEnterStandby,
+                                        onExitStandby = onExitStandby
+                                    )
                                 }
-                                is TunnelState.Connecting -> {
-                                    val isSetup = tunnelState.claimUrl != null
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = if (isSetup) DiamondCyan.copy(alpha = 0.2f) else GoldYellow.copy(alpha = 0.2f)
-                                    ) {
-                                        Text(
-                                            text = if (isSetup) "CLAIM NEEDED" else "CONNECTING",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isSetup) DiamondLight else GoldYellow,
-                                            fontSize = 9.sp,
-                                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
-                                        )
-                                    }
-                                }
-                                else -> {}
                             }
                         }
-
-                        Text(
-                            text = when (tunnelState) {
-                                is TunnelState.Connected -> tunnelState.fullAddress
-                                is TunnelState.Connecting -> tunnelState.message.ifBlank { "Allocating public address..." }
-                                is TunnelState.Error -> "Error: ${tunnelState.errorMessage}"
-                                is TunnelState.Disconnected -> "Offline (Zero-Port-Forwarding)"
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = if (tunnelState is TunnelState.Connected) FontWeight.Bold else FontWeight.Normal,
-                            color = when (tunnelState) {
-                                is TunnelState.Connected -> EmeraldLight
-                                is TunnelState.Connecting -> if (tunnelState.claimUrl != null) DiamondLight else GoldYellow
-                                is TunnelState.Error -> RedstoneLight
-                                is TunnelState.Disconnected -> Slate400
-                            },
-                            maxLines = if (tunnelState is TunnelState.Error) 3 else 1
-                        )
                     }
                 }
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    if (tunnelState is TunnelState.Connected) {
-                        IconButton(
-                            onClick = {
-                                clipboardManager.setText(AnnotatedString(tunnelState.fullAddress))
-                                Toast.makeText(context, "Copied: ${tunnelState.fullAddress}", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.ContentCopy,
-                                contentDescription = "Copy Public Address",
-                                tint = EmeraldLight,
-                                modifier = Modifier.size(16.dp)
-                            )
-                        }
-                    }
-
-                    Switch(
-                        checked = tunnelState is TunnelState.Connected || tunnelState is TunnelState.Connecting,
-                        onCheckedChange = { onToggleTunnel() },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = EmeraldPrimary,
-                            checkedTrackColor = EmeraldDark
-                        ),
-                        modifier = Modifier.scale(0.85f)
-                    )
-                }
-            }
-
-            // Playit.gg 1-Tap Claim Banner
-            if (tunnelState is TunnelState.Connecting && tunnelState.claimUrl != null) {
-                val claimUrl = tunnelState.claimUrl
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = DiamondCyan.copy(alpha = 0.12f),
-                    border = BorderStroke(1.dp, DiamondCyan.copy(alpha = 0.40f)),
-                    onClick = {
-                        try {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(claimUrl))
-                            context.startActivity(intent)
-                        } catch (_: Exception) {}
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            tint = DiamondCyan,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Link your Playit.gg Account",
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = DiamondLight
-                            )
-                            Text(
-                                text = "Tap here to claim this tunnel in your browser",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 11.sp,
-                                color = DiamondCyan
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            tint = DiamondCyan,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
-            }
-
-            // Security Notice Banner when Public Tunneling is enabled/active
-            if (tunnelState is TunnelState.Connected || tunnelState is TunnelState.Connecting) {
-                TunnelSecurityWarningCard()
             }
         }
     }
@@ -920,4 +961,66 @@ private fun getLocalIpAddress(): String? {
         }
     } catch (_: Exception) {}
     return null
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun ServerDetailScreenConsolePreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        val emulator = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.rememberSampleTerminalEmulator()
+        ServerDetailScreen(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            allServers = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleServers,
+            status = com.devwithzachary.mineserve.model.ServerStatus.RUNNING,
+            metrics = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleRunningMetrics,
+            emulator = emulator,
+            refreshTrigger = 1L,
+            properties = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleProperties,
+            backups = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleBackups,
+            plugins = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.samplePlugins,
+            storageBytes = 482_000_000L,
+            tunnelState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleTunnelState,
+            onBack = {},
+            onStartServer = {},
+            onStopServer = {},
+            onSendCommand = {},
+            onResizeTerminal = { _, _ -> },
+            onSaveProperties = {},
+            onTogglePlugin = {},
+            onDeletePlugin = {},
+            onDeleteServer = {},
+            initialTab = 0
+        )
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun ServerDetailScreenPerformancePreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        val emulator = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.rememberSampleTerminalEmulator()
+        ServerDetailScreen(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            allServers = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleServers,
+            status = com.devwithzachary.mineserve.model.ServerStatus.RUNNING,
+            metrics = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleRunningMetrics,
+            emulator = emulator,
+            refreshTrigger = 1L,
+            properties = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleProperties,
+            backups = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleBackups,
+            plugins = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.samplePlugins,
+            storageBytes = 482_000_000L,
+            tunnelState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleTunnelState,
+            onBack = {},
+            onStartServer = {},
+            onStopServer = {},
+            onSendCommand = {},
+            onResizeTerminal = { _, _ -> },
+            onSaveProperties = {},
+            onTogglePlugin = {},
+            onDeletePlugin = {},
+            onDeleteServer = {},
+            initialTab = 1
+        )
+    }
 }

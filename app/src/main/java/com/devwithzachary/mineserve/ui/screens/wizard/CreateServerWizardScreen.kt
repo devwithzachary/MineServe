@@ -5,10 +5,15 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,24 +21,39 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.RocketLaunch
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
-import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -46,26 +66,39 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.api.FabricApiClient
 import com.devwithzachary.mineserve.api.MojangApiClient
 import com.devwithzachary.mineserve.api.PaperApiClient
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.ServerBadgeState
+import com.devwithzachary.mineserve.designsystem.components.ServerStatusBadge
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.determineJavaVersion
 import com.devwithzachary.mineserve.model.findNextAvailablePort
+import com.devwithzachary.mineserve.model.sortedMinecraftVersionsDescending
+import com.devwithzachary.mineserve.ui.components.RamSlider
 import com.devwithzachary.mineserve.ui.components.getDefaultAllocatedRamMb
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -87,24 +120,24 @@ fun CreateServerWizardScreen(
     ) -> MinecraftServer?,
     modifier: Modifier = Modifier
 ) {
-    var step by remember { mutableIntStateOf(1) }
+    val colorScheme = MaterialTheme.colorScheme
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    var step by remember { mutableIntStateOf(1) }
+
     BackHandler {
-        if (step > 1) {
+        if (step > 1 && !/* guard handled below */false) {
             step--
         } else {
             onCancel()
         }
     }
 
-    // Calculate next available default port starting from 25565
     val defaultUnusedPort = remember(existingServers) {
         findNextAvailablePort(existingServers)
     }
 
-    // Form State
-    val context = LocalContext.current
     var serverName by remember { mutableStateOf("My Minecraft Server") }
     var motd by remember { mutableStateOf("Welcome to my MineServe Server!") }
     var selectedType by remember { mutableStateOf(ServerType.PAPER) }
@@ -123,14 +156,12 @@ fun CreateServerWizardScreen(
         }
     }
 
-    // Sync calculated unused port if servers load asynchronously, provided user hasn't explicitly set a port
     LaunchedEffect(defaultUnusedPort) {
         if (!userModifiedPort) {
             port = defaultUnusedPort
         }
     }
 
-    // Check if the currently chosen port is in use by an existing server
     val conflictingServerName = remember(port, existingServers) {
         if (port in 1..65535) {
             existingServers.firstOrNull { it.port == port }?.name
@@ -139,23 +170,21 @@ fun CreateServerWizardScreen(
         }
     }
 
-    // Version lists (Newest first)
     var availableVersions by remember {
         mutableStateOf(listOf("26.2", "26.1.2", "1.21.11", "1.21.4", "1.21.3", "1.21.1", "1.20.6", "1.20.4", "1.20.1", "1.19.4", "1.18.2", "1.16.5"))
     }
     var isLoadingVersions by remember { mutableStateOf(false) }
 
-    // Creation progress state
     var isCreating by remember { mutableStateOf(false) }
     var creationStatus by remember { mutableStateOf("") }
+    @Suppress("UNUSED_VARIABLE")
     var creationProgress by remember { mutableIntStateOf(0) }
     var creationError by remember { mutableStateOf<String?>(null) }
 
-    // Fetch versions when server type changes (Descending order with newest as default)
     LaunchedEffect(selectedType) {
         if (!userModifiedPort) {
             port = if (selectedType.isBedrockNative) {
-                com.devwithzachary.mineserve.model.findNextAvailablePort(existingServers, 19132)
+                findNextAvailablePort(existingServers, 19132)
             } else {
                 defaultUnusedPort
             }
@@ -206,46 +235,52 @@ fun CreateServerWizardScreen(
         isLoadingVersions = false
     }
 
-    val stepSubtitle = when (step) {
-        1 -> stringResource(R.string.wizard_step_1_of_4)
-        2 -> stringResource(R.string.wizard_step_2_of_4)
-        3 -> stringResource(R.string.wizard_step_3_of_4)
-        else -> stringResource(R.string.wizard_step_4_of_4)
+    val stepSubtitle = if (step == 1) {
+        "Step 1 of 2 - Identity & Software"
+    } else {
+        "Step 2 of 2 - Resources & Launch"
     }
 
     Scaffold(
+        modifier = modifier,
+        containerColor = colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = {
                     Column {
                         Text(
                             text = stringResource(R.string.wizard_title),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            style = MaterialTheme.typography.titleLarge
                         )
                         Text(
                             text = stepSubtitle,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
+                            color = colorScheme.onSurfaceVariant
                         )
                     }
                 },
                 navigationIcon = {
-                    IconButton(onClick = { if (step > 1) step-- else onCancel() }) {
+                    IconButton(
+                        onClick = {
+                            if (step > 1 && !isCreating) step-- else if (!isCreating) onCancel()
+                        }
+                    ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                            tint = Color.White
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate950)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = colorScheme.surface,
+                    titleContentColor = colorScheme.onSurface,
+                    navigationIconContentColor = colorScheme.onSurface
+                )
             )
         },
         bottomBar = {
             Surface(
-                color = Slate950,
+                color = colorScheme.surfaceContainerLow,
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
@@ -257,12 +292,12 @@ fun CreateServerWizardScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (step > 1 && !isCreating) {
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = { step-- },
-                            shape = RoundedCornerShape(12.dp),
+                            shape = ShapeDefaults.Medium,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(stringResource(R.string.wizard_btn_back))
                         }
@@ -270,10 +305,9 @@ fun CreateServerWizardScreen(
 
                     Button(
                         onClick = {
-                            if (step < 4) {
-                                step++
+                            if (step < 2) {
+                                step = 2
                             } else {
-                                // Launch server creation
                                 isCreating = true
                                 creationError = null
                                 creationStatus = "Downloading ${selectedType.displayName} $selectedVersion..."
@@ -300,87 +334,73 @@ fun CreateServerWizardScreen(
                                 }
                             }
                         },
-                        enabled = !isCreating && when (step) {
-                            3 -> port in 1..65535
-                            4 -> eulaAccepted
-                            else -> true
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isCreating && (step == 1 || (port in 1..65535 && eulaAccepted)),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.primary,
+                            contentColor = colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Medium,
                         modifier = Modifier.weight(1f)
                     ) {
-                        if (step < 4) {
-                            Text(
-                                text = stringResource(R.string.wizard_btn_next),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
+                        if (step < 2) {
+                            Text(text = stringResource(R.string.wizard_btn_next))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowForward,
-                                contentDescription = null,
-                                tint = Color.Black
-                            )
+                            Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(18.dp))
                         } else {
-                            Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black)
+                            Icon(Icons.Rounded.RocketLaunch, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = stringResource(R.string.wizard_btn_create),
-                                fontWeight = FontWeight.Bold,
-                                color = Color.Black
-                            )
+                            Text(text = "Create & Launch")
                         }
                     }
                 }
             }
-        },
-        containerColor = Slate950,
-        modifier = modifier
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = LayoutManager.screenHorizontalPadding)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            // Step Progress Indicator
+            // 2-Step M3 Progress Bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 12.dp),
+                    .padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                for (i in 1..4) {
+                for (i in 1..2) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(6.dp)
                             .clip(CircleShape)
-                            .background(if (i <= step) EmeraldPrimary else Slate800)
+                            .background(if (i <= step) colorScheme.primary else colorScheme.surfaceContainerHighest)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            AnimatedContent(targetState = step, label = "wizardStep") { currentStep ->
-                when (currentStep) {
-                    1 -> WizardStep1Identity(
+            AnimatedContent(targetState = step, label = "wizardTwoStep") { currentStep ->
+                if (currentStep == 1) {
+                    WizardStepIdentityAndSoftware(
                         serverName = serverName,
                         onServerNameChange = { serverName = it },
                         motd = motd,
-                        onMotdChange = { motd = it }
-                    )
-                    2 -> WizardStep2Software(
+                        onMotdChange = { motd = it },
                         selectedType = selectedType,
                         onTypeSelected = { selectedType = it },
                         selectedVersion = selectedVersion,
                         onVersionSelected = { selectedVersion = it },
                         availableVersions = availableVersions,
-                        isLoadingVersions = isLoadingVersions
+                        isLoadingVersions = isLoadingVersions,
+                        allocatedRamMb = allocatedRamMb,
+                        port = port
                     )
-                    3 -> WizardStep3Configuration(
+                } else {
+                    WizardStepResourcesAndLaunch(
+                        selectedType = selectedType,
                         allocatedRamMb = allocatedRamMb,
                         onAllocatedRamMbChange = { allocatedRamMb = it },
                         port = port,
@@ -389,49 +409,639 @@ fun CreateServerWizardScreen(
                             port = newPort
                         },
                         conflictingServerName = conflictingServerName,
-                        isBedrockNative = selectedType.isBedrockNative
+                        localJarUri = localJarUri,
+                        onPickLocalJar = {
+                            localJarPicker.launch(arrayOf("application/java-archive", "application/zip", "*/*"))
+                        },
+                        onClearLocalJar = { localJarUri = null },
+                        eulaAccepted = eulaAccepted,
+                        onEulaAcceptedChange = { eulaAccepted = it },
+                        isCreating = isCreating,
+                        creationStatus = creationStatus,
+                        creationError = creationError
                     )
-                    4 -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)) {
-                            WizardStep4Review(
-                                serverName = serverName,
-                                selectedType = selectedType,
-                                selectedVersion = selectedVersion,
-                                allocatedRamMb = allocatedRamMb,
-                                port = port,
-                                eulaAccepted = eulaAccepted,
-                                onEulaAcceptedChange = { eulaAccepted = it },
-                                conflictingServerName = conflictingServerName,
-                                localJarUri = localJarUri,
-                                onPickLocalJar = {
-                                    localJarPicker.launch(arrayOf("application/java-archive", "application/zip", "*/*"))
-                                },
-                                onClearLocalJar = { localJarUri = null }
-                            )
+                }
+            }
 
-                            if (isCreating) {
-                                WizardProgressCard(creationStatus = creationStatus)
+            Spacer(modifier = Modifier.height(20.dp))
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun WizardStepIdentityAndSoftware(
+    serverName: String,
+    onServerNameChange: (String) -> Unit,
+    motd: String,
+    onMotdChange: (String) -> Unit,
+    selectedType: ServerType,
+    onTypeSelected: (ServerType) -> Unit,
+    selectedVersion: String,
+    onVersionSelected: (String) -> Unit,
+    availableVersions: List<String>,
+    isLoadingVersions: Boolean,
+    allocatedRamMb: Int,
+    port: Int
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+    var isVersionDropdownExpanded by remember { mutableStateOf(false) }
+
+    val serverTypes = remember {
+        listOf(
+            ServerType.PAPER,
+            ServerType.PURPUR,
+            ServerType.BEDROCK_GEYSER,
+            ServerType.VANILLA,
+            ServerType.FABRIC,
+            ServerType.FORGE,
+            ServerType.NEOFORGE,
+            ServerType.FOLIA,
+            ServerType.VELOCITY,
+            ServerType.BUNGEECORD,
+            ServerType.BEDROCK_BDS
+        )
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // Live-updating MineServeCard preview at the top
+        MineServeCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = ShapeDefaults.Large,
+            containerColor = colorScheme.surfaceContainer,
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = serverName.trim().ifEmpty { "My Minecraft Server" },
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${selectedType.displayName} $selectedVersion - Port $port",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                ServerStatusBadge(
+                    state = ServerBadgeState.Offline,
+                    label = "Preview"
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val requiredJava = determineJavaVersion(selectedVersion, selectedType)
+                PreviewMonoChip(text = "$allocatedRamMb MB")
+                PreviewMonoChip(text = if (selectedType.isBedrockNative) "Bedrock" else "Java $requiredJava")
+            }
+        }
+
+        // M3 OutlinedTextField inputs without redundant headings above each box
+        OutlinedTextField(
+            value = serverName,
+            onValueChange = onServerNameChange,
+            label = { Text(stringResource(R.string.wizard_step1_name_label)) },
+            singleLine = true,
+            shape = ShapeDefaults.Medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.outlineVariant,
+                focusedLabelColor = colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                focusedContainerColor = colorScheme.surfaceContainerLow,
+                unfocusedContainerColor = colorScheme.surfaceContainerLow,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        OutlinedTextField(
+            value = motd,
+            onValueChange = onMotdChange,
+            label = { Text(stringResource(R.string.wizard_step1_motd_label)) },
+            singleLine = true,
+            shape = ShapeDefaults.Medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = colorScheme.primary,
+                unfocusedBorderColor = colorScheme.outlineVariant,
+                focusedLabelColor = colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                focusedContainerColor = colorScheme.surfaceContainerLow,
+                unfocusedContainerColor = colorScheme.surfaceContainerLow,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        // Version Selector Dropdown
+        ExposedDropdownMenuBox(
+            expanded = isVersionDropdownExpanded,
+            onExpandedChange = { isVersionDropdownExpanded = !isVersionDropdownExpanded }
+        ) {
+            OutlinedTextField(
+                value = if (isLoadingVersions) stringResource(R.string.wizard_step2_loading_versions) else selectedVersion,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text(stringResource(R.string.wizard_step2_version_label)) },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isVersionDropdownExpanded) },
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = monoFont),
+                shape = ShapeDefaults.Medium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = colorScheme.primary,
+                    unfocusedBorderColor = colorScheme.outlineVariant,
+                    focusedLabelColor = colorScheme.primary,
+                    unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                    focusedContainerColor = colorScheme.surfaceContainerLow,
+                    unfocusedContainerColor = colorScheme.surfaceContainerLow,
+                    focusedTextColor = colorScheme.onSurface,
+                    unfocusedTextColor = colorScheme.onSurface
+                ),
+                modifier = Modifier
+                    .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, true)
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = isVersionDropdownExpanded,
+                onDismissRequest = { isVersionDropdownExpanded = false },
+                containerColor = colorScheme.surfaceContainerHighest
+            ) {
+                for (v in availableVersions) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = v,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                color = colorScheme.onSurface
+                            )
+                        },
+                        onClick = {
+                            onVersionSelected(v)
+                            isVersionDropdownExpanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Software Platform Cards (responsive 1-column Compact / 2-column Medium)
+        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+            val isMedium = maxWidth >= 600.dp
+            if (isMedium) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (pair in serverTypes.chunked(2)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            for (st in pair) {
+                                SoftwareChoiceCard(
+                                    serverType = st,
+                                    isSelected = selectedType == st,
+                                    onClick = { onTypeSelected(st) },
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
-                            creationError?.let { err ->
-                                Surface(
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFF7F1D1D).copy(alpha = 0.4f),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Text(
-                                        text = err,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color(0xFFFCA5A5),
-                                        modifier = Modifier.padding(12.dp)
-                                    )
-                                }
+                            if (pair.size == 1) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
                 }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (st in serverTypes) {
+                        SoftwareChoiceCard(
+                            serverType = st,
+                            isSelected = selectedType == st,
+                            onClick = { onTypeSelected(st) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SoftwareChoiceCard(
+    serverType: ServerType,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+
+    MineServeCard(
+        onClick = onClick,
+        modifier = modifier,
+        shape = ShapeDefaults.Medium,
+        containerColor = if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceContainer,
+        contentColor = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+        contentPadding = PaddingValues(14.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = serverType.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (isSelected) colorScheme.onPrimaryContainer else colorScheme.onSurface
+                    )
+                    if (serverType.isBedrockNative) {
+                        Surface(
+                            shape = ShapeDefaults.ExtraSmall,
+                            color = extended.warningContainer,
+                            contentColor = extended.onWarningContainer,
+                            border = null
+                        ) {
+                            Text(
+                                text = "BETA",
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = serverType.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) colorScheme.onPrimaryContainer.copy(alpha = 0.85f) else colorScheme.onSurfaceVariant
+                )
+            }
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Rounded.CheckCircle,
+                    contentDescription = null,
+                    tint = colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WizardStepResourcesAndLaunch(
+    selectedType: ServerType,
+    allocatedRamMb: Int,
+    onAllocatedRamMbChange: (Int) -> Unit,
+    port: Int,
+    onPortChange: (Int) -> Unit,
+    conflictingServerName: String?,
+    localJarUri: Uri?,
+    onPickLocalJar: () -> Unit,
+    onClearLocalJar: () -> Unit,
+    eulaAccepted: Boolean,
+    onEulaAcceptedChange: (Boolean) -> Unit,
+    isCreating: Boolean,
+    creationStatus: String,
+    creationError: String?
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+    val uriHandler = LocalUriHandler.current
+    val eulaUrl = stringResource(R.string.minecraft_eula_url)
+
+    var portText by remember { mutableStateOf(if (port in 1..65535) port.toString() else "") }
+    LaunchedEffect(port) {
+        if (port in 1..65535 && portText.toIntOrNull() != port) {
+            portText = port.toString()
+        }
+    }
+    val isPortValid = portText.isNotEmpty() && portText.toIntOrNull()?.let { it in 1..65535 } == true
+
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        if (!selectedType.isBedrockNative) {
+            MineServeCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = ShapeDefaults.Large,
+                containerColor = colorScheme.surfaceContainer,
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                RamSlider(
+                    allocatedMb = allocatedRamMb,
+                    onValueChange = onAllocatedRamMbChange
+                )
+            }
+        } else {
+            MineServeCard(
+                modifier = Modifier.fillMaxWidth(),
+                shape = ShapeDefaults.Large,
+                containerColor = colorScheme.surfaceContainer,
+                contentPadding = PaddingValues(16.dp)
+            ) {
+                Text(
+                    text = "Bedrock Dedicated Server is a native C++ binary and manages memory dynamically without JVM heap (-Xmx) limits.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = portText,
+            onValueChange = { input ->
+                val digitsOnly = input.filter { it.isDigit() }.take(5)
+                portText = digitsOnly
+                val parsed = digitsOnly.toIntOrNull()
+                if (parsed != null && parsed in 1..65535) {
+                    onPortChange(parsed)
+                } else {
+                    onPortChange(0)
+                }
+            },
+            label = { Text(stringResource(R.string.wizard_step3_port_label)) },
+            singleLine = true,
+            isError = !isPortValid,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = monoFont),
+            supportingText = {
+                if (!isPortValid) {
+                    Text(
+                        text = if (portText.isEmpty()) {
+                            stringResource(R.string.wizard_step3_port_empty_error)
+                        } else {
+                            stringResource(R.string.wizard_step3_port_range_error)
+                        },
+                        color = colorScheme.error
+                    )
+                }
+            },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done
+            ),
+            shape = ShapeDefaults.Medium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = if (conflictingServerName != null) extended.warning else colorScheme.primary,
+                unfocusedBorderColor = if (conflictingServerName != null) extended.warning else colorScheme.outlineVariant,
+                focusedLabelColor = if (conflictingServerName != null) extended.warning else colorScheme.primary,
+                unfocusedLabelColor = colorScheme.onSurfaceVariant,
+                focusedContainerColor = colorScheme.surfaceContainerLow,
+                unfocusedContainerColor = colorScheme.surfaceContainerLow,
+                focusedTextColor = colorScheme.onSurface,
+                unfocusedTextColor = colorScheme.onSurface
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        AnimatedVisibility(visible = conflictingServerName != null) {
+            Surface(
+                shape = ShapeDefaults.Medium,
+                color = extended.warningContainer,
+                contentColor = extended.onWarningContainer,
+                border = null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = extended.warning,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = stringResource(R.string.wizard_port_conflict_title, conflictingServerName ?: ""),
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.wizard_port_conflict_desc, port, conflictingServerName ?: ""),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+        // Optional Local Server JAR / Zip Import
+        MineServeCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = ShapeDefaults.Large,
+            containerColor = colorScheme.surfaceContainer,
+            contentPadding = PaddingValues(16.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Server Binary Source",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = colorScheme.onSurface
+                )
+                if (localJarUri == null) {
+                    Text(
+                        text = "Downloads automatically in the background, or import a local .jar / .zip file.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = onPickLocalJar,
+                        shape = ShapeDefaults.Medium,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Rounded.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Import Local Server File (.jar / .zip)")
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Using local file: ${localJarUri.lastPathSegment ?: "selected"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.primary,
+                            modifier = Modifier.weight(1f)
+                        )
+                        IconButton(onClick = onClearLocalJar, modifier = Modifier.size(28.dp)) {
+                            Icon(
+                                imageVector = Icons.Rounded.Close,
+                                contentDescription = "Clear local file",
+                                tint = colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        AnimatedVisibility(visible = selectedType.isBedrockNative) {
+            Surface(
+                shape = ShapeDefaults.Medium,
+                color = extended.warningContainer,
+                contentColor = extended.onWarningContainer,
+                border = null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = extended.warning,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = "Experimental Bedrock Support (Beta)",
+                            style = MaterialTheme.typography.labelMedium
+                        )
+                        Text(
+                            text = "Mojang Bedrock Dedicated Server is in early beta and uses qemu-x86_64 emulation on ARM64 devices.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+
+        // Top-aligned Checkbox wrapping cleanly on narrow screens
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Checkbox(
+                checked = eulaAccepted,
+                onCheckedChange = onEulaAcceptedChange,
+                colors = CheckboxDefaults.colors(
+                    checkedColor = colorScheme.primary,
+                    checkmarkColor = colorScheme.onPrimary,
+                    uncheckedColor = colorScheme.outline
+                ),
+                modifier = Modifier.padding(top = 2.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            val prefixText = stringResource(R.string.wizard_step4_eula_prefix)
+            val linkText = stringResource(R.string.wizard_step4_eula_link)
+            val annotatedString = buildAnnotatedString {
+                append(prefixText.trim())
+                append("\n")
+                pushStringAnnotation(tag = "URL", annotation = eulaUrl)
+                withStyle(
+                    style = SpanStyle(
+                        color = colorScheme.primary,
+                        fontWeight = FontWeight.SemiBold,
+                        textDecoration = TextDecoration.Underline
+                    )
+                ) {
+                    append(linkText)
+                }
+                pop()
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            @Suppress("DEPRECATION")
+            ClickableText(
+                text = annotatedString,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = colorScheme.onSurface,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp
+                ),
+                softWrap = true,
+                onClick = { offset ->
+                    val annotation = annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset).firstOrNull()
+                    if (annotation != null) {
+                        uriHandler.openUri(annotation.item)
+                    } else {
+                        onEulaAcceptedChange(!eulaAccepted)
+                    }
+                },
+                modifier = Modifier.weight(1f)
+            )
         }
+
+        if (isCreating) {
+            WizardProgressCard(creationStatus = creationStatus)
+        }
+
+        creationError?.let { err ->
+            Surface(
+                shape = ShapeDefaults.Medium,
+                color = colorScheme.errorContainer,
+                contentColor = colorScheme.onErrorContainer,
+                border = null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = err,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PreviewMonoChip(text: String) {
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
+    Surface(
+        shape = ShapeDefaults.Small,
+        color = colorScheme.surfaceContainerHigh,
+        contentColor = colorScheme.onSurfaceVariant,
+        border = null
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = monoFont,
+                fontWeight = FontWeight.Medium,
+                fontFeatureSettings = "tnum"
+            ),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun CreateServerWizardScreenPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        CreateServerWizardScreen(
+            onServerCreated = {},
+            onCancel = {},
+            existingServers = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleServers,
+            onDownloadAndCreateServer = { _, _, _, _, _, _, _, _, _ -> null }
+        )
     }
 }

@@ -1,15 +1,12 @@
 package com.devwithzachary.mineserve.ui.screens.detail
 
-import android.content.Intent
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,31 +16,37 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Memory
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Router
+import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -52,62 +55,43 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.devwithzachary.mineserve.BuildConfig
 import com.devwithzachary.mineserve.R
+import com.devwithzachary.mineserve.cloud.CloudAccountState
+import com.devwithzachary.mineserve.cloud.CloudPricing
+import com.devwithzachary.mineserve.cloud.MineServeCloudManager
+import com.devwithzachary.mineserve.designsystem.components.MineServePreferenceRow
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.engine.PRootEngine
 import com.devwithzachary.mineserve.engine.ProxyNetworkManager
 import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ProxyRoute
-import com.devwithzachary.mineserve.model.ProxyServerConfig
-import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
-import com.devwithzachary.mineserve.repository.ServerRepository
-import com.devwithzachary.mineserve.model.ServerProperties
-import com.devwithzachary.mineserve.model.TunnelConfig
-import com.devwithzachary.mineserve.model.TunnelProvider
-import com.devwithzachary.mineserve.ui.components.TunnelSecurityWarningCard
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-
 import com.devwithzachary.mineserve.model.ServerBuildInfo
+import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
-import com.devwithzachary.mineserve.ui.components.RamSlider
-import com.devwithzachary.mineserve.ui.components.ServerSoftwareCard
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Memory
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Router
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.devwithzachary.mineserve.cloud.CloudAccountState
-import com.devwithzachary.mineserve.cloud.MineServeCloudManager
+import com.devwithzachary.mineserve.model.TunnelProvider
+import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.net.portforward.PortForwardManager
 import com.devwithzachary.mineserve.net.portforward.PortForwardState
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
+import com.devwithzachary.mineserve.repository.ServerRepository
+import com.devwithzachary.mineserve.ui.components.RamSlider
+import com.devwithzachary.mineserve.ui.components.ServerSoftwareCard
+import com.devwithzachary.mineserve.ui.theme.LayoutManager
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -128,7 +112,10 @@ fun SettingsTab(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isInspection = LocalInspectionMode.current
     val scope = rememberCoroutineScope()
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     // Visual editor state
     var props by remember(initialProperties) { mutableStateOf(initialProperties) }
@@ -161,21 +148,33 @@ fun SettingsTab(
 
     // Port forwarding config state
     var portForwardAutoForward by remember(server.portForwardConfig.autoForward) { mutableStateOf(server.portForwardConfig.autoForward) }
-    val portForwardManager = remember { PortForwardManager.getInstance(context) }
-    val portForwardStates by portForwardManager.states.collectAsStateWithLifecycle()
-    val currentForwardState = portForwardStates[server.id] ?: portForwardManager.getState(server.id)
+    val portForwardManager = remember(isInspection) {
+        if (isInspection) null else PortForwardManager.getInstance(context)
+    }
+    val portForwardStates by (portForwardManager?.states?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(emptyMap()) })
+    val currentForwardState = portForwardStates[server.id]
+        ?: portForwardManager?.getState(server.id)
+        ?: PortForwardState.Idle
     val clipboardManager = LocalClipboardManager.current
 
     // RAM allocation state
     var currentRamMb by remember(server.allocatedRamMb) { mutableIntStateOf(server.allocatedRamMb) }
     var ramSavedMessage by remember { mutableStateOf<String?>(null) }
 
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+        labelColor = MaterialTheme.colorScheme.onSurface
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = LayoutManager.screenVerticalPadding)
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Section: Server Software & Version Management
         ServerSoftwareCard(
@@ -192,117 +191,95 @@ fun SettingsTab(
 
         // Section: Server Memory & RAM Allocation (JVM heap only)
         if (!server.type.isBedrockNative) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(Icons.Default.Memory, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
-                Text(
-                    text = stringResource(R.string.settings_ram_section_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-            }
-
-            Button(
-                onClick = {
-                    val updated = server.copy(allocatedRamMb = currentRamMb)
-                    onSaveServer(updated)
-                    ramSavedMessage = context.getString(R.string.settings_ram_saved)
-                    scope.launch {
-                        delay(2000)
-                        ramSavedMessage = null
-                    }
-                },
-                enabled = currentRamMb != server.allocatedRamMb || ramSavedMessage != null,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = EmeraldPrimary,
-                    disabledContainerColor = Slate800,
-                    disabledContentColor = Slate400
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Icon(
-                    Icons.Default.Save,
-                    contentDescription = null,
-                    tint = if (currentRamMb != server.allocatedRamMb) Color.Black else Slate400,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.settings_ram_save_button),
-                    color = if (currentRamMb != server.allocatedRamMb) Color.Black else Slate400,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-
-        AnimatedVisibility(visible = ramSavedMessage != null) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = EmeraldDark.copy(alpha = 0.3f),
-                border = BorderStroke(1.dp, EmeraldPrimary),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            MineServeSettingsGroup(title = stringResource(R.string.settings_ram_section_title)) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
-                    Text(text = ramSavedMessage ?: "", color = EmeraldLight, fontSize = 13.sp)
-                }
-            }
-        }
-
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(GoldYellow.copy(alpha = 0.12f))
-                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = null,
-                            tint = GoldYellow,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_ram_running_restart_notice),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = GoldYellow,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Memory,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "${currentRamMb} MB",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontFamily = monoFont,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
 
-                RamSlider(
-                    allocatedMb = currentRamMb,
-                    onValueChange = { currentRamMb = it },
-                    showTitle = false
-                )
+                        FilledTonalButton(
+                            onClick = {
+                                val updated = server.copy(allocatedRamMb = currentRamMb)
+                                onSaveServer(updated)
+                                ramSavedMessage = context.getString(R.string.settings_ram_saved)
+                                scope.launch {
+                                    delay(2000)
+                                    ramSavedMessage = null
+                                }
+                            },
+                            enabled = currentRamMb != server.allocatedRamMb || ramSavedMessage != null,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            shape = ShapeDefaults.Small
+                        ) {
+                            Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(stringResource(R.string.settings_ram_save_button), fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+
+                    AnimatedVisibility(visible = ramSavedMessage != null) {
+                        SavedBanner(message = ramSavedMessage ?: "")
+                    }
+
+                    if (status == ServerStatus.RUNNING || status == ServerStatus.STARTING) {
+                        Surface(
+                            shape = ShapeDefaults.Small,
+                            color = extColors.warningContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Info,
+                                    contentDescription = null,
+                                    tint = extColors.onWarningContainer,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = stringResource(R.string.settings_ram_running_restart_notice),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = extColors.onWarningContainer
+                                )
+                            }
+                        }
+                    }
+
+                    RamSlider(
+                        allocatedMb = currentRamMb,
+                        onValueChange = { currentRamMb = it },
+                        showTitle = false
+                    )
+                }
             }
-        }
         }
 
         // Section: Server Properties (Visual Editor)
@@ -315,12 +292,17 @@ fun SettingsTab(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(Icons.Default.Tune, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
+                Icon(
+                    imageVector = Icons.Rounded.Tune,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
                 Text(
                     text = stringResource(R.string.settings_tab_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -349,84 +331,46 @@ fun SettingsTab(
                         visualSavedMessage = null
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                shape = RoundedCornerShape(8.dp)
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                shape = ShapeDefaults.Small
             ) {
-                Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.settings_tab_save),
-                    color = Color.Black,
-                    fontWeight = FontWeight.Bold
-                )
+                Text(stringResource(R.string.settings_tab_save), fontWeight = FontWeight.SemiBold)
             }
         }
 
         AnimatedVisibility(visible = visualSavedMessage != null) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = EmeraldDark.copy(alpha = 0.3f),
-                border = BorderStroke(1.dp, EmeraldPrimary),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
-                    Text(text = visualSavedMessage ?: "", color = EmeraldLight, fontSize = 13.sp)
-                }
-            }
+            SavedBanner(message = visualSavedMessage ?: "")
         }
 
         // MOTD Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.settings_motd_label),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Slate400
-                )
+        MineServeSettingsGroup(title = stringResource(R.string.settings_motd_label)) {
+            Column(modifier = Modifier.padding(16.dp)) {
                 OutlinedTextField(
                     value = motd,
                     onValueChange = { motd = it },
-                    placeholder = { Text(stringResource(R.string.settings_motd_placeholder), color = Slate400) },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        unfocusedBorderColor = ObsidianCardBorder,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
+                    placeholder = { Text(stringResource(R.string.settings_motd_placeholder)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
         }
 
-        // Gameplay Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        // Gameplay Settings Group
+        MineServeSettingsGroup(title = stringResource(R.string.settings_section_gameplay)) {
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(stringResource(R.string.settings_section_gameplay), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
-
-                // Gamemode
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.settings_gamemode), style = MaterialTheme.typography.labelSmall, color = Slate400)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.settings_gamemode),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -436,20 +380,19 @@ fun SettingsTab(
                                 selected = gamemode == mode,
                                 onClick = { gamemode = mode },
                                 label = { Text(mode.replaceFirstChar { it.uppercase() }) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = EmeraldPrimary,
-                                    selectedLabelColor = Color.Black,
-                                    containerColor = Slate800,
-                                    labelColor = Color.White
-                                )
+                                border = null,
+                                colors = chipColors
                             )
                         }
                     }
                 }
 
-                // Difficulty
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(stringResource(R.string.settings_difficulty), style = MaterialTheme.typography.labelSmall, color = Slate400)
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = stringResource(R.string.settings_difficulty),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
@@ -459,105 +402,75 @@ fun SettingsTab(
                                 selected = difficulty == diff,
                                 onClick = { difficulty = diff },
                                 label = { Text(diff.replaceFirstChar { it.uppercase() }) },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = EmeraldPrimary,
-                                    selectedLabelColor = Color.Black,
-                                    containerColor = Slate800,
-                                    labelColor = Color.White
-                                )
+                                border = null,
+                                colors = chipColors
                             )
                         }
                     }
                 }
-
-                // Switches
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_pvp),
-                    checked = pvp,
-                    onCheckedChange = { pvp = it }
-                )
-                if (!server.type.isBedrockNative) {
-                    SettingSwitchRow(
-                        title = stringResource(R.string.settings_hardcore),
-                        checked = hardcore,
-                        onCheckedChange = { hardcore = it }
-                    )
-                    SettingSwitchRow(
-                        title = stringResource(R.string.settings_allow_flight),
-                        checked = allowFlight,
-                        onCheckedChange = { allowFlight = it }
-                    )
-                    SettingSwitchRow(
-                        title = stringResource(R.string.settings_allow_nether),
-                        checked = allowNether,
-                        onCheckedChange = { allowNether = it }
-                    )
-                }
             }
-        }
-
-        // Security & Networking Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(stringResource(R.string.settings_section_security), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
-
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_online_mode),
-                    checked = onlineMode,
-                    onCheckedChange = { onlineMode = it }
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(
+                title = stringResource(R.string.settings_pvp),
+                checked = pvp,
+                onCheckedChange = { pvp = it },
+                icon = Icons.Rounded.SportsEsports
+            )
+            if (!server.type.isBedrockNative) {
+                MineServePreferenceRow(
+                    title = stringResource(R.string.settings_hardcore),
+                    checked = hardcore,
+                    onCheckedChange = { hardcore = it }
                 )
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_whitelist_only),
-                    checked = whitelist,
-                    onCheckedChange = { whitelist = it }
+                MineServePreferenceRow(
+                    title = stringResource(R.string.settings_allow_flight),
+                    checked = allowFlight,
+                    onCheckedChange = { allowFlight = it }
+                )
+                MineServePreferenceRow(
+                    title = stringResource(R.string.settings_allow_nether),
+                    checked = allowNether,
+                    onCheckedChange = { allowNether = it }
                 )
             }
         }
 
-        // World & Sizing Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        // Security & Networking Group
+        MineServeSettingsGroup(title = stringResource(R.string.settings_section_security)) {
+            MineServePreferenceRow(
+                title = stringResource(R.string.settings_online_mode),
+                checked = onlineMode,
+                onCheckedChange = { onlineMode = it },
+                icon = Icons.Rounded.Security
+            )
+            MineServePreferenceRow(
+                title = stringResource(R.string.settings_whitelist_only),
+                checked = whitelist,
+                onCheckedChange = { whitelist = it }
+            )
+        }
+
+        // World & Sizing Group
+        MineServeSettingsGroup(title = stringResource(R.string.settings_section_world)) {
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(stringResource(R.string.settings_section_world), style = MaterialTheme.typography.titleSmall, color = Color.White, fontWeight = FontWeight.Bold)
-
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                     OutlinedTextField(
                         value = maxPlayers.toString(),
                         onValueChange = { maxPlayers = it.toIntOrNull() ?: maxPlayers },
                         label = { Text(stringResource(R.string.settings_max_players)) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                        singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = viewDistance.toString(),
                         onValueChange = { viewDistance = it.toIntOrNull() ?: viewDistance },
                         label = { Text(stringResource(R.string.settings_view_distance)) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                        singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -567,106 +480,46 @@ fun SettingsTab(
                         value = simulationDistance.toString(),
                         onValueChange = { simulationDistance = it.toIntOrNull() ?: simulationDistance },
                         label = { Text(stringResource(R.string.settings_sim_distance)) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                        singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
                         value = levelSeed,
                         onValueChange = { levelSeed = it },
                         label = { Text(stringResource(R.string.settings_level_seed_label)) },
-                        placeholder = { Text(stringResource(R.string.settings_level_seed_placeholder), color = Slate400) },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
+                        placeholder = { Text(stringResource(R.string.settings_level_seed_placeholder)) },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                        singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
                 }
             }
         }
 
-        // Section: Router Port Forwarding (UPnP & NAT-PMP)
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        // Router Port Forwarding (UPnP & NAT-PMP)
+        MineServeSettingsGroup(title = "Router Port Forwarding (UPnP / NAT-PMP)") {
+            MineServePreferenceRow(
+                title = "Auto-Forward Port on Server Boot",
+                subtitle = "Automatically configure UPnP or NAT-PMP on your local Wi-Fi router for direct WAN play.",
+                checked = portForwardAutoForward,
+                onCheckedChange = {
+                    portForwardAutoForward = it
+                    val updated = server.portForwardConfig.copy(autoForward = it, enabled = it)
+                    onSaveServer(server.copy(portForwardConfig = updated))
+                },
+                icon = Icons.Rounded.Router
+            )
+
             Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Router,
-                            contentDescription = null,
-                            tint = EmeraldPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = "Router Port Forwarding (UPnP / NAT-PMP)",
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    if (currentForwardState is PortForwardState.Mapped) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = EmeraldDark.copy(alpha = 0.3f),
-                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f))
-                        ) {
-                            Text(
-                                text = "MAPPED",
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = EmeraldLight,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                Text(
-                    text = "Automatically configure port forwarding on your local Wi-Fi router so friends on the Internet can join directly via your public WAN IP without third-party tunnel proxies.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
-                )
-
-                SettingSwitchRow(
-                    title = "Auto-Forward Port on Server Boot",
-                    checked = portForwardAutoForward,
-                    onCheckedChange = {
-                        portForwardAutoForward = it
-                        val updated = server.portForwardConfig.copy(autoForward = it, enabled = it)
-                        onSaveServer(server.copy(portForwardConfig = updated))
-                    }
-                )
-
-                // Current State Details & Actions
                 when (val fState = currentForwardState) {
                     is PortForwardState.Mapped -> {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Slate900.copy(alpha = 0.6f),
-                            border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.3f)),
+                            shape = ShapeDefaults.Medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
@@ -678,52 +531,69 @@ fun SettingsTab(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text("Public Direct Address:", style = MaterialTheme.typography.labelSmall, color = Slate400)
-                                    Text(fState.directAddress, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold, color = EmeraldLight)
+                                    Text(
+                                        text = "Public Direct Address",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Surface(
+                                        shape = ShapeDefaults.Small,
+                                        color = MaterialTheme.colorScheme.primaryContainer
+                                    ) {
+                                        Text(
+                                            text = "MAPPED",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                        )
+                                    }
                                 }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Local Mapping:", style = MaterialTheme.typography.labelSmall, color = Slate400)
-                                    Text("${fState.internalIp}:${fState.internalPort} (${fState.protocol})", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                                }
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text("Gateway:", style = MaterialTheme.typography.labelSmall, color = Slate400)
-                                    Text(fState.gatewayName, style = MaterialTheme.typography.bodySmall, color = Color.White)
-                                }
+                                MineServeTableMonoText(
+                                    text = fState.directAddress,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                MineServeTableMonoText(
+                                    text = "${fState.internalIp}:${fState.internalPort} (${fState.protocol}) - ${fState.gatewayName}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
 
                                 Spacer(modifier = Modifier.height(4.dp))
 
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                    Button(
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    FilledTonalButton(
                                         onClick = {
                                             clipboardManager.setText(AnnotatedString(fState.directAddress))
                                             Toast.makeText(context, "Copied ${fState.directAddress} to clipboard!", Toast.LENGTH_SHORT).show()
                                         },
-                                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                        ),
+                                        shape = ShapeDefaults.Small,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Copy IP", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Copy IP", fontWeight = FontWeight.SemiBold)
                                     }
 
-                                    OutlinedButton(
+                                    FilledTonalButton(
                                         onClick = {
-                                            portForwardManager.releasePort(server.id)
+                                            portForwardManager?.releasePort(server.id)
                                             Toast.makeText(context, "Released port mapping.", Toast.LENGTH_SHORT).show()
                                         },
-                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            contentColor = MaterialTheme.colorScheme.onSurface
+                                        ),
+                                        shape = ShapeDefaults.Small,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("Release", color = Color.White, fontSize = 12.sp)
+                                        Text("Release")
                                     }
                                 }
                             }
@@ -732,9 +602,8 @@ fun SettingsTab(
 
                     is PortForwardState.Discovering -> {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Slate900.copy(alpha = 0.6f),
-                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            shape = ShapeDefaults.Medium,
+                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -744,235 +613,169 @@ fun SettingsTab(
                             ) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    color = EmeraldPrimary,
+                                    color = MaterialTheme.colorScheme.primary,
                                     strokeWidth = 2.dp
                                 )
-                                Text(fState.message, style = MaterialTheme.typography.bodySmall, color = Slate400)
+                                Text(
+                                    text = fState.message,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
 
                     is PortForwardState.Failed -> {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = RedstoneRed.copy(alpha = 0.1f),
-                            border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.4f)),
+                            shape = ShapeDefaults.Medium,
+                            color = MaterialTheme.colorScheme.errorContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(
                                 modifier = Modifier.padding(12.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Port Forwarding Failed", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = RedstoneLight)
-                                Text(fState.reason, style = MaterialTheme.typography.bodySmall, color = Slate400, fontSize = 11.sp)
-                                OutlinedButton(
-                                    onClick = {
-                                        portForwardManager.forwardPortAsync(server)
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
+                                Text(
+                                    text = "Port Forwarding Failed",
+                                    style = MaterialTheme.typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                Text(
+                                    text = fState.reason,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                FilledTonalButton(
+                                    onClick = { portForwardManager?.forwardPortAsync(server) },
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                        contentColor = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    shape = ShapeDefaults.Small,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Icon(Icons.Default.Refresh, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Retry Router Mapping", color = Color.White, fontSize = 12.sp)
+                                    Text("Retry Router Mapping")
                                 }
                             }
                         }
                     }
 
                     is PortForwardState.Idle -> {
-                        OutlinedButton(
-                            onClick = {
-                                portForwardManager.forwardPortAsync(server)
-                            },
-                            shape = RoundedCornerShape(8.dp),
+                        FilledTonalButton(
+                            onClick = { portForwardManager?.forwardPortAsync(server) },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            shape = ShapeDefaults.Small,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.Router, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Router, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Forward Port ${server.port} Now", color = Color.White, fontSize = 12.sp)
+                            Text("Forward Port ${server.port} Now")
                         }
                     }
                 }
             }
         }
 
-        // Section: Public Multiplayer Tunneling
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        // Public Multiplayer Tunneling
+        MineServeSettingsGroup(title = stringResource(R.string.settings_tunnel_section_title)) {
+            MineServePreferenceRow(
+                title = stringResource(R.string.settings_tunnel_autostart),
+                subtitle = stringResource(R.string.settings_tunnel_section_desc),
+                checked = tunnelAutoStart,
+                onCheckedChange = {
+                    tunnelAutoStart = it
+                    val updated = server.tunnelConfig.copy(autoStart = it)
+                    onSaveServer(server.copy(tunnelConfig = updated))
+                },
+                icon = Icons.Rounded.Language
+            )
+
             Column(
-                modifier = Modifier.padding(14.dp),
+                modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Language,
-                            contentDescription = null,
-                            tint = EmeraldPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(
-                            text = stringResource(R.string.settings_tunnel_section_title),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
                 Text(
-                    text = stringResource(R.string.settings_tunnel_section_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400,
-                    fontSize = 12.sp
+                    text = stringResource(R.string.settings_tunnel_provider_label),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-
-                SettingSwitchRow(
-                    title = stringResource(R.string.settings_tunnel_autostart),
-                    checked = tunnelAutoStart,
-                    onCheckedChange = {
-                        tunnelAutoStart = it
-                        val updated = server.tunnelConfig.copy(autoStart = it)
-                        onSaveServer(server.copy(tunnelConfig = updated))
-                    }
-                )
-
-                // Provider Selection
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(stringResource(R.string.settings_tunnel_provider_label), style = MaterialTheme.typography.labelSmall, color = Slate400)
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        TunnelProvider.BORE to stringResource(R.string.settings_tunnel_provider_bore),
+                        TunnelProvider.PLAYIT to stringResource(R.string.settings_tunnel_provider_playit),
+                        TunnelProvider.CUSTOM_BORE to stringResource(R.string.settings_tunnel_provider_custom),
+                        TunnelProvider.MINESERVE_CLOUD to "MineServe Cloud"
+                    ).forEach { (provider, label) ->
                         FilterChip(
-                            selected = tunnelProvider == TunnelProvider.BORE,
+                            selected = tunnelProvider == provider,
                             onClick = {
-                                tunnelProvider = TunnelProvider.BORE
-                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.BORE)
+                                tunnelProvider = provider
+                                val updated = server.tunnelConfig.copy(provider = provider)
                                 onSaveServer(server.copy(tunnelConfig = updated))
                             },
-                            label = { Text(stringResource(R.string.settings_tunnel_provider_bore)) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldPrimary,
-                                selectedLabelColor = Color.Black,
-                                containerColor = Slate800,
-                                labelColor = Color.White
-                            )
-                        )
-
-                        FilterChip(
-                            selected = tunnelProvider == TunnelProvider.PLAYIT,
-                            onClick = {
-                                tunnelProvider = TunnelProvider.PLAYIT
-                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.PLAYIT)
-                                onSaveServer(server.copy(tunnelConfig = updated))
-                            },
-                            label = { Text(stringResource(R.string.settings_tunnel_provider_playit)) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldPrimary,
-                                selectedLabelColor = Color.Black,
-                                containerColor = Slate800,
-                                labelColor = Color.White
-                            )
-                        )
-
-                        FilterChip(
-                            selected = tunnelProvider == TunnelProvider.CUSTOM_BORE,
-                            onClick = {
-                                tunnelProvider = TunnelProvider.CUSTOM_BORE
-                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.CUSTOM_BORE)
-                                onSaveServer(server.copy(tunnelConfig = updated))
-                            },
-                            label = { Text(stringResource(R.string.settings_tunnel_provider_custom)) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldPrimary,
-                                selectedLabelColor = Color.Black,
-                                containerColor = Slate800,
-                                labelColor = Color.White
-                            )
-                        )
-
-                        FilterChip(
-                            selected = tunnelProvider == TunnelProvider.MINESERVE_CLOUD,
-                            onClick = {
-                                tunnelProvider = TunnelProvider.MINESERVE_CLOUD
-                                val updated = server.tunnelConfig.copy(provider = TunnelProvider.MINESERVE_CLOUD)
-                                onSaveServer(server.copy(tunnelConfig = updated))
-                            },
-                            label = { Text("MineServe Cloud") },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = EmeraldPrimary,
-                                selectedLabelColor = Color.Black,
-                                containerColor = Slate800,
-                                labelColor = Color.White
-                            )
+                            label = { Text(label) },
+                            border = null,
+                            colors = chipColors
                         )
                     }
                 }
 
-                // MineServe Cloud Tunnel configuration
                 if (tunnelProvider == TunnelProvider.MINESERVE_CLOUD) {
                     val profile = cloudAccountState.profile
                     val tier = profile?.tier?.uppercase() ?: "FREE"
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Slate900.copy(alpha = 0.6f),
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        shape = ShapeDefaults.Medium,
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier.padding(12.dp),
+                            modifier = Modifier.padding(14.dp),
                             verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             if (!cloudAccountState.isLinked) {
                                 Text(
                                     text = "Link your MineServe Cloud account in Settings to use custom *.play.mineserve.app addresses and remote panel access.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                OutlinedButton(
+                                FilledTonalButton(
                                     onClick = onOpenCloudPortal,
-                                    shape = RoundedCornerShape(8.dp),
+                                    shape = ShapeDefaults.Small,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
-                                        text = if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) "Sign In to MineServe Cloud" else "Open MineServe Cloud Portal",
-                                        color = Color.White,
-                                        fontSize = 12.sp
+                                        text = if (BuildConfig.IS_PLAY_STORE) "Sign In to MineServe Cloud" else "Open MineServe Cloud Portal"
                                     )
                                 }
                             } else if (tier == "FREE") {
-                                if (com.devwithzachary.mineserve.BuildConfig.IS_PLAY_STORE) {
+                                if (BuildConfig.IS_PLAY_STORE) {
                                     Text(
                                         text = "Custom *.play.mineserve.app tunnels require an active MineServe Plus or Pro membership. Plan changes and purchases are not available in this app.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = GoldYellow
+                                        color = extColors.warning
                                     )
                                 } else {
-                                    val pricing = remember { com.devwithzachary.mineserve.cloud.CloudPricing.current() }
+                                    val pricing = remember { CloudPricing.current() }
                                     Text(
                                         text = "Custom *.play.mineserve.app tunnels require MineServe Plus (7-day free trial, then ${pricing.plusMonthly}/mo, 1 address) or Pro (${pricing.proMonthly}/mo, 3 addresses).",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = GoldYellow
+                                        color = extColors.warning
                                     )
-                                    OutlinedButton(
+                                    FilledTonalButton(
                                         onClick = onOpenCloudPortal,
-                                        shape = RoundedCornerShape(8.dp),
+                                        shape = ShapeDefaults.Small,
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text("Start 7-Day Free Trial in Cloud Portal", color = Color.White, fontSize = 12.sp)
+                                        Text("Start 7-Day Free Trial in Cloud Portal")
                                     }
                                 }
                             } else {
@@ -981,7 +784,7 @@ fun SettingsTab(
                                 val matchedCloudRegion = subDetails.firstOrNull {
                                     it.subdomain.equals(cloudSubdomain, ignoreCase = true)
                                 }?.region
-                                androidx.compose.runtime.LaunchedEffect(matchedCloudRegion) {
+                                LaunchedEffect(matchedCloudRegion) {
                                     if (!matchedCloudRegion.isNullOrBlank() && matchedCloudRegion != cloudRegion) {
                                         cloudRegion = matchedCloudRegion
                                         onSaveServer(
@@ -996,7 +799,11 @@ fun SettingsTab(
                                     }
                                 }
                                 if (existingSubs.isNotEmpty()) {
-                                    Text("Your Claimed Addresses:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    Text(
+                                        text = "Your Claimed Addresses",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         existingSubs.forEach { sub ->
                                             val subInfo = subDetails.firstOrNull { it.subdomain.equals(sub, ignoreCase = true) }
@@ -1033,15 +840,17 @@ fun SettingsTab(
                                                     } else {
                                                         "$sub.$subDomain"
                                                     }
-                                                    Text(text, fontSize = 11.sp)
-                                                }
+                                                    Text(text, style = MaterialTheme.typography.labelSmall)
+                                                },
+                                                border = null,
+                                                colors = chipColors
                                             )
                                         }
                                     }
                                 }
 
                                 val effectiveDomain = if (tier == "PRO") cloudDomain else "play.mineserve.app"
-                                androidx.compose.runtime.LaunchedEffect(tier, cloudDomain) {
+                                LaunchedEffect(tier, cloudDomain) {
                                     if (tier != "PRO" && cloudDomain != "play.mineserve.app") {
                                         cloudDomain = "play.mineserve.app"
                                         onSaveServer(
@@ -1072,20 +881,25 @@ fun SettingsTab(
                                         )
                                     },
                                     label = { Text("Subdomain") },
-                                    placeholder = { Text("my-smp", color = Slate400) },
-                                    suffix = { Text(".$effectiveDomain", color = EmeraldLight, fontSize = 12.sp) },
+                                    placeholder = { Text("my-smp", fontFamily = monoFont) },
+                                    suffix = {
+                                        Text(
+                                            text = ".$effectiveDomain",
+                                            color = MaterialTheme.colorScheme.tertiary,
+                                            fontFamily = monoFont
+                                        )
+                                    },
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                                     singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = ObsidianCardBorder,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
                                     modifier = Modifier.fillMaxWidth()
                                 )
 
                                 if (tier == "PRO") {
-                                    Text("Domain Suffix (Pro):", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                    Text(
+                                        text = "Domain Suffix (Pro)",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                         listOf("play.mineserve.app" to ".play.mineserve.app", "playms.uk" to ".playms.uk (Short)").forEach { (dom, label) ->
                                             FilterChip(
@@ -1103,13 +917,19 @@ fun SettingsTab(
                                                         )
                                                     )
                                                 },
-                                                label = { Text(label, fontSize = 11.sp) }
+                                                label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                                border = null,
+                                                colors = chipColors
                                             )
                                         }
                                     }
                                 }
 
-                                Text("Relay Region:", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                Text(
+                                    text = "Relay Region",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     listOf(
                                         "us-east" to "US East",
@@ -1131,7 +951,9 @@ fun SettingsTab(
                                                     )
                                                 )
                                             },
-                                            label = { Text(label, fontSize = 11.sp) }
+                                            label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                            border = null,
+                                            colors = chipColors
                                         )
                                     }
                                 }
@@ -1160,16 +982,23 @@ fun SettingsTab(
                                         }
                                     },
                                     enabled = !isReservingSubdomain && cloudSubdomain.length >= 3,
-                                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                                    shape = RoundedCornerShape(8.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.primary,
+                                        contentColor = MaterialTheme.colorScheme.onPrimary
+                                    ),
+                                    shape = ShapeDefaults.Small,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     if (isReservingSubdomain) {
-                                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp
+                                        )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Reserving Address...", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Reserving Address...", fontWeight = FontWeight.SemiBold)
                                     } else {
-                                        Text("Reserve Cloud Address", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text("Reserve Cloud Address", fontWeight = FontWeight.SemiBold)
                                     }
                                 }
 
@@ -1177,7 +1006,11 @@ fun SettingsTab(
                                     Text(
                                         text = msg,
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = if (msg.startsWith("Reserved")) EmeraldLight else RedstoneLight
+                                        color = if (msg.startsWith("Reserved")) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.error
+                                        }
                                     )
                                 }
                             }
@@ -1185,7 +1018,6 @@ fun SettingsTab(
                     }
                 }
 
-                // Playit.gg configuration
                 if (tunnelProvider == TunnelProvider.PLAYIT) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedTextField(
@@ -1196,84 +1028,68 @@ fun SettingsTab(
                                 onSaveServer(server.copy(tunnelConfig = updated))
                             },
                             label = { Text(stringResource(R.string.settings_tunnel_playit_key_label)) },
-                            placeholder = { Text(stringResource(R.string.settings_tunnel_playit_key_placeholder), color = Slate400) },
+                            placeholder = { Text(stringResource(R.string.settings_tunnel_playit_key_placeholder)) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                             singleLine = true,
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = EmeraldPrimary,
-                                unfocusedBorderColor = ObsidianCardBorder,
-                                focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
-                            ),
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
                             text = stringResource(R.string.settings_tunnel_playit_hint),
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate400,
-                            fontSize = 11.sp
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
 
-                // Custom Bore configuration
                 if (tunnelProvider == TunnelProvider.CUSTOM_BORE) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            OutlinedTextField(
-                                value = customRelayHost,
-                                onValueChange = {
-                                    customRelayHost = it
-                                    val updated = server.tunnelConfig.copy(
-                                        provider = TunnelProvider.CUSTOM_BORE,
-                                        customRelayHost = it.trim(),
-                                        customRelayPort = customRelayPort,
-                                        playitSecret = playitSecret
-                                    )
-                                    onSaveServer(server.copy(tunnelConfig = updated))
-                                },
-                                label = { Text(stringResource(R.string.settings_tunnel_relay_host)) },
-                                placeholder = { Text(stringResource(R.string.settings_tunnel_relay_host_placeholder), color = Slate400) },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = ObsidianCardBorder,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
-                                modifier = Modifier.weight(2f)
-                            )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = customRelayHost,
+                            onValueChange = {
+                                customRelayHost = it
+                                val updated = server.tunnelConfig.copy(
+                                    provider = TunnelProvider.CUSTOM_BORE,
+                                    customRelayHost = it.trim(),
+                                    customRelayPort = customRelayPort,
+                                    playitSecret = playitSecret
+                                )
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            },
+                            label = { Text(stringResource(R.string.settings_tunnel_relay_host)) },
+                            placeholder = { Text(stringResource(R.string.settings_tunnel_relay_host_placeholder)) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                            singleLine = true,
+                            modifier = Modifier.weight(2f)
+                        )
 
-                            OutlinedTextField(
-                                value = customRelayPort.toString(),
-                                onValueChange = {
-                                    val port = it.toIntOrNull() ?: customRelayPort
-                                    customRelayPort = port
-                                    val updated = server.tunnelConfig.copy(
-                                        provider = TunnelProvider.CUSTOM_BORE,
-                                        customRelayHost = customRelayHost.trim(),
-                                        customRelayPort = port,
-                                        playitSecret = playitSecret
-                                    )
-                                    onSaveServer(server.copy(tunnelConfig = updated))
-                                },
-                                label = { Text(stringResource(R.string.settings_tunnel_port)) },
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = ObsidianCardBorder,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
+                        OutlinedTextField(
+                            value = customRelayPort.toString(),
+                            onValueChange = {
+                                val port = it.toIntOrNull() ?: customRelayPort
+                                customRelayPort = port
+                                val updated = server.tunnelConfig.copy(
+                                    provider = TunnelProvider.CUSTOM_BORE,
+                                    customRelayHost = customRelayHost.trim(),
+                                    customRelayPort = port,
+                                    playitSecret = playitSecret
+                                )
+                                onSaveServer(server.copy(tunnelConfig = updated))
+                            },
+                            label = { Text(stringResource(R.string.settings_tunnel_port)) },
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                            singleLine = true,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
                 }
             }
         }
 
         // Proxy Network Orchestration / Internal Loopback Binding
-        val serverRepo = remember(context) { ServerRepository(context, PRootEngine(context)) }
-
         if (server.type.isProxy) {
+            val serverRepo = remember(context, isInspection) {
+                if (isInspection) null else ServerRepository(context, PRootEngine(context))
+            }
             val candidateBackends = remember(allServers, server.id) {
                 allServers.filter { it.id != server.id && !it.type.isProxy }
             }
@@ -1284,196 +1100,143 @@ fun SettingsTab(
                 mutableStateOf(server.proxyConfig.onlineMode)
             }
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder)
-            ) {
+            MineServeSettingsGroup(title = "Proxy Network & Linked Servers") {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = "Proxy Network & Linked Servers",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
                     Text(
                         text = "Link backend servers on this device to your ${server.type.displayName}. Applying writes ${if (server.type == ServerType.VELOCITY) "velocity.toml" else "config.yml"}.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
 
-                    SettingSwitchRow(
-                        title = "Proxy Online Mode (Mojang Auth)",
-                        checked = proxyOnlineMode,
-                        onCheckedChange = { proxyOnlineMode = it }
+                MineServePreferenceRow(
+                    title = "Proxy Online Mode (Mojang Auth)",
+                    checked = proxyOnlineMode,
+                    onCheckedChange = { proxyOnlineMode = it },
+                    icon = Icons.Rounded.Public
+                )
+
+                if (candidateBackends.isEmpty()) {
+                    Text(
+                        text = "No backend servers found. Create a Paper, Purpur, Fabric, or Vanilla server to link it here.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp)
                     )
-
-                    if (candidateBackends.isEmpty()) {
-                        Text(
-                            text = "No backend servers found. Create a Paper, Purpur, Fabric, or Vanilla server to link it here.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
-                        )
-                    } else {
-                        candidateBackends.forEach { backend ->
-                            val isLinked = routes.any { it.targetServerId == backend.id }
-                            val alias = routes.firstOrNull { it.targetServerId == backend.id }?.alias
-                                ?: ProxyNetworkManager.sanitizeAlias(backend.name)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Slate900, RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = backend.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
+                } else {
+                    candidateBackends.forEachIndexed { index, backend ->
+                        val isLinked = routes.any { it.targetServerId == backend.id }
+                        val alias = routes.firstOrNull { it.targetServerId == backend.id }?.alias
+                            ?: ProxyNetworkManager.sanitizeAlias(backend.name)
+                        MineServePreferenceRow(
+                            title = backend.name,
+                            subtitle = "${backend.type.displayName} | 127.0.0.1:${backend.port} | alias: $alias",
+                            checked = isLinked,
+                            onCheckedChange = { checked ->
+                                routes = if (checked) {
+                                    routes + ProxyRoute(
+                                        alias = ProxyNetworkManager.sanitizeAlias(backend.name),
+                                        targetServerId = backend.id,
+                                        host = "127.0.0.1",
+                                        port = backend.port
                                     )
-                                    Text(
-                                        text = "${backend.type.displayName} | 127.0.0.1:${backend.port} | alias: $alias",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Slate400
-                                    )
+                                } else {
+                                    routes.filterNot { it.targetServerId == backend.id }
                                 }
-                                Switch(
-                                    checked = isLinked,
-                                    onCheckedChange = { checked ->
-                                        routes = if (checked) {
-                                            routes + ProxyRoute(
-                                                alias = ProxyNetworkManager.sanitizeAlias(backend.name),
-                                                targetServerId = backend.id,
-                                                host = "127.0.0.1",
-                                                port = backend.port
-                                            )
-                                        } else {
-                                            routes.filterNot { it.targetServerId == backend.id }
-                                        }
-                                    },
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = EmeraldPrimary,
-                                        checkedTrackColor = EmeraldDark,
-                                        uncheckedTrackColor = Slate800
+                            }
+                        )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                val draft = server.copy(
+                                    proxyConfig = server.proxyConfig.copy(
+                                        routes = routes,
+                                        tryOrder = routes.map { it.alias },
+                                        onlineMode = proxyOnlineMode
                                     )
                                 )
+                                val appliedCfg = ProxyNetworkManager.applyProxyConfig(
+                                    proxyServer = draft,
+                                    proxyDir = serverRepo?.getServerDirectory(server.id) ?: java.io.File("/preview"),
+                                    allServers = allServers
+                                )
+                                onSaveServer(draft.copy(proxyConfig = appliedCfg))
+                                Toast.makeText(context, "Proxy config applied", Toast.LENGTH_SHORT).show()
                             }
-                        }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Small,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Apply Config", fontWeight = FontWeight.SemiBold)
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    val draft = server.copy(
-                                        proxyConfig = server.proxyConfig.copy(
-                                            routes = routes,
-                                            tryOrder = routes.map { it.alias },
-                                            onlineMode = proxyOnlineMode
-                                        )
-                                    )
-                                    val appliedCfg = ProxyNetworkManager.applyProxyConfig(
-                                        proxyServer = draft,
-                                        proxyDir = serverRepo.getServerDirectory(server.id),
-                                        allServers = allServers
-                                    )
-                                    onSaveServer(draft.copy(proxyConfig = appliedCfg))
-                                    Toast.makeText(context, "Proxy config applied", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Apply Config", fontWeight = FontWeight.SemiBold)
-                        }
-
-                        OutlinedButton(
-                            enabled = routes.isNotEmpty(),
-                            onClick = {
-                                scope.launch {
-                                    routes.forEach { r ->
+                    FilledTonalButton(
+                        enabled = routes.isNotEmpty(),
+                        onClick = {
+                            scope.launch {
+                                routes.forEach { r ->
+                                    if (serverRepo != null) {
                                         ProxyNetworkManager.setBackendLoopbackMode(serverRepo, r.targetServerId, true)
                                     }
-                                    Toast.makeText(
-                                        context,
-                                        "Bound ${routes.size} backend(s) to 127.0.0.1 (online-mode=false)",
-                                        Toast.LENGTH_LONG
-                                    ).show()
                                 }
-                            },
-                            border = BorderStroke(1.dp, EmeraldPrimary),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Bind Backends 127.0.0.1", color = EmeraldLight)
-                        }
+                                Toast.makeText(
+                                    context,
+                                    "Bound ${routes.size} backend(s) to 127.0.0.1 (online-mode=false)",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        shape = ShapeDefaults.Small,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Bind 127.0.0.1")
                     }
                 }
             }
         } else if (!server.type.isBedrockNative) {
             val isLoopbackBound = props.serverIp.trim() == "127.0.0.1"
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Internal Loopback Binding (Proxy Backend)",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = "Bind server-ip to 127.0.0.1 and set online-mode=false so this server is only reachable through Velocity or BungeeCord.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
-                            )
-                        }
-                        Switch(
-                            checked = isLoopbackBound,
-                            onCheckedChange = { enabled ->
-                                val updated = props.copy(
-                                    serverIp = if (enabled) "127.0.0.1" else "",
-                                    onlineMode = !enabled
-                                )
-                                props = updated
-                                onSaveProperties(updated)
-                                Toast.makeText(
-                                    context,
-                                    if (enabled) "Bound to 127.0.0.1 (proxy backend mode)" else "Restored public binding (0.0.0.0)",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                            },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = EmeraldPrimary,
-                                checkedTrackColor = EmeraldDark,
-                                uncheckedTrackColor = Slate800
-                            )
+            MineServeSettingsGroup(title = "Proxy Backend") {
+                MineServePreferenceRow(
+                    title = "Internal Loopback Binding",
+                    subtitle = "Bind server-ip to 127.0.0.1 and set online-mode=false so this server is only reachable through Velocity or BungeeCord.",
+                    checked = isLoopbackBound,
+                    onCheckedChange = { enabled ->
+                        val updated = props.copy(
+                            serverIp = if (enabled) "127.0.0.1" else "",
+                            onlineMode = !enabled
                         )
-                    }
-                }
+                        props = updated
+                        onSaveProperties(updated)
+                        Toast.makeText(
+                            context,
+                            if (enabled) "Bound to 127.0.0.1 (proxy backend mode)" else "Restored public binding (0.0.0.0)",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    icon = Icons.Rounded.Public
+                )
             }
         }
 
@@ -1519,141 +1282,150 @@ fun SettingsTab(
             includePlayerSkins = includeSkins
         )
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder)
-        ) {
+        MineServeSettingsGroup(title = "Discord Webhook Bridge") {
+            MineServePreferenceRow(
+                title = "Enable Discord Bridge",
+                subtitle = "Broadcast server lifecycle, player join/leave, and backup events to a Discord channel.",
+                checked = webhookEnabled,
+                onCheckedChange = {
+                    webhookEnabled = it
+                    onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                },
+                icon = Icons.Rounded.NotificationsActive
+            )
+
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Discord Webhook Bridge",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-                        Text(
-                            text = "Broadcast server lifecycle, player join/leave, and backup events to a Discord channel with zero plugins.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
-                        )
-                    }
-                    Switch(
-                        checked = webhookEnabled,
-                        onCheckedChange = {
-                            webhookEnabled = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = EmeraldPrimary,
-                            checkedTrackColor = EmeraldDark,
-                            uncheckedTrackColor = Slate800
-                        )
-                    )
-                }
-
                 OutlinedTextField(
                     value = webhookUrl,
                     onValueChange = { webhookUrl = it },
                     label = { Text("Discord Webhook URL") },
-                    placeholder = { Text("https://discord.com/api/webhooks/...", color = Slate400) },
+                    placeholder = { Text("https://discord.com/api/webhooks/...", fontFamily = monoFont) },
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = EmeraldPrimary,
-                        unfocusedBorderColor = ObsidianCardBorder,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
-                    ),
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
 
-                AnimatedVisibility(visible = webhookEnabled) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        SettingSwitchRow("Server Online", notifyStart, {
-                            notifyStart = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                        SettingSwitchRow("Server Offline", notifyStop, {
-                            notifyStop = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                        SettingSwitchRow("Crash / Unexpected Exit", notifyCrash, {
-                            notifyCrash = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                        SettingSwitchRow("Player Join", notifyJoin, {
-                            notifyJoin = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                        SettingSwitchRow("Player Leave", notifyLeave, {
-                            notifyLeave = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                        SettingSwitchRow("Backup Completed", notifyBackup, {
-                            notifyBackup = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                        SettingSwitchRow("Include Player Avatar Skins", includeSkins, {
-                            includeSkins = it
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                        })
-                    }
+            AnimatedVisibility(visible = webhookEnabled) {
+                Column {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    MineServePreferenceRow("Server Online", checked = notifyStart, onCheckedChange = {
+                        notifyStart = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                    MineServePreferenceRow("Server Offline", checked = notifyStop, onCheckedChange = {
+                        notifyStop = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                    MineServePreferenceRow("Crash / Unexpected Exit", checked = notifyCrash, onCheckedChange = {
+                        notifyCrash = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                    MineServePreferenceRow("Player Join", checked = notifyJoin, onCheckedChange = {
+                        notifyJoin = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                    MineServePreferenceRow("Player Leave", checked = notifyLeave, onCheckedChange = {
+                        notifyLeave = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                    MineServePreferenceRow("Backup Completed", checked = notifyBackup, onCheckedChange = {
+                        notifyBackup = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                    MineServePreferenceRow("Include Player Avatar Skins", checked = includeSkins, onCheckedChange = {
+                        includeSkins = it
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                    })
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Button(
+                    onClick = {
+                        onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
+                        Toast.makeText(context, "Discord webhook settings saved", Toast.LENGTH_SHORT).show()
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shape = ShapeDefaults.Small,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Save", fontWeight = FontWeight.SemiBold)
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            onSaveServer(server.copy(discordWebhookConfig = buildDiscordConfig()))
-                            Toast.makeText(context, "Discord webhook settings saved", Toast.LENGTH_SHORT).show()
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Save", fontWeight = FontWeight.SemiBold)
-                    }
-
-                    OutlinedButton(
-                        enabled = !isTestingWebhook && webhookUrl.isNotBlank(),
-                        onClick = {
-                            isTestingWebhook = true
-                            scope.launch {
-                                val res = DiscordWebhookClient.sendTestMessage(webhookUrl, server.name)
-                                isTestingWebhook = false
-                                val msg = res.fold(
-                                    onSuccess = { "Test message sent to Discord!" },
-                                    onFailure = { err -> err.message ?: "Failed to send test message" }
-                                )
-                                Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
-                            }
-                        },
-                        border = BorderStroke(1.dp, EmeraldPrimary),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        if (isTestingWebhook) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = EmeraldPrimary)
-                        } else {
-                            Text("Test Webhook", color = EmeraldLight)
+                FilledTonalButton(
+                    enabled = !isTestingWebhook && webhookUrl.isNotBlank(),
+                    onClick = {
+                        isTestingWebhook = true
+                        scope.launch {
+                            val res = DiscordWebhookClient.sendTestMessage(webhookUrl, server.name)
+                            isTestingWebhook = false
+                            val msg = res.fold(
+                                onSuccess = { "Test message sent to Discord!" },
+                                onFailure = { err -> err.message ?: "Failed to send test message" }
+                            )
+                            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
                         }
+                    },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    shape = ShapeDefaults.Small,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (isTestingWebhook) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text("Test Webhook")
                     }
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun SavedBanner(message: String) {
+    Surface(
+        shape = ShapeDefaults.Small,
+        color = MaterialTheme.colorScheme.primaryContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.Check,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 
@@ -1671,15 +1443,29 @@ fun SettingSwitchRow(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(title, style = MaterialTheme.typography.bodyMedium, color = Color.White)
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Switch(
             checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = EmeraldPrimary,
-                checkedTrackColor = EmeraldDark,
-                uncheckedTrackColor = Slate800
-            )
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun SettingsTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        SettingsTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            allServers = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleServers,
+            status = ServerStatus.RUNNING,
+            initialProperties = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleProperties,
+            onSaveProperties = {},
+            cloudAccountState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleCloudLinkedState
         )
     }
 }

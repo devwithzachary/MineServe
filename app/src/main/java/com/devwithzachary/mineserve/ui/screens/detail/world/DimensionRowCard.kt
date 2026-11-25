@@ -1,6 +1,5 @@
 package com.devwithzachary.mineserve.ui.screens.detail.world
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,32 +7,26 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.material.icons.rounded.LocalFireDepartment
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
 import com.devwithzachary.mineserve.model.DimensionType
 import com.devwithzachary.mineserve.model.WorldDimensionInfo
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
 import java.text.DecimalFormat
 
 fun formatWorldFileSize(bytes: Long): String {
@@ -51,21 +44,19 @@ fun DimensionRowCard(
     modifier: Modifier = Modifier
 ) {
     val (icon, tintColor) = when (dimInfo.dimension) {
-        DimensionType.OVERWORLD -> Icons.Default.Public to EmeraldLight
-        DimensionType.NETHER -> Icons.Default.LocalFireDepartment to RedstoneRed
-        DimensionType.THE_END -> Icons.Default.AutoAwesome to DiamondCyan
+        DimensionType.OVERWORLD -> Icons.Rounded.Public to MaterialTheme.colorScheme.primary
+        DimensionType.NETHER -> Icons.Rounded.LocalFireDepartment to MaterialTheme.colorScheme.error
+        DimensionType.THE_END -> Icons.Rounded.AutoAwesome to MaterialTheme.colorScheme.tertiary
     }
 
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Slate800,
-        border = BorderStroke(1.dp, ObsidianCardBorder),
+    MineServeCard(
+        containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = ShapeDefaults.Medium,
+        contentPadding = PaddingValues(12.dp),
         modifier = modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -74,51 +65,57 @@ fun DimensionRowCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Icon(imageVector = icon, contentDescription = null, tint = tintColor, modifier = Modifier.size(22.dp))
-                Column {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tintColor,
+                    modifier = Modifier.size(22.dp)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = dimInfo.dimension.displayName,
-                        color = Color.White,
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
+                    MineServeTableMonoText(
                         text = if (dimInfo.exists) {
-                            "${formatWorldFileSize(dimInfo.sizeBytes)} • ${dimInfo.regionFilesCount} region files (${dimInfo.totalChunksCount} chunks)"
+                            "${formatWorldFileSize(dimInfo.sizeBytes)} - ${dimInfo.regionFilesCount} region files (${dimInfo.totalChunksCount} chunks)"
                         } else {
                             "Not yet generated"
                         },
-                        color = Slate400,
-                        fontSize = 11.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
             if (dimInfo.dimension != DimensionType.OVERWORLD && dimInfo.exists) {
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = onResetRequested,
-                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                    shape = RoundedCornerShape(6.dp),
-                    border = BorderStroke(1.dp, RedstoneRed.copy(alpha = 0.6f))
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                    ),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    shape = ShapeDefaults.Small
                 ) {
                     Text(
                         text = if (dimInfo.dimension == DimensionType.NETHER) "Reset Nether" else "Reset End",
-                        color = RedstoneLight,
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
             } else if (dimInfo.dimension == DimensionType.OVERWORLD) {
                 Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = EmeraldDark.copy(alpha = 0.3f)
+                    shape = ShapeDefaults.Small,
+                    color = MaterialTheme.colorScheme.primaryContainer
                 ) {
                     Text(
                         text = "Primary",
-                        color = EmeraldLight,
-                        fontSize = 10.sp,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                     )
                 }
             }

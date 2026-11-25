@@ -7,7 +7,6 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -17,47 +16,38 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
-import androidx.compose.material.icons.filled.Autorenew
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Dns
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.WarningAmber
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.Autorenew
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Key
+import androidx.compose.material.icons.rounded.Lock
+import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.Visibility
+import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -69,16 +59,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.admin.web.WebAdminConfig
 import com.devwithzachary.mineserve.admin.web.WebAdminExposure
 import com.devwithzachary.mineserve.admin.web.WebAdminExposureState
@@ -86,21 +73,14 @@ import com.devwithzachary.mineserve.admin.web.WebAdminState
 import com.devwithzachary.mineserve.auth.AuditLogEntry
 import com.devwithzachary.mineserve.auth.PanelUser
 import com.devwithzachary.mineserve.auth.UserRole
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.NetworkAddressChip
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.ui.components.QrCodeHelper
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.Slate200
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,6 +102,8 @@ fun RemoteAdminScreen(
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     var usernameInput by remember(adminConfig.username) { mutableStateOf(adminConfig.username) }
     var passwordInput by remember(adminConfig.password) { mutableStateOf(adminConfig.password) }
@@ -153,23 +135,25 @@ fun RemoteAdminScreen(
                     Text(
                         text = "Web Remote Admin",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        fontWeight = FontWeight.Bold
                     )
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color.White
+                            imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                            contentDescription = "Back"
                         )
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate950)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -178,19 +162,12 @@ fun RemoteAdminScreen(
                 .padding(innerPadding)
                 .verticalScroll(scrollState)
                 .padding(horizontal = LayoutManager.screenHorizontalPadding, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             // Master Toggle Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(20.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -200,31 +177,44 @@ fun RemoteAdminScreen(
                         horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (adminConfig.enabled) EmeraldDark.copy(alpha = 0.4f) else Slate800,
+                            shape = ShapeDefaults.Small,
+                            color = if (adminConfig.enabled) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest
+                            },
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = Icons.Default.Dns,
+                                    imageVector = Icons.Rounded.Dns,
                                     contentDescription = null,
-                                    tint = if (adminConfig.enabled) EmeraldLight else Slate400,
-                                    modifier = Modifier.size(24.dp)
+                                    tint = if (adminConfig.enabled) {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
 
-                        Column {
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = "Web Remote Admin",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onSurface
                             )
                             Text(
                                 text = if (adminConfig.enabled) "Server running on port ${adminConfig.port}" else "Service stopped",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (adminConfig.enabled) EmeraldLight else Slate400
+                                fontFamily = monoFont,
+                                color = if (adminConfig.enabled) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                }
                             )
                         }
                     }
@@ -234,110 +224,61 @@ fun RemoteAdminScreen(
                     Switch(
                         checked = adminConfig.enabled,
                         onCheckedChange = { isChecked ->
-                            val updated = adminConfig.copy(enabled = isChecked)
-                            onUpdateConfig(updated)
-                        },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = EmeraldPrimary,
-                            checkedTrackColor = Slate800,
-                            checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f),
-                            uncheckedThumbColor = Slate400,
-                            uncheckedTrackColor = Slate900,
-                            uncheckedBorderColor = Slate700
-                        )
+                            onUpdateConfig(adminConfig.copy(enabled = isChecked))
+                        }
                     )
                 }
             }
 
-            // Connection & Access Card
+            // Connection & Access Group
             if (adminConfig.enabled && adminState.localUrl != null) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                MineServeSettingsGroup(title = "Local Network Access") {
                     Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Text(
-                            text = "Local Network Access",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
-
                         Text(
                             text = "Open this address in any browser on your home Wi-Fi network to control your Minecraft servers from a PC or tablet:",
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate400
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        // Address Row with Actions
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Slate900,
-                            border = BorderStroke(1.dp, Slate800),
-                            modifier = Modifier.fillMaxWidth()
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 14.dp, vertical = 12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = adminState.localUrl,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontWeight = FontWeight.Bold,
-                                    color = EmeraldLight
-                                )
+                            NetworkAddressChip(
+                                address = adminState.localUrl,
+                                isPublicTunnel = false,
+                                onCopied = {
+                                    Toast.makeText(context, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
 
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    IconButton(
-                                        onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                            clipboard.setPrimaryClip(ClipData.newPlainText("MineServe Web Admin URL", adminState.localUrl))
-                                            Toast.makeText(context, "URL copied to clipboard", Toast.LENGTH_SHORT).show()
-                                        },
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ContentCopy,
-                                            contentDescription = "Copy URL",
-                                            tint = Slate400,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                            Spacer(modifier = Modifier.width(8.dp))
 
-                                    IconButton(
-                                        onClick = {
-                                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adminState.localUrl))
-                                            context.startActivity(intent)
-                                        },
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                                            contentDescription = "Open in Browser",
-                                            tint = EmeraldPrimary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                            IconButton(
+                                onClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(adminState.localUrl))
+                                    context.startActivity(intent)
                                 }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
+                                    contentDescription = "Open in Browser",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
 
-                        // QR Code Preview
                         if (qrBitmap != null) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Slate900)
+                                    .clip(ShapeDefaults.Medium)
+                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                                     .padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -350,7 +291,7 @@ fun RemoteAdminScreen(
                                 Text(
                                     text = "Scan with your laptop or tablet camera to open instantly",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -358,42 +299,29 @@ fun RemoteAdminScreen(
                 }
             }
 
-            // Security & Authentication Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // Security & Authentication Group
+            MineServeSettingsGroup(title = "Security & Admin Credentials") {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Lock,
+                            imageVector = Icons.Rounded.Lock,
                             contentDescription = null,
-                            tint = EmeraldLight,
-                            modifier = Modifier.size(20.dp)
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "Security & Admin Credentials",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            text = "Require strong credentials to access server consoles, files, and configuration via the web panel.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
-                    Text(
-                        text = "Require strong credentials to access server consoles, file management, and configuration via the web panel.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
-                    )
-
-                    // Username Input
                     OutlinedTextField(
                         value = usernameInput,
                         onValueChange = {
@@ -401,20 +329,11 @@ fun RemoteAdminScreen(
                             onUpdateConfig(adminConfig.copy(username = it.trim()))
                         },
                         label = { Text("Admin Username") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Person, contentDescription = null, tint = Slate400)
-                        },
+                        leadingIcon = { Icon(Icons.Rounded.Person, contentDescription = null) },
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = Slate700,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Password Input
                     OutlinedTextField(
                         value = passwordInput,
                         onValueChange = {
@@ -422,65 +341,61 @@ fun RemoteAdminScreen(
                             onUpdateConfig(adminConfig.copy(password = it))
                         },
                         label = { Text("Admin Password") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Key, contentDescription = null, tint = Slate400)
-                        },
+                        leadingIcon = { Icon(Icons.Rounded.Key, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = "Toggle password visibility",
-                                    tint = Slate400
+                                    imageVector = if (passwordVisible) Icons.Rounded.VisibilityOff else Icons.Rounded.Visibility,
+                                    contentDescription = "Toggle password visibility"
                                 )
                             }
                         },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = Slate700,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    // Action buttons: Copy & Generate Password
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 clipboard.setPrimaryClip(ClipData.newPlainText("MineServe Admin Password", passwordInput))
                                 Toast.makeText(context, "Password copied to clipboard", Toast.LENGTH_SHORT).show()
                             },
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            border = BorderStroke(1.dp, Slate700),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            shape = ShapeDefaults.Small,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Copy Password", fontSize = 12.sp)
+                            Text("Copy Password", style = MaterialTheme.typography.labelMedium)
                         }
 
-                        Button(
+                        FilledTonalButton(
                             onClick = {
                                 val newPass = onGeneratePassword()
                                 passwordInput = newPass
                                 Toast.makeText(context, "Generated new strong password", Toast.LENGTH_SHORT).show()
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            shape = ShapeDefaults.Small,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Autorenew, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Autorenew, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Generate", color = EmeraldLight, fontSize = 12.sp)
+                            Text("Generate", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                         }
                     }
 
-                    // Port Setting
                     OutlinedTextField(
                         value = portInput,
                         onValueChange = {
@@ -491,14 +406,9 @@ fun RemoteAdminScreen(
                             }
                         },
                         label = { Text("Local HTTP Port") },
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = Slate700,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -515,31 +425,18 @@ fun RemoteAdminScreen(
                 onRefresh = onRefreshUsers
             )
 
-            // Public Internet Exposure Card
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
+            // Public Internet Exposure Group
+            MineServeSettingsGroup(title = "Public Internet Exposure") {
                 Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Public Internet Exposure",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-
                     Text(
                         text = "Optionally make the remote web panel accessible outside your local Wi-Fi network using UPnP router port forwarding or public tunnels.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    // Vertical List of Exposure Options
                     val exposureOptions = listOf(
                         Triple(
                             WebAdminExposure.LAN_ONLY,
@@ -567,9 +464,12 @@ fun RemoteAdminScreen(
                         for ((exposureType, title, desc) in exposureOptions) {
                             val isSelected = adminConfig.exposure == exposureType
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isSelected) EmeraldDark.copy(alpha = 0.25f) else Slate900,
-                                border = BorderStroke(1.dp, if (isSelected) EmeraldPrimary.copy(alpha = 0.6f) else Slate800),
+                                shape = ShapeDefaults.Medium,
+                                color = if (isSelected) {
+                                    MaterialTheme.colorScheme.secondaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                },
                                 onClick = { onUpdateConfig(adminConfig.copy(exposure = exposureType)) },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
@@ -582,11 +482,7 @@ fun RemoteAdminScreen(
                                 ) {
                                     RadioButton(
                                         selected = isSelected,
-                                        onClick = { onUpdateConfig(adminConfig.copy(exposure = exposureType)) },
-                                        colors = RadioButtonDefaults.colors(
-                                            selectedColor = EmeraldPrimary,
-                                            unselectedColor = Slate700
-                                        )
+                                        onClick = { onUpdateConfig(adminConfig.copy(exposure = exposureType)) }
                                     )
 
                                     Column(modifier = Modifier.weight(1f)) {
@@ -594,13 +490,12 @@ fun RemoteAdminScreen(
                                             text = title,
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = if (isSelected) Color.White else Slate200
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
                                         Text(
                                             text = desc,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Slate400,
-                                            fontSize = 11.5.sp
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
@@ -608,7 +503,6 @@ fun RemoteAdminScreen(
                         }
                     }
 
-                    // Playit Secret Configuration
                     if (adminConfig.exposure == WebAdminExposure.PLAYIT_TUNNEL) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             OutlinedTextField(
@@ -619,25 +513,18 @@ fun RemoteAdminScreen(
                                 },
                                 label = { Text("Playit Secret Key (Optional)") },
                                 placeholder = { Text("Paste playit.gg secret key or leave blank to claim") },
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                                 singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = EmeraldPrimary,
-                                    unfocusedBorderColor = Slate700,
-                                    focusedTextColor = Color.White,
-                                    unfocusedTextColor = Color.White
-                                ),
                                 modifier = Modifier.fillMaxWidth()
                             )
                             Text(
                                 text = "Leave empty to automatically generate a claim link on playit.gg.",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Slate400,
-                                fontSize = 11.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    // Bore Custom Relay Configuration
                     if (adminConfig.exposure == WebAdminExposure.BORE_TUNNEL) {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Row(
@@ -651,13 +538,8 @@ fun RemoteAdminScreen(
                                         onUpdateConfig(adminConfig.copy(customBoreHost = it.trim()))
                                     },
                                     label = { Text("Relay Host") },
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                                     singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = Slate700,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
                                     modifier = Modifier.weight(2f)
                                 )
 
@@ -671,29 +553,22 @@ fun RemoteAdminScreen(
                                         }
                                     },
                                     label = { Text("Port") },
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                     singleLine = true,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = EmeraldPrimary,
-                                        unfocusedBorderColor = Slate700,
-                                        focusedTextColor = Color.White,
-                                        unfocusedTextColor = Color.White
-                                    ),
                                     modifier = Modifier.weight(1f)
                                 )
                             }
                             Text(
                                 text = "Default public relay is bore.pub on port 7835.",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Slate400,
-                                fontSize = 11.sp
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
 
-                    // Exposure Status Display
                     if (adminConfig.exposure != WebAdminExposure.LAN_ONLY && adminConfig.enabled) {
-                        HorizontalDivider(color = ObsidianCardBorder)
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
 
                         when (val exp = adminState.exposureState) {
                             is WebAdminExposureState.Connecting -> {
@@ -705,94 +580,61 @@ fun RemoteAdminScreen(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(18.dp),
                                             strokeWidth = 2.dp,
-                                            color = EmeraldPrimary
+                                            color = MaterialTheme.colorScheme.primary
                                         )
                                         Text(
                                             text = exp.message,
                                             style = MaterialTheme.typography.bodySmall,
-                                            color = Slate400
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
 
                                     if (exp.claimUrl != null) {
-                                        Button(
+                                        FilledTonalButton(
                                             onClick = {
                                                 try {
                                                     val intent = Intent(Intent.ACTION_VIEW, Uri.parse(exp.claimUrl))
                                                     context.startActivity(intent)
                                                 } catch (_: Exception) {}
                                             },
-                                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                            ),
+                                            shape = ShapeDefaults.Small,
                                             modifier = Modifier.fillMaxWidth()
                                         ) {
                                             Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                                imageVector = Icons.AutoMirrored.Rounded.OpenInNew,
                                                 contentDescription = null,
-                                                tint = EmeraldLight,
                                                 modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(6.dp))
-                                            Text("Open Playit Claim Link", color = EmeraldLight, fontSize = 12.sp)
+                                            Text("Open Playit Claim Link")
                                         }
                                     }
                                 }
                             }
                             is WebAdminExposureState.Connected -> {
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = EmeraldDark.copy(alpha = 0.25f),
-                                    border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.5f)),
+                                NetworkAddressChip(
+                                    address = exp.publicUrl,
+                                    isPublicTunnel = true,
+                                    onCopied = {
+                                        Toast.makeText(context, "Public URL copied", Toast.LENGTH_SHORT).show()
+                                    },
                                     modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(14.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Text(
-                                                text = "Public Web Admin URL",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = EmeraldLight
-                                            )
-                                            Text(
-                                                text = exp.publicUrl,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontFamily = FontFamily.Monospace,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White
-                                            )
-                                        }
-
-                                        IconButton(
-                                            onClick = {
-                                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                                clipboard.setPrimaryClip(ClipData.newPlainText("Public Web Admin URL", exp.publicUrl))
-                                                Toast.makeText(context, "Public URL copied", Toast.LENGTH_SHORT).show()
-                                            }
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.ContentCopy,
-                                                contentDescription = "Copy Public URL",
-                                                tint = EmeraldLight
-                                            )
-                                        }
-                                    }
-                                }
+                                )
                             }
                             is WebAdminExposureState.Failed -> {
                                 Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = RedstoneLight.copy(alpha = 0.15f),
-                                    border = BorderStroke(1.dp, RedstoneLight.copy(alpha = 0.4f)),
+                                    shape = ShapeDefaults.Small,
+                                    color = MaterialTheme.colorScheme.errorContainer,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text(
                                         text = "Exposure error: ${exp.error}",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = RedstoneLight,
+                                        color = MaterialTheme.colorScheme.onErrorContainer,
                                         modifier = Modifier.padding(12.dp)
                                     )
                                 }
@@ -800,11 +642,9 @@ fun RemoteAdminScreen(
                             is WebAdminExposureState.Idle -> {}
                         }
 
-                        // Security Callout
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = Slate900,
-                            border = BorderStroke(1.dp, Slate800),
+                            shape = ShapeDefaults.Small,
+                            color = extColors.warningContainer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Row(
@@ -813,16 +653,15 @@ fun RemoteAdminScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.WarningAmber,
+                                    imageVector = Icons.Rounded.WarningAmber,
                                     contentDescription = null,
-                                    tint = EmeraldLight,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = extColors.onWarningContainer,
+                                    modifier = Modifier.size(18.dp)
                                 )
                                 Text(
                                     text = "Internet exposure allows remote management outside your Wi-Fi network. Ensure you have set a strong password and never share it publicly.",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = Slate400,
-                                    lineHeight = 16.sp
+                                    color = extColors.onWarningContainer
                                 )
                             }
                         }
@@ -833,3 +672,19 @@ fun RemoteAdminScreen(
     }
 }
 
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun RemoteAdminScreenPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        RemoteAdminScreen(
+            adminState = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleWebAdminState,
+            adminConfig = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleWebAdminConfig,
+            onUpdateConfig = {},
+            onGeneratePassword = { "generated-pass-123" },
+            servers = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleServers,
+            panelUsers = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.samplePanelUsers,
+            auditEntries = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.sampleAuditEntries,
+            onBack = {}
+        )
+    }
+}

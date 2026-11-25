@@ -1,28 +1,23 @@
 package com.devwithzachary.mineserve.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.Slate900
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 
 object MinecraftCommandRegistry {
     val ROOT_COMMANDS = listOf(
@@ -49,7 +44,6 @@ object MinecraftCommandRegistry {
         val trimmed = input.trimStart()
         if (!trimmed.startsWith("/")) return emptyList()
 
-        // Check for specific subcommands first
         for ((prefix, subList) in SUBCOMMANDS) {
             if (trimmed.startsWith(prefix, ignoreCase = true)) {
                 val arg = trimmed.removePrefix(prefix)
@@ -61,7 +55,6 @@ object MinecraftCommandRegistry {
             }
         }
 
-        // Check root command match
         val cleanInput = trimmed.lowercase()
         return ROOT_COMMANDS.filter { it.startsWith(cleanInput) }
     }
@@ -85,22 +78,22 @@ fun CommandAutoCompleteRibbon(
     val suggestions = MinecraftCommandRegistry.getSuggestions(commandText)
     if (suggestions.isEmpty()) return
 
-    val scrollState = rememberScrollState()
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Slate900.copy(alpha = 0.95f))
-            .padding(horizontal = 8.dp, vertical = 4.dp)
+            .background(colorScheme.surfaceContainerLow)
+            .padding(vertical = 4.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(scrollState),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            for (item in suggestions) {
+            items(suggestions) { item ->
                 SuggestionChip(
                     onClick = {
                         val updated = MinecraftCommandRegistry.applySuggestion(commandText, item)
@@ -109,20 +102,16 @@ fun CommandAutoCompleteRibbon(
                     label = {
                         Text(
                             text = item,
-                            fontFamily = FontFamily.Monospace,
-                            fontSize = 12.sp,
-                            color = EmeraldPrimary
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                            color = colorScheme.primary
                         )
                     },
-                    shape = RoundedCornerShape(6.dp),
+                    shape = ShapeDefaults.Small,
                     colors = SuggestionChipDefaults.suggestionChipColors(
-                        containerColor = Color(0xFF132030),
-                        labelColor = EmeraldPrimary
+                        containerColor = colorScheme.surfaceContainerHigh,
+                        labelColor = colorScheme.primary
                     ),
-                    border = SuggestionChipDefaults.suggestionChipBorder(
-                        enabled = true,
-                        borderColor = ObsidianCardBorder
-                    )
+                    border = null
                 )
             }
         }

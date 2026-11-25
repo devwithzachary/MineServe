@@ -1,27 +1,24 @@
 package com.devwithzachary.mineserve.ui.screens.detail.files
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderZip
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.automirrored.rounded.InsertDriveFile
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.DriveFileRenameOutline
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FolderZip
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.Public
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -35,19 +32,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.FileEntry
-import com.devwithzachary.mineserve.ui.theme.DiamondCyan
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -62,27 +55,30 @@ fun FileListItem(
     onExport: () -> Unit,
     onDelete: () -> Unit,
     onUnzip: () -> Unit = {},
+    showDivider: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     val icon: ImageVector = when {
-        entry.isDirectory -> Icons.Default.Folder
-        entry.extension in setOf("yml", "yaml", "json", "toml", "properties", "cfg", "conf") -> Icons.Default.Code
-        entry.isLog -> Icons.Default.Description
-        entry.isArchive -> Icons.Default.FolderZip
-        entry.isWorldRegion -> Icons.Default.Public
-        entry.extension == "jar" -> Icons.Default.Extension
-        else -> Icons.AutoMirrored.Filled.InsertDriveFile
+        entry.isDirectory -> Icons.Rounded.Folder
+        entry.extension in setOf("yml", "yaml", "json", "toml", "properties", "cfg", "conf") -> Icons.Rounded.Code
+        entry.isLog -> Icons.Rounded.Description
+        entry.isArchive -> Icons.Rounded.FolderZip
+        entry.isWorldRegion -> Icons.Rounded.Public
+        entry.extension == "jar" -> Icons.Rounded.Extension
+        else -> Icons.AutoMirrored.Rounded.InsertDriveFile
     }
 
     val iconColor = when {
-        entry.isDirectory -> GoldYellow
-        entry.extension in setOf("yml", "yaml", "json", "toml", "properties") -> EmeraldPrimary
-        entry.isLog -> Slate400
-        entry.isArchive -> DiamondCyan
-        entry.extension == "jar" -> Color(0xFFC084FC)
-        else -> Slate400
+        entry.isDirectory -> extColors.warning
+        entry.extension in setOf("yml", "yaml", "json", "toml", "properties") -> MaterialTheme.colorScheme.primary
+        entry.isLog -> MaterialTheme.colorScheme.onSurfaceVariant
+        entry.isArchive -> MaterialTheme.colorScheme.tertiary
+        entry.extension == "jar" -> MaterialTheme.colorScheme.tertiary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val dateFormat = remember { SimpleDateFormat("MMM d, HH:mm", Locale.US) }
@@ -90,15 +86,10 @@ fun FileListItem(
         if (entry.lastModified > 0) dateFormat.format(Date(entry.lastModified)) else ""
     }
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable {
-                if (entry.isDirectory) onOpenFolder() else onOpenFile()
-            }
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+    MineServeTableRow(
+        modifier = modifier,
+        showDivider = showDivider,
+        onClick = { if (entry.isDirectory) onOpenFolder() else onOpenFile() }
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -109,15 +100,16 @@ fun FileListItem(
                 imageVector = icon,
                 contentDescription = null,
                 tint = iconColor,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(22.dp)
             )
 
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
                     text = entry.name,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = if (entry.isDirectory) FontWeight.Bold else FontWeight.Normal,
-                    color = Color.White,
+                    fontFamily = monoFont,
+                    fontWeight = if (entry.isDirectory) FontWeight.Bold else FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -125,19 +117,19 @@ fun FileListItem(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
+                    MineServeTableMonoText(
                         text = entry.formattedSize,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Slate400,
-                        fontSize = 11.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     if (formattedDate.isNotBlank()) {
-                        Text("•", color = Slate700, fontSize = 10.sp)
                         Text(
+                            text = "-",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        MineServeTableMonoText(
                             text = formattedDate,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Slate400,
-                            fontSize = 11.sp
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -147,9 +139,9 @@ fun FileListItem(
         Box {
             IconButton(onClick = { showMenu = true }) {
                 Icon(
-                    imageVector = Icons.Default.MoreVert,
+                    imageVector = Icons.Rounded.MoreVert,
                     contentDescription = "Options",
-                    tint = Slate400
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -160,7 +152,9 @@ fun FileListItem(
                 if (!entry.isDirectory && (entry.isEditable || entry.isLog)) {
                     DropdownMenuItem(
                         text = { Text("Edit in Code Editor") },
-                        leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, tint = EmeraldPrimary) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        },
                         onClick = {
                             showMenu = false
                             onOpenFile()
@@ -170,7 +164,9 @@ fun FileListItem(
                 if (!entry.isDirectory && (entry.isArchive || entry.extension.equals("zip", ignoreCase = true))) {
                     DropdownMenuItem(
                         text = { Text("Unzip / Extract") },
-                        leadingIcon = { Icon(Icons.Default.FolderZip, contentDescription = null, tint = DiamondCyan) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.FolderZip, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                        },
                         onClick = {
                             showMenu = false
                             onUnzip()
@@ -179,7 +175,9 @@ fun FileListItem(
                 }
                 DropdownMenuItem(
                     text = { Text("Rename") },
-                    leadingIcon = { Icon(Icons.Default.DriveFileRenameOutline, contentDescription = null, tint = Slate400) },
+                    leadingIcon = {
+                        Icon(Icons.Rounded.DriveFileRenameOutline, contentDescription = null)
+                    },
                     onClick = {
                         showMenu = false
                         onRename()
@@ -188,7 +186,9 @@ fun FileListItem(
                 if (!entry.isDirectory) {
                     DropdownMenuItem(
                         text = { Text("Duplicate") },
-                        leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null, tint = Slate400) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.ContentCopy, contentDescription = null)
+                        },
                         onClick = {
                             showMenu = false
                             onDuplicate()
@@ -196,7 +196,9 @@ fun FileListItem(
                     )
                     DropdownMenuItem(
                         text = { Text("Export to Downloads") },
-                        leadingIcon = { Icon(Icons.Default.Download, contentDescription = null, tint = Slate400) },
+                        leadingIcon = {
+                            Icon(Icons.Rounded.Download, contentDescription = null)
+                        },
                         onClick = {
                             showMenu = false
                             onExport()
@@ -204,8 +206,10 @@ fun FileListItem(
                     )
                 }
                 DropdownMenuItem(
-                    text = { Text("Delete", color = RedstoneRed) },
-                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = RedstoneRed) },
+                    text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                    leadingIcon = {
+                        Icon(Icons.Rounded.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                    },
                     onClick = {
                         showMenu = false
                         onDelete()

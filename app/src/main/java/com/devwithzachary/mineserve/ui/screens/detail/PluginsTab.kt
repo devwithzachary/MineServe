@@ -4,14 +4,12 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,38 +19,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Widgets
-import com.devwithzachary.mineserve.ui.components.AppAlertDialog
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Extension
+import androidx.compose.material.icons.rounded.FileUpload
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Widgets
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.ui.text.style.TextOverflow
-import com.devwithzachary.mineserve.modpack.ModpackIndex
-import com.devwithzachary.mineserve.modpack.ModpackInstallProgress
-import com.devwithzachary.mineserve.modpack.ModpackInstaller
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,35 +54,34 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.devwithzachary.mineserve.R
 import com.devwithzachary.mineserve.api.ModrinthApiClient
 import com.devwithzachary.mineserve.api.ModrinthProjectDetails
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeEmptyState
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.PluginModEntry
 import com.devwithzachary.mineserve.model.ServerType
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
-import com.devwithzachary.mineserve.ui.theme.GoldYellow
+import com.devwithzachary.mineserve.modpack.ModpackIndex
+import com.devwithzachary.mineserve.modpack.ModpackInstallProgress
+import com.devwithzachary.mineserve.modpack.ModpackInstaller
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.RedstoneRed
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate700
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -108,6 +97,9 @@ fun PluginsTab(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
     val isModServer = server.type.supportsMods && !server.type.supportsPlugins
     val isHybrid = server.type == ServerType.CUSTOM
 
@@ -144,20 +136,17 @@ fun PluginsTab(
         else -> null
     }
 
-    // Search state
     var searchQuery by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<PluginModEntry>>(emptyList()) }
     var isSearching by remember { mutableStateOf(false) }
 
-    // Installing states per project id
     val installingMap = remember { mutableStateMapOf<String, Boolean>() }
 
-    // Selected project detail dialog
     var selectedProjectForDetails by remember { mutableStateOf<PluginModEntry?>(null) }
     var projectDetails by remember { mutableStateOf<ModrinthProjectDetails?>(null) }
     var isLoadingDetails by remember { mutableStateOf(false) }
+    var pendingDeletePlugin by remember { mutableStateOf<PluginModEntry?>(null) }
 
-    // File picker launcher for uploading custom .jar files
     val jarPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
@@ -174,7 +163,6 @@ fun PluginsTab(
         }
     }
 
-    // Modpack state
     var pendingModpackUri by remember { mutableStateOf<Uri?>(null) }
     var pendingModpackIndex by remember { mutableStateOf<ModpackIndex?>(null) }
     var isInstallingModpack by remember { mutableStateOf(false) }
@@ -188,9 +176,7 @@ fun PluginsTab(
             scope.launch {
                 val res = ModpackInstaller().readMetadata(context, uri)
                 res.fold(
-                    onSuccess = { meta ->
-                        pendingModpackIndex = meta
-                    },
+                    onSuccess = { meta -> pendingModpackIndex = meta },
                     onFailure = { err ->
                         pendingModpackUri = null
                         Toast.makeText(context, "Failed reading .mrpack: ${err.message}", Toast.LENGTH_LONG).show()
@@ -200,126 +186,165 @@ fun PluginsTab(
         }
     }
 
-    // Modpack Confirmation Dialog
     if (pendingModpackIndex != null && pendingModpackUri != null && !isInstallingModpack) {
         val meta = pendingModpackIndex!!
         val uri = pendingModpackUri!!
         val serverModsCount = meta.files.count { it.isServerCompatible }
 
-        AppAlertDialog(
+        MineServeDialog(
             onDismissRequest = {
                 pendingModpackIndex = null
                 pendingModpackUri = null
             },
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Icon(Icons.Default.Widgets, contentDescription = null, tint = EmeraldLight)
-                    Text("Install Modpack?", fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(meta.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = EmeraldLight)
-                    if (!meta.summary.isNullOrBlank()) {
-                        Text(meta.summary, style = MaterialTheme.typography.bodySmall, color = Slate400)
-                    }
-                    HorizontalDivider(color = ObsidianCardBorder)
-                    Text("• $serverModsCount server mods will be downloaded into mods/", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                    Text("• Configuration overrides will be applied to the server root", style = MaterialTheme.typography.bodySmall, color = Color.White)
-                    val targetMc = meta.dependencies["minecraft"]
-                    if (targetMc != null) {
-                        Text("• Modpack target Minecraft: $targetMc (Current: ${server.version})", style = MaterialTheme.typography.bodySmall, color = if (targetMc == server.version) EmeraldLight else GoldYellow)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (onImportModpack != null) {
-                            isInstallingModpack = true
-                            onImportModpack(uri, { prog ->
-                                modpackProgress = prog
-                            }) { result ->
-                                isInstallingModpack = false
-                                pendingModpackIndex = null
-                                pendingModpackUri = null
-                                modpackProgress = null
-                                result.fold(
-                                    onSuccess = { installed ->
-                                        Toast.makeText(context, "Modpack '${installed.name}' installed successfully!", Toast.LENGTH_LONG).show()
-                                    },
-                                    onFailure = { err ->
-                                        Toast.makeText(context, "Modpack install failed: ${err.message}", Toast.LENGTH_LONG).show()
-                                    }
-                                )
-                            }
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Install Modpack", color = Color.Black, fontWeight = FontWeight.Bold)
-                }
-            },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
+            title = "Install Modpack?",
+            confirmLabel = "Install Modpack",
+            onConfirm = {
+                if (onImportModpack != null) {
+                    isInstallingModpack = true
+                    onImportModpack(uri, { prog ->
+                        modpackProgress = prog
+                    }) { result ->
+                        isInstallingModpack = false
                         pendingModpackIndex = null
                         pendingModpackUri = null
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Cancel", color = Color.White)
+                        modpackProgress = null
+                        result.fold(
+                            onSuccess = { installed ->
+                                Toast.makeText(context, "Modpack '${installed.name}' installed successfully!", Toast.LENGTH_LONG).show()
+                            },
+                            onFailure = { err ->
+                                Toast.makeText(context, "Modpack install failed: ${err.message}", Toast.LENGTH_LONG).show()
+                            }
+                        )
+                    }
                 }
             },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+            icon = Icons.Rounded.Widgets
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = meta.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                if (!meta.summary.isNullOrBlank()) {
+                    Text(
+                        text = meta.summary,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Text(
+                    text = "- $serverModsCount server mods will be downloaded into mods/",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "- Configuration overrides will be applied to the server root",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                val targetMc = meta.dependencies["minecraft"]
+                if (targetMc != null) {
+                    Text(
+                        text = "- Target Minecraft: $targetMc (Current: ${server.version})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (targetMc == server.version) MaterialTheme.colorScheme.primary else extColors.warning
+                    )
+                }
+            }
+        }
     }
 
-    // Modpack Installing Progress Dialog
     if (isInstallingModpack && modpackProgress != null) {
         val prog = modpackProgress!!
-        AppAlertDialog(
+        MineServeDialog(
             onDismissRequest = {},
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = EmeraldPrimary, strokeWidth = 2.5.dp)
-                    Text("Installing Modpack...", fontWeight = FontWeight.Bold, color = Color.White)
-                }
-            },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(prog.stage, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = EmeraldLight)
-                    Text(prog.currentItem, style = MaterialTheme.typography.bodySmall, color = Slate400, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    LinearProgressIndicator(
-                        progress = { prog.progress },
-                        modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                        color = EmeraldPrimary,
-                        trackColor = Slate800
-                    )
-                    Text(
-                        text = "${prog.currentCount} / ${prog.totalCount} files (${(prog.progress * 100).toInt()}%)",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Slate400
-                    )
-                }
-            },
-            confirmButton = {},
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+            title = "Installing Modpack...",
+            confirmLabel = "Installing",
+            onConfirm = {},
+            confirmEnabled = false
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = prog.stage,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = prog.currentItem,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = monoFont,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                LinearProgressIndicator(
+                    progress = { prog.progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(ShapeDefaults.ExtraSmall),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+                Text(
+                    text = "${prog.currentCount} / ${prog.totalCount} files (${(prog.progress * 100).toInt()}%)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontFamily = monoFont,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 
-    // Detail Dialog
     if (selectedProjectForDetails != null) {
         val proj = selectedProjectForDetails!!
-        AppAlertDialog(
+        val isInstalling = installingMap[proj.id] == true
+        MineServeDialog(
             onDismissRequest = {
                 selectedProjectForDetails = null
                 projectDetails = null
             },
-            title = {
+            title = proj.name,
+            confirmLabel = if (isInstalling) "Installing..." else stringResource(R.string.plugins_install_btn),
+            onConfirm = {
+                installingMap[proj.id] = true
+                scope.launch {
+                    val resolved = ModrinthApiClient().resolveDownloadUrl(
+                        projectIdOrSlug = proj.id,
+                        isMod = isModServer,
+                        loaderFilter = loaderFilter,
+                        gameVersion = server.version
+                    )
+                    if (resolved != null) {
+                        onInstallPluginOrMod(resolved.first, resolved.second, isModServer) { success ->
+                            installingMap[proj.id] = false
+                            if (success) {
+                                Toast.makeText(context, "Installed ${resolved.first}!", Toast.LENGTH_SHORT).show()
+                                selectedProjectForDetails = null
+                            } else {
+                                Toast.makeText(context, "Failed to install ${resolved.first}", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else {
+                        installingMap[proj.id] = false
+                        Toast.makeText(context, "No compatible release found for this server version", Toast.LENGTH_LONG).show()
+                    }
+                }
+            },
+            dismissLabel = "Close",
+            confirmEnabled = !isInstalling
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -334,168 +359,114 @@ fun PluginsTab(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(44.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(ShapeDefaults.Small)
                         )
                     } else {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = Slate800,
+                            shape = ShapeDefaults.Small,
+                            color = MaterialTheme.colorScheme.secondaryContainer,
                             modifier = Modifier.size(44.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
-                                    imageVector = if (isModServer) Icons.Default.Widgets else Icons.Default.Extension,
+                                    imageVector = if (isModServer) Icons.Rounded.Widgets else Icons.Rounded.Extension,
                                     contentDescription = null,
-                                    tint = EmeraldPrimary
+                                    tint = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                             }
                         }
                     }
 
                     Column {
-                        Text(
-                            text = proj.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White
-                        )
                         if (proj.author.isNotBlank()) {
                             Text(
                                 text = "By ${proj.author}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                    }
-                }
-            },
-            text = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    if (isLoadingDetails) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = EmeraldPrimary, modifier = Modifier.size(28.dp))
-                        }
-                    } else {
-                        // Categories
-                        if (proj.categories.isNotEmpty()) {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                proj.categories.take(6).forEach { cat ->
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = Slate800
-                                    ) {
-                                        Text(
-                                            text = cat,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = EmeraldLight,
-                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Downloads / Stats
                         if (proj.downloads > 0) {
                             Text(
-                                text = "Downloads: ${String.format(java.util.Locale.US, "%,d", proj.downloads)}",
-                                style = MaterialTheme.typography.bodySmall,
-                                fontWeight = FontWeight.Bold,
-                                color = GoldYellow
-                            )
-                        }
-
-                        // Description
-                        val desc = projectDetails?.description?.ifBlank { proj.description } ?: proj.description
-                        if (desc.isNotBlank()) {
-                            Text(
-                                text = desc,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-
-                        if (!projectDetails?.body.isNullOrBlank()) {
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = projectDetails!!.body.take(600) + if (projectDetails!!.body.length > 600) "…" else "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Slate400
+                                text = "Downloads: ${String.format(Locale.US, "%,d", proj.downloads)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontFamily = monoFont,
+                                fontWeight = FontWeight.SemiBold,
+                                color = extColors.warning
                             )
                         }
                     }
                 }
-            },
-            confirmButton = {
-                val isInstalling = installingMap[proj.id] == true
-                Button(
-                    onClick = {
-                        installingMap[proj.id] = true
-                        scope.launch {
-                            val resolved = ModrinthApiClient().resolveDownloadUrl(
-                                projectIdOrSlug = proj.id,
-                                isMod = isModServer,
-                                loaderFilter = loaderFilter,
-                                gameVersion = server.version
-                            )
-                            if (resolved != null) {
-                                onInstallPluginOrMod(resolved.first, resolved.second, isModServer) { success ->
-                                    installingMap[proj.id] = false
-                                    if (success) {
-                                        Toast.makeText(context, "Installed ${resolved.first}!", Toast.LENGTH_SHORT).show()
-                                        selectedProjectForDetails = null
-                                    } else {
-                                        Toast.makeText(context, "Failed to install ${resolved.first}", Toast.LENGTH_SHORT).show()
-                                    }
-                                }
-                            } else {
-                                installingMap[proj.id] = false
-                                Toast.makeText(context, "No compatible release found for this server version", Toast.LENGTH_LONG).show()
+
+                if (isLoadingDetails) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                } else {
+                    if (proj.categories.isNotEmpty()) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            proj.categories.take(6).forEach { cat ->
+                                AssistChip(
+                                    onClick = {},
+                                    label = { Text(cat, style = MaterialTheme.typography.labelSmall) },
+                                    border = null,
+                                    colors = AssistChipDefaults.assistChipColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                        labelColor = MaterialTheme.colorScheme.primary
+                                    )
+                                )
                             }
                         }
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                    shape = RoundedCornerShape(8.dp),
-                    enabled = !isInstalling
-                ) {
-                    if (isInstalling) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Installing…", color = Color.Black)
-                    } else {
-                        Icon(Icons.Default.Download, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(stringResource(R.string.plugins_install_btn), color = Color.Black, fontWeight = FontWeight.Bold)
+                    }
+
+                    val desc = projectDetails?.description?.ifBlank { proj.description } ?: proj.description
+                    if (desc.isNotBlank()) {
+                        Text(
+                            text = desc,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+
+                    if (!projectDetails?.body.isNullOrBlank()) {
+                        Text(
+                            text = projectDetails!!.body.take(600) + if (projectDetails!!.body.length > 600) "..." else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
+            }
+        }
+    }
+
+    pendingDeletePlugin?.let { plugin ->
+        MineServeDialog(
+            onDismissRequest = { pendingDeletePlugin = null },
+            title = "Delete ${plugin.name}?",
+            confirmLabel = stringResource(R.string.delete),
+            onConfirm = {
+                pendingDeletePlugin = null
+                onDeletePlugin(plugin)
             },
-            dismissButton = {
-                OutlinedButton(
-                    onClick = {
-                        selectedProjectForDetails = null
-                        projectDetails = null
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Text("Close", color = Color.White)
-                }
-            },
-            containerColor = ObsidianCard,
-            shape = RoundedCornerShape(16.dp)
-        )
+            icon = Icons.Rounded.Delete,
+            isDestructive = true
+        ) {
+            MineServeTableMonoText(
+                text = plugin.fileName,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 
     Column(
@@ -511,71 +482,57 @@ fun PluginsTab(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = sectionTitle,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "${server.type.displayName} • ${if (isModServer) "mods/" else "plugins/"}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Slate400
+                MineServeTableMonoText(
+                    text = "${server.type.displayName} - ${if (isModServer) "mods/" else "plugins/"}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (isModServer || isHybrid) {
-                    OutlinedButton(
-                        onClick = {
-                            modpackPickerLauncher.launch(arrayOf("*/*"))
-                        },
-                        border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
-                        shape = RoundedCornerShape(8.dp)
+                    FilledTonalButton(
+                        onClick = { modpackPickerLauncher.launch(arrayOf("*/*")) },
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        shape = ShapeDefaults.Small,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 8.dp)
                     ) {
-                        Icon(Icons.Default.Widgets, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Rounded.Widgets, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = ".mrpack",
-                            color = EmeraldLight,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
+                        Text(".mrpack", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                     }
                 }
 
-                Button(
+                FilledTonalButton(
                     onClick = {
                         jarPickerLauncher.launch(arrayOf("application/java-archive", "application/zip", "application/octet-stream", "*/*"))
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldDark),
-                    border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
-                    shape = RoundedCornerShape(8.dp)
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                    shape = ShapeDefaults.Small,
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Icon(Icons.Default.FileUpload, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Rounded.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "Upload .JAR",
-                        color = EmeraldLight,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp
-                    )
+                    Text("Upload .JAR", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
 
         // Modrinth Search Card
-        Card(
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-            border = BorderStroke(1.dp, ObsidianCardBorder),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Column(
-                modifier = Modifier.padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -585,17 +542,18 @@ fun PluginsTab(
                         text = "Search Modrinth",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = Slate800
+                        shape = ShapeDefaults.Small,
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest
                     ) {
                         Text(
                             text = if (isModServer) "Mods ($loaderFilter)" else "Plugins (Paper/Spigot)",
                             style = MaterialTheme.typography.labelSmall,
-                            color = EmeraldLight,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            fontFamily = monoFont,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }
@@ -611,19 +569,10 @@ fun PluginsTab(
                         placeholder = {
                             Text(
                                 text = searchPlaceholder,
-                                color = Slate400,
-                                fontSize = 12.sp
+                                style = MaterialTheme.typography.bodySmall
                             )
                         },
                         singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = EmeraldPrimary,
-                            unfocusedBorderColor = ObsidianCardBorder,
-                            focusedContainerColor = Slate900,
-                            unfocusedContainerColor = Slate900,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        ),
                         modifier = Modifier.weight(1f)
                     )
 
@@ -642,14 +591,21 @@ fun PluginsTab(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Small,
                         enabled = !isSearching
                     ) {
                         if (isSearching) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
                         } else {
-                            Icon(Icons.Default.Search, contentDescription = null, tint = Color.Black)
+                            Icon(Icons.Rounded.Search, contentDescription = "Search")
                         }
                     }
                 }
@@ -664,28 +620,24 @@ fun PluginsTab(
                             val isInstalling = installingMap[result.id] == true
                             val alreadyInstalled = plugins.any {
                                 it.fileName.contains(result.slug, ignoreCase = true) ||
-                                it.name.contains(result.name, ignoreCase = true)
+                                    it.name.contains(result.name, ignoreCase = true)
                             }
 
-                            Surface(
-                                shape = RoundedCornerShape(10.dp),
-                                color = Slate900,
-                                border = BorderStroke(1.dp, Slate800),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedProjectForDetails = result
-                                        isLoadingDetails = true
-                                        scope.launch {
-                                            projectDetails = ModrinthApiClient().getProjectDetails(result.id)
-                                            isLoadingDetails = false
-                                        }
+                            MineServeCard(
+                                onClick = {
+                                    selectedProjectForDetails = result
+                                    isLoadingDetails = true
+                                    scope.launch {
+                                        projectDetails = ModrinthApiClient().getProjectDetails(result.id)
+                                        isLoadingDetails = false
                                     }
+                                },
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                                contentPadding = PaddingValues(12.dp),
+                                modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(10.dp),
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -694,7 +646,6 @@ fun PluginsTab(
                                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        // Mod / Plugin Icon
                                         if (!result.iconUrl.isNullOrBlank()) {
                                             AsyncImage(
                                                 model = ImageRequest.Builder(context)
@@ -705,39 +656,44 @@ fun PluginsTab(
                                                 contentScale = ContentScale.Crop,
                                                 modifier = Modifier
                                                     .size(40.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .clip(ShapeDefaults.Small)
                                             )
                                         } else {
                                             Surface(
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = Slate800,
+                                                shape = ShapeDefaults.Small,
+                                                color = MaterialTheme.colorScheme.secondaryContainer,
                                                 modifier = Modifier.size(40.dp)
                                             ) {
                                                 Box(contentAlignment = Alignment.Center) {
                                                     Icon(
-                                                        imageVector = if (isModServer) Icons.Default.Widgets else Icons.Default.Extension,
+                                                        imageVector = if (isModServer) Icons.Rounded.Widgets else Icons.Rounded.Extension,
                                                         contentDescription = null,
-                                                        tint = EmeraldPrimary,
+                                                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
                                                         modifier = Modifier.size(20.dp)
                                                     )
                                                 }
                                             }
                                         }
 
-                                        Column(modifier = Modifier.weight(1f)) {
+                                        Column(
+                                            modifier = Modifier.weight(1f),
+                                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                        ) {
                                             Text(
                                                 text = result.name,
+                                                style = MaterialTheme.typography.bodyMedium,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                fontSize = 14.sp
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                             if (result.description.isNotBlank()) {
                                                 Text(
                                                     text = result.description,
                                                     style = MaterialTheme.typography.bodySmall,
-                                                    color = Slate400,
-                                                    maxLines = 1,
-                                                    fontSize = 11.sp
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                         }
@@ -745,7 +701,7 @@ fun PluginsTab(
 
                                     Spacer(modifier = Modifier.width(8.dp))
 
-                                    Button(
+                                    FilledTonalButton(
                                         onClick = {
                                             installingMap[result.id] = true
                                             scope.launch {
@@ -770,20 +726,34 @@ fun PluginsTab(
                                                 }
                                             }
                                         },
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (alreadyInstalled) EmeraldDark else EmeraldPrimary
+                                        colors = ButtonDefaults.filledTonalButtonColors(
+                                            containerColor = if (alreadyInstalled) {
+                                                MaterialTheme.colorScheme.primaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.secondaryContainer
+                                            },
+                                            contentColor = if (alreadyInstalled) {
+                                                MaterialTheme.colorScheme.onPrimaryContainer
+                                            } else {
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                            }
                                         ),
-                                        shape = RoundedCornerShape(6.dp),
-                                        enabled = !isInstalling
+                                        shape = ShapeDefaults.Small,
+                                        enabled = !isInstalling,
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                     ) {
                                         if (isInstalling) {
-                                            CircularProgressIndicator(modifier = Modifier.size(14.dp), color = Color.Black)
+                                            CircularProgressIndicator(modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
                                         } else if (alreadyInstalled) {
-                                            Icon(Icons.Default.Check, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(14.dp))
+                                            Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(14.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Installed", color = EmeraldLight, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text("Installed", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
                                         } else {
-                                            Text(stringResource(R.string.plugins_install_btn), color = Color.Black, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                            Text(
+                                                text = stringResource(R.string.plugins_install_btn),
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
                                         }
                                     }
                                 }
@@ -799,95 +769,100 @@ fun PluginsTab(
             text = "$installedSectionTitle (${plugins.size})",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = MaterialTheme.colorScheme.onSurface
         )
 
         if (plugins.isEmpty()) {
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = emptyMessage,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Slate400,
-                    modifier = Modifier.padding(16.dp)
-                )
-            }
+            MineServeEmptyState(
+                icon = if (isModServer) Icons.Rounded.Widgets else Icons.Rounded.Extension,
+                title = emptyMessage,
+                supportingText = "Search Modrinth above or upload a .jar file."
+            )
         } else {
-            for (p in plugins) {
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+            MineServeTableContainer {
+                plugins.forEachIndexed { index, p ->
+                    MineServeTableRow(showDivider = index < plugins.lastIndex) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             modifier = Modifier.weight(1f)
                         ) {
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (p.enabled) EmeraldDark.copy(alpha = 0.4f) else Slate800,
-                                modifier = Modifier.size(36.dp)
+                                shape = ShapeDefaults.Small,
+                                color = if (p.enabled) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerHighest
+                                },
+                                modifier = Modifier.size(38.dp)
                             ) {
                                 Box(contentAlignment = Alignment.Center) {
                                     Icon(
-                                        imageVector = if (p.isMod) Icons.Default.Widgets else Icons.Default.Extension,
+                                        imageVector = if (p.isMod) Icons.Rounded.Widgets else Icons.Rounded.Extension,
                                         contentDescription = null,
-                                        tint = if (p.enabled) EmeraldPrimary else Slate400,
+                                        tint = if (p.enabled) {
+                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }
 
-                            Column {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 Text(
                                     text = p.name,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (p.enabled) Color.White else Slate400
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (p.enabled) {
+                                        MaterialTheme.colorScheme.onSurface
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
-                                Text(
-                                    text = "${p.fileName} • ${p.formattedSize}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Slate400,
-                                    fontSize = 11.sp
+                                MineServeTableMonoText(
+                                    text = "${p.fileName} - ${p.formattedSize}",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.width(12.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Switch(
                                 checked = p.enabled,
-                                onCheckedChange = { onTogglePlugin(p) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = EmeraldPrimary,
-                                    checkedTrackColor = Slate800,
-                                    checkedBorderColor = EmeraldPrimary.copy(alpha = 0.6f),
-                                    uncheckedThumbColor = Slate400,
-                                    uncheckedTrackColor = Slate900,
-                                    uncheckedBorderColor = Slate700
-                                )
+                                onCheckedChange = { onTogglePlugin(p) }
                             )
-                            IconButton(onClick = { onDeletePlugin(p) }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.delete), tint = RedstoneLight)
+                            IconButton(onClick = { pendingDeletePlugin = p }) {
+                                Icon(
+                                    imageVector = Icons.Rounded.Delete,
+                                    contentDescription = stringResource(R.string.delete),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@com.devwithzachary.mineserve.ui.preview.MineServeTabPreviews
+@Composable
+private fun PluginsTabPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        PluginsTab(
+            server = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.runningPaperServer,
+            plugins = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.samplePlugins,
+            onTogglePlugin = {},
+            onDeletePlugin = {},
+            onInstallPluginOrMod = { _, _, _, _ -> },
+            onImportJar = { _, _, _ -> }
+        )
     }
 }

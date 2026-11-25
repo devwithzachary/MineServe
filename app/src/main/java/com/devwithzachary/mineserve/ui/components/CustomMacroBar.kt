@@ -1,8 +1,8 @@
 package com.devwithzachary.mineserve.ui.components
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,14 +11,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -68,67 +69,58 @@ fun CustomMacroBar(
     onResetDefaults: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val colorScheme = MaterialTheme.colorScheme
     var showCustomizeDialog by remember { mutableStateOf(false) }
-    val scrollState = rememberScrollState()
 
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .horizontalScroll(scrollState),
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Customize Button
-        SuggestionChip(
-            onClick = { showCustomizeDialog = true },
-            label = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+        item {
+            SuggestionChip(
+                onClick = { showCustomizeDialog = true },
+                icon = {
                     Icon(
-                        Icons.Default.Settings,
+                        imageVector = Icons.Rounded.Tune,
                         contentDescription = "Customize Macros",
-                        modifier = Modifier.size(14.dp),
-                        tint = EmeraldPrimary
+                        modifier = Modifier.size(16.dp)
                     )
+                },
+                label = {
                     Text(
                         text = "Macros",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = EmeraldPrimary
+                        style = MaterialTheme.typography.labelMedium
                     )
-                }
-            },
-            colors = SuggestionChipDefaults.suggestionChipColors(
-                containerColor = Slate900,
-                labelColor = EmeraldPrimary
-            ),
-            border = SuggestionChipDefaults.suggestionChipBorder(
-                enabled = true,
-                borderColor = EmeraldPrimary.copy(alpha = 0.5f)
+                },
+                shape = ShapeDefaults.Small,
+                colors = SuggestionChipDefaults.suggestionChipColors(
+                    containerColor = colorScheme.primaryContainer,
+                    labelColor = colorScheme.onPrimaryContainer,
+                    iconContentColor = colorScheme.onPrimaryContainer
+                ),
+                border = null
             )
-        )
+        }
 
-        for (macro in macros) {
+        items(macros, key = { it.id }) { macro ->
             SuggestionChip(
                 onClick = { onMacroClicked(macro) },
                 label = {
                     Text(
                         text = macro.label,
-                        style = MaterialTheme.typography.labelSmall
+                        style = MaterialTheme.typography.labelMedium
                     )
                 },
+                shape = ShapeDefaults.Small,
                 colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = Slate800,
-                    labelColor = Color.White
+                    containerColor = colorScheme.surfaceContainerHigh,
+                    labelColor = colorScheme.onSurface
                 ),
-                border = SuggestionChipDefaults.suggestionChipBorder(
-                    enabled = true,
-                    borderColor = ObsidianCardBorder
-                )
+                border = null
             )
         }
-        Spacer(modifier = Modifier.width(4.dp))
     }
 
     if (showCustomizeDialog) {

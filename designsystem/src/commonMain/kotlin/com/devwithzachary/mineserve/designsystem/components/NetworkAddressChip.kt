@@ -1,6 +1,7 @@
 package com.devwithzachary.mineserve.designsystem.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -73,32 +74,36 @@ fun NetworkAddressChip(
         contentColor = contentColor,
         border = null
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(
-                imageVector = leadingIcon,
-                contentDescription = if (isPublicTunnel) "Public tunnel address" else "Local LAN address",
-                modifier = Modifier.size(15.dp)
-            )
-            Text(
-                text = address,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = monoFont,
-                    fontWeight = FontWeight.Medium,
-                    fontFeatureSettings = "tnum"
-                ),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
-            )
-            Icon(
-                imageVector = Icons.Rounded.ContentCopy,
-                contentDescription = "Copy address",
-                modifier = Modifier.size(14.dp)
-            )
+        BoxWithConstraints {
+            val hasBoundedWidth = constraints.hasBoundedWidth
+            Row(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = if (isPublicTunnel) "Public tunnel address" else "Local LAN address",
+                    modifier = Modifier.size(15.dp)
+                )
+                Text(
+                    text = address,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = monoFont,
+                        fontWeight = FontWeight.Medium,
+                        fontFeatureSettings = "tnum"
+                    ),
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = if (hasBoundedWidth) Modifier.weight(1f, fill = false) else Modifier
+                )
+                Icon(
+                    imageVector = Icons.Rounded.ContentCopy,
+                    contentDescription = "Copy address",
+                    modifier = Modifier.size(14.dp)
+                )
+            }
         }
     }
 }

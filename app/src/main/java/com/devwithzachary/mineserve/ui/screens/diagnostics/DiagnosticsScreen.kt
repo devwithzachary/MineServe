@@ -3,7 +3,6 @@ package com.devwithzachary.mineserve.ui.screens.diagnostics
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,30 +17,28 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.NetworkCheck
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.NetworkCheck
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -55,39 +52,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.diagnostics.DiagnosticCheckResult
 import com.devwithzachary.mineserve.diagnostics.DiagnosticManager
 import com.devwithzachary.mineserve.diagnostics.LogFilterMode
-import com.devwithzachary.mineserve.ui.theme.EmeraldDark
-import com.devwithzachary.mineserve.ui.theme.EmeraldLight
-import com.devwithzachary.mineserve.ui.theme.EmeraldPrimary
 import com.devwithzachary.mineserve.ui.theme.LayoutManager
-import com.devwithzachary.mineserve.ui.theme.ObsidianCard
-import com.devwithzachary.mineserve.ui.theme.ObsidianCardBorder
-import com.devwithzachary.mineserve.ui.theme.RedstoneLight
-import com.devwithzachary.mineserve.ui.theme.Slate400
-import com.devwithzachary.mineserve.ui.theme.Slate800
-import com.devwithzachary.mineserve.ui.theme.Slate900
-import com.devwithzachary.mineserve.ui.theme.Slate950
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun DiagnosticsScreen(
     onBack: () -> Unit,
+    initialLogText: String? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val isInspection = androidx.compose.ui.platform.LocalInspectionMode.current
     val scope = rememberCoroutineScope()
+    val extColors = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
 
     var filterMode by remember { mutableStateOf(LogFilterMode.MINESERVE_TAGS) }
-    var logText by remember { mutableStateOf("Tap 'Capture Logs' to read buffered app & engine logs.") }
+    var logText by remember { mutableStateOf(initialLogText ?: "Tap 'Refresh' to read buffered app & engine logs.") }
     var isCapturingLogs by remember { mutableStateOf(false) }
 
     var networkResults by remember { mutableStateOf<List<DiagnosticCheckResult>>(emptyList()) }
@@ -97,24 +92,36 @@ fun DiagnosticsScreen(
     BackHandler(onBack = onBack)
 
     LaunchedEffect(filterMode) {
-        isCapturingLogs = true
-        logText = DiagnosticManager.captureLogcat(filterMode)
-        isCapturingLogs = false
+        if (!isInspection) {
+            isCapturingLogs = true
+            logText = DiagnosticManager.captureLogcat(filterMode)
+            isCapturingLogs = false
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Diagnostics & Logcat", fontWeight = FontWeight.Bold, color = Color.White) },
+                title = {
+                    Text(
+                        text = "Diagnostics & Logcat",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Slate950)
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onSurface
+                )
             )
         },
-        containerColor = Slate950,
+        containerColor = MaterialTheme.colorScheme.surface,
         modifier = modifier
     ) { innerPadding ->
         Column(
@@ -126,28 +133,30 @@ fun DiagnosticsScreen(
             verticalArrangement = Arrangement.spacedBy(LayoutManager.cardSpacing)
         ) {
             // Card 1: Networking & Tunnel Health Self-Test
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Icon(Icons.Default.NetworkCheck, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(22.dp))
-                        Text("Tunnel & Network Self-Test", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                        Icon(
+                            imageVector = Icons.Rounded.NetworkCheck,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Text(
+                            text = "Tunnel & Network Self-Test",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
 
                     Text(
                         text = "Tests DNS resolution, Bore/Playit reachability, MineServe Cloud API health, and local UPnP gateway discovery.",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Button(
@@ -159,44 +168,54 @@ fun DiagnosticsScreen(
                             }
                         },
                         enabled = !isRunningNetworkTest,
-                        colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        ),
+                        shape = ShapeDefaults.Medium,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         if (isRunningNetworkTest) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color.Black, strokeWidth = 2.dp)
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Running Self-Test...", color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("Running Self-Test...", fontWeight = FontWeight.Bold)
                         } else {
-                            Icon(Icons.Default.NetworkCheck, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.NetworkCheck, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Run Network Self-Test", color = Color.Black, fontWeight = FontWeight.Bold)
+                            Text("Run Network Self-Test", fontWeight = FontWeight.Bold)
                         }
                     }
 
                     if (networkResults.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            networkResults.forEach { res ->
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = Slate900.copy(alpha = 0.6f),
-                                    border = BorderStroke(1.dp, ObsidianCardBorder),
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
+                        MineServeTableContainer {
+                            networkResults.forEachIndexed { index, res ->
+                                MineServeTableRow(showDivider = index < networkResults.lastIndex) {
                                     Row(
-                                        modifier = Modifier.padding(12.dp),
                                         horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Icon(
-                                            imageVector = if (res.passed) Icons.Default.CheckCircle else Icons.Default.Error,
+                                            imageVector = if (res.passed) Icons.Rounded.CheckCircle else Icons.Rounded.Error,
                                             contentDescription = null,
-                                            tint = if (res.passed) EmeraldLight else RedstoneLight,
+                                            tint = if (res.passed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                                             modifier = Modifier.size(18.dp)
                                         )
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text(res.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = Color.White)
-                                            Text("${res.detail} (${res.latencyMs}ms)", style = MaterialTheme.typography.labelSmall, color = Slate400)
+                                            Text(
+                                                text = res.name,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            MineServeTableMonoText(
+                                                text = "${res.detail} (${res.latencyMs}ms)",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
                                         }
                                     }
                                 }
@@ -207,16 +226,8 @@ fun DiagnosticsScreen(
             }
 
             // Card 2: Redacted Logcat Capture & Export
-            Card(
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianCard),
-                border = BorderStroke(1.dp, ObsidianCardBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -226,8 +237,18 @@ fun DiagnosticsScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Default.BugReport, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(22.dp))
-                            Text("App Logcat Capture", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = Color.White)
+                            Icon(
+                                imageVector = Icons.Rounded.BugReport,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Text(
+                                text = "App Logcat Capture",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
                         IconButton(
                             onClick = {
@@ -239,14 +260,18 @@ fun DiagnosticsScreen(
                             },
                             enabled = !isCapturingLogs
                         ) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh Logs", tint = EmeraldLight)
+                            Icon(
+                                imageVector = Icons.Rounded.Refresh,
+                                contentDescription = "Refresh Logs",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
 
                     Text(
                         text = "Tokens, passwords, webhook URLs, and public IPs are automatically redacted before display and export.",
                         style = MaterialTheme.typography.labelSmall,
-                        color = Slate400
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -254,33 +279,33 @@ fun DiagnosticsScreen(
                             FilterChip(
                                 selected = filterMode == mode,
                                 onClick = { filterMode = mode },
-                                label = { Text(mode.label, fontSize = 11.sp) },
+                                label = { Text(mode.label, style = MaterialTheme.typography.labelSmall) },
+                                border = null,
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = EmeraldDark,
-                                    selectedLabelColor = EmeraldLight,
-                                    containerColor = Slate800,
-                                    labelColor = Color.White
+                                    selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    labelColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
                     }
 
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = Slate950,
-                        border = BorderStroke(1.dp, ObsidianCardBorder),
+                        shape = ShapeDefaults.Medium,
+                        color = extColors.terminalSurface,
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 160.dp, max = 280.dp)
                     ) {
                         Text(
                             text = if (isCapturingLogs) "Capturing logcat..." else logText,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = monoFont,
                             fontSize = 10.sp,
                             lineHeight = 14.sp,
-                            color = Slate400,
+                            color = extColors.terminalOnSurface,
                             modifier = Modifier
-                                .padding(10.dp)
+                                .padding(12.dp)
                                 .verticalScroll(rememberScrollState())
                                 .horizontalScroll(rememberScrollState())
                         )
@@ -306,16 +331,19 @@ fun DiagnosticsScreen(
                                 }
                             },
                             enabled = !isExporting && !isCapturingLogs,
-                            colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
-                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            ),
+                            shape = ShapeDefaults.Small,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Share, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Share .zip", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Share .zip", fontWeight = FontWeight.Bold)
                         }
 
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = {
                                 isExporting = true
                                 scope.launch {
@@ -330,13 +358,16 @@ fun DiagnosticsScreen(
                                 }
                             },
                             enabled = !isExporting && !isCapturingLogs,
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, ObsidianCardBorder),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            shape = ShapeDefaults.Small,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Download, contentDescription = null, tint = EmeraldLight, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Save .zip", color = Color.White, fontSize = 12.sp)
+                            Text("Save .zip")
                         }
                     }
                 }
@@ -345,3 +376,13 @@ fun DiagnosticsScreen(
     }
 }
 
+@com.devwithzachary.mineserve.ui.preview.MineServeScreenPreviews
+@Composable
+private fun DiagnosticsScreenPreview() {
+    com.devwithzachary.mineserve.ui.preview.MineServePreviewContainer {
+        DiagnosticsScreen(
+            onBack = {},
+            initialLogText = com.devwithzachary.mineserve.ui.preview.MineServePreviewFixtures.SAMPLE_DIAGNOSTICS_LOG
+        )
+    }
+}

@@ -36,7 +36,9 @@ import com.devwithzachary.mineserve.model.TunnelConfig
 import com.devwithzachary.mineserve.repository.BackupRepository
 import com.devwithzachary.mineserve.repository.PluginRepository
 import com.devwithzachary.mineserve.repository.ServerRepository
+import com.devwithzachary.mineserve.repository.ThemePreferences
 import com.devwithzachary.mineserve.repository.UpdatePreferences
+import com.devwithzachary.mineserve.designsystem.theme.ThemeMode
 import com.devwithzachary.mineserve.service.MineServeForegroundService
 import com.devwithzachary.mineserve.tunnel.TunnelManager
 import com.devwithzachary.mineserve.tunnel.TunnelState
@@ -67,6 +69,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val cloudManager = com.devwithzachary.mineserve.cloud.MineServeCloudManager.getInstance(application)
     val updateChecker = GitHubUpdateChecker()
     val updatePreferences = UpdatePreferences(application)
+    val themePreferences = ThemePreferences(application)
     val schedulerManager = ServerSchedulerManager.getInstance(application, serverRepository, backupRepository)
     val webAdminManager = com.devwithzachary.mineserve.admin.web.WebAdminManager.getInstance(
         application,
@@ -93,6 +96,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _isShowWhatsNewOnUpdateEnabled = MutableStateFlow(updatePreferences.isShowWhatsNewOnUpdateEnabled)
     val isShowWhatsNewOnUpdateEnabled: StateFlow<Boolean> = _isShowWhatsNewOnUpdateEnabled.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(themePreferences.themeMode)
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
+
+    private val _useDynamicColor = MutableStateFlow(themePreferences.useDynamicColor)
+    val useDynamicColor: StateFlow<Boolean> = _useDynamicColor.asStateFlow()
+
+    fun setThemeMode(mode: ThemeMode) {
+        themePreferences.themeMode = mode
+        _themeMode.value = mode
+    }
+
+    fun setUseDynamicColor(enabled: Boolean) {
+        themePreferences.useDynamicColor = enabled
+        _useDynamicColor.value = enabled
+    }
 
     private val _availableUpdate = MutableStateFlow<GitHubRelease?>(null)
     val availableUpdate: StateFlow<GitHubRelease?> = _availableUpdate.asStateFlow()
