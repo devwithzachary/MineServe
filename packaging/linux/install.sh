@@ -191,10 +191,11 @@ install_from_tarball() {
 if [ "$MODE_USER" -eq 1 ]; then
     install_from_tarball
 elif [ "$UNAME_ARCH" = "x86_64" ] && command -v dpkg >/dev/null 2>&1 && command -v apt-get >/dev/null 2>&1; then
-    DEB_NAME="mineserve_${TARGET_VERSION}_${DEB_ARCH}.deb"
+    DEB_NAME="MineServe-${TARGET_VERSION}-linux-${DEB_ARCH}.deb"
+    LEGACY_DEB_NAME="mineserve_${TARGET_VERSION}_${DEB_ARCH}.deb"
     DEB_FILE="$TMP_DIR/$DEB_NAME"
     echo "-> Detected Debian/Ubuntu system. Downloading ${DEB_NAME}..."
-    if download_release_asset "$DEB_NAME" "$DEB_FILE"; then
+    if download_release_asset "$DEB_NAME" "$DEB_FILE" || download_release_asset "$LEGACY_DEB_NAME" "$DEB_FILE"; then
         run_privileged dpkg -i "$DEB_FILE" || run_privileged apt-get install -f -y
     else
         install_from_tarball

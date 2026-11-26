@@ -104,22 +104,26 @@ if [ "$DRY_RUN" -eq 1 ]; then
     TARGET_ROOT="$PROJECT_ROOT/release/repo-staging"
 fi
 
-DEB_FILE="$PROJECT_ROOT/release/mineserve_${VERSION_NAME}_amd64.deb"
+DEB_FILE="$PROJECT_ROOT/release/MineServe-${VERSION_NAME}-linux-amd64.deb"
 if [ ! -f "$DEB_FILE" ]; then
-    echo "Error: Missing $DEB_FILE. Run ./scripts/build_linux_packages.sh first." >&2
+    DEB_FILE="$PROJECT_ROOT/release/mineserve_${VERSION_NAME}_amd64.deb"
+fi
+if [ ! -f "$DEB_FILE" ]; then
+    echo "Error: Missing .deb package for ${VERSION_NAME}. Run ./scripts/build_linux_packages.sh first." >&2
     exit 1
 fi
 
 RPM_FILES=()
 while IFS= read -r -d '' f; do
     RPM_FILES+=("$f")
-done < <(find "$PROJECT_ROOT/release" -maxdepth 1 -name "mineserve-${VERSION_NAME}-*.rpm" -print0)
+done < <(find "$PROJECT_ROOT/release" -maxdepth 1 \( -name "MineServe-${VERSION_NAME}-linux-*.rpm" -o -name "mineserve-*.rpm" \) -print0)
 
 APT_DIR="$TARGET_ROOT/apt"
 RPM_DIR="$TARGET_ROOT/rpm"
 mkdir -p "$APT_DIR/pool/main/m/mineserve" "$APT_DIR/dists/stable/main/binary-amd64"
 
 echo "==> Generating APT repository in $APT_DIR..."
+rm -f "$APT_DIR/pool/main/m/mineserve/"*.deb
 cp -f "$DEB_FILE" "$APT_DIR/pool/main/m/mineserve/"
 
 if command -v dpkg-scanpackages >/dev/null 2>&1 && command -v apt-ftparchive >/dev/null 2>&1; then
@@ -178,6 +182,7 @@ EOF
 if [ "${#RPM_FILES[@]}" -gt 0 ]; then
     echo "==> Generating RPM repository in $RPM_DIR..."
     mkdir -p "$RPM_DIR/packages"
+    rm -f "$RPM_DIR/packages/"*.rpm
     cp -f "${RPM_FILES[@]}" "$RPM_DIR/packages/"
 
     if command -v createrepo_c >/dev/null 2>&1; then

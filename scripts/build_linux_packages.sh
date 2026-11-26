@@ -140,8 +140,8 @@ create_install_scripts "$SELF_CONTAINED_STAGE"
 
 tar -C "$BUILD_STAGE" -czf "$RELEASE_DIR/${SELF_CONTAINED_NAME}.tar.gz" "$SELF_CONTAINED_NAME"
 
-# 4. Build Debian / Ubuntu .deb Package (mineserve_<version>_<arch>.deb)
-echo "[4/5] Building Debian / Ubuntu package (mineserve_${VERSION_NAME}_${DEB_ARCH}.deb)..."
+# 4. Build Debian / Ubuntu .deb Package (MineServe-<version>-linux-<arch>.deb)
+echo "[4/5] Building Debian / Ubuntu package (MineServe-${VERSION_NAME}-linux-${DEB_ARCH}.deb)..."
 DEB_ROOT="$BUILD_STAGE/deb-root"
 mkdir -p "$DEB_ROOT/DEBIAN" \
          "$DEB_ROOT/opt/mineserve" \
@@ -193,11 +193,11 @@ Description: Native Linux Minecraft Java, Modded, Proxy, and Bedrock Server Mana
  and a --headless Web Remote Admin daemon mode with portable OpenJDK 8/17/21/25 provisioning.
 EOF
 
-DEB_OUT="$RELEASE_DIR/mineserve_${VERSION_NAME}_${DEB_ARCH}.deb"
+DEB_OUT="$RELEASE_DIR/MineServe-${VERSION_NAME}-linux-${DEB_ARCH}.deb"
 rm -f "$DEB_OUT"
 
 if command -v dpkg-deb >/dev/null 2>&1; then
-    dpkg-deb --build --root-owner-group "$DEB_ROOT" "$DEB_OUT"
+    dpkg-deb -Zxz --build --root-owner-group "$DEB_ROOT" "$DEB_OUT"
 else
     # Portable Debian 2.0 binary package builder using standard ar + tar
     DEB_WORK="$BUILD_STAGE/deb-ar"
@@ -236,7 +236,7 @@ exec "$HERE/usr/bin/mineserve" "$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
-APPIMAGE_OUT="$RELEASE_DIR/MineServe-${VERSION_NAME}-${UNAME_ARCH}.AppImage"
+APPIMAGE_OUT="$RELEASE_DIR/MineServe-${VERSION_NAME}-linux-${UNAME_ARCH}.AppImage"
 CACHE_TOOLS_DIR="$HOME/.cache/mineserve-packaging"
 mkdir -p "$CACHE_TOOLS_DIR"
 APPIMAGETOOL_BIN=""
@@ -271,9 +271,13 @@ cp "$PROJECT_ROOT/packaging/linux/mineserve.spec" "$RPM_TOP/SPECS/mineserve.spec
 sed -i "s/^Version:.*/Version:        ${RPM_VERSION}/" "$RPM_TOP/SPECS/mineserve.spec"
 sed -i "s/^Release:.*/Release:        ${RPM_RELEASE}/" "$RPM_TOP/SPECS/mineserve.spec"
 
+RPM_OUT="$RELEASE_DIR/MineServe-${VERSION_NAME}-linux-${UNAME_ARCH}.rpm"
 if command -v rpmbuild >/dev/null 2>&1; then
     rpmbuild --define "_topdir $RPM_TOP" -bb "$RPM_TOP/SPECS/mineserve.spec"
-    find "$RPM_TOP/RPMS" -name "*.rpm" -exec cp {} "$RELEASE_DIR/" \;
+    BUILT_RPM=$(find "$RPM_TOP/RPMS" -name "*.rpm" | head -n 1 || true)
+    if [ -n "$BUILT_RPM" ]; then
+        cp "$BUILT_RPM" "$RPM_OUT"
+    fi
 elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
     echo "  -> 'rpmbuild' not installed locally; building .rpm via fedora:41 Docker container..."
     HOST_UID=$(id -u)
@@ -282,7 +286,10 @@ elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
         -v "$RPM_TOP:/rpmbuild" \
         fedora:41 \
         bash -c "dnf install -y -q rpm-build && rpmbuild --define '_topdir /rpmbuild' -bb /rpmbuild/SPECS/mineserve.spec && chown -R ${HOST_UID}:${HOST_GID} /rpmbuild/RPMS"
-    find "$RPM_TOP/RPMS" -name "*.rpm" -exec cp {} "$RELEASE_DIR/" \;
+    BUILT_RPM=$(find "$RPM_TOP/RPMS" -name "*.rpm" | head -n 1 || true)
+    if [ -n "$BUILT_RPM" ]; then
+        cp "$BUILT_RPM" "$RPM_OUT"
+    fi
 else
     echo "  -> Skipping .rpm build: neither 'rpmbuild' nor a running Docker daemon is available."
 fi

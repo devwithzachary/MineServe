@@ -5,6 +5,7 @@ Summary:        Native Linux Minecraft Java, Modded, Proxy, and Bedrock Server M
 License:        GPL-3.0-or-later
 URL:            https://github.com/devwithzachary/MineServe
 AutoReqProv:    no
+%define _binary_payload w7.xzdio
 
 %description
 MineServe is a free and open-source Minecraft server manager for Linux and Android.

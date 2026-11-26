@@ -267,7 +267,7 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.meta.outputs.version }}
-          name: MineServe v${{ needs.meta.outputs.version }}
+          name: ${{ needs.meta.outputs.version }}
           prerelease: ${{ needs.meta.outputs.is_prerelease == 'true' }}
           body_path: release_notes.md
           files: release/*
@@ -437,6 +437,7 @@ jobs:
         with:
           name: aur-mineserve-bin
           path: release/aur-mineserve-bin
+          include-hidden-files: true
 
   publish-winget:
     name: Generate / Submit Windows Winget Manifests
