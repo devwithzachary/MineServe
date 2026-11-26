@@ -396,9 +396,9 @@
     document.querySelectorAll('[data-host-tab="java"], [data-host-tab="diagnostics"], [data-host-tab="updates"]').forEach((btn) => {
       btn.classList.toggle("hidden", !canManageHost);
     });
-    const isLinux = !!(state.systemInfo && state.systemInfo.platform === "linux");
-    $("host-dirs-group")?.classList.toggle("hidden", !isLinux || !canManageHost);
-    $("safeguards-card")?.classList.toggle("hidden", isLinux || !canManageHost);
+    const isDesktop = !!(state.systemInfo && (state.systemInfo.isDesktopHost || ["linux", "macos", "windows"].includes(state.systemInfo.platform)));
+    $("host-dirs-group")?.classList.toggle("hidden", !isDesktop || !canManageHost);
+    $("safeguards-card")?.classList.toggle("hidden", isDesktop || !canManageHost);
     $("open-users-modal-btn")?.classList.toggle("hidden", !canManageUsers && !canViewAudit);
     $("btn-start")?.classList.toggle("hidden", !canControl);
     $("btn-restart")?.classList.toggle("hidden", !canControl);
@@ -528,7 +528,7 @@
       if (info.version && $("sidebar-version-pill")) {
         $("sidebar-version-pill").textContent = `v${info.version}`;
       }
-      $("system-info").textContent = info.platform === "linux"
+      $("system-info").textContent = (info.isDesktopHost || ["linux", "macos", "windows"].includes(info.platform))
         ? info.device
         : `${info.device} (Android ${info.android})`;
       if (info.serversDir && $("host-dir-servers")) $("host-dir-servers").value = info.serversDir;
@@ -3063,7 +3063,7 @@
     // Host Tools (Cloud, Safeguards, Diagnostics)
     const loadHostTools = async () => {
       await loadCloudAccount();
-      if (state.systemInfo && state.systemInfo.platform === "linux") return;
+      if (state.systemInfo && (state.systemInfo.isDesktopHost || ["linux", "macos", "windows"].includes(state.systemInfo.platform))) return;
       try {
         const sg = await apiFetch("/api/safeguards");
         $("sg-battery-enabled").checked = !!sg.batteryAutoStopEnabled;
@@ -3146,8 +3146,8 @@
           : "Check GitHub Releases for new MineServe versions.";
       }
       if (hasPerm("MANAGE_HOST")) {
-        const isLinux = !!(state.systemInfo && state.systemInfo.platform === "linux");
-        if (isLinux) loadHostDirectories();
+        const isDesktop = !!(state.systemInfo && (state.systemInfo.isDesktopHost || ["linux", "macos", "windows"].includes(state.systemInfo.platform)));
+        if (isDesktop) loadHostDirectories();
         loadHostTools();
         loadJavaRuntimes();
         loadWhatsNewData(false);

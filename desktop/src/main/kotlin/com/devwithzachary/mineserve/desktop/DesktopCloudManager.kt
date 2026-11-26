@@ -13,7 +13,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class LinuxCloudTunnelAllocation(
+data class DesktopCloudTunnelAllocation(
     val tunnelId: String,
     val hostname: String,
     val relayHost: String,
@@ -22,12 +22,12 @@ data class LinuxCloudTunnelAllocation(
     val clientToken: String
 )
 
-class LinuxCloudManager(
-    private val paths: LinuxDataPaths,
+class DesktopCloudManager(
+    private val paths: DesktopDataPaths,
     private val apiBaseUrl: String = "https://api.mineserve.app"
 ) {
     companion object {
-        private const val TAG = "LinuxCloudManager"
+        private const val TAG = "DesktopCloudManager"
         private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
     }
 
@@ -140,7 +140,7 @@ class LinuxCloudManager(
 
             // Exchange for dedicated per-device token
             runCatching {
-                val linkBody = JSONObject().put("deviceName", LinuxHostTelemetry.getHostDisplayName().take(60)).toString()
+                val linkBody = JSONObject().put("deviceName", DesktopHostTelemetry.getHostDisplayName().take(60)).toString()
                 val linkReq = MineServeHttpClient.newRequestBuilder("$apiBaseUrl/v1/devices/link")
                     .header("Authorization", "Bearer $finalToken")
                     .post(linkBody.toRequestBody(JSON_MEDIA))
@@ -194,7 +194,7 @@ class LinuxCloudManager(
         region: String = "us-east",
         protocol: String = "tcp",
         domain: String = "play.mineserve.app"
-    ): Result<LinuxCloudTunnelAllocation> = withContext(Dispatchers.IO) {
+    ): Result<DesktopCloudTunnelAllocation> = withContext(Dispatchers.IO) {
         val token = authToken
             ?: return@withContext Result.failure(IllegalStateException("Sign in to MineServe Cloud in Host Tools first."))
         val cleanSub = subdomain.trim().lowercase()
@@ -225,7 +225,7 @@ class LinuxCloudManager(
                 val j = JSONObject(body)
                 refreshProfile()
                 Result.success(
-                    LinuxCloudTunnelAllocation(
+                    DesktopCloudTunnelAllocation(
                         tunnelId = j.optString("tunnelId", ""),
                         hostname = j.optString("hostname", "$cleanSub.$domain"),
                         relayHost = j.optString("relayHost", ""),

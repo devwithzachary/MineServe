@@ -4,18 +4,18 @@ import com.devwithzachary.mineserve.api.ModrinthApiClient
 import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.auth.UserRole
 import com.devwithzachary.mineserve.designsystem.theme.ThemeMode
-import com.devwithzachary.mineserve.desktop.LinuxCloudManager
-import com.devwithzachary.mineserve.desktop.LinuxDataPaths
-import com.devwithzachary.mineserve.desktop.LinuxDiagnosticsManager
-import com.devwithzachary.mineserve.desktop.LinuxFirewallChecker
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
-import com.devwithzachary.mineserve.desktop.LinuxNetworkManager
-import com.devwithzachary.mineserve.desktop.LinuxPortForwardState
-import com.devwithzachary.mineserve.desktop.LinuxProcessManager
-import com.devwithzachary.mineserve.desktop.LinuxServerRepository
-import com.devwithzachary.mineserve.desktop.LinuxServerSoftwareManager
-import com.devwithzachary.mineserve.desktop.LinuxTunnelState
-import com.devwithzachary.mineserve.desktop.LinuxWebServer
+import com.devwithzachary.mineserve.desktop.DesktopCloudManager
+import com.devwithzachary.mineserve.desktop.DesktopDataPaths
+import com.devwithzachary.mineserve.desktop.DesktopDiagnosticsManager
+import com.devwithzachary.mineserve.desktop.DesktopFirewallChecker
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopNetworkManager
+import com.devwithzachary.mineserve.desktop.DesktopPortForwardState
+import com.devwithzachary.mineserve.desktop.DesktopProcessManager
+import com.devwithzachary.mineserve.desktop.DesktopServerRepository
+import com.devwithzachary.mineserve.desktop.DesktopServerSoftwareManager
+import com.devwithzachary.mineserve.desktop.DesktopTunnelState
+import com.devwithzachary.mineserve.desktop.DesktopWebServer
 import com.devwithzachary.mineserve.desktop.PortableJavaManager
 import com.devwithzachary.mineserve.engine.ChunkOptimizer
 import com.devwithzachary.mineserve.model.BackupEntry
@@ -108,15 +108,15 @@ data class DesktopDimensionSummary(
 )
 
 class DesktopViewModel(
-    val paths: LinuxDataPaths,
-    val serverRepository: LinuxServerRepository,
-    val processManager: LinuxProcessManager,
-    val softwareManager: LinuxServerSoftwareManager,
+    val paths: DesktopDataPaths,
+    val serverRepository: DesktopServerRepository,
+    val processManager: DesktopProcessManager,
+    val softwareManager: DesktopServerSoftwareManager,
     val javaManager: PortableJavaManager,
-    val networkManager: LinuxNetworkManager,
-    val cloudManager: LinuxCloudManager,
+    val networkManager: DesktopNetworkManager,
+    val cloudManager: DesktopCloudManager,
     val userRepository: UserRepository,
-    val webServer: LinuxWebServer
+    val webServer: DesktopWebServer
 ) {
     val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val modrinthApi = ModrinthApiClient()
@@ -149,7 +149,7 @@ class DesktopViewModel(
     private val _themeMode = MutableStateFlow(loadInitialThemeMode())
     val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
-    private val _showWhatsNewOnUpdate = MutableStateFlow(LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths))
+    private val _showWhatsNewOnUpdate = MutableStateFlow(DesktopDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths))
     val showWhatsNewOnUpdate: StateFlow<Boolean> = _showWhatsNewOnUpdate.asStateFlow()
 
     private val _webAdminRunning = MutableStateFlow(webServer.isRunning)
@@ -208,11 +208,11 @@ class DesktopViewModel(
     val squaremapPort: StateFlow<Int> = _squaremapPort.asStateFlow()
 
     // Network State Snapshot
-    private val _tunnelState = MutableStateFlow<LinuxTunnelState>(LinuxTunnelState.Disconnected)
-    val tunnelState: StateFlow<LinuxTunnelState> = _tunnelState.asStateFlow()
+    private val _tunnelState = MutableStateFlow<DesktopTunnelState>(DesktopTunnelState.Disconnected)
+    val tunnelState: StateFlow<DesktopTunnelState> = _tunnelState.asStateFlow()
 
-    private val _portForwardState = MutableStateFlow<LinuxPortForwardState>(LinuxPortForwardState.Idle)
-    val portForwardState: StateFlow<LinuxPortForwardState> = _portForwardState.asStateFlow()
+    private val _portForwardState = MutableStateFlow<DesktopPortForwardState>(DesktopPortForwardState.Idle)
+    val portForwardState: StateFlow<DesktopPortForwardState> = _portForwardState.asStateFlow()
 
     // Async Operation Status (Create / Upgrade / Modpack / Java)
     private val _operationBusy = MutableStateFlow(false)
@@ -235,8 +235,8 @@ class DesktopViewModel(
     init {
         _selectedServerId.value?.let { refreshSelectedServerData(it) }
         val hasExistingServers = serverRepository.servers.value.isNotEmpty()
-        if (LinuxDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasExistingServers)) {
-            LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+        if (DesktopDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasExistingServers)) {
+            DesktopDiagnosticsManager.markWhatsNewSeen(paths)
             _activeModal.value = DesktopModal.WHATS_NEW
         }
         scope.launch {
@@ -267,7 +267,7 @@ class DesktopViewModel(
                     _tunnelState.value = networkManager.getTunnelState(sid)
                     _portForwardState.value = networkManager.getPortForwardState(sid)
                 }
-                _showWhatsNewOnUpdate.value = LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths)
+                _showWhatsNewOnUpdate.value = DesktopDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths)
                 delay(1200)
             }
         }
@@ -358,12 +358,12 @@ class DesktopViewModel(
 
     fun setShowWhatsNewOnUpdate(enabled: Boolean) {
         _showWhatsNewOnUpdate.value = enabled
-        LinuxDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, enabled)
-        LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+        DesktopDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, enabled)
+        DesktopDiagnosticsManager.markWhatsNewSeen(paths)
     }
 
     fun openWhatsNewGuide() {
-        LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+        DesktopDiagnosticsManager.markWhatsNewSeen(paths)
         _activeModal.value = DesktopModal.WHATS_NEW
     }
 
@@ -987,17 +987,13 @@ class DesktopViewModel(
     // --- OS Integration Helpers ---
 
     fun openInFileManager(file: File) {
-        runCatching {
-            ProcessBuilder("xdg-open", file.absolutePath).start()
-        }.onFailure {
+        if (!com.devwithzachary.mineserve.desktop.DesktopPlatform.openFile(file)) {
             showToast("Path: ${file.absolutePath}")
         }
     }
 
     fun openUrlInBrowser(url: String) {
-        runCatching {
-            ProcessBuilder("xdg-open", url).start()
-        }.onFailure {
+        if (!com.devwithzachary.mineserve.desktop.DesktopPlatform.openUrl(url)) {
             copyToClipboard(url)
             showToast("Copied URL: $url")
         }

@@ -22,14 +22,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-class LinuxProcessManager(
-    private val serverRepository: LinuxServerRepository,
+class DesktopProcessManager(
+    private val serverRepository: DesktopServerRepository,
     private val javaManager: PortableJavaManager,
     private val verbose: Boolean = false,
     private val hasActiveTunnel: (String) -> Boolean = { false }
 ) {
     companion object {
-        private const val TAG = "LinuxProcessManager"
+        private const val TAG = "DesktopProcessManager"
         private const val MAX_CONSOLE_LINES = 2000
         private const val MAX_CRASH_RESTARTS = 3
         private const val CRASH_WINDOW_MS = 5 * 60 * 1000L
@@ -132,26 +132,31 @@ class LinuxProcessManager(
                 }
 
                 val cmd: List<String> = if (server.type == ServerType.BEDROCK_BDS) {
-                    val bdsBin = File(serverDir, "bedrock_server")
-                    if (!bdsBin.exists()) {
-                        throw IllegalStateException("bedrock_server binary not found in ${serverDir.absolutePath}")
+                    if (DesktopPlatform.isMacOs) {
+                        throw IllegalStateException("Mojang does not publish a native macOS Bedrock Dedicated Server binary. Use Paper + GeyserMC (Bedrock + Java Crossplay) on macOS instead.")
                     }
-                    bdsBin.setExecutable(true, false)
+                    val bdsBin = File(serverDir, DesktopPlatform.bedrockBinaryName)
+                    if (!bdsBin.exists()) {
+                        throw IllegalStateException("${DesktopPlatform.bedrockBinaryName} binary not found in ${serverDir.absolutePath}")
+                    }
+                    if (DesktopPlatform.isLinux) {
+                        bdsBin.setExecutable(true, false)
+                    }
                     listOf(bdsBin.absolutePath)
                 } else {
-                    appendConsoleLine(server.id, "[MineServe Linux] Checking OpenJDK ${server.javaVersion}...")
+                    appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] Checking OpenJDK ${server.javaVersion}...")
                     val javaBin = javaManager.installJava(server.javaVersion) { msg ->
-                        appendConsoleLine(server.id, "[MineServe Linux] $msg")
+                        appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] $msg")
                     }.getOrThrow()
 
                     buildJavaCommand(javaBin, server, serverDir)
                 }
 
-                appendConsoleLine(server.id, "[MineServe Linux] Launching: ${cmd.joinToString(" ")}")
+                appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] Launching: ${cmd.joinToString(" ")}")
                 val pb = ProcessBuilder(cmd)
                     .directory(serverDir)
                     .redirectErrorStream(true)
-                if (server.type == ServerType.BEDROCK_BDS) {
+                if (server.type == ServerType.BEDROCK_BDS && DesktopPlatform.isLinux) {
                     pb.environment()["LD_LIBRARY_PATH"] = serverDir.absolutePath
                 }
 
@@ -167,7 +172,7 @@ class LinuxProcessManager(
                         if (getServerStatus(server.id) == ServerStatus.STARTING && DONE_REGEX.containsMatchIn(current)) {
                             updateStatus(server.id, ServerStatus.RUNNING)
                             if (!hasActiveTunnel(server.id)) {
-                                val fw = LinuxFirewallChecker.checkInboundPort(server.port, isUdp = server.type == ServerType.BEDROCK_BDS)
+                                val fw = DesktopFirewallChecker.checkInboundPort(server.port, isUdp = server.type == ServerType.BEDROCK_BDS)
                                 if (fw.isActive && !fw.isPortConfirmedOpen && !fw.warningMessage.isNullOrBlank()) {
                                     appendConsoleLine(server.id, "[MineServe Firewall] WARNING: ${fw.warningMessage}")
                                     CoreLog.w(TAG, "[${server.name}] ${fw.warningMessage}")
@@ -185,7 +190,7 @@ class LinuxProcessManager(
                 }
 
                 val exitCode = proc.waitFor()
-                appendConsoleLine(server.id, "[MineServe Linux] Server process exited with code $exitCode.")
+                appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] Server process exited with code $exitCode.")
                 val wasRequested = session.stopRequested
                 sessions.remove(server.id, session)
 
@@ -204,7 +209,7 @@ class LinuxProcessManager(
                 }
             } catch (e: Exception) {
                 CoreLog.e(TAG, "Error running server ${server.id}", e)
-                appendConsoleLine(server.id, "[MineServe Linux] ERROR: ${e.message}")
+                appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] ERROR: ${e.message}")
                 sessions.remove(server.id, session)
                 updateStatus(server.id, ServerStatus.ERROR)
             }
@@ -231,9 +236,10 @@ class LinuxProcessManager(
         if (server.jvmArgs.isNotBlank()) {
             args.addAll(server.jvmArgs.trim().split(Regex("\\s+")))
         }
+        val argsFileName = if (DesktopPlatform.isWindows) "win_args.txt" else "unix_args.txt"
         val unixArgs = File(serverDir, "libraries").takeIf {
             server.type == ServerType.FORGE || server.type == ServerType.NEOFORGE
-        }?.walkTopDown()?.filter { it.name == "unix_args.txt" }?.toList()?.let { candidates ->
+        }?.walkTopDown()?.filter { it.name == argsFileName }?.toList()?.let { candidates ->
             candidates.firstOrNull { it.absolutePath.contains(server.version) }
                 ?: candidates.maxByOrNull { it.lastModified() }
         }
@@ -275,7 +281,7 @@ class LinuxProcessManager(
                 delay(500)
             }
             if (session.process?.isAlive == true) {
-                appendConsoleLine(serverId, "[MineServe Linux] Graceful stop timed out; terminating process...")
+                appendConsoleLine(serverId, "[MineServe ${DesktopPlatform.shortName}] Graceful stop timed out; terminating process...")
                 session.process?.destroyForcibly()
             }
         }
@@ -295,7 +301,7 @@ class LinuxProcessManager(
 
     fun restartServer(server: MinecraftServer) {
         if (!restartingServers.add(server.id)) return
-        appendConsoleLine(server.id, "[MineServe Linux] Restarting server...")
+        appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] Restarting server...")
         stopServer(server.id)
         scope.launch {
             try {
@@ -357,8 +363,8 @@ class LinuxProcessManager(
                 val next = mutableMapOf<String, ServerMetrics>()
                 for ((id, session) in sessions) {
                     if (session.process?.isAlive == true) {
-                        val ramUsed = LinuxHostTelemetry.getProcessRssMb(session.pid)
-                        val cpuPct = LinuxHostTelemetry.getProcessCpuPercent(session.pid)
+                        val ramUsed = DesktopHostTelemetry.getProcessRssMb(session.pid)
+                        val cpuPct = DesktopHostTelemetry.getProcessCpuPercent(session.pid)
                         val isRecentLag = (now - session.lastLagWarningTime) < 30_000L
                         if (isRecentLag) {
                             val targetTps = if (cpuPct > 85f) (20.0 - (cpuPct - 85f) * 0.15).coerceIn(14.0, 20.0) else 20.0

@@ -1,3 +1,3 @@
-• Material Design 3 ("Obsidian & Ore") UI: Refreshed Android, Linux Desktop, and Web Admin with Light & Dark themes, borderless tonal cards, and optional Android 12+ Material You wallpaper colors.
-• Unified 6-Tab Workspace & WebUI Parity: Standardized Console, Performance, Players, Content, World & Map, and Management tabs with offline self-hosted fonts and native dialogs.
-• 2-Step Create Server & Team Tools: Pinned Minecraft version picker, software descriptions, and Audit Log CSV export.
+• macOS & Windows Betas: Native Compose GUI, --headless Web Admin, and portable OpenJDK across macOS (.dmg) and Windows (.msi/.exe/.zip).
+• Material Design 3 ("Obsidian & Ore") UI: Refreshed Android, Desktop, and Web Admin with Light & Dark themes, borderless cards, and optional Android 12+ Material You colors.
+• Unified 6-Tab Workspace & Team Tools: Standardized Console/Performance/Players/Content/World & Map/Management tabs, 2-step Create Server flow, and Audit Log CSV export.

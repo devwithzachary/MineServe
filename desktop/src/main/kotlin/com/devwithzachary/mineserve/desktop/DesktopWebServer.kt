@@ -26,21 +26,21 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 
-class LinuxWebServer(
+class DesktopWebServer(
     private val bindHost: String,
     private val port: Int,
-    private val paths: LinuxDataPaths,
-    private val serverRepository: LinuxServerRepository,
-    private val processManager: LinuxProcessManager,
-    private val softwareManager: LinuxServerSoftwareManager,
+    private val paths: DesktopDataPaths,
+    private val serverRepository: DesktopServerRepository,
+    private val processManager: DesktopProcessManager,
+    private val softwareManager: DesktopServerSoftwareManager,
     private val javaManager: PortableJavaManager,
-    private val networkManager: LinuxNetworkManager,
-    private val cloudManager: LinuxCloudManager,
+    private val networkManager: DesktopNetworkManager,
+    private val cloudManager: DesktopCloudManager,
     private val userRepository: UserRepository,
     private val verbose: Boolean = false
 ) {
     companion object {
-        private const val TAG = "LinuxWebServer"
+        private const val TAG = "DesktopWebServer"
         private const val MAX_UPLOAD_BYTES = 512L * 1024L * 1024L
     }
 
@@ -54,7 +54,7 @@ class LinuxWebServer(
 
     private val sessionManager = WebSessionManager()
 
-    private val coreHandlers = LinuxWebCoreHandlers(
+    private val coreHandlers = DesktopWebCoreHandlers(
         paths = paths,
         serverRepository = serverRepository,
         processManager = processManager,
@@ -65,7 +65,7 @@ class LinuxWebServer(
         scopeProvider = { scope }
     )
 
-    private val extHandlers = LinuxWebExtendedHandlers(
+    private val extHandlers = DesktopWebExtendedHandlers(
         paths = paths,
         serverRepository = serverRepository,
         processManager = processManager,
@@ -96,7 +96,7 @@ class LinuxWebServer(
             }
             true
         } catch (e: Exception) {
-            CoreLog.e(TAG, "Failed to bind LinuxWebServer on $bindHost:$port", e)
+            CoreLog.e(TAG, "Failed to bind DesktopWebServer on $bindHost:$port", e)
             false
         }
     }
@@ -260,24 +260,24 @@ class LinuxWebServer(
                     out,
                     200,
                     "OK",
-                    LinuxDiagnosticsManager.buildAboutJson(
-                        platform = com.devwithzachary.mineserve.model.ChangelogPlatform.LINUX,
+                    DesktopDiagnosticsManager.buildAboutJson(
+                        platform = DesktopPlatform.changelogPlatform,
                         isPlayStore = false
                     )
                 )
                 return
             }
             if (path == "/api/updates/check" && method == "GET") {
-                sendJson(out, 200, "OK", LinuxDiagnosticsManager.checkGitHubUpdatesJson())
+                sendJson(out, 200, "OK", DesktopDiagnosticsManager.checkGitHubUpdatesJson())
                 return
             }
             if (path == "/api/whats-new" && method == "GET") {
                 val hasServers = serverRepository.servers.value.isNotEmpty()
-                val shouldAuto = LinuxDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasServers)
-                val resp = LinuxDiagnosticsManager.buildWhatsNewJson(
-                    platform = com.devwithzachary.mineserve.model.ChangelogPlatform.LINUX,
-                    showOnUpdateEnabled = LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths),
-                    lastSeenVersion = LinuxDiagnosticsManager.getLastSeenWhatsNewVersion(paths),
+                val shouldAuto = DesktopDiagnosticsManager.shouldAutoShowWhatsNew(paths, hasServers)
+                val resp = DesktopDiagnosticsManager.buildWhatsNewJson(
+                    platform = DesktopPlatform.changelogPlatform,
+                    showOnUpdateEnabled = DesktopDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths),
+                    lastSeenVersion = DesktopDiagnosticsManager.getLastSeenWhatsNewVersion(paths),
                     shouldAutoShow = shouldAuto
                 )
                 sendJson(out, 200, "OK", resp)
@@ -286,15 +286,15 @@ class LinuxWebServer(
             if (path == "/api/whats-new" && method == "POST") {
                 val j = parseJson(body)
                 if (j.optBoolean("markSeen", false)) {
-                    LinuxDiagnosticsManager.markWhatsNewSeen(paths)
+                    DesktopDiagnosticsManager.markWhatsNewSeen(paths)
                 }
                 if (j.has("showOnUpdateEnabled")) {
-                    LinuxDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, j.optBoolean("showOnUpdateEnabled", true))
+                    DesktopDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, j.optBoolean("showOnUpdateEnabled", true))
                 }
-                val resp = LinuxDiagnosticsManager.buildWhatsNewJson(
-                    platform = com.devwithzachary.mineserve.model.ChangelogPlatform.LINUX,
-                    showOnUpdateEnabled = LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths),
-                    lastSeenVersion = LinuxDiagnosticsManager.getLastSeenWhatsNewVersion(paths),
+                val resp = DesktopDiagnosticsManager.buildWhatsNewJson(
+                    platform = DesktopPlatform.changelogPlatform,
+                    showOnUpdateEnabled = DesktopDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths),
+                    lastSeenVersion = DesktopDiagnosticsManager.getLastSeenWhatsNewVersion(paths),
                     shouldAutoShow = false
                 )
                 sendJson(out, 200, "OK", resp)
@@ -303,13 +303,13 @@ class LinuxWebServer(
             if (path == "/api/diagnostics/logcat" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
                 val filter = queryParams["filter"]
-                val logs = LinuxDiagnosticsManager.captureLogs(filter, serverRepository, processManager)
+                val logs = DesktopDiagnosticsManager.captureLogs(filter, serverRepository, processManager)
                 sendJson(out, 200, "OK", JSONObject().put("filter", filter ?: "MINESERVE_TAGS").put("logs", logs))
                 return
             }
             if (path == "/api/diagnostics/selftest" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
-                val checks = LinuxDiagnosticsManager.runNetworkSelfTest()
+                val checks = DesktopDiagnosticsManager.runNetworkSelfTest()
                 val arr = JSONArray()
                 checks.forEach { c ->
                     arr.put(JSONObject().put("name", c.name).put("passed", c.passed).put("detail", c.detail))
@@ -319,7 +319,7 @@ class LinuxWebServer(
             }
             if (path == "/api/diagnostics/bundle" && method == "GET") {
                 if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
-                val zipFile = LinuxDiagnosticsManager.exportDiagnosticZip(
+                val zipFile = DesktopDiagnosticsManager.exportDiagnosticZip(
                     paths = paths,
                     filterMode = queryParams["filter"],
                     serverRepository = serverRepository,

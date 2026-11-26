@@ -33,12 +33,12 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
-internal class LinuxWebExtendedHandlers(
-    private val paths: LinuxDataPaths,
-    private val serverRepository: LinuxServerRepository,
-    private val processManager: LinuxProcessManager,
-    private val softwareManager: LinuxServerSoftwareManager,
-    private val networkManager: LinuxNetworkManager,
+internal class DesktopWebExtendedHandlers(
+    private val paths: DesktopDataPaths,
+    private val serverRepository: DesktopServerRepository,
+    private val processManager: DesktopProcessManager,
+    private val softwareManager: DesktopServerSoftwareManager,
+    private val networkManager: DesktopNetworkManager,
     private val userRepository: UserRepository,
     private val actualWebPortProvider: () -> Int
 ) {
@@ -445,7 +445,7 @@ internal class LinuxWebExtendedHandlers(
             sub == null && method == "GET" -> {
                 val installed = WebMapPluginType.detectInstalled(serverDir)
                 val mapPort = WebMapPluginType.detectSquaremapPort(serverDir)
-                val localIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+                val localIp = DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
                 val suggested = if (actualPort == WebMapPluginType.SQUAREMAP.defaultPort) {
                     WebMapPluginType.SQUAREMAP.defaultPort + 1
                 } else {
@@ -521,37 +521,37 @@ internal class LinuxWebExtendedHandlers(
                 val pfState = networkManager.getPortForwardState(server.id)
 
                 val tStateObj = when (tState) {
-                    is LinuxTunnelState.Disconnected -> JSONObject().put("status", "disconnected")
-                    is LinuxTunnelState.Connecting -> JSONObject()
+                    is DesktopTunnelState.Disconnected -> JSONObject().put("status", "disconnected")
+                    is DesktopTunnelState.Connecting -> JSONObject()
                         .put("status", "connecting")
                         .put("message", tState.message)
                         .put("claimUrl", tState.claimUrl ?: "")
-                    is LinuxTunnelState.Connected -> JSONObject()
+                    is DesktopTunnelState.Connected -> JSONObject()
                         .put("status", "connected")
                         .put("fullAddress", tState.fullAddress)
                         .put("publicHost", tState.publicHost)
                         .put("publicPort", tState.publicPort)
-                    is LinuxTunnelState.Error -> JSONObject()
+                    is DesktopTunnelState.Error -> JSONObject()
                         .put("status", "error")
                         .put("errorMessage", tState.errorMessage)
                 }
 
                 val pfStateObj = when (pfState) {
-                    is LinuxPortForwardState.Idle -> JSONObject().put("status", "idle")
-                    is LinuxPortForwardState.Discovering -> JSONObject().put("status", "discovering").put("message", pfState.message)
-                    is LinuxPortForwardState.Mapped -> JSONObject()
+                    is DesktopPortForwardState.Idle -> JSONObject().put("status", "idle")
+                    is DesktopPortForwardState.Discovering -> JSONObject().put("status", "discovering").put("message", pfState.message)
+                    is DesktopPortForwardState.Mapped -> JSONObject()
                         .put("status", "mapped")
                         .put("directAddress", pfState.directAddress)
                         .put("externalIp", pfState.externalIp)
                         .put("externalPort", pfState.externalPort)
                         .put("gatewayName", pfState.gatewayName)
-                    is LinuxPortForwardState.Failed -> JSONObject().put("status", "failed").put("reason", pfState.reason)
+                    is DesktopPortForwardState.Failed -> JSONObject().put("status", "failed").put("reason", pfState.reason)
                 }
 
                 sendJson(
                     out, 200, "OK",
                     JSONObject()
-                        .put("localIp", LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1")
+                        .put("localIp", DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1")
                         .put("tunnelConfig", JSONObject()
                             .put("provider", tCfg.provider.name)
                             .put("autoStart", tCfg.autoStart)
@@ -763,7 +763,7 @@ internal class LinuxWebExtendedHandlers(
                 }
                 val payload = JSONObject()
                     .put("username", "MineServe")
-                    .put("content", "MineServe Linux test notification for **${server.name}**.")
+                    .put("content", "MineServe ${DesktopPlatform.shortName} test notification for **${server.name}**.")
                     .toString()
                 val ok = runCatching {
                     val req = MineServeHttpClient.newRequestBuilder(url)
@@ -1027,7 +1027,7 @@ internal class LinuxWebExtendedHandlers(
     }
 
     fun buildNetworkSummary(server: MinecraftServer): JSONObject {
-        val localIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+        val localIp = DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
         val tState = networkManager.getTunnelState(server.id)
         val pfState = networkManager.getPortForwardState(server.id)
         val providerLabel = when (server.tunnelConfig.provider) {
@@ -1037,27 +1037,27 @@ internal class LinuxWebExtendedHandlers(
             TunnelProvider.PLAYIT -> "Playit.gg"
         }
         val tunnelStatus = when (tState) {
-            is LinuxTunnelState.Connected -> "connected"
-            is LinuxTunnelState.Connecting -> "connecting"
-            is LinuxTunnelState.Error -> "error"
-            is LinuxTunnelState.Disconnected -> "disconnected"
+            is DesktopTunnelState.Connected -> "connected"
+            is DesktopTunnelState.Connecting -> "connecting"
+            is DesktopTunnelState.Error -> "error"
+            is DesktopTunnelState.Disconnected -> "disconnected"
         }
-        val tunnelAddress = (tState as? LinuxTunnelState.Connected)?.fullAddress.orEmpty()
+        val tunnelAddress = (tState as? DesktopTunnelState.Connected)?.fullAddress.orEmpty()
         val tunnelMessage = when (tState) {
-            is LinuxTunnelState.Connecting -> tState.claimUrl ?: tState.message
-            is LinuxTunnelState.Error -> tState.errorMessage
+            is DesktopTunnelState.Connecting -> tState.claimUrl ?: tState.message
+            is DesktopTunnelState.Error -> tState.errorMessage
             else -> ""
         }
         val pfStatus = when (pfState) {
-            is LinuxPortForwardState.Mapped -> "mapped"
-            is LinuxPortForwardState.Discovering -> "discovering"
-            is LinuxPortForwardState.Failed -> "failed"
-            is LinuxPortForwardState.Idle -> "idle"
+            is DesktopPortForwardState.Mapped -> "mapped"
+            is DesktopPortForwardState.Discovering -> "discovering"
+            is DesktopPortForwardState.Failed -> "failed"
+            is DesktopPortForwardState.Idle -> "idle"
         }
-        val directAddress = (pfState as? LinuxPortForwardState.Mapped)?.directAddress.orEmpty()
+        val directAddress = (pfState as? DesktopPortForwardState.Mapped)?.directAddress.orEmpty()
         val pfMessage = when (pfState) {
-            is LinuxPortForwardState.Discovering -> pfState.message
-            is LinuxPortForwardState.Failed -> pfState.reason
+            is DesktopPortForwardState.Discovering -> pfState.message
+            is DesktopPortForwardState.Failed -> pfState.reason
             else -> ""
         }
         val publicAddress = when {
@@ -1073,7 +1073,7 @@ internal class LinuxWebExtendedHandlers(
             else -> ""
         }
         val fwCheck = if (tunnelStatus != "connected") {
-            LinuxFirewallChecker.checkInboundPort(server.port, isUdp = server.type == ServerType.BEDROCK_BDS)
+            DesktopFirewallChecker.checkInboundPort(server.port, isUdp = server.type == ServerType.BEDROCK_BDS)
         } else null
         return JSONObject()
             .put("localAddress", "$localIp:${server.port}")

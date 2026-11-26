@@ -21,12 +21,12 @@ class BedrockApiClient(
         private const val BDS_LINKS_API = "https://net-secondary.web.minecraft-services.net/api/v1.0/download/links"
     }
 
-    suspend fun getBdsVersions(): List<String> = withContext(Dispatchers.IO) {
-        val build = getLatestBdsBuild()
+    suspend fun getBdsVersions(downloadType: String = "serverBedrockLinux"): List<String> = withContext(Dispatchers.IO) {
+        val build = getLatestBdsBuild(downloadType)
         if (build != null) listOf(build.first) else listOf("Latest")
     }
 
-    suspend fun getLatestBdsBuild(): Pair<String, String>? = withContext(Dispatchers.IO) {
+    suspend fun getLatestBdsBuild(downloadType: String = "serverBedrockLinux"): Pair<String, String>? = withContext(Dispatchers.IO) {
         try {
             val req = MineServeHttpClient.newGetRequest(BDS_LINKS_API)
             client.newCall(req).execute().use { resp ->
@@ -36,7 +36,7 @@ class BedrockApiClient(
                 val links = root["result"]?.jsonObject?.get("links")?.jsonArray ?: return@withContext null
                 for (item in links) {
                     val obj = item.jsonObject
-                    if (obj["downloadType"]?.jsonPrimitive?.content == "serverBedrockLinux") {
+                    if (obj["downloadType"]?.jsonPrimitive?.content == downloadType) {
                         val url = obj["downloadUrl"]?.jsonPrimitive?.content ?: continue
                         val ver = Regex("""bedrock-server-([0-9.]+)\.zip""")
                             .find(url)?.groupValues?.getOrNull(1) ?: "Latest"

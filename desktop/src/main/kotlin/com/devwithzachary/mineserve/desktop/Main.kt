@@ -23,7 +23,7 @@ import com.devwithzachary.mineserve.core.CoreLog
 import com.devwithzachary.mineserve.core.Logger
 import com.devwithzachary.mineserve.designsystem.assets.DesktopBrandAssets
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
-import com.devwithzachary.mineserve.desktop.ui.LinuxSystemTrayManager
+import com.devwithzachary.mineserve.desktop.ui.DesktopSystemTrayManager
 import com.devwithzachary.mineserve.desktop.ui.MineServeDesktopApp
 import com.devwithzachary.mineserve.model.MineServeAboutData
 import com.devwithzachary.mineserve.model.ServerStatus
@@ -41,7 +41,7 @@ data class CliOptions(
     val verbose: Boolean = false,
     val port: Int = 8080,
     val bindHost: String = "0.0.0.0",
-    val dataDir: File = LinuxDataPaths.defaultDataDir(),
+    val dataDir: File = DesktopDataPaths.defaultDataDir(),
     val resetAdmin: Boolean = false,
     val resetPassword: String? = null,
     val printService: Boolean = false,
@@ -53,7 +53,7 @@ fun parseCliArgs(args: Array<String>): CliOptions {
     var verbose = false
     var port = 8080
     var bindHost = "0.0.0.0"
-    var dataDir = LinuxDataPaths.defaultDataDir()
+    var dataDir = DesktopDataPaths.defaultDataDir()
     var resetAdmin = false
     var resetPassword: String? = null
     var printService = false
@@ -134,7 +134,7 @@ private fun generateInitialPassword(length: Int = 14): String {
 private fun printUsage() {
     println(
         """
-        MineServe Linux (v${MineServeAboutData.APP_VERSION}) - Native Minecraft Server Manager
+        MineServe ${DesktopPlatform.shortName} (v${MineServeAboutData.APP_VERSION}) - Native Minecraft Server Manager
 
         Usage:
           mineserve [options]
@@ -144,10 +144,10 @@ private fun printUsage() {
           --verbose, -v             Print detailed HTTP, tunnel, and Minecraft server logs
           --port, -p <port>         Web Admin HTTP port (default: 8080)
           --bind, -b <host>         Bind address (default: 0.0.0.0)
-          --data-dir, -d <path>     Custom data directory (default: ~/.local/share/mineserve)
+          --data-dir, -d <path>     Custom data directory (default: ${DesktopDataPaths.defaultDataDir().path})
           --reset-admin [pass]      Reset primary 'admin' Owner account (random password if omitted) and exit
           --reset-password [pass]   Alias for --reset-admin (min 6 chars if custom password provided)
-          --print-service           Print a ready-to-use systemd mineserve.service unit file
+          --print-service           Print a ready-to-use background service config for ${DesktopPlatform.shortName}
           --help, -h                Show this help message
         """.trimIndent()
     )
@@ -186,11 +186,11 @@ fun main(args: Array<String>) {
         return
     }
     if (options.printService) {
-        print(SystemdServiceInstaller.generateServiceUnit(dataDir = options.dataDir, port = options.port, bindHost = options.bindHost))
+        print(SystemdServiceInstaller.generateForCurrentOs(dataDir = options.dataDir, port = options.port, bindHost = options.bindHost))
         return
     }
 
-    val paths = LinuxDataPaths(options.dataDir)
+    val paths = DesktopDataPaths(options.dataDir)
     val userRepository = UserRepository(paths.rootDir)
 
     if (options.resetAdmin) {
@@ -216,7 +216,7 @@ fun main(args: Array<String>) {
         val initialPassword = generateInitialPassword()
         userRepository.ensureDefaultOwner("admin", initialPassword)
         println("============================================================")
-        println(" MineServe Linux First-Run Setup")
+        println(" MineServe ${DesktopPlatform.shortName} First-Run Setup")
         println(" Created default Owner account:")
         println("   Username: admin")
         println("   Password: $initialPassword")
@@ -225,15 +225,15 @@ fun main(args: Array<String>) {
     }
 
     val javaManager = PortableJavaManager(paths)
-    val serverRepository = LinuxServerRepository(paths)
-    val softwareManager = LinuxServerSoftwareManager(serverRepository, javaManager)
-    val cloudManager = LinuxCloudManager(paths)
-    val networkManager = LinuxNetworkManager(paths, cloudManager = cloudManager, verbose = options.verbose)
-    val processManager = LinuxProcessManager(
+    val serverRepository = DesktopServerRepository(paths)
+    val softwareManager = DesktopServerSoftwareManager(serverRepository, javaManager)
+    val cloudManager = DesktopCloudManager(paths)
+    val networkManager = DesktopNetworkManager(paths, cloudManager = cloudManager, verbose = options.verbose)
+    val processManager = DesktopProcessManager(
         serverRepository = serverRepository,
         javaManager = javaManager,
         verbose = options.verbose,
-        hasActiveTunnel = { serverId -> networkManager.getTunnelState(serverId) is LinuxTunnelState.Connected }
+        hasActiveTunnel = { serverId -> networkManager.getTunnelState(serverId) is DesktopTunnelState.Connected }
     )
 
     // Auto-start any servers configured with autoStart = true
@@ -242,7 +242,7 @@ fun main(args: Array<String>) {
         processManager.startServer(srv)
     }
 
-    val webServer = LinuxWebServer(
+    val webServer = DesktopWebServer(
         bindHost = options.bindHost,
         port = options.port,
         paths = paths,
@@ -262,22 +262,22 @@ fun main(args: Array<String>) {
     }
 
     val runHeadless = options.headless || GraphicsEnvironment.isHeadless()
-    val lanIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
-    val mem = LinuxHostTelemetry.getMemoryInfo()
+    val lanIp = DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+    val mem = DesktopHostTelemetry.getMemoryInfo()
     println("")
-    println("MineServe Linux Engine started (${if (runHeadless) "Headless Mode" else "Desktop GUI + Web Admin Mode"}${if (options.verbose) ", Verbose" else ""})")
-    println("  Host:      ${LinuxHostTelemetry.getHostDisplayName()} (${mem.totalMb} MB RAM)")
+    println("MineServe ${DesktopPlatform.shortName} Engine started (${if (runHeadless) "Headless Mode" else "Desktop GUI + Web Admin Mode"}${if (options.verbose) ", Verbose" else ""})")
+    println("  Host:      ${DesktopHostTelemetry.getHostDisplayName()} (${mem.totalMb} MB RAM)")
     println("  Data Dir:  ${paths.rootDir.absolutePath}")
     println("  Local URL: http://127.0.0.1:${webServer.actualPort}")
     println("  LAN URL:   http://$lanIp:${webServer.actualPort}")
-    val webFw = LinuxFirewallChecker.checkInboundPort(webServer.actualPort, isUdp = false)
+    val webFw = DesktopFirewallChecker.checkInboundPort(webServer.actualPort, isUdp = false)
     if (webFw.isActive && !webFw.isPortConfirmedOpen && webFw.fixCommand != null) {
         println("  [Firewall Warning] ${webFw.firewallName} is active. To access the Web UI from another device on LAN, run:")
         println("    ${webFw.fixCommand}")
     }
     println("")
 
-    val trayRef = java.util.concurrent.atomic.AtomicReference<LinuxSystemTrayManager?>(null)
+    val trayRef = java.util.concurrent.atomic.AtomicReference<DesktopSystemTrayManager?>(null)
     val shutdownHook = Thread {
         println("\n[MineServe] Shutting down gracefully...")
         trayRef.getAndSet(null)?.stop()
@@ -358,7 +358,7 @@ fun main(args: Array<String>) {
         }
 
         DisposableEffect(Unit) {
-            val trayManager = LinuxSystemTrayManager(
+            val trayManager = DesktopSystemTrayManager(
                 paths = paths,
                 logoImage = logoBufferedImage,
                 onActivateWindow = { restoreDesktopWindow() },
@@ -406,7 +406,7 @@ fun main(args: Array<String>) {
                 }
             },
             visible = isWindowVisible,
-            title = "MineServe v${MineServeAboutData.APP_VERSION} - Linux Desktop",
+            title = "MineServe v${MineServeAboutData.APP_VERSION} - ${DesktopPlatform.displayName}",
             icon = appIconPainter,
             state = windowState
         ) {

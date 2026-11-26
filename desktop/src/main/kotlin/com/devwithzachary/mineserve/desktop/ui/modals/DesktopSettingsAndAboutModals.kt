@@ -74,9 +74,9 @@ import com.devwithzachary.mineserve.designsystem.components.NetworkAddressChip
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.designsystem.theme.ThemeMode
-import com.devwithzachary.mineserve.desktop.LinuxDiagnosticsManager
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
-import com.devwithzachary.mineserve.desktop.LinuxSelfTestItem
+import com.devwithzachary.mineserve.desktop.DesktopDiagnosticsManager
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopSelfTestItem
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.ChangelogPlatform
@@ -97,7 +97,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
     val webRunning by viewModel.webAdminRunning.collectAsState()
     val uiScale by viewModel.uiScale.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
-    val lanIp = remember { LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1" }
+    val lanIp = remember { DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1" }
     val webPort = viewModel.webServer.actualPort
 
     var installingMajor by remember { mutableStateOf<Int?>(null) }
@@ -106,10 +106,10 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
     var logFilterMode by remember { mutableStateOf("MINESERVE_TAGS") }
     var capturedLogs by remember {
         mutableStateOf(
-            LinuxDiagnosticsManager.captureLogs("MINESERVE_TAGS", viewModel.serverRepository, viewModel.processManager)
+            DesktopDiagnosticsManager.captureLogs("MINESERVE_TAGS", viewModel.serverRepository, viewModel.processManager)
         )
     }
-    var selfTestResults by remember { mutableStateOf<List<LinuxSelfTestItem>>(emptyList()) }
+    var selfTestResults by remember { mutableStateOf<List<DesktopSelfTestItem>>(emptyList()) }
     var selfTestBusy by remember { mutableStateOf(false) }
 
     var updateBusy by remember { mutableStateOf(false) }
@@ -134,7 +134,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "MineServe v${MineServeAboutData.APP_VERSION} - ${LinuxHostTelemetry.getHostDisplayName()}",
+                    text = "MineServe v${MineServeAboutData.APP_VERSION} - ${DesktopHostTelemetry.getHostDisplayName()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurfaceVariant
                 )
@@ -507,7 +507,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                     selected = logFilterMode == mode,
                                     onClick = {
                                         logFilterMode = mode
-                                        capturedLogs = LinuxDiagnosticsManager.captureLogs(
+                                        capturedLogs = DesktopDiagnosticsManager.captureLogs(
                                             mode,
                                             viewModel.serverRepository,
                                             viewModel.processManager
@@ -522,7 +522,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             IconButton(
                                 onClick = {
-                                    capturedLogs = LinuxDiagnosticsManager.captureLogs(
+                                    capturedLogs = DesktopDiagnosticsManager.captureLogs(
                                         logFilterMode,
                                         viewModel.serverRepository,
                                         viewModel.processManager
@@ -541,7 +541,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                 onClick = {
                                     selfTestBusy = true
                                     viewModel.scope.launch {
-                                        selfTestResults = LinuxDiagnosticsManager.runNetworkSelfTest()
+                                        selfTestResults = DesktopDiagnosticsManager.runNetworkSelfTest()
                                         selfTestBusy = false
                                     }
                                 },
@@ -555,7 +555,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                             Button(
                                 onClick = {
                                     viewModel.scope.launch {
-                                        val zip = LinuxDiagnosticsManager.exportDiagnosticZip(
+                                        val zip = DesktopDiagnosticsManager.exportDiagnosticZip(
                                             paths = viewModel.paths,
                                             filterMode = logFilterMode,
                                             serverRepository = viewModel.serverRepository,
@@ -727,10 +727,10 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
     var selectedCategory by remember { mutableStateOf(SharedCreditCategory.ALL) }
 
     val platformChangelog = remember {
-        MineServeAboutData.getChangelogForPlatform(ChangelogPlatform.LINUX)
+        MineServeAboutData.getChangelogForPlatform(com.devwithzachary.mineserve.desktop.DesktopPlatform.changelogPlatform)
     }
     val filteredCredits = remember(selectedCategory) {
-        MineServeAboutData.getCreditsForPlatform(ChangelogPlatform.LINUX, selectedCategory)
+        MineServeAboutData.getCreditsForPlatform(com.devwithzachary.mineserve.desktop.DesktopPlatform.changelogPlatform, selectedCategory)
     }
 
     DesktopM3ModalSurface(width = 880.dp, height = 660.dp) {
@@ -1060,7 +1060,7 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
     val colorScheme = MaterialTheme.colorScheme
     val monoFont = LocalMineServeMonoFontFamily.current
 
-    val release = remember { MineServeWhatsNewCatalog.getForPlatform(ChangelogPlatform.LINUX) }
+    val release = remember { MineServeWhatsNewCatalog.getForPlatform(com.devwithzachary.mineserve.desktop.DesktopPlatform.changelogPlatform) }
     val showOnUpdate by viewModel.showWhatsNewOnUpdate.collectAsState()
 
     DesktopM3ModalSurface(width = 820.dp, height = 640.dp) {
@@ -1091,7 +1091,7 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
             }
             IconButton(
                 onClick = {
-                    LinuxDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
+                    DesktopDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
                     viewModel.openModal(DesktopModal.NONE)
                 }
             ) {
@@ -1174,7 +1174,7 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
             }
             Button(
                 onClick = {
-                    LinuxDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
+                    DesktopDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
                     viewModel.openModal(DesktopModal.NONE)
                 },
                 shape = ShapeDefaults.Medium

@@ -27,6 +27,17 @@ object MineServeWhatsNewCatalog {
 
     private val ALL_FEATURES_1_9 = listOf(
         SharedWhatsNewFeature(
+            badge = "New Platforms",
+            title = "macOS & Windows Desktop Betas (Native GUI & Headless)",
+            summary = "MineServe now runs natively on macOS (Apple Silicon & Intel) and Windows x64 in addition to Linux and Android, with native Compose Desktop UIs, menu bar / system tray controls, automatic portable OpenJDK setup, and --headless Web Admin mode.",
+            stepsToFind = listOf(
+                "macOS: Open MineServe.app from the .dmg installer (or run mineserve --headless from Terminal).",
+                "Windows: Install via the .msi or .exe installer (or run mineserve.bat --headless from the portable .zip)."
+            ),
+            iconKey = "desktop",
+            platform = ChangelogPlatform.ALL
+        ),
+        SharedWhatsNewFeature(
             badge = "Material Design 3",
             title = "All-New Obsidian & Ore Material 3 Redesign",
             summary = "MineServe now features a unified Material Design 3 look across Android, Linux Desktop, and Web Remote Admin with Light & Dark themes, cleaner borderless tonal cards, and an optional Android 12+ Material You wallpaper color mode.",

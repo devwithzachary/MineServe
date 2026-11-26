@@ -6,7 +6,12 @@ package com.devwithzachary.mineserve.model
 enum class ChangelogPlatform {
     ALL,
     ANDROID,
-    LINUX;
+    LINUX,
+    MACOS,
+    WINDOWS;
+
+    val isDesktop: Boolean
+        get() = this == LINUX || this == MACOS || this == WINDOWS
 
     fun matches(target: ChangelogPlatform): Boolean {
         return this == ALL || target == ALL || this == target
@@ -270,7 +275,11 @@ object MineServeAboutData {
             initialExpanded = true,
             highlights = listOf(
                 PlatformChangelogHighlight(
-                    text = "Material Design 3 \"Obsidian & Ore\" Redesign: Refreshed Android, Linux Desktop, and Web Remote Admin with Light and Dark themes, cleaner borderless tonal surfaces, and updated typography (Plus Jakarta Sans + JetBrains Mono).",
+                    text = "macOS & Windows Desktop Betas: Native Compose Desktop GUI and --headless Web Admin mode on macOS (Apple Silicon & Intel .dmg / portable .tar.gz) and Windows x64 (.msi / .exe / portable .zip) with automatic OpenJDK provisioning and menu bar / system tray integration.",
+                    platform = ChangelogPlatform.ALL
+                ),
+                PlatformChangelogHighlight(
+                    text = "Material Design 3 \"Obsidian & Ore\" Redesign: Refreshed Android, Desktop (Linux, macOS, Windows), and Web Remote Admin with Light and Dark themes, cleaner borderless tonal surfaces, and updated typography (Plus Jakarta Sans + JetBrains Mono).",
                     platform = ChangelogPlatform.ALL
                 ),
                 PlatformChangelogHighlight(
@@ -282,8 +291,8 @@ object MineServeAboutData {
                     platform = ChangelogPlatform.ALL
                 ),
                 PlatformChangelogHighlight(
-                    text = "Desktop Team & Host Controls: Added per-server access restrictions in Desktop Create User, Audit Log CSV export on Desktop, and configurable Server Data and Java Runtimes directories in Desktop and Linux WebUI App Settings.",
-                    platform = ChangelogPlatform.LINUX
+                    text = "Desktop Team & Host Controls: Added per-server access restrictions in Desktop Create User, Audit Log CSV export on Desktop, and configurable Server Data and Java Runtimes directories in Desktop and Desktop WebUI App Settings.",
+                    platform = ChangelogPlatform.ALL
                 )
             )
         ),
@@ -528,8 +537,8 @@ object MineServeAboutData {
     )
 
     fun getChangelogForPlatform(platform: ChangelogPlatform): List<FilteredReleaseChangelog> {
-        val entries = if (platform == ChangelogPlatform.LINUX) {
-            // Linux Desktop & Headless launched in v1.8.0; omit pre-1.8.0 Android-only releases
+        val entries = if (platform.isDesktop) {
+            // Desktop & Headless launched in v1.8.0; omit pre-1.8.0 Android-only releases
             FULL_CHANGELOG_HISTORY.takeWhile { it.version != "v1.7.0" }
         } else {
             FULL_CHANGELOG_HISTORY

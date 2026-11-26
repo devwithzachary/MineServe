@@ -20,26 +20,26 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class LinuxSelfTestItem(
+data class DesktopSelfTestItem(
     val name: String,
     val passed: Boolean,
     val detail: String
 )
 
-object LinuxDiagnosticsManager {
+object DesktopDiagnosticsManager {
 
     fun captureLogs(
         filterMode: String?,
-        serverRepository: LinuxServerRepository,
-        processManager: LinuxProcessManager
+        serverRepository: DesktopServerRepository,
+        processManager: DesktopProcessManager
     ): String {
         val mode = (filterMode ?: "MINESERVE_TAGS").uppercase()
         val errorsOnly = mode == "ERRORS_ONLY"
         val sb = StringBuilder()
 
-        sb.appendLine("=== MineServe Linux Engine Logs ($mode) ===")
+        sb.appendLine("=== MineServe ${DesktopPlatform.shortName} Engine Logs ($mode) ===")
         sb.appendLine("Version: v${MineServeAboutData.APP_VERSION}")
-        sb.appendLine("Host: ${LinuxHostTelemetry.getHostDisplayName()}")
+        sb.appendLine("Host: ${DesktopHostTelemetry.getHostDisplayName()}")
         sb.appendLine("------------------------------------------------------------")
         sb.appendLine(CoreLog.getCapturedLogs(errorsOnly = errorsOnly, limit = 600))
 
@@ -68,14 +68,14 @@ object LinuxDiagnosticsManager {
         return sb.toString()
     }
 
-    suspend fun runNetworkSelfTest(): List<LinuxSelfTestItem> = withContext(Dispatchers.IO) {
-        val checks = mutableListOf<LinuxSelfTestItem>()
+    suspend fun runNetworkSelfTest(): List<DesktopSelfTestItem> = withContext(Dispatchers.IO) {
+        val checks = mutableListOf<DesktopSelfTestItem>()
 
         // 1. Local LAN IP & Gateway
-        val lanIp = LinuxHostTelemetry.getLocalIpAddress()
-        val gwIp = LinuxHostTelemetry.getDefaultGatewayIp()
+        val lanIp = DesktopHostTelemetry.getLocalIpAddress()
+        val gwIp = DesktopHostTelemetry.getDefaultGatewayIp()
         checks.add(
-            LinuxSelfTestItem(
+            DesktopSelfTestItem(
                 name = "Local LAN & Default Gateway",
                 passed = !lanIp.isNullOrBlank(),
                 detail = "LAN IP: ${lanIp ?: "Not detected"} | Gateway: ${gwIp ?: "Unknown"}"
@@ -89,7 +89,7 @@ object LinuxDiagnosticsManager {
             "bore.pub -> $boreIp, api.mineserve.app -> $cloudIp"
         }
         checks.add(
-            LinuxSelfTestItem(
+            DesktopSelfTestItem(
                 name = "DNS Resolution (Tunnel & Cloud Relays)",
                 passed = dnsRes.isSuccess,
                 detail = dnsRes.getOrElse { "DNS lookup failed: ${it.message}" }
@@ -104,7 +104,7 @@ object LinuxDiagnosticsManager {
             "Connected to bore.pub:7835 TCP control port"
         }
         checks.add(
-            LinuxSelfTestItem(
+            DesktopSelfTestItem(
                 name = "Bore Public Tunnel Relay (bore.pub:7835)",
                 passed = boreTcp.isSuccess,
                 detail = boreTcp.getOrElse { "Unreachable: ${it.message}" }
@@ -120,7 +120,7 @@ object LinuxDiagnosticsManager {
             }
         }
         checks.add(
-            LinuxSelfTestItem(
+            DesktopSelfTestItem(
                 name = "MineServe Cloud API (api.mineserve.app)",
                 passed = cloudHealth.isSuccess,
                 detail = cloudHealth.getOrElse { "Check failed: ${it.message}" }
@@ -128,10 +128,10 @@ object LinuxDiagnosticsManager {
         )
 
         // 5. Linux Host Firewall Status
-        val fw = LinuxFirewallChecker.checkInboundPort(25565, isUdp = false)
+        val fw = DesktopFirewallChecker.checkInboundPort(25565, isUdp = false)
         checks.add(
-            LinuxSelfTestItem(
-                name = "Linux Host Inbound Firewall",
+            DesktopSelfTestItem(
+                name = "Host Inbound Firewall",
                 passed = !fw.isActive || fw.isPortConfirmedOpen,
                 detail = if (!fw.isActive) {
                     "No active inbound firewall detected"
@@ -147,15 +147,15 @@ object LinuxDiagnosticsManager {
     }
 
     suspend fun exportDiagnosticZip(
-        paths: LinuxDataPaths,
+        paths: DesktopDataPaths,
         filterMode: String?,
-        serverRepository: LinuxServerRepository,
-        processManager: LinuxProcessManager
+        serverRepository: DesktopServerRepository,
+        processManager: DesktopProcessManager
     ): File = withContext(Dispatchers.IO) {
         val logs = captureLogs(filterMode, serverRepository, processManager)
         val checks = runNetworkSelfTest()
-        val mem = LinuxHostTelemetry.getMemoryInfo()
-        val outZip = File(paths.tmpDir, "mineserve-linux-diagnostics-${System.currentTimeMillis()}.zip")
+        val mem = DesktopHostTelemetry.getMemoryInfo()
+        val outZip = File(paths.tmpDir, "mineserve-${DesktopPlatform.platformKey}-diagnostics-${System.currentTimeMillis()}.zip")
 
         ZipOutputStream(BufferedOutputStream(FileOutputStream(outZip))).use { zos ->
             fun writeEntry(name: String, content: String) {
@@ -165,9 +165,9 @@ object LinuxDiagnosticsManager {
             }
 
             val sysSummary = buildString {
-                appendLine("MineServe Linux Diagnostic Bundle")
+                appendLine("MineServe ${DesktopPlatform.shortName} Diagnostic Bundle")
                 appendLine("Version: v${MineServeAboutData.APP_VERSION}")
-                appendLine("Host OS: ${LinuxHostTelemetry.getHostDisplayName()}")
+                appendLine("Host OS: ${DesktopHostTelemetry.getHostDisplayName()}")
                 appendLine("Java Runtime: ${System.getProperty("java.version")} (${System.getProperty("java.vendor")})")
                 appendLine("Host Memory: ${mem.totalMb} MB total (${mem.availableMb} MB available)")
                 appendLine("Data Directory: ${paths.rootDir.absolutePath}")
@@ -267,36 +267,36 @@ object LinuxDiagnosticsManager {
 
     private val prefsLock = Any()
 
-    private fun readDesktopUiJson(paths: LinuxDataPaths): JSONObject = synchronized(prefsLock) {
+    private fun readDesktopUiJson(paths: DesktopDataPaths): JSONObject = synchronized(prefsLock) {
         val file = File(paths.rootDir, "desktop_ui.json")
         if (!file.exists()) return JSONObject()
         return runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject())
     }
 
-    private fun writeDesktopUiJson(paths: LinuxDataPaths, updater: (JSONObject) -> Unit) = synchronized(prefsLock) {
+    private fun writeDesktopUiJson(paths: DesktopDataPaths, updater: (JSONObject) -> Unit) = synchronized(prefsLock) {
         val file = File(paths.rootDir, "desktop_ui.json")
         val obj = if (file.exists()) runCatching { JSONObject(file.readText()) }.getOrDefault(JSONObject()) else JSONObject()
         updater(obj)
         runCatching { file.writeText(obj.toString(2)) }
     }
 
-    fun isShowWhatsNewOnUpdateEnabled(paths: LinuxDataPaths): Boolean {
+    fun isShowWhatsNewOnUpdateEnabled(paths: DesktopDataPaths): Boolean {
         return readDesktopUiJson(paths).optBoolean("showWhatsNewOnUpdate", true)
     }
 
-    fun setShowWhatsNewOnUpdateEnabled(paths: LinuxDataPaths, enabled: Boolean) {
+    fun setShowWhatsNewOnUpdateEnabled(paths: DesktopDataPaths, enabled: Boolean) {
         writeDesktopUiJson(paths) { it.put("showWhatsNewOnUpdate", enabled) }
     }
 
-    fun getLastSeenWhatsNewVersion(paths: LinuxDataPaths): String {
+    fun getLastSeenWhatsNewVersion(paths: DesktopDataPaths): String {
         return readDesktopUiJson(paths).optString("lastSeenWhatsNewVersion", "")
     }
 
-    fun markWhatsNewSeen(paths: LinuxDataPaths, majorVersion: String = MineServeWhatsNewCatalog.CURRENT_MAJOR_VERSION) {
+    fun markWhatsNewSeen(paths: DesktopDataPaths, majorVersion: String = MineServeWhatsNewCatalog.CURRENT_MAJOR_VERSION) {
         writeDesktopUiJson(paths) { it.put("lastSeenWhatsNewVersion", majorVersion) }
     }
 
-    fun shouldAutoShowWhatsNew(paths: LinuxDataPaths, hasExistingServers: Boolean): Boolean {
+    fun shouldAutoShowWhatsNew(paths: DesktopDataPaths, hasExistingServers: Boolean): Boolean {
         val major = MineServeWhatsNewCatalog.CURRENT_MAJOR_VERSION
         if (!hasExistingServers) {
             // Brand-new installation: mark current major release seen so it doesn't pop up

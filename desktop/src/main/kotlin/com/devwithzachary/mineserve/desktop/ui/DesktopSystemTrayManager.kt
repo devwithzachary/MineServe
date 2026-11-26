@@ -1,10 +1,13 @@
 package com.devwithzachary.mineserve.desktop.ui
 
-import com.devwithzachary.mineserve.desktop.LinuxDataPaths
+import com.devwithzachary.mineserve.desktop.DesktopPlatform
+import com.devwithzachary.mineserve.desktop.DesktopDataPaths
 import java.awt.Color as AwtColor
 import java.awt.Font
 import java.awt.Image
+import java.awt.MenuItem
 import java.awt.MouseInfo
+import java.awt.PopupMenu
 import java.awt.SystemTray
 import java.awt.TrayIcon
 import java.awt.event.MouseAdapter
@@ -21,8 +24,8 @@ import javax.swing.JMenuItem
 import javax.swing.JPopupMenu
 import javax.swing.SwingUtilities
 
-class LinuxSystemTrayManager(
-    private val paths: LinuxDataPaths,
+class DesktopSystemTrayManager(
+    private val paths: DesktopDataPaths,
     private val logoImage: BufferedImage?,
     private val onActivateWindow: () -> Unit,
     private val onHideWindow: () -> Unit,
@@ -42,7 +45,7 @@ class LinuxSystemTrayManager(
         stopped = false
         Thread({
             if (stopped) return@Thread
-            if (tryStartNativeDbusSniTray()) {
+            if (DesktopPlatform.isLinux && tryStartNativeDbusSniTray()) {
                 return@Thread
             }
             if (!stopped) {
@@ -156,51 +159,70 @@ class LinuxSystemTrayManager(
                 traySize.height.coerceAtLeast(24),
                 Image.SCALE_SMOOTH
             )
+            val tooltip = "MineServe - ${DesktopPlatform.displayName}"
 
-            val swingMenu = JPopupMenu().apply {
-                background = AwtColor(17, 24, 39)
-                border = BorderFactory.createLineBorder(AwtColor(31, 41, 55), 1)
+            val icon = if (!DesktopPlatform.isLinux) {
+                // Native AWT PopupMenu integrates cleanly with the macOS Menu Bar and Windows System Tray
+                val nativeMenu = PopupMenu().apply {
+                    add(MenuItem("Show MineServe Desktop").apply { addActionListener { onActivateWindow() } })
+                    add(MenuItem("Hide Window to Tray").apply { addActionListener { onHideWindow() } })
+                    addSeparator()
+                    add(MenuItem("Start All Servers").apply { addActionListener { onStartAllServers() } })
+                    add(MenuItem("Stop All Running Servers").apply { addActionListener { onStopAllServers() } })
+                    add(MenuItem("Open Web Admin in Browser").apply { addActionListener { onOpenWebAdmin() } })
+                    addSeparator()
+                    add(MenuItem("Quit MineServe").apply { addActionListener { onQuitApp() } })
+                }
+                TrayIcon(scaledImg, tooltip, nativeMenu).apply {
+                    isImageAutoSize = true
+                    addActionListener { onActivateWindow() }
+                }
+            } else {
+                val swingMenu = JPopupMenu().apply {
+                    background = AwtColor(17, 24, 39)
+                    border = BorderFactory.createLineBorder(AwtColor(31, 41, 55), 1)
 
-                fun addDarkItem(title: String, fg: AwtColor = AwtColor.WHITE, action: () -> Unit) {
-                    val item = JMenuItem(title).apply {
-                        background = AwtColor(17, 24, 39)
-                        foreground = fg
-                        font = Font("SansSerif", Font.BOLD, 13)
-                        border = BorderFactory.createEmptyBorder(6, 12, 6, 12)
-                        addActionListener { action() }
+                    fun addDarkItem(title: String, fg: AwtColor = AwtColor.WHITE, action: () -> Unit) {
+                        val item = JMenuItem(title).apply {
+                            background = AwtColor(17, 24, 39)
+                            foreground = fg
+                            font = Font("SansSerif", Font.BOLD, 13)
+                            border = BorderFactory.createEmptyBorder(6, 12, 6, 12)
+                            addActionListener { action() }
+                        }
+                        add(item)
                     }
-                    add(item)
+
+                    addDarkItem("Show MineServe Desktop", AwtColor(110, 231, 183)) { onActivateWindow() }
+                    addDarkItem("Hide to System Tray") { onHideWindow() }
+                    addSeparator()
+                    addDarkItem("Start All Servers") { onStartAllServers() }
+                    addDarkItem("Stop All Running Servers") { onStopAllServers() }
+                    addDarkItem("Open Web Admin in Browser") { onOpenWebAdmin() }
+                    addSeparator()
+                    addDarkItem("Quit MineServe", AwtColor(252, 165, 165)) { onQuitApp() }
                 }
 
-                addDarkItem("Show MineServe Desktop", AwtColor(110, 231, 183)) { onActivateWindow() }
-                addDarkItem("Hide to System Tray") { onHideWindow() }
-                addSeparator()
-                addDarkItem("Start All Servers") { onStartAllServers() }
-                addDarkItem("Stop All Running Servers") { onStopAllServers() }
-                addDarkItem("Open Web Admin in Browser") { onOpenWebAdmin() }
-                addSeparator()
-                addDarkItem("Quit MineServe", AwtColor(252, 165, 165)) { onQuitApp() }
-            }
-
-            val icon = TrayIcon(scaledImg, "MineServe - Linux Desktop").apply {
-                isImageAutoSize = true
-                addActionListener { onActivateWindow() }
-                addMouseListener(object : MouseAdapter() {
-                    override fun mousePressed(e: MouseEvent) {
-                        if (e.button == MouseEvent.BUTTON1) {
-                            onActivateWindow()
-                        } else if (e.button == MouseEvent.BUTTON3 || e.isPopupTrigger) {
-                            SwingUtilities.invokeLater {
-                                val loc = MouseInfo.getPointerInfo()?.location
-                                if (loc != null) {
-                                    swingMenu.location = loc
-                                    swingMenu.invoker = swingMenu
-                                    swingMenu.isVisible = true
+                TrayIcon(scaledImg, tooltip).apply {
+                    isImageAutoSize = true
+                    addActionListener { onActivateWindow() }
+                    addMouseListener(object : MouseAdapter() {
+                        override fun mousePressed(e: MouseEvent) {
+                            if (e.button == MouseEvent.BUTTON1) {
+                                onActivateWindow()
+                            } else if (e.button == MouseEvent.BUTTON3 || e.isPopupTrigger) {
+                                SwingUtilities.invokeLater {
+                                    val loc = MouseInfo.getPointerInfo()?.location
+                                    if (loc != null) {
+                                        swingMenu.location = loc
+                                        swingMenu.invoker = swingMenu
+                                        swingMenu.isVisible = true
+                                    }
                                 }
                             }
                         }
-                    }
-                })
+                    })
+                }
             }
             sysTray.add(icon)
             awtTrayIcon = icon

@@ -90,7 +90,7 @@ import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoTe
 import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.ServerType
@@ -163,7 +163,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
     val colorScheme = MaterialTheme.colorScheme
     val monoFont = LocalMineServeMonoFontFamily.current
 
-    val hostMem = remember { LinuxHostTelemetry.getMemoryInfo() }
+    val hostMem = remember { DesktopHostTelemetry.getMemoryInfo() }
     val maxRam = (hostMem.totalMb.toInt() - 1024).coerceAtLeast(2048)
     val supportedTypes = remember { ServerType.entries.filter { it != ServerType.CUSTOM } }
 
@@ -175,7 +175,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
     var versionDropdownExpanded by remember { mutableStateOf(false) }
     var portText by remember { mutableStateOf("25565") }
     var ramMb by remember { mutableIntStateOf(2048.coerceAtMost(maxRam)) }
-    var motd by remember { mutableStateOf("A MineServe Linux Server") }
+    var motd by remember { mutableStateOf("A MineServe ${com.devwithzachary.mineserve.desktop.DesktopPlatform.shortName} Server") }
     var eula by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var statusMsg by remember { mutableStateOf("") }
@@ -586,7 +586,7 @@ private fun ImportServerZipModal(viewModel: DesktopViewModel) {
     val colorScheme = MaterialTheme.colorScheme
     val monoFont = LocalMineServeMonoFontFamily.current
 
-    val hostMem = remember { LinuxHostTelemetry.getMemoryInfo() }
+    val hostMem = remember { DesktopHostTelemetry.getMemoryInfo() }
     val maxRam = (hostMem.totalMb.toInt() - 1024).coerceAtLeast(2048)
     val supportedTypes = remember { ServerType.entries.filter { it != ServerType.CUSTOM } }
 
@@ -763,7 +763,7 @@ private fun ImportServerZipModal(viewModel: DesktopViewModel) {
                     }
                     busy = true
                     val resolvedPort = (portText.toIntOrNull() ?: if (type == ServerType.BEDROCK_BDS) 19132 else 25565).coerceIn(1, 65535)
-                    val initialJar = if (type == ServerType.BEDROCK_BDS) "bedrock_server" else "server.jar"
+                    val initialJar = if (type == ServerType.BEDROCK_BDS) com.devwithzachary.mineserve.desktop.DesktopPlatform.bedrockBinaryName else "server.jar"
                     viewModel.scope.launch {
                         try {
                             val srv = viewModel.serverRepository.createServer(
@@ -796,7 +796,7 @@ private fun ImportServerZipModal(viewModel: DesktopViewModel) {
                                 inner.deleteRecursively()
                             }
                             val detectedJar = if (type == ServerType.BEDROCK_BDS) {
-                                "bedrock_server"
+                                com.devwithzachary.mineserve.desktop.DesktopPlatform.bedrockBinaryName
                             } else {
                                 val jars = dir.listFiles()?.filter { it.isFile && it.name.endsWith(".jar", ignoreCase = true) } ?: emptyList()
                                 (jars.firstOrNull { it.name.equals("server.jar", ignoreCase = true) } ?: jars.firstOrNull())?.name ?: "server.jar"

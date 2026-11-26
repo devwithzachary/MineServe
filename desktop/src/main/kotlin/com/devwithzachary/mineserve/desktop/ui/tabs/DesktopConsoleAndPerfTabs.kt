@@ -63,7 +63,7 @@ import com.devwithzachary.mineserve.designsystem.components.TelemetryChartSeries
 import com.devwithzachary.mineserve.designsystem.components.TelemetrySeriesColor
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
@@ -318,7 +318,7 @@ fun DesktopPerformanceTab(
     var storageBytes by remember(server.id) { mutableStateOf(0L) }
     var totalDiskBytes by remember(server.id) { mutableStateOf(0L) }
     var freeDiskBytes by remember(server.id) { mutableStateOf(0L) }
-    var hostMem by remember { mutableStateOf(LinuxHostTelemetry.getMemoryInfo()) }
+    var hostMem by remember { mutableStateOf(DesktopHostTelemetry.getMemoryInfo()) }
 
     LaunchedEffect(server.id) {
         var tick = 0
@@ -335,7 +335,7 @@ fun DesktopPerformanceTab(
                 totalDiskBytes = total
                 freeDiskBytes = free
             }
-            hostMem = withContext(Dispatchers.IO) { LinuxHostTelemetry.getMemoryInfo() }
+            hostMem = withContext(Dispatchers.IO) { DesktopHostTelemetry.getMemoryInfo() }
             tick++
             delay(2000)
         }

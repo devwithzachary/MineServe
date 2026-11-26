@@ -16,7 +16,7 @@ data class FirewallCheckResult(
  * Checks common Linux host firewalls (ufw on CachyOS/Ubuntu/Arch, firewalld on Fedora/RHEL,
  * nftables) without requiring root privileges and produces actionable inbound port warnings.
  */
-object LinuxFirewallChecker {
+object DesktopFirewallChecker {
     private const val CACHE_TTL_MS = 30_000L
     private val cache = ConcurrentHashMap<String, Pair<Long, FirewallCheckResult>>()
 
@@ -34,6 +34,62 @@ object LinuxFirewallChecker {
     }
 
     private fun detectFirewallState(port: Int, proto: String): FirewallCheckResult {
+        return when (DesktopPlatform.currentOs) {
+            DesktopOs.LINUX -> detectLinuxFirewallState(port, proto)
+            DesktopOs.MACOS -> detectMacFirewallState()
+            DesktopOs.WINDOWS -> detectWindowsFirewallState(port, proto)
+        }
+    }
+
+    private fun detectMacFirewallState(): FirewallCheckResult {
+        val out = runQuickCommand("/usr/libexec/ApplicationFirewall/socketfilterfw", "--getglobalstate")
+        if (out != null && out.contains("enabled", ignoreCase = true)) {
+            return FirewallCheckResult(
+                firewallName = "macOS Firewall",
+                isActive = true,
+                isPortConfirmedOpen = true,
+                warningMessage = null,
+                fixCommand = null
+            )
+        }
+        return FirewallCheckResult("none", isActive = false, isPortConfirmedOpen = true, warningMessage = null, fixCommand = null)
+    }
+
+    private fun detectWindowsFirewallState(port: Int, proto: String): FirewallCheckResult {
+        val stateOut = runQuickCommand("netsh", "advfirewall", "show", "currentprofile", "state")
+        val isOn = stateOut != null && Regex("""State\s+ON""", RegexOption.IGNORE_CASE).containsMatchIn(stateOut)
+        if (!isOn) {
+            return FirewallCheckResult("none", isActive = false, isPortConfirmedOpen = true, warningMessage = null, fixCommand = null)
+        }
+
+        val rulesOut = runQuickCommand("netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir=in")
+        val portMatched = if (!rulesOut.isNullOrBlank()) {
+            val blocks = rulesOut.split(Regex("""\r?\n\s*\r?\n"""))
+            blocks.any { block ->
+                Regex("""Enabled:\s+Yes""", RegexOption.IGNORE_CASE).containsMatchIn(block) &&
+                    Regex("""Action:\s+Allow""", RegexOption.IGNORE_CASE).containsMatchIn(block) &&
+                    Regex("""LocalPort:\s*(?:Any|\b$port\b)""", RegexOption.IGNORE_CASE).containsMatchIn(block) &&
+                    Regex("""Protocol:\s*(?:Any|$proto)\b""", RegexOption.IGNORE_CASE).containsMatchIn(block)
+            }
+        } else {
+            false
+        }
+
+        if (portMatched) {
+            return FirewallCheckResult("Windows Firewall", isActive = true, isPortConfirmedOpen = true, warningMessage = null, fixCommand = null)
+        }
+
+        val cmd = "netsh advfirewall firewall add rule name=\"MineServe $port $proto\" dir=in action=allow protocol=$proto localport=$port"
+        return FirewallCheckResult(
+            firewallName = "Windows Firewall",
+            isActive = true,
+            isPortConfirmedOpen = false,
+            warningMessage = "Windows Defender Firewall is active; inbound $port/$proto may be blocked for LAN/direct play. Allow Java when prompted, run the netsh command as Administrator, or use a tunnel.",
+            fixCommand = cmd
+        )
+    }
+
+    private fun detectLinuxFirewallState(port: Int, proto: String): FirewallCheckResult {
         // 1. UFW (CachyOS, Ubuntu, Debian, Arch, Mint)
         if (isUfwActive()) {
             val open = isPortOpenInUfw(port, proto)

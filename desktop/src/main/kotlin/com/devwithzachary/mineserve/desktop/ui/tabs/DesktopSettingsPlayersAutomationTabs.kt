@@ -73,9 +73,9 @@ import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoTe
 import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
-import com.devwithzachary.mineserve.desktop.LinuxPortForwardState
-import com.devwithzachary.mineserve.desktop.LinuxTunnelState
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopPortForwardState
+import com.devwithzachary.mineserve.desktop.DesktopTunnelState
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.MinecraftServer
@@ -104,7 +104,7 @@ fun DesktopSettingsTab(
     val monoFont = LocalMineServeMonoFontFamily.current
 
     val props = remember(server.id) { viewModel.serverRepository.loadServerProperties(server.id) }
-    val hostMem = remember { LinuxHostTelemetry.getMemoryInfo() }
+    val hostMem = remember { DesktopHostTelemetry.getMemoryInfo() }
     val maxRamMb = (hostMem.totalMb.toInt() - 1024).coerceAtLeast(2048)
 
     var name by remember(server.id) { mutableStateOf(server.name) }
@@ -354,7 +354,7 @@ fun DesktopSettingsTab(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
                 ) {
-                    if (tunnelState is LinuxTunnelState.Connected || tunnelState is LinuxTunnelState.Connecting) {
+                    if (tunnelState is DesktopTunnelState.Connected || tunnelState is DesktopTunnelState.Connecting) {
                         FilledTonalButton(
                             onClick = { viewModel.networkManager.stopTunnel(server.id) },
                             shape = ShapeDefaults.Medium,
@@ -396,10 +396,10 @@ fun DesktopSettingsTab(
                 modifier = Modifier.weight(0.85f)
             ) {
                 val pfStatusText = when (val s = pfState) {
-                    is LinuxPortForwardState.Mapped -> "Mapped: ${s.directAddress} (${s.gatewayName})"
-                    is LinuxPortForwardState.Discovering -> s.message
-                    is LinuxPortForwardState.Failed -> "Failed: ${s.reason}"
-                    is LinuxPortForwardState.Idle -> "Idle (not mapped)"
+                    is DesktopPortForwardState.Mapped -> "Mapped: ${s.directAddress} (${s.gatewayName})"
+                    is DesktopPortForwardState.Discovering -> s.message
+                    is DesktopPortForwardState.Failed -> "Failed: ${s.reason}"
+                    is DesktopPortForwardState.Idle -> "Idle (not mapped)"
                 }
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -1414,7 +1414,7 @@ fun DesktopAutomationTab(
                             viewModel.scope.launch {
                                 val payload = JSONObject()
                                     .put("username", "MineServe")
-                                    .put("content", "MineServe Linux test notification for **${server.name}**.")
+                                    .put("content", "MineServe ${com.devwithzachary.mineserve.desktop.DesktopPlatform.shortName} test notification for **${server.name}**.")
                                     .toString()
                                 val ok = runCatching {
                                     val req = MineServeHttpClient.newRequestBuilder(discordUrl.trim())

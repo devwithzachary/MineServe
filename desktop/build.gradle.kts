@@ -17,18 +17,39 @@ val appVersionName = Regex("""versionName\s*=\s*"([^"]+)"""")
     ?.getOrNull(1)
     ?: "1.8.1"
 
+val hostOsName = System.getProperty("os.name").lowercase()
+val isMacOs = hostOsName.contains("mac") || hostOsName.contains("darwin")
+val isWindows = hostOsName.contains("win")
+
 compose.desktop {
     application {
         mainClass = "com.devwithzachary.mineserve.desktop.MainKt"
         nativeDistributions {
-            targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
-            packageName = "mineserve"
+            when {
+                isMacOs -> targetFormats(TargetFormat.Dmg)
+                isWindows -> targetFormats(TargetFormat.Msi, TargetFormat.Exe)
+                else -> targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
+            }
+            packageName = if (isMacOs || isWindows) "MineServe" else "mineserve"
             packageVersion = appVersionName
-            description = "MineServe - Native Linux Minecraft Server Manager"
+            description = "MineServe - Cross-Platform Minecraft Server Manager"
             vendor = "DevWithZachary"
-            modules("java.instrument", "java.management", "java.naming", "java.prefs", "java.security.jgss", "jdk.unsupported")
+            modules("java.instrument", "java.management", "java.naming", "java.prefs", "java.security.jgss", "jdk.management", "jdk.unsupported")
             linux {
                 iconFile.set(rootProject.file("designsystem/src/commonMain/composeResources/drawable/brand_icon_512.png"))
+            }
+            macOS {
+                bundleID = "com.devwithzachary.mineserve"
+                dockName = "MineServe"
+                iconFile.set(rootProject.file("packaging/macos/mineserve.icns"))
+            }
+            windows {
+                menuGroup = "MineServe"
+                shortcut = true
+                dirChooser = true
+                perUserInstall = true
+                upgradeUuid = "7e53f74b-2d49-4f7c-8a45-4c8d1f61b901"
+                iconFile.set(rootProject.file("packaging/windows/mineserve.ico"))
             }
         }
     }
@@ -73,6 +94,14 @@ abstract class InstallDesktopDistTask : DefaultTask() {
             bin.writeText(script)
             bin.setExecutable(true, false)
         }
+
+        val batScript = """
+            @echo off
+            setlocal
+            set "APP_HOME=%~dp0.."
+            java -cp "%APP_HOME%\lib\*" com.devwithzachary.mineserve.desktop.MainKt %*
+        """.trimIndent().replace("\n", "\r\n") + "\r\n"
+        File(binDir, "mineserve.bat").writeText(batScript)
     }
 }
 

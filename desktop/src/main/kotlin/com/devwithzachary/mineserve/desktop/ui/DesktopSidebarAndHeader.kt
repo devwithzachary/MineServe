@@ -86,10 +86,10 @@ import com.devwithzachary.mineserve.designsystem.components.NetworkAddressChip
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.desktop.FirewallCheckResult
-import com.devwithzachary.mineserve.desktop.LinuxFirewallChecker
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
-import com.devwithzachary.mineserve.desktop.LinuxPortForwardState
-import com.devwithzachary.mineserve.desktop.LinuxTunnelState
+import com.devwithzachary.mineserve.desktop.DesktopFirewallChecker
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopPortForwardState
+import com.devwithzachary.mineserve.desktop.DesktopTunnelState
 import com.devwithzachary.mineserve.model.MineServeAboutData
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
@@ -171,7 +171,7 @@ fun DesktopSidebar(
                                 }
                             }
                             Text(
-                                text = LinuxHostTelemetry.getHostDisplayName(),
+                                text = DesktopHostTelemetry.getHostDisplayName(),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colorScheme.onSurfaceVariant,
                                 maxLines = 1,
@@ -604,8 +604,8 @@ fun DesktopServerHeader(
     LaunchedEffect(server.id, server.port, server.type) {
         while (isActive) {
             val (ip, fw) = withContext(Dispatchers.IO) {
-                val detectedIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
-                val check = LinuxFirewallChecker.checkInboundPort(
+                val detectedIp = DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+                val check = DesktopFirewallChecker.checkInboundPort(
                     server.port,
                     isUdp = server.type == ServerType.BEDROCK_BDS || server.type == ServerType.BEDROCK_GEYSER
                 )
@@ -769,7 +769,7 @@ fun DesktopServerHeader(
                 )
 
                 when (val ts = tunnelState) {
-                    is LinuxTunnelState.Connected -> {
+                    is DesktopTunnelState.Connected -> {
                         NetworkAddressChip(
                             address = ts.fullAddress,
                             isPublicTunnel = true,
@@ -793,7 +793,7 @@ fun DesktopServerHeader(
                             )
                         }
                     }
-                    is LinuxTunnelState.Connecting -> {
+                    is DesktopTunnelState.Connecting -> {
                         Surface(
                             onClick = { ts.claimUrl?.let { viewModel.openUrlInBrowser(it) } },
                             shape = ShapeDefaults.Small,
@@ -818,7 +818,7 @@ fun DesktopServerHeader(
                             }
                         }
                     }
-                    is LinuxTunnelState.Error -> {
+                    is DesktopTunnelState.Error -> {
                         Surface(
                             onClick = { viewModel.networkManager.startTunnel(server) },
                             shape = ShapeDefaults.Small,
@@ -843,7 +843,7 @@ fun DesktopServerHeader(
                             }
                         }
                     }
-                    is LinuxTunnelState.Disconnected -> {
+                    is DesktopTunnelState.Disconnected -> {
                         Surface(
                             onClick = { viewModel.networkManager.startTunnel(server) },
                             shape = ShapeDefaults.Small,
@@ -870,8 +870,8 @@ fun DesktopServerHeader(
                     }
                 }
 
-                if (portForwardState is LinuxPortForwardState.Mapped) {
-                    val mapped = portForwardState as LinuxPortForwardState.Mapped
+                if (portForwardState is DesktopPortForwardState.Mapped) {
+                    val mapped = portForwardState as DesktopPortForwardState.Mapped
                     NetworkAddressChip(
                         address = mapped.directAddress,
                         isPublicTunnel = true,
@@ -905,7 +905,7 @@ fun DesktopServerHeader(
             }
 
             // Firewall Warning Banner if active and no tunnel is connected
-            if (fwStatus.isActive && !fwStatus.isPortConfirmedOpen && tunnelState !is LinuxTunnelState.Connected) {
+            if (fwStatus.isActive && !fwStatus.isPortConfirmedOpen && tunnelState !is DesktopTunnelState.Connected) {
                 Surface(
                     shape = ShapeDefaults.Medium,
                     color = extended.warningContainer,

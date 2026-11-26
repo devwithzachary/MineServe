@@ -96,7 +96,7 @@ import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoTe
 import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
 import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
-import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
+import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
 import com.devwithzachary.mineserve.desktop.ui.DesktopRegionFileEntry
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.DimensionType
@@ -944,7 +944,7 @@ fun DesktopLiveMapTab(
     val installed by viewModel.squaremapInstalled.collectAsState()
     val port by viewModel.squaremapPort.collectAsState()
     var portInput by remember(port) { mutableStateOf(port.toString()) }
-    val localIp = LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
+    val localIp = DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"
     val mapUrl = "http://$localIp:$port"
     val localLoopbackUrl = "http://127.0.0.1:$port"
 

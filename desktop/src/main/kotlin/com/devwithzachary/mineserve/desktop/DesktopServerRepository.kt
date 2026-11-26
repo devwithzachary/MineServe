@@ -18,11 +18,11 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
-class LinuxServerRepository(
-    private val paths: LinuxDataPaths
+class DesktopServerRepository(
+    private val paths: DesktopDataPaths
 ) {
     companion object {
-        private const val TAG = "LinuxServerRepository"
+        private const val TAG = "DesktopServerRepository"
         private val EDITABLE_EXTS = setOf(
             "properties", "txt", "json", "yml", "yaml", "toml", "cfg",
             "conf", "sh", "bat", "log", "mcmeta", "lang", "csv", "xml", "ini", "sk"

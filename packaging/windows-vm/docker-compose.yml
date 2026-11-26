@@ -1,0 +1,28 @@
+services:
+  windows:
+    image: dockurr/windows
+    container_name: mineserve-win11
+    environment:
+      VERSION: "11"
+      RAM_SIZE: "8G"
+      CPU_CORES: "6"
+      DISK_SIZE: "64G"
+      USERNAME: "mineserve"
+      PASSWORD: "mineserve"
+    devices:
+      - /dev/kvm
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "127.0.0.1:8006:8006"
+      - "127.0.0.1:3389:3389/tcp"
+      - "127.0.0.1:3389:3389/udp"
+      - "127.0.0.1:2222:22"
+      - "127.0.0.1:18080:8080"
+      - "127.0.0.1:25566:25565"
+    volumes:
+      - "${WIN_VM_STORAGE:-$HOME/VMs/mineserve-win11}:/storage"
+      - "../..:/data"
+      - "./oem:/oem"
+    stop_grace_period: 2m
+    restart: unless-stopped

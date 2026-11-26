@@ -16,23 +16,23 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class LinuxEngineTest {
+class DesktopEngineTest {
 
     @Test
     fun `telemetry reads Linux memory and host info`() {
-        val mem = LinuxHostTelemetry.getMemoryInfo()
+        val mem = DesktopHostTelemetry.getMemoryInfo()
         assertTrue(mem.totalMb >= 1024L)
         assertTrue(mem.maxAllocatableMb >= 1024)
         assertTrue(mem.defaultRamMb in 1024..mem.maxAllocatableMb)
-        assertTrue(LinuxHostTelemetry.getHostDisplayName().isNotBlank())
+        assertTrue(DesktopHostTelemetry.getHostDisplayName().isNotBlank())
     }
 
     @Test
     fun `server repository CRUD, properties, files, and backup retention`() = runBlocking {
         val tempRoot = Files.createTempDirectory("mineserve_linux_repo_test").toFile()
         try {
-            val paths = LinuxDataPaths(tempRoot)
-            val repo = LinuxServerRepository(paths)
+            val paths = DesktopDataPaths(tempRoot)
+            val repo = DesktopServerRepository(paths)
 
             val created = repo.createServer(
                 name = "Linux Survival",
@@ -74,7 +74,7 @@ class LinuxEngineTest {
         assertTrue(opts.verbose)
         assertEquals(9090, opts.port)
         assertEquals("127.0.0.1", opts.bindHost)
-        assertEquals("/srv/mineserve", opts.dataDir.path)
+        assertEquals(File("/srv/mineserve").path, opts.dataDir.path)
 
         val resetAuto = parseCliArgs(arrayOf("--reset-admin"))
         assertTrue(resetAuto.resetAdmin)
@@ -84,7 +84,7 @@ class LinuxEngineTest {
         assertTrue(resetCustom.resetAdmin)
         assertEquals("mySecret99", resetCustom.resetPassword)
 
-        val fw = LinuxFirewallChecker.checkInboundPort(25565, isUdp = false)
+        val fw = DesktopFirewallChecker.checkInboundPort(25565, isUdp = false)
         assertNotNull(fw.firewallName)
 
         val tempModsRoot = Files.createTempDirectory("mineserve_modfilter_test").toFile()
@@ -110,23 +110,23 @@ class LinuxEngineTest {
             bindHost = "0.0.0.0"
         )
         assertTrue(unit.contains("User=mc"))
-        assertTrue(unit.contains("ExecStart=/usr/bin/mineserve --headless --bind 0.0.0.0 --port 9090 --data-dir /srv/mineserve"))
+        assertTrue(unit.contains("ExecStart=/usr/bin/mineserve --headless --bind 0.0.0.0 --port 9090 --data-dir ${File("/srv/mineserve").absolutePath}"))
     }
 
     @Test
     fun `linux web server serves auth, system info, and server list`() {
         val tempRoot = Files.createTempDirectory("mineserve_linux_web_test").toFile()
-        val paths = LinuxDataPaths(tempRoot)
+        val paths = DesktopDataPaths(tempRoot)
         val userRepo = UserRepository(paths.rootDir)
         userRepo.ensureDefaultOwner("admin", "secret123")
-        val serverRepo = LinuxServerRepository(paths)
+        val serverRepo = DesktopServerRepository(paths)
         val javaMgr = PortableJavaManager(paths)
-        val softwareMgr = LinuxServerSoftwareManager(serverRepo, javaMgr)
-        val procMgr = LinuxProcessManager(serverRepo, javaMgr)
-        val cloudMgr = LinuxCloudManager(paths)
-        val netMgr = LinuxNetworkManager(paths, cloudManager = cloudMgr)
+        val softwareMgr = DesktopServerSoftwareManager(serverRepo, javaMgr)
+        val procMgr = DesktopProcessManager(serverRepo, javaMgr)
+        val cloudMgr = DesktopCloudManager(paths)
+        val netMgr = DesktopNetworkManager(paths, cloudManager = cloudMgr)
 
-        val web = LinuxWebServer(
+        val web = DesktopWebServer(
             bindHost = "127.0.0.1",
             port = 0, // ephemeral free port
             paths = paths,
@@ -164,13 +164,14 @@ class LinuxEngineTest {
             val token = loginJson.getString("token")
             assertTrue(token.isNotBlank())
 
-            // 4. Authenticated /api/system returns Linux Native info
+            // 4. Authenticated /api/system returns Desktop Native info
             val sysConn = (URL("$baseUrl/api/system").openConnection() as HttpURLConnection).apply {
                 setRequestProperty("Authorization", "Bearer $token")
             }
             assertEquals(200, sysConn.responseCode)
             val sysJson = JSONObject(sysConn.inputStream.bufferedReader().readText())
-            assertEquals("linux", sysJson.getString("platform"))
+            assertEquals(DesktopPlatform.platformKey, sysJson.getString("platform"))
+            assertTrue(sysJson.getBoolean("isDesktopHost"))
             assertTrue(sysJson.getLong("deviceTotalRamMb") >= 1024L)
 
             // 5. Authenticated /api/servers returns empty array
@@ -182,7 +183,7 @@ class LinuxEngineTest {
             assertEquals(0, arr.length())
             assertFalse(web.actualPort == 0)
 
-            // 6. Sibling-directory traversal rejected in LinuxServerRepository
+            // 6. Sibling-directory traversal rejected in DesktopServerRepository
             val paperSrv = serverRepo.createServer("Survival", ServerType.PAPER, "1.21.4", 25565, 2048, "MOTD")
             val siblingDir = File(paths.serversDir, "${paperSrv.id}_evil").apply { mkdirs() }
             File(siblingDir, "secret.txt").writeText("secret")
@@ -282,14 +283,14 @@ class LinuxEngineTest {
     }
 
     @Test
-    fun `LinuxDataPaths updateDirectories persists custom paths and resets cleanly`() {
+    fun `DesktopDataPaths updateDirectories persists custom paths and resets cleanly`() {
         val tempRoot = Files.createTempDirectory("mineserve-paths-test").toFile()
         try {
             val customServers = File(tempRoot, "custom-servers")
             val customRuntimes = File(tempRoot, "custom-runtimes")
             val regularFile = File(tempRoot, "not-a-dir").apply { writeText("x") }
 
-            val paths = LinuxDataPaths(tempRoot)
+            val paths = DesktopDataPaths(tempRoot)
             assertTrue(paths.updateDirectories("relative/path", null).isFailure)
             assertTrue(paths.updateDirectories(regularFile.absolutePath, null).isFailure)
 
@@ -299,7 +300,7 @@ class LinuxEngineTest {
             assertEquals(customRuntimes.absolutePath, paths.runtimesDir.absolutePath)
 
             // Reload from desktop_config.json
-            val reloaded = LinuxDataPaths(tempRoot)
+            val reloaded = DesktopDataPaths(tempRoot)
             assertEquals(customServers.absolutePath, reloaded.serversDir.absolutePath)
             assertEquals(customRuntimes.absolutePath, reloaded.runtimesDir.absolutePath)
 
@@ -334,5 +335,78 @@ class LinuxEngineTest {
             """"1970-01-01T00:00:00.000Z","alex_mod","MODERATOR","CONSOLE_CMD","srv-1","say ""hello"", world","127.0.0.1"""",
             csv[1]
         )
+    }
+
+    @Test
+    fun `DesktopPlatform detects OS names and default data paths across Linux, macOS, and Windows`() {
+        assertEquals(DesktopOs.LINUX, DesktopPlatform.detectOsFromName("Linux"))
+        assertEquals(DesktopOs.MACOS, DesktopPlatform.detectOsFromName("Mac OS X"))
+        assertEquals(DesktopOs.MACOS, DesktopPlatform.detectOsFromName("Darwin"))
+        assertEquals(DesktopOs.WINDOWS, DesktopPlatform.detectOsFromName("Windows 11"))
+
+        assertEquals(
+            File("/home/zach/.local/share/mineserve").path,
+            DesktopDataPaths.defaultDataDirFor(DesktopOs.LINUX, "/home/zach", emptyMap()).path
+        )
+        assertEquals(
+            File("/custom/xdg/mineserve").path,
+            DesktopDataPaths.defaultDataDirFor(DesktopOs.LINUX, "/home/zach", mapOf("XDG_DATA_HOME" to "/custom/xdg")).path
+        )
+        assertEquals(
+            File("/Users/zach/Library/Application Support/MineServe").path,
+            DesktopDataPaths.defaultDataDirFor(DesktopOs.MACOS, "/Users/zach", emptyMap()).path
+        )
+        assertEquals(
+            File("C:/Users/zach/AppData/Local/MineServe").path,
+            DesktopDataPaths.defaultDataDirFor(DesktopOs.WINDOWS, "C:/Users/zach", emptyMap()).path
+        )
+        assertEquals(
+            File("D:/LocalAppData/MineServe").path,
+            DesktopDataPaths.defaultDataDirFor(DesktopOs.WINDOWS, "C:/Users/zach", mapOf("LOCALAPPDATA" to "D:/LocalAppData")).path
+        )
+    }
+
+    @Test
+    fun `PortableJavaManager builds Adoptium URLs including macOS arm64 Java 8 Rosetta fallback`() {
+        assertEquals(
+            "https://api.adoptium.net/v3/binary/latest/21/ga/linux/x64/jre/hotspot/normal/eclipse",
+            PortableJavaManager.adoptiumDownloadUrl(21, DesktopOs.LINUX, "x64")
+        )
+        assertEquals(
+            "https://api.adoptium.net/v3/binary/latest/21/ga/mac/aarch64/jre/hotspot/normal/eclipse",
+            PortableJavaManager.adoptiumDownloadUrl(21, DesktopOs.MACOS, "aarch64")
+        )
+        assertEquals(
+            "https://api.adoptium.net/v3/binary/latest/8/ga/mac/x64/jre/hotspot/normal/eclipse",
+            PortableJavaManager.adoptiumDownloadUrl(8, DesktopOs.MACOS, "aarch64")
+        )
+        assertEquals(
+            "https://api.adoptium.net/v3/binary/latest/21/ga/windows/x64/jre/hotspot/normal/eclipse",
+            PortableJavaManager.adoptiumDownloadUrl(21, DesktopOs.WINDOWS, "x64")
+        )
+    }
+
+    @Test
+    fun `SystemdServiceInstaller generates launchd plist, Windows startup script, and host telemetry runs safely`() {
+        val plist = SystemdServiceInstaller.generateLaunchdPlist(
+            execPath = "/Applications/MineServe.app/Contents/MacOS/MineServe",
+            dataDir = File("/Users/zach/Library/Application Support/MineServe"),
+            port = 8080,
+            bindHost = "0.0.0.0"
+        )
+        assertTrue(plist.contains("<string>com.devwithzachary.mineserve</string>"))
+        assertTrue(plist.contains("<string>--headless</string>"))
+
+        val bat = SystemdServiceInstaller.generateWindowsStartupScript(
+            execPath = "C:\\Program Files\\MineServe\\MineServe.exe",
+            dataDir = File("C:/Users/zach/AppData/Local/MineServe"),
+            port = 8080,
+            bindHost = "0.0.0.0"
+        )
+        assertTrue(bat.contains("--headless --bind 0.0.0.0 --port 8080"))
+
+        val selfPid = ProcessHandle.current().pid()
+        assertTrue(DesktopHostTelemetry.getProcessCpuPercent(selfPid) >= 0f)
+        assertTrue(DesktopHostTelemetry.getProcessRssMb(selfPid) >= 0L)
     }
 }

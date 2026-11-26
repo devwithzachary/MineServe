@@ -20,12 +20,12 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class LinuxServerSoftwareManager(
-    private val serverRepository: LinuxServerRepository,
+class DesktopServerSoftwareManager(
+    private val serverRepository: DesktopServerRepository,
     private val javaManager: PortableJavaManager
 ) {
     companion object {
-        private const val TAG = "LinuxServerSoftwareManager"
+        private const val TAG = "DesktopServerSoftwareManager"
     }
 
     private val paperApi = PaperApiClient()
@@ -57,7 +57,10 @@ class LinuxServerSoftwareManager(
                 ServerType.FORGE -> forgeApi.getVersions()
                 ServerType.NEOFORGE -> neoForgeApi.getVersions()
                 ServerType.BUNGEECORD -> bungeeApi.getVersions()
-                ServerType.BEDROCK_BDS -> bedrockApi.getBdsVersions()
+                ServerType.BEDROCK_BDS -> {
+                    val downloadType = if (DesktopPlatform.isWindows) "serverBedrockWindows" else "serverBedrockLinux"
+                    bedrockApi.getBdsVersions(downloadType)
+                }
                 ServerType.CUSTOM -> emptyList()
             }
         }.getOrDefault(emptyList())
@@ -89,7 +92,10 @@ class LinuxServerSoftwareManager(
                     "Installer" to url
                 }
                 ServerType.BUNGEECORD -> bungeeApi.getLatestBuildInfo()
-                ServerType.BEDROCK_BDS -> bedrockApi.getLatestBdsBuild()
+                ServerType.BEDROCK_BDS -> {
+                    val downloadType = if (DesktopPlatform.isWindows) "serverBedrockWindows" else "serverBedrockLinux"
+                    bedrockApi.getLatestBdsBuild(downloadType)
+                }
                 ServerType.CUSTOM -> null
             }
         }.getOrNull()
@@ -143,6 +149,9 @@ class LinuxServerSoftwareManager(
             ?: throw IllegalStateException("Unable to resolve download URL for ${server.type.displayName} ${server.version}")
 
         if (server.type == ServerType.BEDROCK_BDS) {
+            if (DesktopPlatform.isMacOs) {
+                throw IllegalStateException("Mojang does not publish a native macOS Bedrock Dedicated Server binary. Use Paper + GeyserMC (Bedrock + Java Crossplay) on macOS instead.")
+            }
             val zipFile = File(serverDir, "bedrock-server.zip")
             onProgress("Downloading Bedrock Dedicated Server...", 25)
             downloadFile(url, zipFile) { pct ->
@@ -150,7 +159,9 @@ class LinuxServerSoftwareManager(
             }
             onProgress("Extracting Bedrock Dedicated Server...", 80)
             FileStorageUtils.extractZipSafe(zipFile, serverDir, deleteZipAfter = true).getOrThrow()
-            File(serverDir, "bedrock_server").setExecutable(true, false)
+            if (DesktopPlatform.isLinux) {
+                File(serverDir, "bedrock_server").setExecutable(true, false)
+            }
             onProgress("Bedrock Dedicated Server ready!", 100)
             return@withContext
         }
@@ -185,7 +196,7 @@ class LinuxServerSoftwareManager(
         server: MinecraftServer,
         newVersion: String,
         createBackup: Boolean,
-        processManager: LinuxProcessManager,
+        processManager: DesktopProcessManager,
         onProgress: (String, Int) -> Unit
     ): Boolean = withContext(Dispatchers.IO) {
         try {

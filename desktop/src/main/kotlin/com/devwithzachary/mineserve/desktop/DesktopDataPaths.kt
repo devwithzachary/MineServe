@@ -3,18 +3,42 @@ package com.devwithzachary.mineserve.desktop
 import java.io.File
 import org.json.JSONObject
 
-class LinuxDataPaths(
+class DesktopDataPaths(
     val rootDir: File = defaultDataDir()
 ) {
     companion object {
-        fun defaultDataDir(): File {
-            val xdg = System.getenv("XDG_DATA_HOME")?.takeIf { it.isNotBlank() }
-            return if (xdg != null) {
-                File(xdg, "mineserve")
-            } else {
-                File(System.getProperty("user.home"), ".local/share/mineserve")
+        fun defaultDataDirFor(
+            os: DesktopOs,
+            userHome: String,
+            env: Map<String, String>
+        ): File {
+            val home = userHome.ifBlank { "." }
+            return when (os) {
+                DesktopOs.MACOS -> File(home, "Library/Application Support/MineServe")
+                DesktopOs.WINDOWS -> {
+                    val localAppData = env["LOCALAPPDATA"]?.takeIf { it.isNotBlank() }
+                    if (localAppData != null) {
+                        File(localAppData, "MineServe")
+                    } else {
+                        File(home, "AppData/Local/MineServe")
+                    }
+                }
+                DesktopOs.LINUX -> {
+                    val xdg = env["XDG_DATA_HOME"]?.takeIf { it.isNotBlank() }
+                    if (xdg != null) {
+                        File(xdg, "mineserve")
+                    } else {
+                        File(home, ".local/share/mineserve")
+                    }
+                }
             }
         }
+
+        fun defaultDataDir(): File = defaultDataDirFor(
+            os = DesktopPlatform.currentOs,
+            userHome = System.getProperty("user.home") ?: ".",
+            env = System.getenv()
+        )
     }
 
     val defaultServersDir: File get() = File(rootDir, "servers")

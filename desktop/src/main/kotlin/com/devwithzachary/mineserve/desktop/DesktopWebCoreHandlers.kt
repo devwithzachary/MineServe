@@ -30,7 +30,7 @@ private data class AsyncJobState(
     val serverId: String? = null
 )
 
-private data class LinuxModpackJob(
+private data class DesktopModpackJob(
     val id: String,
     val serverId: String,
     @Volatile var status: String = "RUNNING",
@@ -40,34 +40,35 @@ private data class LinuxModpackJob(
     @Volatile var error: String? = null
 )
 
-internal class LinuxWebCoreHandlers(
-    private val paths: LinuxDataPaths,
-    private val serverRepository: LinuxServerRepository,
-    private val processManager: LinuxProcessManager,
-    private val softwareManager: LinuxServerSoftwareManager,
+internal class DesktopWebCoreHandlers(
+    private val paths: DesktopDataPaths,
+    private val serverRepository: DesktopServerRepository,
+    private val processManager: DesktopProcessManager,
+    private val softwareManager: DesktopServerSoftwareManager,
     private val javaManager: PortableJavaManager,
-    private val cloudManager: LinuxCloudManager,
+    private val cloudManager: DesktopCloudManager,
     private val userRepository: UserRepository,
     private val scopeProvider: () -> CoroutineScope?
 ) {
     companion object {
-        private const val TAG = "LinuxWebCoreHandlers"
+        private const val TAG = "DesktopWebCoreHandlers"
     }
 
     private val jobs = ConcurrentHashMap<String, AsyncJobState>()
-    private val modpackJobs = ConcurrentHashMap<String, LinuxModpackJob>()
+    private val modpackJobs = ConcurrentHashMap<String, DesktopModpackJob>()
 
     @Volatile private var installingJavaVersion: Int? = null
     @Volatile private var javaInstallStatus: String = ""
     @Volatile private var javaInstallError: String? = null
 
     fun handleGetSystem(out: OutputStream) {
-        val mem = LinuxHostTelemetry.getMemoryInfo()
+        val mem = DesktopHostTelemetry.getMemoryInfo()
         val rt = Runtime.getRuntime()
         val resp = JSONObject()
-            .put("device", LinuxHostTelemetry.getHostDisplayName())
-            .put("android", "Linux Native")
-            .put("platform", "linux")
+            .put("device", DesktopHostTelemetry.getHostDisplayName())
+            .put("android", "${DesktopPlatform.shortName} Native")
+            .put("platform", DesktopPlatform.platformKey)
+            .put("isDesktopHost", true)
             .put("totalRamMb", rt.totalMemory() / (1024 * 1024))
             .put("freeRamMb", rt.freeMemory() / (1024 * 1024))
             .put("deviceTotalRamMb", mem.totalMb)
@@ -222,8 +223,8 @@ internal class LinuxWebCoreHandlers(
             }
         val version = j.optString("version", "").trim()
         val port = j.optInt("port", 25565)
-        val ramMb = j.optInt("ramMb", LinuxHostTelemetry.getMemoryInfo().defaultRamMb)
-        val motd = j.optString("motd", "A MineServe Linux Server").ifBlank { "A MineServe Linux Server" }
+        val ramMb = j.optInt("ramMb", DesktopHostTelemetry.getMemoryInfo().defaultRamMb)
+        val motd = j.optString("motd", "A MineServe ${DesktopPlatform.shortName} Server").ifBlank { "A MineServe ${DesktopPlatform.shortName} Server" }
         val eula = j.optBoolean("eulaAccepted", false)
         if (name.isBlank() || version.isBlank() || !eula) {
             sendJson(out, 400, "Bad Request", JSONObject().put("error", "Name, version, and EULA acceptance are required."))
@@ -239,7 +240,7 @@ internal class LinuxWebCoreHandlers(
                 val buildInfo = softwareManager.resolveLatestBuild(type, version)
                 val jarName = when {
                     type == ServerType.FORGE || type == ServerType.NEOFORGE -> "installer.jar"
-                    type == ServerType.BEDROCK_BDS -> "bedrock_server"
+                    type == ServerType.BEDROCK_BDS -> DesktopPlatform.bedrockBinaryName
                     else -> "server.jar"
                 }
                 val server = serverRepository.createServer(
@@ -337,7 +338,7 @@ internal class LinuxWebCoreHandlers(
             port = port.coerceIn(1, 65535),
             ramMb = ramMb.coerceAtLeast(256),
             motd = "Imported MineServe Server",
-            jarFileName = if (type == ServerType.BEDROCK_BDS) "bedrock_server" else "server.jar",
+            jarFileName = if (type == ServerType.BEDROCK_BDS) DesktopPlatform.bedrockBinaryName else "server.jar",
             eulaAccepted = true
         )
         val dir = serverRepository.getServerDirectory(srv.id)
@@ -360,7 +361,7 @@ internal class LinuxWebCoreHandlers(
             inner.deleteRecursively()
         }
         val detectedJar = if (type == ServerType.BEDROCK_BDS) {
-            "bedrock_server"
+            DesktopPlatform.bedrockBinaryName
         } else {
             val jars = dir.listFiles()?.filter { it.isFile && it.name.endsWith(".jar", ignoreCase = true) } ?: emptyList()
             (jars.firstOrNull { it.name.equals("server.jar", ignoreCase = true) } ?: jars.firstOrNull())?.name ?: "server.jar"
@@ -405,7 +406,7 @@ internal class LinuxWebCoreHandlers(
         }
 
         val jobId = UUID.randomUUID().toString()
-        val job = LinuxModpackJob(id = jobId, serverId = serverId)
+        val job = DesktopModpackJob(id = jobId, serverId = serverId)
         modpackJobs[jobId] = job
         val serverDir = serverRepository.getServerDirectory(serverId)
         userRepository.recordAudit(user, "MODPACK_IMPORT", srv.name, "Started .mrpack import", effectiveIp)

@@ -58,3 +58,9 @@ captures/
 .gemini/
 AGENTS.md
 GEMINI.md
+
+# Remote Desktop Beta Builder configs & artifacts
+scripts/.macos-builder.env
+scripts/.windows-builder.env
+dist-macos/
+dist-windows/

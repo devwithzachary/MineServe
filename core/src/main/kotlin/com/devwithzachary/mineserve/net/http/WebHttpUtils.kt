@@ -10,7 +10,7 @@ import java.net.URLDecoder
 
 /**
  * Shared low-level HTTP request parsing and response streaming utilities used by both
- * Android's `WebAdminServer` and Linux's `LinuxWebServer`.
+ * Android's `WebAdminServer` and Desktop's `DesktopWebServer`.
  */
 object WebHttpUtils {
 
