@@ -412,6 +412,7 @@ fun main(args: Array<String>) {
         ) {
             DisposableEffect(window) {
                 composeWindowRef = window
+                window.minimumSize = java.awt.Dimension(1120, 720)
                 if (logoBufferedImage != null) {
                     runCatching { window.iconImage = logoBufferedImage }
                 }

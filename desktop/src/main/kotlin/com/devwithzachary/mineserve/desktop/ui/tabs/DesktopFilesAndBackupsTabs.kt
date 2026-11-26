@@ -1,9 +1,11 @@
 package com.devwithzachary.mineserve.desktop.ui.tabs
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -15,25 +17,43 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.NoteAdd
+import androidx.compose.material.icons.rounded.Archive
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.Backup
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.CreateNewFolder
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Description
+import androidx.compose.material.icons.rounded.DriveFileRenameOutline
+import androidx.compose.material.icons.rounded.EditNote
+import androidx.compose.material.icons.rounded.Folder
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.InsertDriveFile
+import androidx.compose.material.icons.rounded.NoteAdd
+import androidx.compose.material.icons.rounded.Restore
+import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.UploadFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,27 +64,45 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.devwithzachary.mineserve.desktop.ui.DesktopColors
+import com.devwithzachary.mineserve.backup.cloud.CloudProviderType
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeEmptyState
+import com.devwithzachary.mineserve.designsystem.components.MineServePreferenceRow
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
-import com.devwithzachary.mineserve.desktop.ui.DesktopPanelCard
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.util.FileStorageUtils
+import java.awt.FileDialog
+import java.awt.Frame
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 @Composable
 fun DesktopFilesTab(
     viewModel: DesktopViewModel,
     server: MinecraftServer
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
     val currentPath by viewModel.currentFilePath.collectAsState()
     val entries by viewModel.directoryEntries.collectAsState()
     val editingPath by viewModel.editingFilePath.collectAsState()
@@ -73,129 +111,200 @@ fun DesktopFilesTab(
     var newItemName by remember { mutableStateOf("") }
     var renameTarget by remember { mutableStateOf<String?>(null) }
     var renameText by remember { mutableStateOf("") }
+    var pendingDelete by remember { mutableStateOf<FileEntry?>(null) }
+
+    pendingDelete?.let { target ->
+        MineServeDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = "Delete ${target.name}?",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            icon = Icons.Rounded.Delete,
+            onConfirm = {
+                viewModel.deleteEntry(target.relativePath)
+                pendingDelete = null
+            }
+        ) {
+            Text(
+                text = "This permanently removes ${target.relativePath} from disk.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+    }
 
     Row(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Left: File Browser
-        DesktopPanelCard(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        MineServeCard(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+        ) {
+            // Breadcrumbs + Toolbar
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Server Files", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    Text(
-                        text = "/$currentPath",
-                        fontSize = 12.sp,
-                        fontFamily = FontFamily.Monospace,
-                        color = DesktopColors.EmeraldLight
-                    )
+                val segments = remember(currentPath) {
+                    currentPath.split('/').filter { it.isNotBlank() }
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        onClick = { viewModel.loadDirectory(server.id, "") },
+                        shape = ShapeDefaults.Small,
+                        color = if (currentPath.isEmpty()) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
+                        contentColor = if (currentPath.isEmpty()) colorScheme.onSecondaryContainer else colorScheme.onSurface,
+                        border = null
+                    ) {
+                        Text(
+                            text = "/",
+                            style = MaterialTheme.typography.labelMedium.copy(fontFamily = monoFont),
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    segments.forEachIndexed { idx, segment ->
+                        Icon(
+                            imageVector = Icons.Rounded.ChevronRight,
+                            contentDescription = null,
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        val segmentPath = segments.take(idx + 1).joinToString("/")
+                        val isLast = idx == segments.lastIndex
+                        Surface(
+                            onClick = { viewModel.loadDirectory(server.id, segmentPath) },
+                            shape = ShapeDefaults.Small,
+                            color = if (isLast) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
+                            contentColor = if (isLast) colorScheme.onSecondaryContainer else colorScheme.onSurface,
+                            border = null
+                        ) {
+                            Text(
+                                text = segment,
+                                style = MaterialTheme.typography.labelMedium.copy(fontFamily = monoFont),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (currentPath.isNotEmpty()) {
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = {
                                 val parent = currentPath.substringBeforeLast('/', "")
                                 viewModel.loadDirectory(server.id, parent)
                             },
-                            modifier = Modifier.height(30.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                            shape = ShapeDefaults.Small,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                            modifier = Modifier.height(32.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowUpward,
-                                contentDescription = null,
-                                tint = DesktopColors.Slate300,
-                                modifier = Modifier.size(14.dp)
-                            )
+                            Icon(Icons.Rounded.ArrowUpward, contentDescription = null, modifier = Modifier.size(14.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Up", fontSize = 11.sp)
+                            Text("Up", style = MaterialTheme.typography.labelMedium)
                         }
                     }
-                    OutlinedButton(
+                    FilledTonalButton(
+                        onClick = {
+                            val dialog = FileDialog(null as Frame?, "Upload File to /$currentPath", FileDialog.LOAD)
+                            dialog.isVisible = true
+                            val dir = dialog.directory
+                            val file = dialog.file
+                            if (dir != null && file != null) {
+                                viewModel.importServerFile(server.id, currentPath, File(dir, file))
+                            }
+                        },
+                        shape = ShapeDefaults.Small,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                        modifier = Modifier.height(32.dp)
+                    ) {
+                        Icon(Icons.Rounded.UploadFile, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Upload", style = MaterialTheme.typography.labelMedium)
+                    }
+                    IconButton(
                         onClick = {
                             val dir = File(viewModel.serverRepository.getServerDirectory(server.id), currentPath)
                             viewModel.openInFileManager(dir)
                         },
-                        modifier = Modifier.height(30.dp),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                        modifier = Modifier.size(32.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = null,
-                            tint = DesktopColors.Slate300,
-                            modifier = Modifier.size(14.dp)
+                            imageVector = Icons.Rounded.FolderOpen,
+                            contentDescription = "Open Folder",
+                            tint = colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp)
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Open Folder", fontSize = 11.sp, color = DesktopColors.Slate300)
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Quick Create File / Folder Bar
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = newItemName,
                     onValueChange = { newItemName = it },
-                    placeholder = { Text("New file or folder name...", fontSize = 11.sp) },
+                    placeholder = { Text("New file or folder name...", style = MaterialTheme.typography.bodySmall) },
                     singleLine = true,
                     modifier = Modifier.weight(1f)
                 )
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = {
                         if (newItemName.isNotBlank()) {
                             viewModel.createNewFile(newItemName.trim())
                             newItemName = ""
                         }
-                    }
+                    },
+                    shape = ShapeDefaults.Small
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.NoteAdd,
-                        contentDescription = null,
-                        tint = DesktopColors.EmeraldLight,
-                        modifier = Modifier.size(15.dp)
-                    )
+                    Icon(Icons.Rounded.NoteAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("File", fontSize = 11.sp)
+                    Text("File", style = MaterialTheme.typography.labelMedium)
                 }
-                OutlinedButton(
+                FilledTonalButton(
                     onClick = {
                         if (newItemName.isNotBlank()) {
                             viewModel.createNewFolder(newItemName.trim())
                             newItemName = ""
                         }
-                    }
+                    },
+                    shape = ShapeDefaults.Small
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CreateNewFolder,
-                        contentDescription = null,
-                        tint = DesktopColors.EmeraldLight,
-                        modifier = Modifier.size(15.dp)
-                    )
+                    Icon(Icons.Rounded.CreateNewFolder, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Folder", fontSize = 11.sp)
+                    Text("Folder", style = MaterialTheme.typography.labelMedium)
                 }
             }
 
             if (renameTarget != null) {
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedTextField(
                         value = renameText,
                         onValueChange = { renameText = it },
-                        label = { Text("Rename $renameTarget", fontSize = 11.sp) },
+                        label = { Text("Rename $renameTarget") },
                         singleLine = true,
                         modifier = Modifier.weight(1f)
                     )
@@ -207,54 +316,48 @@ fun DesktopFilesTab(
                                 renameTarget = null
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                        shape = ShapeDefaults.Small
                     ) {
-                        Text("Apply", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        Text("Apply")
                     }
-                    OutlinedButton(onClick = { renameTarget = null }) {
-                        Text("Cancel", fontSize = 11.sp)
+                    TextButton(onClick = { renameTarget = null }) {
+                        Text("Cancel")
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                items(entries, key = { it.relativePath }) { entry ->
-                    val (entryIcon, entryTint) = resolveFileIconAndTint(entry)
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (editingPath == entry.relativePath) DesktopColors.EmeraldPrimary.copy(alpha = 0.14f) else DesktopColors.Slate900,
-                        border = BorderStroke(
-                            1.dp,
-                            if (editingPath == entry.relativePath) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                if (entry.isDirectory) {
-                                    viewModel.loadDirectory(server.id, entry.relativePath)
-                                } else if (entry.isEditable) {
-                                    viewModel.openFileForEditing(server.id, entry.relativePath)
-                                } else {
-                                    viewModel.showToast("${entry.name} is binary (${FileStorageUtils.formatBytes(entry.sizeBytes)})")
-                                }
-                            }
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            if (entries.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    MineServeEmptyState(
+                        icon = Icons.Rounded.FolderOpen,
+                        title = "Empty Directory",
+                        supportingText = "Create a file or folder above, or upload an existing configuration file."
+                    )
+                }
+            } else {
+                MineServeTableContainer(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(entries, key = { it.relativePath }) { entry ->
+                            val (entryIcon, entryTint) = resolveFileIconAndTint(entry)
+                            val isSelected = editingPath == entry.relativePath
+                            MineServeTableRow(
+                                showDivider = entry != entries.last(),
+                                onClick = {
+                                    if (entry.isDirectory) {
+                                        viewModel.loadDirectory(server.id, entry.relativePath)
+                                    } else if (entry.isEditable) {
+                                        viewModel.openFileForEditing(server.id, entry.relativePath)
+                                    } else {
+                                        viewModel.showToast("${entry.name} is binary (${FileStorageUtils.formatBytes(entry.sizeBytes)})")
+                                    }
+                                },
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
                             ) {
                                 Icon(
                                     imageVector = entryIcon,
@@ -262,48 +365,61 @@ fun DesktopFilesTab(
                                     tint = entryTint,
                                     modifier = Modifier.size(20.dp)
                                 )
+                                Spacer(modifier = Modifier.width(10.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         text = entry.name,
-                                        fontWeight = if (entry.isDirectory) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (entry.isDirectory) DesktopColors.EmeraldLight else Color.White,
-                                        fontSize = 12.sp,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                        fontWeight = if (entry.isDirectory || isSelected) FontWeight.SemiBold else FontWeight.Normal,
+                                        color = when {
+                                            isSelected -> colorScheme.primary
+                                            entry.isDirectory -> colorScheme.primary
+                                            else -> colorScheme.onSurface
+                                        },
                                         maxLines = 1,
                                         overflow = TextOverflow.Ellipsis
                                     )
-                                    Text(
+                                    MineServeTableMonoText(
                                         text = if (entry.isDirectory) "Directory" else FileStorageUtils.formatBytes(entry.sizeBytes),
-                                        fontSize = 10.sp,
-                                        color = DesktopColors.Slate400
+                                        color = colorScheme.onSurfaceVariant
                                     )
                                 }
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (entry.name.endsWith(".zip", ignoreCase = true)) {
-                                    OutlinedButton(
-                                        onClick = { viewModel.unzipEntry(entry.relativePath) },
-                                        modifier = Modifier.height(26.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)
-                                    ) {
-                                        Text("Unzip", fontSize = 10.sp, color = DesktopColors.EmeraldLight)
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
+                                    if (entry.name.endsWith(".zip", ignoreCase = true)) {
+                                        FilledTonalButton(
+                                            onClick = { viewModel.unzipEntry(entry.relativePath) },
+                                            shape = ShapeDefaults.Small,
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("Unzip", style = MaterialTheme.typography.labelSmall)
+                                        }
                                     }
-                                }
-                                OutlinedButton(
-                                    onClick = {
-                                        renameTarget = entry.relativePath
-                                        renameText = entry.name
-                                    },
-                                    modifier = Modifier.height(26.dp),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)
-                                ) {
-                                    Text("Rename", fontSize = 10.sp, color = DesktopColors.Slate300)
-                                }
-                                OutlinedButton(
-                                    onClick = { viewModel.deleteEntry(entry.relativePath) },
-                                    modifier = Modifier.height(26.dp),
-                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)
-                                ) {
-                                    Text("Del", fontSize = 10.sp, color = DesktopColors.RedstoneLight)
+                                    IconButton(
+                                        onClick = {
+                                            renameTarget = entry.relativePath
+                                            renameText = entry.name
+                                        },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.DriveFileRenameOutline,
+                                            contentDescription = "Rename",
+                                            tint = colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { pendingDelete = entry },
+                                        modifier = Modifier.size(28.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = "Delete",
+                                            tint = colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -312,8 +428,12 @@ fun DesktopFilesTab(
             }
         }
 
-        // Right: Built-in Text & Config Editor
-        DesktopPanelCard(modifier = Modifier.weight(1.2f).fillMaxHeight()) {
+        // Right: Integrated #070A12 JetBrains Mono Config / Code Editor
+        MineServeCard(
+            modifier = Modifier
+                .weight(1.2f)
+                .fillMaxHeight()
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -321,71 +441,97 @@ fun DesktopFilesTab(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Description,
+                        imageVector = Icons.Rounded.Description,
                         contentDescription = null,
-                        tint = DesktopColors.EmeraldLight,
-                        modifier = Modifier.size(18.dp)
+                        tint = colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = editingPath?.let { "Editing: $it" } ?: "Select a config or text file to edit",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp,
-                        color = Color.White,
-                        fontFamily = FontFamily.Monospace
+                        text = editingPath ?: "Config & Code Editor",
+                        style = if (editingPath != null) {
+                            MaterialTheme.typography.titleSmall.copy(fontFamily = monoFont)
+                        } else {
+                            MaterialTheme.typography.titleSmall
+                        },
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 if (editingPath != null) {
                     Button(
                         onClick = { viewModel.saveEditingFile() },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                        shape = ShapeDefaults.Medium
                     ) {
-                        Text("Save File", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Save File")
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(10.dp))
+
+            Spacer(modifier = Modifier.height(12.dp))
+
             if (editingPath == null) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(
-                        text = "Click any .properties, .yml, .json, .toml, or .txt file on the left to inspect and edit it.",
-                        color = DesktopColors.Slate400,
-                        fontSize = 12.sp
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    MineServeEmptyState(
+                        icon = Icons.Rounded.EditNote,
+                        title = "No File Selected",
+                        supportingText = "Select any .properties, .yml, .json, .toml, or .txt file on the left to inspect and edit it."
                     )
                 }
             } else {
-                OutlinedTextField(
-                    value = editingContent,
-                    onValueChange = { viewModel.updateEditingContent(it) },
-                    modifier = Modifier.fillMaxSize(),
-                    textStyle = androidx.compose.ui.text.TextStyle(
-                        fontFamily = FontFamily.Monospace,
-                        fontSize = 12.sp,
-                        color = Color.White
+                Surface(
+                    shape = ShapeDefaults.Medium,
+                    color = extended.terminalSurface,
+                    contentColor = extended.terminalOnSurface,
+                    border = null,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    TextField(
+                        value = editingContent,
+                        onValueChange = { viewModel.updateEditingContent(it) },
+                        modifier = Modifier.fillMaxSize(),
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = monoFont,
+                            fontSize = 12.sp,
+                            lineHeight = 18.sp
+                        ),
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = extended.terminalSurface,
+                            unfocusedContainerColor = extended.terminalSurface,
+                            focusedTextColor = extended.terminalOnSurface,
+                            unfocusedTextColor = extended.terminalOnSurface,
+                            cursorColor = colorScheme.primary,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent
+                        )
                     )
-                )
+                }
             }
         }
     }
 }
 
-private fun resolveFileIconAndTint(entry: FileEntry): Pair<androidx.compose.ui.graphics.vector.ImageVector, Color> {
+@Composable
+private fun resolveFileIconAndTint(entry: FileEntry): Pair<ImageVector, Color> {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
     if (entry.isDirectory) {
-        return Icons.Default.Folder to DesktopColors.EmeraldLight
+        return Icons.Rounded.Folder to colorScheme.primary
     }
-    val ext = entry.extension.lowercase()
+    val ext = entry.extension.lowercase(Locale.US)
     return when (ext) {
-        "zip", "jar", "mrpack", "gz", "tar" -> Icons.Default.Archive to DesktopColors.AmberLight
+        "zip", "jar", "mrpack", "gz", "tar" -> Icons.Rounded.Archive to extended.warning
         "yml", "yaml", "json", "toml", "properties", "conf", "cfg", "ini", "sh", "xml" ->
-            Icons.Default.Code to DesktopColors.EmeraldPrimary
-        "txt", "log", "md", "csv" -> Icons.Default.Description to DesktopColors.Slate300
-        else -> Icons.Default.InsertDriveFile to DesktopColors.Slate400
+            Icons.Rounded.Code to colorScheme.tertiary
+        "txt", "log", "md", "csv" -> Icons.Rounded.Description to colorScheme.onSurface
+        else -> Icons.Rounded.InsertDriveFile to colorScheme.onSurfaceVariant
     }
 }
 
@@ -394,48 +540,109 @@ fun DesktopBackupsTab(
     viewModel: DesktopViewModel,
     server: MinecraftServer
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
     val localBackups by viewModel.localBackups.collectAsState()
     val cloudBackups by viewModel.cloudBackups.collectAsState()
-    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm") }
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US) }
     val backupsDir = remember(server.id) { viewModel.serverRepository.getBackupsDirectory(server.id) }
+
+    var pendingRestore by remember { mutableStateOf<String?>(null) }
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
+
+    var cloudSyncEnabled by remember(server.id) { mutableStateOf(server.cloudBackupConfig.enabled) }
+    var cloudProvider by remember(server.id) { mutableStateOf(server.cloudBackupConfig.provider) }
+    var webDavUrl by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavUrl) }
+    var webDavUser by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavUsername) }
+    var webDavPass by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavPassword) }
 
     LaunchedEffect(server.id) {
         viewModel.refreshCloudBackups()
     }
 
+    pendingRestore?.let { fileName ->
+        MineServeDialog(
+            onDismissRequest = { pendingRestore = null },
+            title = "Restore Backup?",
+            confirmLabel = "Restore",
+            icon = Icons.Rounded.Restore,
+            onConfirm = {
+                viewModel.restoreBackup(fileName)
+                pendingRestore = null
+            }
+        ) {
+            Text(
+                text = "Restoring $fileName overwrites matching world and server files. Make sure the server is stopped first.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    pendingDelete?.let { fileName ->
+        MineServeDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = "Delete Backup?",
+            confirmLabel = "Delete",
+            isDestructive = true,
+            icon = Icons.Rounded.Delete,
+            onConfirm = {
+                viewModel.deleteBackup(fileName)
+                pendingDelete = null
+            }
+        ) {
+            Text(
+                text = "Permanently delete local snapshot $fileName?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
     Row(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Left: Local Backups
-        DesktopPanelCard(modifier = Modifier.weight(1.3f).fillMaxHeight()) {
+        // Left: Local Snapshots
+        MineServeCard(
+            modifier = Modifier
+                .weight(1.25f)
+                .fillMaxHeight()
+        ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Local Backups (${localBackups.size})", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    text = "Local Snapshots (${localBackups.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Button(
                         onClick = { viewModel.createBackup(worldOnly = true) },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                        shape = ShapeDefaults.Medium
                     ) {
-                        Text("+ World Backup", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Icon(Icons.Rounded.Backup, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("World Backup")
                     }
-                    OutlinedButton(onClick = { viewModel.createBackup(worldOnly = false) }) {
-                        Text("+ Full Backup", fontSize = 12.sp, color = DesktopColors.Slate300)
-                    }
-                    OutlinedButton(
-                        onClick = { viewModel.openInFileManager(backupsDir) }
+                    FilledTonalButton(
+                        onClick = { viewModel.createBackup(worldOnly = false) },
+                        shape = ShapeDefaults.Medium
                     ) {
+                        Text("Full Backup")
+                    }
+                    IconButton(onClick = { viewModel.openInFileManager(backupsDir) }) {
                         Icon(
-                            imageVector = Icons.Default.FolderOpen,
-                            contentDescription = null,
-                            tint = DesktopColors.Slate300,
-                            modifier = Modifier.size(15.dp)
+                            imageVector = Icons.Rounded.FolderOpen,
+                            contentDescription = "Open Backups Folder",
+                            tint = colorScheme.onSurfaceVariant
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Open Directory", fontSize = 12.sp, color = DesktopColors.Slate300)
                     }
                 }
             }
@@ -443,88 +650,77 @@ fun DesktopBackupsTab(
             Spacer(modifier = Modifier.height(12.dp))
 
             if (localBackups.isEmpty()) {
-                Text("No local backups yet. Create a World or Full backup above.", color = DesktopColors.Slate400, fontSize = 12.sp)
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    MineServeEmptyState(
+                        icon = Icons.Rounded.Archive,
+                        title = "No Local Backups",
+                        supportingText = "Create a World Backup or Full Server snapshot above."
+                    )
+                }
             } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(localBackups, key = { it.fileName }) { b ->
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                MineServeTableContainer(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(localBackups, key = { it.fileName }) { b ->
+                            MineServeTableRow(
+                                showDivider = b != localBackups.last(),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             ) {
-                                Row(
-                                    modifier = Modifier.weight(1f),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Archive,
-                                        contentDescription = null,
-                                        tint = DesktopColors.EmeraldLight,
-                                        modifier = Modifier.size(20.dp)
+                                Icon(
+                                    imageVector = Icons.Rounded.Archive,
+                                    contentDescription = null,
+                                    tint = colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = b.fileName,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                        fontWeight = FontWeight.Medium,
+                                        color = colorScheme.onSurface,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
                                     )
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = b.fileName,
-                                            fontWeight = FontWeight.SemiBold,
-                                            fontSize = 13.sp,
-                                            color = Color.White,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = "${if (b.isWorldOnly) "World Only" else "Full Server"} - ${FileStorageUtils.formatBytes(b.sizeBytes)} - ${dateFormat.format(Date(b.timestamp))}",
-                                            fontSize = 11.sp,
-                                            color = DesktopColors.Slate400
-                                        )
-                                    }
+                                    MineServeTableMonoText(
+                                        text = "${if (b.isWorldOnly) "World" else "Full"} - ${FileStorageUtils.formatBytes(b.sizeBytes)} - ${dateFormat.format(Date(b.timestamp))}",
+                                        color = colorScheme.onSurfaceVariant
+                                    )
                                 }
-                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    OutlinedButton(
-                                        onClick = { viewModel.openInFileManager(backupsDir) },
-                                        modifier = Modifier.height(30.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.FolderOpen,
-                                            contentDescription = null,
-                                            tint = DesktopColors.Slate300,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Open Directory", fontSize = 11.sp, color = DesktopColors.Slate300)
-                                    }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                                     if (viewModel.cloudManager.isLinked) {
-                                        OutlinedButton(
+                                        FilledTonalButton(
                                             onClick = { viewModel.uploadBackupToCloud(b.fileName) },
-                                            modifier = Modifier.height(30.dp),
-                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                                            shape = ShapeDefaults.Small,
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = colorScheme.tertiaryContainer,
+                                                contentColor = colorScheme.onTertiaryContainer
+                                            ),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                                            modifier = Modifier.height(30.dp)
                                         ) {
-                                            Text("Cloud Upload", fontSize = 11.sp, color = DesktopColors.EmeraldLight)
+                                            Icon(Icons.Rounded.CloudUpload, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Cloud", style = MaterialTheme.typography.labelSmall)
                                         }
                                     }
-                                    OutlinedButton(
-                                        onClick = { viewModel.restoreBackup(b.fileName) },
-                                        modifier = Modifier.height(30.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                                    FilledTonalButton(
+                                        onClick = { pendingRestore = b.fileName },
+                                        shape = ShapeDefaults.Small,
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
+                                        modifier = Modifier.height(30.dp)
                                     ) {
-                                        Text("Restore", fontSize = 11.sp, color = DesktopColors.Slate300)
+                                        Text("Restore", style = MaterialTheme.typography.labelSmall)
                                     }
-                                    OutlinedButton(
-                                        onClick = { viewModel.deleteBackup(b.fileName) },
-                                        modifier = Modifier.height(30.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                                    IconButton(
+                                        onClick = { pendingDelete = b.fileName },
+                                        modifier = Modifier.size(30.dp)
                                     ) {
-                                        Text("Delete", fontSize = 11.sp, color = DesktopColors.RedstoneLight)
+                                        Icon(
+                                            imageVector = Icons.Rounded.Delete,
+                                            contentDescription = "Delete backup",
+                                            tint = colorScheme.error,
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
                                 }
                             }
@@ -534,57 +730,203 @@ fun DesktopBackupsTab(
             }
         }
 
-        // Right: MineServe Cloud Off-Device Backups
-        DesktopPanelCard(modifier = Modifier.weight(0.85f).fillMaxHeight()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("MineServe Cloud Snapshots", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = DesktopColors.EmeraldLight)
-                OutlinedButton(
-                    onClick = {
-                        if (viewModel.cloudManager.isLinked) viewModel.refreshCloudBackups()
-                        else viewModel.openModal(DesktopModal.CLOUD)
-                    },
-                    modifier = Modifier.height(30.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp)
-                ) {
-                    Text(if (viewModel.cloudManager.isLinked) "Refresh" else "Sign In / Plans", fontSize = 11.sp)
+        // Right: Cloud Quota, Off-Device Snapshots & WebDAV Sync Config
+        Column(
+            modifier = Modifier
+                .weight(0.95f)
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            MineServeCard(modifier = Modifier.fillMaxWidth()) {
+                val cloudJson = remember(viewModel.cloudManager.isLinked, cloudBackups) {
+                    viewModel.cloudManager.toStatusJson()
                 }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            if (!viewModel.cloudManager.isLinked) {
-                Text(
-                    text = "Store encrypted off-device backups in Cloudflare R2 (10 GB on Plus, 50 GB on Pro). Link your MineServe Cloud account to upload and restore snapshots.",
-                    fontSize = 12.sp,
-                    color = DesktopColors.Slate400
-                )
-            } else if (cloudBackups.isEmpty()) {
-                Text("No cloud snapshots uploaded for this server yet.", fontSize = 12.sp, color = DesktopColors.Slate400)
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(cloudBackups.size) { idx ->
-                        val item = cloudBackups[idx]
-                        val id = item.optString("backupId", item.optString("id", ""))
-                        val name = item.optString("fileName", id)
-                        val size = item.optLong("sizeBytes", 0L)
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
+                val tier = cloudJson.optString("tier", "FREE").uppercase(Locale.US)
+                val usedBytes = cloudJson.optLong("storageUsedBytes", 0L)
+                val quotaBytes = when (tier) {
+                    "PRO" -> 50L * 1024L * 1024L * 1024L
+                    "PLUS" -> 10L * 1024L * 1024L * 1024L
+                    else -> 0L
+                }
+                val quotaProgress = if (quotaBytes > 0L) (usedBytes.toFloat() / quotaBytes.toFloat()).coerceIn(0f, 1f) else 0f
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(
+                            imageVector = Icons.Rounded.Cloud,
+                            contentDescription = null,
+                            tint = colorScheme.tertiary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "MineServe Cloud Snapshots",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.onSurface
+                        )
+                    }
+                    FilledTonalButton(
+                        onClick = {
+                            if (viewModel.cloudManager.isLinked) viewModel.refreshCloudBackups()
+                            else viewModel.openModal(DesktopModal.CLOUD)
+                        },
+                        shape = ShapeDefaults.Small,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = colorScheme.tertiaryContainer,
+                            contentColor = colorScheme.onTertiaryContainer
+                        )
+                    ) {
+                        Text(if (viewModel.cloudManager.isLinked) "Refresh" else "Sign In / Plans")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                if (!viewModel.cloudManager.isLinked) {
+                    Text(
+                        text = "Store encrypted off-device backups in Cloudflare R2 (10 GB on Plus, 50 GB on Pro). Link your MineServe Cloud account to upload and restore snapshots.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    if (quotaBytes > 0L) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Row(
-                                modifier = Modifier.padding(10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(name, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White)
-                                    Text(FileStorageUtils.formatBytes(size), fontSize = 10.sp, color = DesktopColors.Slate400)
+                            Text(
+                                text = "Cloud Storage ($tier)",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                            MineServeTableMonoText(
+                                text = "${FileStorageUtils.formatBytes(usedBytes)} / ${FileStorageUtils.formatBytes(quotaBytes)}",
+                                color = colorScheme.tertiary
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(6.dp))
+                        LinearProgressIndicator(
+                            progress = { quotaProgress },
+                            modifier = Modifier.fillMaxWidth().height(6.dp),
+                            color = colorScheme.tertiary,
+                            trackColor = colorScheme.surfaceContainerHighest,
+                            strokeCap = StrokeCap.Round
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    if (cloudBackups.isEmpty()) {
+                        Text(
+                            text = "No cloud snapshots uploaded for this server yet.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        MineServeTableContainer(modifier = Modifier.fillMaxWidth()) {
+                            cloudBackups.forEachIndexed { idx, item ->
+                                val id = item.optString("backupId", item.optString("id", ""))
+                                val name = item.optString("fileName", id)
+                                val size = item.optLong("sizeBytes", 0L)
+                                MineServeTableRow(
+                                    showDivider = idx < cloudBackups.lastIndex,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = name,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                            color = colorScheme.onSurface,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        MineServeTableMonoText(
+                                            text = FileStorageUtils.formatBytes(size),
+                                            color = colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
+                        }
+                    }
+                }
+            }
+
+            MineServeSettingsGroup(title = "Encrypted Off-Device Sync") {
+                MineServePreferenceRow(
+                    title = "Auto-Sync Backups",
+                    subtitle = "Upload new local backups automatically using ${cloudProvider.displayName}",
+                    checked = cloudSyncEnabled,
+                    onCheckedChange = { cloudSyncEnabled = it },
+                    icon = Icons.Rounded.CloudUpload
+                )
+                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CloudProviderType.entries.filter { it != CloudProviderType.SAF_FOLDER }.forEach { provider ->
+                            val selected = cloudProvider == provider
+                            FilledTonalButton(
+                                onClick = { cloudProvider = provider },
+                                shape = ShapeDefaults.Small,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = if (selected) colorScheme.secondaryContainer else colorScheme.surfaceContainerHigh,
+                                    contentColor = if (selected) colorScheme.onSecondaryContainer else colorScheme.onSurfaceVariant
+                                )
+                            ) {
+                                Text(provider.displayName, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+                    if (cloudProvider == CloudProviderType.WEBDAV) {
+                        OutlinedTextField(
+                            value = webDavUrl,
+                            onValueChange = { webDavUrl = it },
+                            label = { Text("WebDAV Endpoint URL") },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = webDavUser,
+                                onValueChange = { webDavUser = it },
+                                label = { Text("Username") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = webDavPass,
+                                onValueChange = { webDavPass = it },
+                                label = { Text("Password") },
+                                singleLine = true,
+                                visualTransformation = PasswordVisualTransformation(),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        Button(
+                            onClick = {
+                                val next = server.cloudBackupConfig.copy(
+                                    enabled = cloudSyncEnabled,
+                                    provider = cloudProvider,
+                                    webDavUrl = webDavUrl.trim(),
+                                    webDavUsername = webDavUser.trim(),
+                                    webDavPassword = webDavPass
+                                )
+                                viewModel.serverRepository.updateServer(server.copy(cloudBackupConfig = next))
+                                viewModel.showToast("Saved cloud backup sync settings")
+                            },
+                            shape = ShapeDefaults.Medium
+                        ) {
+                            Text("Save Sync Settings")
                         }
                     }
                 }

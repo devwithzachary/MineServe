@@ -1,31 +1,54 @@
 package com.devwithzachary.mineserve.desktop.ui.modals
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.OpenInNew
+import androidx.compose.material.icons.rounded.BugReport
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.Dns
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.FolderOpen
+import androidx.compose.material.icons.rounded.Info
+import androidx.compose.material.icons.rounded.Palette
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.ShapeDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,40 +59,50 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.api.GitHubUpdateChecker
 import com.devwithzachary.mineserve.api.UpdateCheckResult
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServePreferenceRow
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.components.NetworkAddressChip
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
+import com.devwithzachary.mineserve.designsystem.theme.ThemeMode
 import com.devwithzachary.mineserve.desktop.LinuxDiagnosticsManager
 import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
 import com.devwithzachary.mineserve.desktop.LinuxSelfTestItem
-import com.devwithzachary.mineserve.desktop.ui.DesktopColors
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
-import com.devwithzachary.mineserve.desktop.ui.DesktopPanelCard
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.ChangelogPlatform
 import com.devwithzachary.mineserve.model.MineServeAboutData
 import com.devwithzachary.mineserve.model.MineServeWhatsNewCatalog
 import com.devwithzachary.mineserve.model.SharedCreditCategory
-import java.io.File
 import kotlinx.coroutines.launch
+import java.io.File
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
-    var activeSection by remember { mutableIntStateOf(0) } // 0: General & Web Admin, 1: Java Runtimes, 2: Diagnostics & Logs, 3: Updates
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    var activeSection by remember { mutableIntStateOf(0) } // 0: Appearance & Web Admin, 1: Java Runtimes, 2: Diagnostics & Logs, 3: Updates
     val webRunning by viewModel.webAdminRunning.collectAsState()
     val uiScale by viewModel.uiScale.collectAsState()
+    val themeMode by viewModel.themeMode.collectAsState()
     val lanIp = remember { LinuxHostTelemetry.getLocalIpAddress() ?: "127.0.0.1" }
     val webPort = viewModel.webServer.actualPort
 
-    // Java Runtimes state
     var installingMajor by remember { mutableStateOf<Int?>(null) }
     var javaRefreshTick by remember { mutableIntStateOf(0) }
 
-    // Diagnostics state
     var logFilterMode by remember { mutableStateOf("MINESERVE_TAGS") }
     var capturedLogs by remember {
         mutableStateOf(
@@ -79,7 +112,6 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
     var selfTestResults by remember { mutableStateOf<List<LinuxSelfTestItem>>(emptyList()) }
     var selfTestBusy by remember { mutableStateOf(false) }
 
-    // Updates state
     var updateBusy by remember { mutableStateOf(false) }
     var updateHeadline by remember {
         mutableStateOf("Installed Version: v${MineServeAboutData.APP_VERSION} (Synced across Android & Linux)")
@@ -87,196 +119,226 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
     var updateBody by remember { mutableStateOf("") }
     var updateUrl by remember { mutableStateOf(MineServeAboutData.GITHUB_RELEASES_URL) }
 
-    // Admin password quick reset
     var newAdminPass by remember { mutableStateOf("") }
 
-    DesktopPanelCard(modifier = Modifier.width(860.dp).height(640.dp)) {
+    DesktopM3ModalSurface(width = 880.dp, height = 660.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("App Settings & Host Diagnostics", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White)
+                Text(
+                    text = "App Settings & Host Diagnostics",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
                 Text(
                     text = "MineServe v${MineServeAboutData.APP_VERSION} - ${LinuxHostTelemetry.getHostDisplayName()}",
-                    fontSize = 12.sp,
-                    color = DesktopColors.Slate400
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
                 )
             }
-            OutlinedButton(onClick = { viewModel.openModal(DesktopModal.NONE) }) {
-                Text("Close", fontSize = 12.sp)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // Section Tabs
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf(
-                0 to "Web Admin & Display",
-                1 to "Java Runtimes (OpenJDK)",
-                2 to "Diagnostics & Error Logs",
-                3 to "Updates & Releases"
-            ).forEach { (idx, title) ->
-                val active = activeSection == idx
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                    border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                    modifier = Modifier.clickable { activeSection = idx }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                FilledTonalButton(
+                    onClick = { viewModel.openModal(DesktopModal.ABOUT_CREDITS) },
+                    shape = ShapeDefaults.Medium
                 ) {
-                    Text(
-                        text = title,
-                        color = if (active) Color.Black else DesktopColors.Slate300,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
+                    Icon(Icons.Rounded.Info, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("About & Credits")
+                }
+                IconButton(onClick = { viewModel.openModal(DesktopModal.NONE) }) {
+                    Icon(Icons.Rounded.Close, contentDescription = "Close")
                 }
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
-        Spacer(modifier = Modifier.height(12.dp))
+
+        val sectionTabs = listOf(
+            0 to "Appearance & Web",
+            1 to "Java Runtimes",
+            2 to "Diagnostics",
+            3 to "Updates"
+        )
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            sectionTabs.forEachIndexed { index, (idx, title) ->
+                SegmentedButton(
+                    selected = activeSection == idx,
+                    onClick = { activeSection = idx },
+                    shape = SegmentedButtonDefaults.itemShape(index = index, count = sectionTabs.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = colorScheme.secondaryContainer,
+                        activeContentColor = colorScheme.onSecondaryContainer,
+                        inactiveContainerColor = colorScheme.surfaceContainer,
+                        inactiveContentColor = colorScheme.onSurfaceVariant,
+                        activeBorderColor = colorScheme.outlineVariant,
+                        inactiveBorderColor = colorScheme.outlineVariant
+                    )
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        maxLines = 1,
+                        softWrap = false,
+                        modifier = Modifier.padding(horizontal = 6.dp)
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
 
         when (activeSection) {
             0 -> {
                 Column(
-                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Web Remote Admin Card
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = DesktopColors.Slate900,
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    // Appearance & HiDPI Scaling
+                    MineServeSettingsGroup(title = "Appearance & Display") {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Icon(Icons.Rounded.Palette, contentDescription = null, tint = colorScheme.primary, modifier = Modifier.size(20.dp))
+                                Text("Color Scheme", style = MaterialTheme.typography.bodyLarge)
+                            }
+                            val themeOptions = listOf(
+                                ThemeMode.ObsidianDark to "Dark",
+                                ThemeMode.SlateLight to "Light",
+                                ThemeMode.System to "System"
+                            )
+                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                themeOptions.forEachIndexed { index, (mode, label) ->
+                                    SegmentedButton(
+                                        selected = themeMode == mode,
+                                        onClick = { viewModel.setThemeMode(mode) },
+                                        shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size)
+                                    ) {
+                                        Text(label, style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text("Web Remote Admin Panel", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
-                                        Surface(
-                                            shape = RoundedCornerShape(999.dp),
-                                            color = if (webRunning) DesktopColors.EmeraldPrimary.copy(alpha = 0.2f) else DesktopColors.Slate800,
-                                            border = BorderStroke(1.dp, if (webRunning) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder)
-                                        ) {
-                                            Text(
-                                                text = if (webRunning) "ONLINE (:$webPort)" else "DISABLED",
-                                                color = if (webRunning) DesktopColors.EmeraldLight else DesktopColors.Slate400,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                            )
-                                        }
-                                    }
-                                    Text(
-                                        text = "Manage all servers remotely from any browser on your LAN or through a tunnel.",
-                                        fontSize = 12.sp,
-                                        color = DesktopColors.Slate400
-                                    )
-                                }
-                                Switch(
-                                    checked = webRunning,
-                                    onCheckedChange = { enabled -> viewModel.setWebAdminEnabled(enabled) }
-                                )
+                                Text("Desktop HiDPI UI Scale", style = MaterialTheme.typography.bodyLarge)
+                                MineServeTableMonoText(text = "${(uiScale * 100).toInt()}%", color = colorScheme.primary)
                             }
-
-                            if (webRunning) {
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "Local: http://127.0.0.1:$webPort  |  LAN: http://$lanIp:$webPort",
-                                        fontSize = 12.sp,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = DesktopColors.EmeraldLight,
-                                        modifier = Modifier.weight(1f)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                listOf(1.0f, 1.15f, 1.25f, 1.35f, 1.50f, 1.75f).forEach { preset ->
+                                    FilterChip(
+                                        selected = kotlin.math.abs(uiScale - preset) < 0.03f,
+                                        onClick = { viewModel.setUiScale(preset) },
+                                        label = { Text("${(preset * 100).toInt()}%", style = MaterialTheme.typography.labelMedium.copy(fontFamily = monoFont)) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = colorScheme.secondaryContainer,
+                                            selectedLabelColor = colorScheme.onSecondaryContainer,
+                                            containerColor = colorScheme.surfaceContainerHigh,
+                                            labelColor = colorScheme.onSurfaceVariant
+                                        ),
+                                        border = null
                                     )
-                                    OutlinedButton(
-                                        onClick = { viewModel.copyToClipboard("http://$lanIp:$webPort", "Copied LAN Web Admin URL") }
-                                    ) {
-                                        Text("Copy LAN URL", fontSize = 11.sp)
-                                    }
-                                    Button(
-                                        onClick = { viewModel.openUrlInBrowser("http://127.0.0.1:$webPort") },
-                                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
-                                    ) {
-                                        Text("Open in Browser", fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                    }
-                                }
-                            }
-
-                            HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                OutlinedTextField(
-                                    value = newAdminPass,
-                                    onValueChange = { newAdminPass = it },
-                                    label = { Text("Reset Primary 'admin' Password (min 6 chars)") },
-                                    singleLine = true,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Button(
-                                    onClick = {
-                                        val clean = newAdminPass.trim()
-                                        if (clean.length < 6) {
-                                            viewModel.showToast("Password must be at least 6 characters")
-                                        } else {
-                                            viewModel.userRepository.syncPrimaryOwnerCredentials("admin", clean)
-                                            newAdminPass = ""
-                                            viewModel.showToast("Updated 'admin' Owner password")
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
-                                ) {
-                                    Text("Update Password", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 }
                             }
                         }
                     }
 
-                    // Display & UI Scaling Card
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = DesktopColors.Slate900,
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            Text("Desktop Display & HiDPI UI Scaling", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
-                            Text(
-                                text = "Current UI Scale: ${(uiScale * 100).toInt()}% (persisted in ${viewModel.paths.rootDir.absolutePath}/desktop_ui.json)",
-                                fontSize = 12.sp,
-                                color = DesktopColors.Slate400
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf(1.0f, 1.15f, 1.25f, 1.35f, 1.50f, 1.75f).forEach { preset ->
-                                    val selected = kotlin.math.abs(uiScale - preset) < 0.03f
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (selected) DesktopColors.EmeraldPrimary else DesktopColors.Slate950,
-                                        border = BorderStroke(1.dp, if (selected) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                                        modifier = Modifier.clickable { viewModel.setUiScale(preset) }
-                                    ) {
-                                        Text(
-                                            text = "${(preset * 100).toInt()}%",
-                                            color = if (selected) Color.Black else DesktopColors.Slate300,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
-                                        )
-                                    }
+                    // Data Directories
+                    MineServeSettingsGroup(title = "Host Directories") {
+                        MineServePreferenceRow(
+                            title = "Servers Directory",
+                            subtitle = viewModel.paths.serversDir.absolutePath,
+                            icon = Icons.Rounded.FolderOpen,
+                            onClick = { viewModel.openInFileManager(viewModel.paths.serversDir) }
+                        )
+                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        MineServePreferenceRow(
+                            title = "Portable Java Runtimes Directory",
+                            subtitle = viewModel.paths.runtimesDir.absolutePath,
+                            icon = Icons.Rounded.FolderOpen,
+                            onClick = { viewModel.openInFileManager(viewModel.paths.runtimesDir) }
+                        )
+                    }
+
+                    // Web Remote Admin Daemon
+                    MineServeSettingsGroup(title = "Headless WebUI & Remote Admin") {
+                        MineServePreferenceRow(
+                            title = "Web Remote Admin Panel",
+                            subtitle = if (webRunning) "Running on port $webPort" else "Manage all servers remotely from a browser on your LAN",
+                            checked = webRunning,
+                            onCheckedChange = { enabled -> viewModel.setWebAdminEnabled(enabled) },
+                            icon = Icons.Rounded.Dns
+                        )
+                        if (webRunning) {
+                            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            FlowRow(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically
+                            ) {
+                                NetworkAddressChip(
+                                    address = "http://127.0.0.1:$webPort",
+                                    isPublicTunnel = false,
+                                    onCopied = { viewModel.copyToClipboard(it, "Copied local Web Admin URL") }
+                                )
+                                NetworkAddressChip(
+                                    address = "http://$lanIp:$webPort",
+                                    isPublicTunnel = true,
+                                    onCopied = { viewModel.copyToClipboard(it, "Copied LAN Web Admin URL") }
+                                )
+                                Button(
+                                    onClick = { viewModel.openUrlInBrowser("http://127.0.0.1:$webPort") },
+                                    shape = ShapeDefaults.Medium
+                                ) {
+                                    Text("Open in Browser")
                                 }
+                            }
+                        }
+                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = newAdminPass,
+                                onValueChange = { newAdminPass = it },
+                                label = { Text("Reset Primary 'admin' Password (6+ chars)") },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Button(
+                                onClick = {
+                                    val clean = newAdminPass.trim()
+                                    if (clean.length < 6) {
+                                        viewModel.showToast("Password must be at least 6 characters")
+                                    } else {
+                                        viewModel.userRepository.syncPrimaryOwnerCredentials("admin", clean)
+                                        newAdminPass = ""
+                                        viewModel.showToast("Updated 'admin' Owner password")
+                                    }
+                                },
+                                shape = ShapeDefaults.Medium
+                            ) {
+                                Text("Update Password")
                             }
                         }
                     }
@@ -284,53 +346,56 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
             }
 
             1 -> {
-                // Java Runtimes Section
                 Column(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Portable Adoptium Temurin OpenJDK directory: ${viewModel.paths.runtimesDir.absolutePath}",
-                            fontSize = 12.sp,
-                            color = DesktopColors.Slate400
+                        MineServeTableMonoText(
+                            text = viewModel.paths.runtimesDir.absolutePath,
+                            color = colorScheme.onSurfaceVariant
                         )
-                        OutlinedButton(onClick = { viewModel.openInFileManager(viewModel.paths.runtimesDir) }) {
-                            Text("Open Runtimes Folder", fontSize = 11.sp)
+                        FilledTonalButton(
+                            onClick = { viewModel.openInFileManager(viewModel.paths.runtimesDir) },
+                            shape = ShapeDefaults.Small
+                        ) {
+                            Icon(Icons.Rounded.FolderOpen, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open Runtimes Folder")
                         }
                     }
 
-                    listOf(8, 17, 21, 25).forEach { major ->
-                        val resolved: File? = remember(major, javaRefreshTick) { viewModel.javaManager.getJavaBinary(major) }
-                        val installed: Boolean = remember(major, javaRefreshTick) { viewModel.javaManager.isJavaInstalled(major) }
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                    MineServeTableContainer(modifier = Modifier.fillMaxWidth()) {
+                        val majors = listOf(8, 17, 21, 25)
+                        majors.forEachIndexed { idx, major ->
+                            val resolved: File? = remember(major, javaRefreshTick) { viewModel.javaManager.getJavaBinary(major) }
+                            val installed: Boolean = remember(major, javaRefreshTick) { viewModel.javaManager.isJavaInstalled(major) }
+                            MineServeTableRow(
+                                showDivider = idx < majors.lastIndex,
+                                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("OpenJDK $major LTS", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
                                     Text(
+                                        text = "OpenJDK $major LTS",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = colorScheme.onSurface
+                                    )
+                                    MineServeTableMonoText(
                                         text = if (installed && resolved != null) {
-                                            "Installed (${resolved.absolutePath})"
+                                            resolved.absolutePath
                                         } else {
-                                            "Not installed (can be installed now or auto-provisioned on server start)"
+                                            "Not installed (auto-provisions on server start)"
                                         },
-                                        fontSize = 11.sp,
-                                        color = if (installed) DesktopColors.EmeraldLight else DesktopColors.Slate400
+                                        color = if (installed) colorScheme.primary else colorScheme.onSurfaceVariant
                                     )
                                 }
-                                Button(
+                                Spacer(modifier = Modifier.width(12.dp))
+                                FilledTonalButton(
                                     onClick = {
                                         installingMajor = major
                                         viewModel.scope.launch {
@@ -342,9 +407,10 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                         }
                                     },
                                     enabled = installingMajor == null,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = if (installed) DesktopColors.Slate800 else DesktopColors.EmeraldPrimary,
-                                        contentColor = if (installed) DesktopColors.EmeraldLight else Color.Black
+                                    shape = ShapeDefaults.Small,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = if (installed) colorScheme.primaryContainer else colorScheme.secondaryContainer,
+                                        contentColor = if (installed) colorScheme.onPrimaryContainer else colorScheme.onSecondaryContainer
                                     )
                                 ) {
                                     Text(
@@ -352,9 +418,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                             installingMajor == major -> "Downloading..."
                                             installed -> "Installed"
                                             else -> "Install OpenJDK $major"
-                                        },
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold
+                                        }
                                     )
                                 }
                             }
@@ -364,7 +428,6 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
             }
 
             2 -> {
-                // Diagnostics & Error Logs Section
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -374,38 +437,29 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             listOf(
                                 "MINESERVE_TAGS" to "All Engine & Console Logs",
                                 "ERRORS_ONLY" to "Warnings & Errors Only"
                             ).forEach { (mode, label) ->
-                                val active = logFilterMode == mode
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                                    border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                                    modifier = Modifier.clickable {
+                                FilterChip(
+                                    selected = logFilterMode == mode,
+                                    onClick = {
                                         logFilterMode = mode
                                         capturedLogs = LinuxDiagnosticsManager.captureLogs(
                                             mode,
                                             viewModel.serverRepository,
                                             viewModel.processManager
                                         )
-                                    }
-                                ) {
-                                    Text(
-                                        text = label,
-                                        color = if (active) Color.Black else DesktopColors.Slate300,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                    )
-                                }
+                                    },
+                                    label = { Text(label) },
+                                    border = null
+                                )
                             }
                         }
 
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            OutlinedButton(
+                            IconButton(
                                 onClick = {
                                     capturedLogs = LinuxDiagnosticsManager.captureLogs(
                                         logFilterMode,
@@ -415,16 +469,14 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                     viewModel.showToast("Refreshed diagnostic logs")
                                 }
                             ) {
-                                Text("Refresh Logs", fontSize = 11.sp)
+                                Icon(Icons.Rounded.Refresh, contentDescription = "Refresh logs")
                             }
-                            OutlinedButton(
-                                onClick = {
-                                    viewModel.copyToClipboard(capturedLogs, "Copied redacted diagnostic logs")
-                                }
+                            IconButton(
+                                onClick = { viewModel.copyToClipboard(capturedLogs, "Copied redacted diagnostic logs") }
                             ) {
-                                Text("Copy Logs", fontSize = 11.sp)
+                                Icon(Icons.Rounded.ContentCopy, contentDescription = "Copy logs")
                             }
-                            OutlinedButton(
+                            FilledTonalButton(
                                 onClick = {
                                     selfTestBusy = true
                                     viewModel.scope.launch {
@@ -432,9 +484,12 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                         selfTestBusy = false
                                     }
                                 },
-                                enabled = !selfTestBusy
+                                enabled = !selfTestBusy,
+                                shape = ShapeDefaults.Small
                             ) {
-                                Text(if (selfTestBusy) "Testing..." else "Run Self-Test", fontSize = 11.sp, color = DesktopColors.EmeraldLight)
+                                Icon(Icons.Rounded.BugReport, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(if (selfTestBusy) "Testing..." else "Self-Test")
                             }
                             Button(
                                 onClick = {
@@ -449,47 +504,38 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                         viewModel.openInFileManager(zip.parentFile ?: viewModel.paths.tmpDir)
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                                shape = ShapeDefaults.Small
                             ) {
-                                Text("Export .zip Bundle", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text("Export .zip")
                             }
                         }
                     }
 
                     if (selfTestResults.isNotEmpty()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            selfTestResults.forEach { item ->
-                                Surface(
-                                    shape = RoundedCornerShape(6.dp),
-                                    color = DesktopColors.Slate900,
-                                    border = BorderStroke(
-                                        1.dp,
-                                        if (item.passed) DesktopColors.EmeraldPrimary.copy(alpha = 0.5f) else DesktopColors.AmberWarning.copy(alpha = 0.6f)
-                                    ),
-                                    modifier = Modifier.fillMaxWidth()
+                        MineServeTableContainer(modifier = Modifier.fillMaxWidth()) {
+                            selfTestResults.forEachIndexed { idx, item ->
+                                MineServeTableRow(
+                                    showDivider = idx < selfTestResults.lastIndex,
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "${if (item.passed) "[PASS]" else "[WARN]"} ${item.name}",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (item.passed) DesktopColors.EmeraldLight else DesktopColors.AmberLight
-                                        )
-                                        Text(item.detail, fontSize = 11.sp, color = DesktopColors.Slate300)
-                                    }
+                                    Text(
+                                        text = "${if (item.passed) "PASS" else "WARN"}  ${item.name}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (item.passed) colorScheme.primary else extended.warning,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    MineServeTableMonoText(text = item.detail, color = colorScheme.onSurfaceVariant)
                                 }
                             }
                         }
                     }
 
                     Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = Color(0xFF06090F),
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+                        shape = ShapeDefaults.Medium,
+                        color = extended.terminalSurface,
+                        contentColor = extended.terminalOnSurface,
+                        border = null,
                         modifier = Modifier.fillMaxSize()
                     ) {
                         SelectionContainer {
@@ -501,10 +547,12 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                             ) {
                                 Text(
                                     text = capturedLogs,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    color = DesktopColors.Slate300,
-                                    lineHeight = 16.sp
+                                    style = MaterialTheme.typography.bodySmall.copy(
+                                        fontFamily = monoFont,
+                                        fontSize = 11.sp,
+                                        lineHeight = 16.sp
+                                    ),
+                                    color = extended.terminalOnSurface
                                 )
                             }
                         }
@@ -513,32 +561,31 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
             }
 
             3 -> {
-                // App Updates & Releases Section
                 val showWhatsNewOnUpdate by viewModel.showWhatsNewOnUpdate.collectAsState()
                 Column(
                     modifier = Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = DesktopColors.Slate900,
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    MineServeSettingsGroup(title = "Release Updates & Feature Guide") {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text("GitHub Release Update Checker", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(updateHeadline, fontSize = 12.sp, color = DesktopColors.EmeraldLight)
+                                    Text("GitHub Release Update Checker", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+                                    Text(updateHeadline, style = MaterialTheme.typography.bodySmall, color = colorScheme.primary)
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = { viewModel.openWhatsNewGuide() }) {
-                                        Text("What's New in ${MineServeWhatsNewCatalog.CURRENT_DISPLAY_VERSION}", fontSize = 12.sp, color = DesktopColors.EmeraldLight)
+                                    FilledTonalButton(
+                                        onClick = { viewModel.openWhatsNewGuide() },
+                                        shape = ShapeDefaults.Small
+                                    ) {
+                                        Text("What's New ${MineServeWhatsNewCatalog.CURRENT_DISPLAY_VERSION}")
                                     }
                                     Button(
                                         onClick = {
@@ -564,55 +611,41 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                                             }
                                         },
                                         enabled = !updateBusy,
-                                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                                        shape = ShapeDefaults.Small
                                     ) {
-                                        Text(if (updateBusy) "Checking..." else "Check for Updates", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                        Text(if (updateBusy) "Checking..." else "Check Updates")
                                     }
-                                    OutlinedButton(onClick = { viewModel.openUrlInBrowser(updateUrl) }) {
-                                        Text("Open GitHub Releases", fontSize = 12.sp)
+                                    FilledTonalButton(
+                                        onClick = { viewModel.openUrlInBrowser(updateUrl) },
+                                        shape = ShapeDefaults.Small
+                                    ) {
+                                        Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
                                     }
                                 }
-                            }
-
-                            HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("What's New Release Guide", fontWeight = FontWeight.SemiBold, fontSize = 13.sp, color = Color.White)
-                                    Text(
-                                        text = "Automatically display the What's New feature guide after major updates (synced with the Web UI).",
-                                        fontSize = 11.sp,
-                                        color = DesktopColors.Slate400
-                                    )
-                                }
-                                Switch(
-                                    checked = showWhatsNewOnUpdate,
-                                    onCheckedChange = { viewModel.setShowWhatsNewOnUpdate(it) }
-                                )
                             }
                         }
+                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                        MineServePreferenceRow(
+                            title = "What's New Release Guide",
+                            subtitle = "Automatically display the What's New feature guide after major updates",
+                            checked = showWhatsNewOnUpdate,
+                            onCheckedChange = { viewModel.setShowWhatsNewOnUpdate(it) }
+                        )
                     }
 
                     if (updateBody.isNotBlank()) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = DesktopColors.Slate950,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+                        MineServeCard(
+                            containerColor = colorScheme.surfaceContainer,
                             modifier = Modifier.fillMaxSize()
                         ) {
                             Column(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .verticalScroll(rememberScrollState())
-                                    .padding(12.dp)
+                                    .verticalScroll(rememberScrollState()),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text("Latest Release Notes:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = DesktopColors.EmeraldLight)
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(updateBody, fontSize = 12.sp, color = DesktopColors.Slate300)
+                                Text("Latest Release Notes", style = MaterialTheme.typography.titleSmall, color = colorScheme.primary)
+                                Text(updateBody, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -622,9 +655,14 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
-    var activeTab by remember { mutableIntStateOf(0) } // 0: Platform Changelog, 1: Open-Source Credits
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    var activeTab by remember { mutableIntStateOf(0) }
     var selectedCategory by remember { mutableStateOf(SharedCreditCategory.ALL) }
 
     val platformChangelog = remember {
@@ -634,7 +672,7 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
         MineServeAboutData.getCreditsForPlatform(ChangelogPlatform.LINUX, selectedCategory)
     }
 
-    DesktopPanelCard(modifier = Modifier.width(880.dp).height(660.dp)) {
+    DesktopM3ModalSurface(width = 880.dp, height = 660.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -642,219 +680,309 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("MineServe", fontWeight = FontWeight.Bold, fontSize = 20.sp, color = Color.White)
+                    Text("MineServe", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = DesktopColors.EmeraldPrimary.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, DesktopColors.EmeraldPrimary)
+                        shape = ShapeDefaults.Small,
+                        color = colorScheme.primaryContainer,
+                        contentColor = colorScheme.onPrimaryContainer,
+                        border = null
                     ) {
                         Text(
                             text = "v${MineServeAboutData.APP_VERSION}",
-                            color = DesktopColors.EmeraldLight,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = monoFont),
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                     Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = DesktopColors.Slate800,
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder)
+                        shape = ShapeDefaults.Small,
+                        color = colorScheme.surfaceContainer,
+                        contentColor = colorScheme.onSurfaceVariant,
+                        border = null
                     ) {
                         Text(
                             text = "GPL-3.0 Open Source",
-                            color = DesktopColors.Slate300,
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
                 Text(
                     text = "Cross-Platform Minecraft Java, Modded, Proxy & Bedrock Server Manager",
-                    fontSize = 12.sp,
-                    color = DesktopColors.Slate400
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
                 )
             }
-            OutlinedButton(onClick = { viewModel.openModal(DesktopModal.NONE) }) {
-                Text("Close", fontSize = 12.sp)
+            IconButton(onClick = { viewModel.openModal(DesktopModal.NONE) }) {
+                Icon(Icons.Rounded.Close, contentDescription = "Close")
             }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Quick Community & Support Links + Supporters
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = DesktopColors.Slate900,
-            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+        MineServeCard(
+            containerColor = colorScheme.surfaceContainer,
+            contentPadding = PaddingValues(12.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.WEBSITE_URL) }) {
-                        Text("Website", fontSize = 11.sp)
-                    }
-                    OutlinedButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.GITHUB_REPO_URL) }) {
-                        Text("GitHub Repo", fontSize = 11.sp)
-                    }
-                    OutlinedButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.GITHUB_ISSUES_URL) }) {
-                        Text("Report Issue", fontSize = 11.sp)
-                    }
-                    OutlinedButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.DISCORD_URL) }) {
-                        Text("Discord Community", fontSize = 11.sp, color = DesktopColors.EmeraldLight)
-                    }
-                    Button(
-                        onClick = { viewModel.openUrlInBrowser(MineServeAboutData.PATREON_URL) },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.RedstonePrimary, contentColor = Color.White)
-                    ) {
-                        Text("Patreon", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = { viewModel.openUrlInBrowser(MineServeAboutData.BUYMEACOFFEE_URL) },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.AmberWarning, contentColor = Color.Black)
-                    ) {
-                        Text("Buy Me a Coffee", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-                Text(
-                    text = "Project Supporters: " + MineServeAboutData.SUPPORTERS.joinToString("  |  ") { "${it.name} (${it.tier})" },
-                    fontSize = 11.sp,
-                    color = DesktopColors.Slate300
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Sub-Tab Switcher
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            listOf(
-                0 to "Release Changelog (Linux & Cross-Platform)",
-                1 to "Software & Open-Source Credits (${filteredCredits.size})"
-            ).forEach { (idx, label) ->
-                val active = activeTab == idx
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                    border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                    modifier = Modifier.clickable { activeTab = idx }
-                ) {
-                    Text(
-                        text = label,
-                        color = if (active) Color.Black else DesktopColors.Slate300,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)
-                    )
-                }
-            }
-            OutlinedButton(onClick = { viewModel.openWhatsNewGuide() }) {
-                Text("View What's New Guide", fontSize = 12.sp, color = DesktopColors.EmeraldLight)
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        if (activeTab == 0) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                items(platformChangelog, key = { it.version }) { release ->
-                    Surface(
-                        shape = RoundedCornerShape(10.dp),
-                        color = DesktopColors.Slate900,
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
+                FilledTonalButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.WEBSITE_URL) }, shape = ShapeDefaults.Small) {
+                    Text("Website")
+                }
+                FilledTonalButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.GITHUB_REPO_URL) }, shape = ShapeDefaults.Small) {
+                    Text("GitHub Repo")
+                }
+                FilledTonalButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.GITHUB_ISSUES_URL) }, shape = ShapeDefaults.Small) {
+                    Text("Report Issue")
+                }
+                FilledTonalButton(onClick = { viewModel.openUrlInBrowser(MineServeAboutData.DISCORD_URL) }, shape = ShapeDefaults.Small) {
+                    Text("Discord")
+                }
+                FilledTonalButton(
+                    onClick = { viewModel.openUrlInBrowser(MineServeAboutData.PATREON_URL) },
+                    shape = ShapeDefaults.Small,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = colorScheme.errorContainer,
+                        contentColor = colorScheme.onErrorContainer
+                    )
+                ) {
+                    Text("Patreon")
+                }
+                FilledTonalButton(
+                    onClick = { viewModel.openUrlInBrowser(MineServeAboutData.BUYMEACOFFEE_URL) },
+                    shape = ShapeDefaults.Small,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = extended.warningContainer,
+                        contentColor = extended.onWarningContainer
+                    )
+                ) {
+                    Text("Buy Me a Coffee")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SingleChoiceSegmentedButtonRow {
+                listOf(
+                    0 to "Changelog",
+                    1 to "Supporters (${MineServeAboutData.SUPPORTERS.size})",
+                    2 to "Open-Source Credits (${filteredCredits.size})"
+                ).forEachIndexed { index, (idx, label) ->
+                    SegmentedButton(
+                        selected = activeTab == idx,
+                        onClick = { activeTab = idx },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = 3)
                     ) {
-                        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1,
+                            softWrap = false,
+                            modifier = Modifier.padding(horizontal = 6.dp)
+                        )
+                    }
+                }
+            }
+            FilledTonalButton(
+                onClick = { viewModel.openWhatsNewGuide() },
+                shape = ShapeDefaults.Small
+            ) {
+                Text("View What's New Guide")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        when (activeTab) {
+            0 -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(platformChangelog, key = { it.version }) { release ->
+                        MineServeCard(
+                            containerColor = colorScheme.surfaceContainer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(release.version, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = DesktopColors.EmeraldLight)
-                                Text(release.date, fontSize = 11.sp, color = DesktopColors.Slate400)
+                                Text(release.version, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = colorScheme.primary)
+                                MineServeTableMonoText(text = release.date, color = colorScheme.onSurfaceVariant)
                             }
-                            HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                            Spacer(modifier = Modifier.height(6.dp))
                             release.highlights.forEach { bullet ->
-                                Text("- $bullet", fontSize = 12.sp, color = DesktopColors.Slate300, lineHeight = 17.sp)
+                                Text("- $bullet", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurface)
                             }
                         }
                     }
                 }
             }
-        } else {
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    SharedCreditCategory.entries.forEach { cat ->
-                        val active = selectedCategory == cat
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.clickable { selectedCategory = cat }
+            1 -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    MineServeCard(
+                        containerColor = colorScheme.surfaceContainer,
+                        contentPadding = PaddingValues(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                text = cat.label,
-                                color = if (active) Color.Black else DesktopColors.Slate300,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            Icon(
+                                imageVector = Icons.Rounded.Favorite,
+                                contentDescription = null,
+                                tint = colorScheme.error,
+                                modifier = Modifier.size(20.dp)
                             )
+                            Text(
+                                text = "Project Supporters",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = colorScheme.onSurface
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Huge thank you to everyone supporting MineServe's free, open-source development on Patreon and Buy Me a Coffee.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    MineServeTableContainer(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            itemsIndexed(
+                                MineServeAboutData.SUPPORTERS,
+                                key = { index, supporter -> "${supporter.name}_$index" }
+                            ) { index, supporter ->
+                                MineServeTableRow(
+                                    showDivider = index < MineServeAboutData.SUPPORTERS.lastIndex,
+                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                                ) {
+                                    Surface(
+                                        shape = CircleShape,
+                                        color = colorScheme.errorContainer,
+                                        border = null,
+                                        modifier = Modifier.size(34.dp)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.Favorite,
+                                                contentDescription = null,
+                                                tint = colorScheme.onErrorContainer,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Column(
+                                        modifier = Modifier.weight(1f),
+                                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                                        Text(
+                                            text = supporter.name,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = supporter.tier,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = colorScheme.primary
+                                        )
+                                    }
+                                    Surface(
+                                        shape = ShapeDefaults.Small,
+                                        color = colorScheme.errorContainer,
+                                        contentColor = colorScheme.onErrorContainer,
+                                        border = null
+                                    ) {
+                                        Text(
+                                            text = "Supporter",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
+            }
+            else -> {
+            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    SharedCreditCategory.entries.forEach { cat ->
+                        FilterChip(
+                            selected = selectedCategory == cat,
+                            onClick = { selectedCategory = cat },
+                            label = { Text(cat.label) },
+                            border = null
+                        )
+                    }
+                }
 
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(filteredCredits, key = { it.name }) { credit ->
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                MineServeTableContainer(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(filteredCredits, key = { it.name }) { credit ->
+                            MineServeTableRow(
+                                showDivider = credit != filteredCredits.last(),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             ) {
-                                Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Text(credit.name, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
+                                        Text(credit.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
                                         Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = DesktopColors.EmeraldPrimary.copy(alpha = 0.16f)
+                                            shape = ShapeDefaults.ExtraSmall,
+                                            color = colorScheme.primaryContainer,
+                                            contentColor = colorScheme.onPrimaryContainer,
+                                            border = null
                                         ) {
                                             Text(
                                                 text = credit.tag,
-                                                color = DesktopColors.EmeraldLight,
-                                                fontSize = 10.sp,
-                                                fontWeight = FontWeight.Bold,
+                                                style = MaterialTheme.typography.labelSmall,
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
                                         Surface(
-                                            shape = RoundedCornerShape(4.dp),
-                                            color = DesktopColors.Slate800
+                                            shape = ShapeDefaults.ExtraSmall,
+                                            color = colorScheme.surfaceContainerHigh,
+                                            contentColor = colorScheme.onSurfaceVariant,
+                                            border = null
                                         ) {
                                             Text(
                                                 text = credit.license,
-                                                color = DesktopColors.Slate300,
-                                                fontSize = 10.sp,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontFamily = monoFont),
                                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(credit.description, fontSize = 12.sp, color = DesktopColors.Slate400)
+                                    Text(credit.description, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
                                 }
                                 Spacer(modifier = Modifier.width(12.dp))
-                                OutlinedButton(onClick = { viewModel.openUrlInBrowser(credit.url) }) {
-                                    Text("Open Project", fontSize = 11.sp)
+                                FilledTonalButton(
+                                    onClick = { viewModel.openUrlInBrowser(credit.url) },
+                                    shape = ShapeDefaults.Small
+                                ) {
+                                    Text("Open Project")
                                 }
                             }
                         }
@@ -864,13 +992,17 @@ internal fun DesktopAboutAndCreditsModal(viewModel: DesktopViewModel) {
         }
     }
 }
+}
 
 @Composable
 internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
+
     val release = remember { MineServeWhatsNewCatalog.getForPlatform(ChangelogPlatform.LINUX) }
     val showOnUpdate by viewModel.showWhatsNewOnUpdate.collectAsState()
 
-    DesktopPanelCard(modifier = Modifier.width(820.dp).height(640.dp)) {
+    DesktopM3ModalSurface(width = 820.dp, height = 640.dp) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -878,36 +1010,36 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
         ) {
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(release.headline, fontWeight = FontWeight.Bold, fontSize = 19.sp, color = Color.White)
+                    Text(release.headline, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = DesktopColors.EmeraldPrimary.copy(alpha = 0.2f),
-                        border = BorderStroke(1.dp, DesktopColors.EmeraldPrimary)
+                        shape = ShapeDefaults.Small,
+                        color = colorScheme.primaryContainer,
+                        contentColor = colorScheme.onPrimaryContainer,
+                        border = null
                     ) {
                         Text(
                             text = release.displayVersion,
-                            color = DesktopColors.EmeraldLight,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = monoFont),
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                         )
                     }
                 }
                 Spacer(modifier = Modifier.height(2.dp))
-                Text(release.subtitle, fontSize = 12.sp, color = DesktopColors.Slate400)
+                Text(release.subtitle, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
             }
-            OutlinedButton(
+            IconButton(
                 onClick = {
                     LinuxDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
                     viewModel.openModal(DesktopModal.NONE)
                 }
             ) {
-                Text("Close", fontSize = 12.sp)
+                Icon(Icons.Rounded.Close, contentDescription = "Close")
             }
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
+        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyColumn(
@@ -915,41 +1047,40 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(release.features, key = { it.title }) { feature ->
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = DesktopColors.Slate900,
-                    border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
+                MineServeCard(
+                    containerColor = colorScheme.surfaceContainer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = DesktopColors.EmeraldPrimary.copy(alpha = 0.16f),
-                                border = BorderStroke(1.dp, DesktopColors.EmeraldPrimary)
-                            ) {
-                                Text(
-                                    text = feature.badge,
-                                    color = DesktopColors.EmeraldLight,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
-                            Text(feature.title, fontWeight = FontWeight.Bold, fontSize = 15.sp, color = Color.White)
-                        }
-                        Text(feature.summary, fontSize = 12.sp, color = DesktopColors.Slate300, lineHeight = 17.sp)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = DesktopColors.Slate950,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
+                            shape = ShapeDefaults.Small,
+                            color = colorScheme.primaryContainer,
+                            contentColor = colorScheme.onPrimaryContainer,
+                            border = null
                         ) {
-                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text("WHERE TO FIND IT", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = DesktopColors.EmeraldLight)
-                                feature.stepsToFind.forEachIndexed { idx, step ->
-                                    Text("${idx + 1}. $step", fontSize = 11.sp, color = DesktopColors.Slate300)
-                                }
+                            Text(
+                                text = feature.badge,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
+                        Text(feature.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(feature.summary, style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = ShapeDefaults.Small,
+                        color = colorScheme.surfaceContainerLow,
+                        contentColor = colorScheme.onSurface,
+                        border = null,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text("WHERE TO FIND IT", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = colorScheme.primary)
+                            feature.stepsToFind.forEachIndexed { idx, step ->
+                                Text("${idx + 1}. $step", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -958,7 +1089,7 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
         }
 
         Spacer(modifier = Modifier.height(12.dp))
-        HorizontalDivider(color = DesktopColors.ObsidianCardBorder)
+        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
         Spacer(modifier = Modifier.height(10.dp))
 
         Row(
@@ -975,9 +1106,9 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
                     onCheckedChange = { neverShow -> viewModel.setShowWhatsNewOnUpdate(!neverShow) }
                 )
                 Text(
-                    text = "Don't show automatically on future updates (synced with Web UI)",
-                    fontSize = 12.sp,
-                    color = DesktopColors.Slate300
+                    text = "Don't show automatically on future updates",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.onSurfaceVariant
                 )
             }
             Button(
@@ -985,9 +1116,9 @@ internal fun DesktopWhatsNewModal(viewModel: DesktopViewModel) {
                     LinuxDiagnosticsManager.markWhatsNewSeen(viewModel.paths)
                     viewModel.openModal(DesktopModal.NONE)
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                shape = ShapeDefaults.Medium
             ) {
-                Text("Got It, Let's Go!", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text("Got It, Let's Go!")
             }
         }
     }

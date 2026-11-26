@@ -32,6 +32,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -351,7 +356,20 @@ fun ConsoleTerminalPane(
         TextField(
             value = commandInput,
             onValueChange = onCommandInputChange,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .onPreviewKeyEvent { event ->
+                    if ((event.key == Key.Enter || event.key == Key.NumPadEnter) &&
+                        event.type == KeyEventType.KeyDown &&
+                        inputEnabled &&
+                        commandInput.isNotBlank()
+                    ) {
+                        onSendCommand()
+                        true
+                    } else {
+                        false
+                    }
+                },
             enabled = inputEnabled,
             singleLine = true,
             shape = ShapeDefaults.Medium,

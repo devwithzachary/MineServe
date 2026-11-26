@@ -3,6 +3,7 @@ package com.devwithzachary.mineserve.desktop.ui
 import com.devwithzachary.mineserve.api.ModrinthApiClient
 import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.auth.UserRole
+import com.devwithzachary.mineserve.designsystem.theme.ThemeMode
 import com.devwithzachary.mineserve.desktop.LinuxCloudManager
 import com.devwithzachary.mineserve.desktop.LinuxDataPaths
 import com.devwithzachary.mineserve.desktop.LinuxDiagnosticsManager
@@ -18,16 +19,21 @@ import com.devwithzachary.mineserve.desktop.LinuxWebServer
 import com.devwithzachary.mineserve.desktop.PortableJavaManager
 import com.devwithzachary.mineserve.engine.ChunkOptimizer
 import com.devwithzachary.mineserve.model.BackupEntry
+import com.devwithzachary.mineserve.model.BannedIpEntry
+import com.devwithzachary.mineserve.model.BannedPlayerEntry
 import com.devwithzachary.mineserve.model.ChunkPruneOptions
 import com.devwithzachary.mineserve.model.DimensionType
 import com.devwithzachary.mineserve.model.FileEntry
 import com.devwithzachary.mineserve.model.InhabitedTimeThreshold
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.OpEntry
 import com.devwithzachary.mineserve.model.PluginModEntry
+import com.devwithzachary.mineserve.model.ServerPlayerLists
 import com.devwithzachary.mineserve.model.ServerProperties
 import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.TunnelProvider
 import com.devwithzachary.mineserve.model.WebMapPluginType
+import com.devwithzachary.mineserve.model.WhitelistEntry
 import com.devwithzachary.mineserve.net.portforward.PortForwardProtocol
 import com.devwithzachary.mineserve.util.FileStorageUtils
 import com.devwithzachary.mineserve.util.ServerModFilter
@@ -53,13 +59,25 @@ import org.json.JSONObject
 enum class DesktopTab(val title: String) {
     CONSOLE("Console"),
     PERFORMANCE("Performance"),
-    FILES("Files"),
-    BACKUPS("Backups"),
-    PLUGINS("Plugins / Mods"),
-    WORLD("World"),
-    LIVEMAP("Live Map"),
-    SETTINGS("Settings & Network"),
     PLAYERS("Players"),
+    CONTENT("Content"),
+    WORLD_MAP("World & Map"),
+    MANAGEMENT("Management")
+}
+
+enum class DesktopContentSection(val title: String) {
+    PLUGINS("Plugins / Mods"),
+    FILES("Files")
+}
+
+enum class DesktopWorldSection(val title: String) {
+    WORLD("World"),
+    LIVE_MAP("Live Map")
+}
+
+enum class DesktopManagementSection(val title: String) {
+    SETTINGS("Network & JVM"),
+    BACKUPS("Backups"),
     AUTOMATION("Automation")
 }
 
@@ -109,6 +127,15 @@ class DesktopViewModel(
     private val _activeTab = MutableStateFlow(DesktopTab.CONSOLE)
     val activeTab: StateFlow<DesktopTab> = _activeTab.asStateFlow()
 
+    private val _contentSection = MutableStateFlow(DesktopContentSection.PLUGINS)
+    val contentSection: StateFlow<DesktopContentSection> = _contentSection.asStateFlow()
+
+    private val _worldSection = MutableStateFlow(DesktopWorldSection.WORLD)
+    val worldSection: StateFlow<DesktopWorldSection> = _worldSection.asStateFlow()
+
+    private val _managementSection = MutableStateFlow(DesktopManagementSection.SETTINGS)
+    val managementSection: StateFlow<DesktopManagementSection> = _managementSection.asStateFlow()
+
     private val _activeModal = MutableStateFlow(DesktopModal.NONE)
     val activeModal: StateFlow<DesktopModal> = _activeModal.asStateFlow()
 
@@ -118,6 +145,9 @@ class DesktopViewModel(
     private val uiSettingsFile = File(paths.rootDir, "desktop_ui.json")
     private val _uiScale = MutableStateFlow(loadInitialUiScale())
     val uiScale: StateFlow<Float> = _uiScale.asStateFlow()
+
+    private val _themeMode = MutableStateFlow(loadInitialThemeMode())
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
     private val _showWhatsNewOnUpdate = MutableStateFlow(LinuxDiagnosticsManager.isShowWhatsNewOnUpdateEnabled(paths))
     val showWhatsNewOnUpdate: StateFlow<Boolean> = _showWhatsNewOnUpdate.asStateFlow()
@@ -278,6 +308,27 @@ class DesktopViewModel(
         }
     }
 
+    private fun loadInitialThemeMode(): ThemeMode {
+        return runCatching {
+            if (uiSettingsFile.exists()) {
+                val obj = JSONObject(uiSettingsFile.readText())
+                val raw = obj.optString("themeMode", "")
+                ThemeMode.entries.firstOrNull { it.name == raw } ?: ThemeMode.ObsidianDark
+            } else {
+                ThemeMode.ObsidianDark
+            }
+        }.getOrDefault(ThemeMode.ObsidianDark)
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        runCatching {
+            val obj = if (uiSettingsFile.exists()) JSONObject(uiSettingsFile.readText()) else JSONObject()
+            obj.put("themeMode", mode.name)
+            uiSettingsFile.writeText(obj.toString(2))
+        }
+    }
+
     fun setShowWhatsNewOnUpdate(enabled: Boolean) {
         _showWhatsNewOnUpdate.value = enabled
         LinuxDiagnosticsManager.setShowWhatsNewOnUpdateEnabled(paths, enabled)
@@ -321,6 +372,24 @@ class DesktopViewModel(
         _selectedServerId.value?.let { refreshSelectedServerData(it) }
     }
 
+    fun selectContentSection(section: DesktopContentSection) {
+        _contentSection.value = section
+    }
+
+    fun selectWorldSection(section: DesktopWorldSection) {
+        _worldSection.value = section
+    }
+
+    fun selectManagementSection(section: DesktopManagementSection) {
+        _managementSection.value = section
+    }
+
+    fun openServerSettings() {
+        _activeTab.value = DesktopTab.MANAGEMENT
+        _managementSection.value = DesktopManagementSection.SETTINGS
+        _selectedServerId.value?.let { refreshSelectedServerData(it) }
+    }
+
     fun getSelectedServer(): MinecraftServer? {
         val id = _selectedServerId.value ?: return null
         return serverRepository.getServer(id)
@@ -346,6 +415,94 @@ class DesktopViewModel(
     fun loadDirectory(serverId: String, relativePath: String) {
         _currentFilePath.value = relativePath
         _directoryEntries.value = serverRepository.listDirectory(serverId, relativePath)
+    }
+
+    fun importServerFile(serverId: String, relativeDir: String, sourceFile: File): Boolean {
+        if (!sourceFile.exists() || !sourceFile.isFile) return false
+        val serverDir = serverRepository.getServerDirectory(serverId)
+        val targetDir = if (relativeDir.isBlank()) serverDir else File(serverDir, relativeDir)
+        if (!isPathInside(targetDir, serverDir)) return false
+        targetDir.mkdirs()
+        val destFile = File(targetDir, sourceFile.name)
+        if (!isPathInside(destFile, serverDir)) return false
+        return runCatching {
+            sourceFile.copyTo(destFile, overwrite = true)
+            loadDirectory(serverId, relativeDir)
+            showToast("Uploaded ${sourceFile.name}")
+            true
+        }.getOrDefault(false)
+    }
+
+    fun loadPlayerLists(serverId: String): ServerPlayerLists {
+        val dir = serverRepository.getServerDirectory(serverId)
+        val whitelist = runCatching {
+            val f = File(dir, "whitelist.json")
+            if (!f.exists()) emptyList() else {
+                val arr = JSONArray(f.readText())
+                (0 until arr.length()).mapNotNull { i ->
+                    val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                    WhitelistEntry(uuid = o.optString("uuid", ""), name = o.optString("name", ""))
+                }.filter { it.name.isNotBlank() }
+            }
+        }.getOrDefault(emptyList())
+
+        val ops = runCatching {
+            val f = File(dir, "ops.json")
+            if (!f.exists()) emptyList() else {
+                val arr = JSONArray(f.readText())
+                (0 until arr.length()).mapNotNull { i ->
+                    val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                    OpEntry(
+                        uuid = o.optString("uuid", ""),
+                        name = o.optString("name", ""),
+                        level = o.optInt("level", 4),
+                        bypassesPlayerLimit = o.optBoolean("bypassesPlayerLimit", false)
+                    )
+                }.filter { it.name.isNotBlank() }
+            }
+        }.getOrDefault(emptyList())
+
+        val bannedPlayers = runCatching {
+            val f = File(dir, "banned-players.json")
+            if (!f.exists()) emptyList() else {
+                val arr = JSONArray(f.readText())
+                (0 until arr.length()).mapNotNull { i ->
+                    val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                    BannedPlayerEntry(
+                        uuid = o.optString("uuid", ""),
+                        name = o.optString("name", ""),
+                        created = o.optString("created", ""),
+                        source = o.optString("source", "Server"),
+                        expires = o.optString("expires", "forever"),
+                        reason = o.optString("reason", "Banned by an operator.")
+                    )
+                }.filter { it.name.isNotBlank() }
+            }
+        }.getOrDefault(emptyList())
+
+        val bannedIps = runCatching {
+            val f = File(dir, "banned-ips.json")
+            if (!f.exists()) emptyList() else {
+                val arr = JSONArray(f.readText())
+                (0 until arr.length()).mapNotNull { i ->
+                    val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                    BannedIpEntry(
+                        ip = o.optString("ip", ""),
+                        created = o.optString("created", ""),
+                        source = o.optString("source", "Server"),
+                        expires = o.optString("expires", "forever"),
+                        reason = o.optString("reason", "Banned by an operator.")
+                    )
+                }.filter { it.ip.isNotBlank() }
+            }
+        }.getOrDefault(emptyList())
+
+        return ServerPlayerLists(
+            whitelist = whitelist,
+            ops = ops,
+            bannedPlayers = bannedPlayers,
+            bannedIps = bannedIps
+        )
     }
 
     fun openFileForEditing(serverId: String, relativePath: String) {

@@ -1,24 +1,50 @@
 package com.devwithzachary.mineserve.desktop.ui.tabs
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.Lan
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.People
+import androidx.compose.material.icons.rounded.PowerSettingsNew
+import androidx.compose.material.icons.rounded.Public
+import androidx.compose.material.icons.rounded.Router
+import androidx.compose.material.icons.rounded.Save
+import androidx.compose.material.icons.rounded.Schedule
+import androidx.compose.material.icons.rounded.Search
+import androidx.compose.material.icons.rounded.Shield
+import androidx.compose.material.icons.rounded.SystemUpdateAlt
+import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -32,38 +58,51 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.devwithzachary.mineserve.api.MineServeHttpClient
+import com.devwithzachary.mineserve.designsystem.components.MineServeCard
+import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
+import com.devwithzachary.mineserve.designsystem.components.MineServeEmptyState
+import com.devwithzachary.mineserve.designsystem.components.MineServePreferenceRow
+import com.devwithzachary.mineserve.designsystem.components.MineServeSettingsGroup
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableContainer
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableMonoText
+import com.devwithzachary.mineserve.designsystem.components.MineServeTableRow
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeColors
+import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFamily
 import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
 import com.devwithzachary.mineserve.desktop.LinuxPortForwardState
 import com.devwithzachary.mineserve.desktop.LinuxTunnelState
-import com.devwithzachary.mineserve.desktop.ui.DesktopColors
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
-import com.devwithzachary.mineserve.desktop.ui.DesktopPanelCard
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
-import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ScheduleFrequency
 import com.devwithzachary.mineserve.model.ScheduledTask
 import com.devwithzachary.mineserve.model.ScheduledTaskType
 import com.devwithzachary.mineserve.model.ServerMetrics
+import com.devwithzachary.mineserve.model.ServerPlayerLists
 import com.devwithzachary.mineserve.model.TunnelProvider
 import com.devwithzachary.mineserve.model.determineJavaVersion
-import java.util.UUID
 import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
+import java.util.Locale
+import java.util.UUID
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DesktopSettingsTab(
     viewModel: DesktopViewModel,
     server: MinecraftServer
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
     val props = remember(server.id) { viewModel.serverRepository.loadServerProperties(server.id) }
     val hostMem = remember { LinuxHostTelemetry.getMemoryInfo() }
     val maxRamMb = (hostMem.totalMb.toInt() - 1024).coerceAtLeast(2048)
@@ -88,7 +127,6 @@ fun DesktopSettingsTab(
     var allowFlight by remember(server.id) { mutableStateOf(props.allowFlight) }
     var commandBlocks by remember(server.id) { mutableStateOf(props.enableCommandBlock) }
 
-    // Tunnel & Port Forward
     val tunnelState by viewModel.tunnelState.collectAsState()
     val pfState by viewModel.portForwardState.collectAsState()
     var provider by remember(server.id) { mutableStateOf(server.tunnelConfig.provider) }
@@ -98,16 +136,11 @@ fun DesktopSettingsTab(
     var cloudSubdomain by remember(server.id) { mutableStateOf(server.tunnelConfig.cloudSubdomain) }
     var pfAutoForward by remember(server.id) { mutableStateOf(server.portForwardConfig.autoForward) }
 
-    // Version Upgrade
     var availableVersions by remember(server.type) { mutableStateOf<List<String>>(emptyList()) }
     var targetVersion by remember(server.id) { mutableStateOf(server.version) }
     var upgrading by remember { mutableStateOf(false) }
 
-    // Discord Webhook
-    var discordEnabled by remember(server.id) { mutableStateOf(server.discordWebhookConfig.enabled) }
-    var discordUrl by remember(server.id) { mutableStateOf(server.discordWebhookConfig.webhookUrl) }
-
-    var confirmDelete by remember(server.id) { mutableStateOf(false) }
+    var showDeleteDialog by remember(server.id) { mutableStateOf(false) }
 
     LaunchedEffect(server.type) {
         availableVersions = viewModel.softwareManager.fetchAvailableVersions(server.type)
@@ -119,21 +152,403 @@ fun DesktopSettingsTab(
         targetVersion = server.version
     }
 
+    if (showDeleteDialog) {
+        MineServeDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = "Delete ${server.name}?",
+            confirmLabel = "Delete Server",
+            isDestructive = true,
+            icon = Icons.Rounded.DeleteForever,
+            onConfirm = {
+                showDeleteDialog = false
+                viewModel.scope.launch {
+                    viewModel.networkManager.stopTunnel(server.id)
+                    viewModel.networkManager.releasePortForward(server.id)
+                    if (viewModel.processManager.isServerRunning(server.id)) {
+                        viewModel.processManager.stopServerAndWait(server.id)
+                    }
+                    viewModel.serverRepository.deleteServer(server.id)
+                    viewModel.showToast("Deleted server ${server.name}")
+                }
+            }
+        ) {
+            Text(
+                text = "This permanently deletes ${server.name} and all world files on disk.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = colorScheme.secondaryContainer,
+        selectedLabelColor = colorScheme.onSecondaryContainer,
+        containerColor = colorScheme.surfaceContainerHigh,
+        labelColor = colorScheme.onSurfaceVariant
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // Card 1: Core Server & server.properties Configuration
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        // 1. JVM & Runtime Allocation
+        MineServeSettingsGroup(title = "JVM & Runtime Allocation") {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text("Server Configuration & server.properties", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Allocated Memory", style = MaterialTheme.typography.bodyLarge, color = colorScheme.onSurface)
+                            MineServeTableMonoText(
+                                text = "$ramMb MB / $maxRamMb MB max",
+                                color = colorScheme.primary
+                            )
+                        }
+                        Slider(
+                            value = ramMb.toFloat(),
+                            onValueChange = { ramMb = ((it.toInt() / 256) * 256).coerceIn(512, maxRamMb) },
+                            valueRange = 512f..maxRamMb.toFloat()
+                        )
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Java Runtime", style = MaterialTheme.typography.labelLarge, color = colorScheme.onSurfaceVariant)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            listOf(8, 17, 21, 25).forEach { v ->
+                                FilterChip(
+                                    selected = javaVer == v,
+                                    onClick = { javaVer = v },
+                                    label = { Text("Java $v") },
+                                    colors = chipColors,
+                                    border = null
+                                )
+                            }
+                        }
+                    }
+                }
+
+                OutlinedTextField(
+                    value = jvmArgs,
+                    onValueChange = { jvmArgs = it },
+                    label = { Text("Custom JVM Flags") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(
+                title = "Auto-Start on Host Boot",
+                subtitle = "Automatically launch this server when MineServe starts",
+                checked = autoStart,
+                onCheckedChange = { autoStart = it },
+                icon = Icons.Rounded.PowerSettingsNew
+            )
+        }
+
+        // 2. Public Tunneling & UPnP Port Forwarding (Diamond tertiary accents)
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
+            MineServeSettingsGroup(
+                title = "Public Multiplayer Tunneling",
+                modifier = Modifier.weight(1.25f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        TunnelProvider.entries.forEach { p ->
+                            FilterChip(
+                                selected = provider == p,
+                                onClick = { provider = p },
+                                label = { Text(p.displayName) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = colorScheme.tertiaryContainer,
+                                    selectedLabelColor = colorScheme.onTertiaryContainer,
+                                    containerColor = colorScheme.surfaceContainerHigh,
+                                    labelColor = colorScheme.onSurfaceVariant
+                                ),
+                                border = null
+                            )
+                        }
+                    }
+
+                    if (provider == TunnelProvider.CUSTOM_BORE) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = customRelayHost,
+                                onValueChange = { customRelayHost = it },
+                                label = { Text("Custom Bore Host") },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                                modifier = Modifier.weight(1f)
+                            )
+                            OutlinedTextField(
+                                value = customRelayPort,
+                                onValueChange = { customRelayPort = it },
+                                label = { Text("Control Port") },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                                modifier = Modifier.width(130.dp)
+                            )
+                        }
+                    } else if (provider == TunnelProvider.MINESERVE_CLOUD) {
+                        if (!viewModel.cloudManager.isLinked) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = "Sign in to MineServe Cloud to reserve custom .play.mineserve.app subdomains.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = extended.warning,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                FilledTonalButton(
+                                    onClick = { viewModel.openModal(DesktopModal.CLOUD) },
+                                    shape = ShapeDefaults.Small,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = colorScheme.tertiaryContainer,
+                                        contentColor = colorScheme.onTertiaryContainer
+                                    )
+                                ) {
+                                    Text("Sign In / Plans")
+                                }
+                            }
+                        } else {
+                            OutlinedTextField(
+                                value = cloudSubdomain,
+                                onValueChange = { cloudSubdomain = it },
+                                label = { Text("Preferred Subdomain (.play.mineserve.app)") },
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                }
+                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                MineServePreferenceRow(
+                    title = "Auto-Start Tunnel with Server",
+                    checked = tunnelAutoStart,
+                    onCheckedChange = { tunnelAutoStart = it },
+                    icon = Icons.Rounded.Public
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    if (tunnelState is LinuxTunnelState.Connected || tunnelState is LinuxTunnelState.Connecting) {
+                        FilledTonalButton(
+                            onClick = { viewModel.networkManager.stopTunnel(server.id) },
+                            shape = ShapeDefaults.Medium,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = colorScheme.errorContainer,
+                                contentColor = colorScheme.onErrorContainer
+                            )
+                        ) {
+                            Text("Stop Tunnel")
+                        }
+                    }
+                    Button(
+                        onClick = {
+                            val updatedCfg = server.tunnelConfig.copy(
+                                provider = provider,
+                                autoStart = tunnelAutoStart,
+                                customRelayHost = customRelayHost.trim().ifBlank { "bore.pub" },
+                                customRelayPort = customRelayPort.toIntOrNull() ?: 7835,
+                                cloudSubdomain = cloudSubdomain.trim().lowercase(Locale.US)
+                            )
+                            val updated = server.copy(tunnelConfig = updatedCfg)
+                            viewModel.serverRepository.updateServer(updated)
+                            viewModel.networkManager.startTunnel(updated)
+                            viewModel.showToast("Starting ${provider.displayName} tunnel...")
+                        },
+                        shape = ShapeDefaults.Medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = colorScheme.tertiary,
+                            contentColor = colorScheme.onTertiary
+                        )
+                    ) {
+                        Text("Save & Start Tunnel")
+                    }
+                }
+            }
+
+            MineServeSettingsGroup(
+                title = "Router Port Forwarding (UPnP)",
+                modifier = Modifier.weight(0.85f)
+            ) {
+                val pfStatusText = when (val s = pfState) {
+                    is LinuxPortForwardState.Mapped -> "Mapped: ${s.directAddress} (${s.gatewayName})"
+                    is LinuxPortForwardState.Discovering -> s.message
+                    is LinuxPortForwardState.Failed -> "Failed: ${s.reason}"
+                    is LinuxPortForwardState.Idle -> "Idle (not mapped)"
+                }
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Router,
+                            contentDescription = null,
+                            tint = colorScheme.tertiary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = pfStatusText,
+                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                            color = colorScheme.tertiary
+                        )
+                    }
+                }
+                HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                MineServePreferenceRow(
+                    title = "Auto-Forward Port on Start",
+                    checked = pfAutoForward,
+                    onCheckedChange = { pfAutoForward = it }
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    FilledTonalButton(
+                        onClick = { viewModel.networkManager.releasePortForward(server.id) },
+                        shape = ShapeDefaults.Medium
+                    ) {
+                        Text("Release")
+                    }
+                    Button(
+                        onClick = {
+                            val updated = server.copy(portForwardConfig = server.portForwardConfig.copy(autoForward = pfAutoForward))
+                            viewModel.serverRepository.updateServer(updated)
+                            viewModel.networkManager.startPortForward(updated)
+                        },
+                        shape = ShapeDefaults.Medium
+                    ) {
+                        Text("Map Port")
+                    }
+                }
+            }
+        }
+
+        // 3. Visual server.properties
+        MineServeSettingsGroup(title = "server.properties & Gameplay") {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Server Display Name") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = motd,
+                        onValueChange = { motd = it },
+                        label = { Text("MOTD") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.4f)
+                    )
+                    OutlinedTextField(
+                        value = portText,
+                        onValueChange = { portText = it },
+                        label = { Text("Port") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.width(120.dp)
+                    )
+                }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = maxPlayersText,
+                        onValueChange = { maxPlayersText = it },
+                        label = { Text("Max Players") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = viewDistText,
+                        onValueChange = { viewDistText = it },
+                        label = { Text("View Distance") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = simDistText,
+                        onValueChange = { simDistText = it },
+                        label = { Text("Sim Distance") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.weight(1f)
+                    )
+                    OutlinedTextField(
+                        value = gamemode,
+                        onValueChange = { gamemode = it },
+                        label = { Text("Gamemode") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.1f)
+                    )
+                    OutlinedTextField(
+                        value = difficulty,
+                        onValueChange = { difficulty = it },
+                        label = { Text("Difficulty") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1.1f)
+                    )
+                }
+
+                OutlinedTextField(
+                    value = seed,
+                    onValueChange = { seed = it },
+                    label = { Text("Level Seed (optional)") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(title = "Online Mode (Mojang Auth)", checked = onlineMode, onCheckedChange = { onlineMode = it })
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(title = "Enforce Whitelist", checked = whitelist, onCheckedChange = { whitelist = it })
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(title = "PvP Enabled", checked = pvp, onCheckedChange = { pvp = it })
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(title = "Allow Flight", checked = allowFlight, onCheckedChange = { allowFlight = it })
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(title = "Enable Command Blocks", checked = commandBlocks, onCheckedChange = { commandBlocks = it })
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
                 Button(
                     onClick = {
                         val freshProps = viewModel.serverRepository.loadServerProperties(server.id)
@@ -165,423 +580,99 @@ fun DesktopSettingsTab(
                         viewModel.serverRepository.saveServerProperties(server.id, updatedProps)
                         viewModel.showToast("Saved settings and server.properties")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                    shape = ShapeDefaults.Medium
                 ) {
-                    Text("Save Configuration", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Icon(Icons.Rounded.Save, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Save Configuration")
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Server Display Name") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = motd,
-                    onValueChange = { motd = it },
-                    label = { Text("MOTD") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1.4f)
-                )
-                OutlinedTextField(
-                    value = portText,
-                    onValueChange = { portText = it },
-                    label = { Text("Server Port") },
-                    singleLine = true,
-                    modifier = Modifier.width(130.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Allocated Memory: $ramMb MB (Host max allocatable: $maxRamMb MB)", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Slider(
-                        value = ramMb.toFloat(),
-                        onValueChange = { ramMb = ((it.toInt() / 256) * 256).coerceIn(512, maxRamMb) },
-                        valueRange = 512f..maxRamMb.toFloat()
-                    )
-                }
-                Column {
-                    Text("Java Runtime", fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        listOf(8, 17, 21, 25).forEach { v ->
-                            val selected = javaVer == v
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = if (selected) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                                border = BorderStroke(1.dp, if (selected) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                                modifier = Modifier.clickable { javaVer = v }
-                            ) {
-                                Text(
-                                    text = "Java $v",
-                                    color = if (selected) Color.Black else DesktopColors.Slate300,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 11.sp,
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = maxPlayersText,
-                    onValueChange = { maxPlayersText = it },
-                    label = { Text("Max Players") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = viewDistText,
-                    onValueChange = { viewDistText = it },
-                    label = { Text("View Distance") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = simDistText,
-                    onValueChange = { simDistText = it },
-                    label = { Text("Sim Distance") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = gamemode,
-                    onValueChange = { gamemode = it },
-                    label = { Text("Gamemode (survival/creative)") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1.2f)
-                )
-                OutlinedTextField(
-                    value = difficulty,
-                    onValueChange = { difficulty = it },
-                    label = { Text("Difficulty (easy/normal/hard)") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1.2f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = seed,
-                    onValueChange = { seed = it },
-                    label = { Text("Level Seed (optional)") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = jvmArgs,
-                    onValueChange = { jvmArgs = it },
-                    label = { Text("Custom JVM Flags") },
-                    singleLine = true,
-                    modifier = Modifier.weight(2f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                LabeledCheckbox("Online Mode", onlineMode) { onlineMode = it }
-                LabeledCheckbox("Whitelist", whitelist) { whitelist = it }
-                LabeledCheckbox("PvP Enabled", pvp) { pvp = it }
-                LabeledCheckbox("Allow Flight", allowFlight) { allowFlight = it }
-                LabeledCheckbox("Command Blocks", commandBlocks) { commandBlocks = it }
-                LabeledCheckbox("Auto-Start on Boot", autoStart) { autoStart = it }
             }
         }
 
-        // Card 2: Public Multiplayer Tunneling & UPnP Router Port Forwarding
+        // 4. Version Upgrader & Proxy Loopback Binding
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-            DesktopPanelCard(modifier = Modifier.weight(1.2f)) {
-                Text("Public Multiplayer Tunneling", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    TunnelProvider.entries.forEach { p ->
-                        val active = provider == p
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.clickable { provider = p }
-                        ) {
-                            Text(
-                                text = p.name,
-                                color = if (active) Color.Black else DesktopColors.Slate300,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 11.sp,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (provider == TunnelProvider.CUSTOM_BORE) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            MineServeSettingsGroup(
+                title = "In-Place Version & Build Upgrader",
+                modifier = Modifier.weight(1f)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Current: ${server.type.displayName} ${server.version} (Build: ${server.serverBuild ?: "standard"}). Automatically creates a backup before upgrading.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
-                            value = customRelayHost,
-                            onValueChange = { customRelayHost = it },
-                            label = { Text("Custom Bore Host") },
+                            value = targetVersion,
+                            onValueChange = { targetVersion = it },
+                            label = { Text("Target Version (e.g. ${availableVersions.firstOrNull() ?: server.version})") },
                             singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
                             modifier = Modifier.weight(1f)
                         )
-                        OutlinedTextField(
-                            value = customRelayPort,
-                            onValueChange = { customRelayPort = it },
-                            label = { Text("Control Port") },
-                            singleLine = true,
-                            modifier = Modifier.width(120.dp)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                } else if (provider == TunnelProvider.MINESERVE_CLOUD) {
-                    if (!viewModel.cloudManager.isLinked) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Sign in to MineServe Cloud to reserve custom .play.mineserve.app subdomains.", fontSize = 12.sp, color = DesktopColors.AmberLight)
-                            OutlinedButton(onClick = { viewModel.openModal(DesktopModal.CLOUD) }) {
-                                Text("Sign In / Plans", fontSize = 11.sp)
-                            }
-                        }
-                    } else {
-                        OutlinedTextField(
-                            value = cloudSubdomain,
-                            onValueChange = { cloudSubdomain = it },
-                            label = { Text("Preferred Subdomain (.play.mineserve.app)") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    LabeledCheckbox("Auto-start tunnel with server", tunnelAutoStart) { tunnelAutoStart = it }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
-                                val updatedCfg = server.tunnelConfig.copy(
-                                    provider = provider,
-                                    autoStart = tunnelAutoStart,
-                                    customRelayHost = customRelayHost.trim().ifBlank { "bore.pub" },
-                                    customRelayPort = customRelayPort.toIntOrNull() ?: 7835,
-                                    cloudSubdomain = cloudSubdomain.trim().lowercase()
-                                )
-                                val updated = server.copy(tunnelConfig = updatedCfg)
-                                viewModel.serverRepository.updateServer(updated)
-                                viewModel.networkManager.startTunnel(updated)
-                                viewModel.showToast("Starting ${provider.displayName} tunnel...")
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
-                        ) {
-                            Text("Save & Start Tunnel", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        if (tunnelState is LinuxTunnelState.Connected || tunnelState is LinuxTunnelState.Connecting) {
-                            OutlinedButton(onClick = { viewModel.networkManager.stopTunnel(server.id) }) {
-                                Text("Stop Tunnel", fontSize = 12.sp, color = DesktopColors.RedstoneLight)
-                            }
-                        }
-                    }
-                }
-            }
-
-            DesktopPanelCard(modifier = Modifier.weight(0.8f)) {
-                Text("Router Port Forwarding (UPnP / NAT-PMP)", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                val pfStatusText = when (val s = pfState) {
-                    is LinuxPortForwardState.Mapped -> "Mapped: ${s.directAddress} (${s.gatewayName})"
-                    is LinuxPortForwardState.Discovering -> s.message
-                    is LinuxPortForwardState.Failed -> "Failed: ${s.reason}"
-                    is LinuxPortForwardState.Idle -> "Idle (not mapped)"
-                }
-                Text(pfStatusText, fontSize = 12.sp, color = DesktopColors.EmeraldLight, fontFamily = FontFamily.Monospace)
-                Spacer(modifier = Modifier.height(10.dp))
-                LabeledCheckbox("Auto-forward port on start", pfAutoForward) { pfAutoForward = it }
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            val updated = server.copy(portForwardConfig = server.portForwardConfig.copy(autoForward = pfAutoForward))
-                            viewModel.serverRepository.updateServer(updated)
-                            viewModel.networkManager.startPortForward(updated)
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
-                    ) {
-                        Text("Map Router Port", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    OutlinedButton(onClick = { viewModel.networkManager.releasePortForward(server.id) }) {
-                        Text("Release", fontSize = 12.sp)
-                    }
-                }
-            }
-        }
-
-        // Card 3: In-Place Server Version & Build Upgrader + Discord Webhook
-        Row(horizontalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.fillMaxWidth()) {
-            DesktopPanelCard(modifier = Modifier.weight(1f)) {
-                Text("In-Place Server Version & Build Upgrader", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Current: ${server.type.displayName} ${server.version} (Build: ${server.serverBuild ?: "standard"}). Automatically creates a backup before upgrading.",
-                    fontSize = 12.sp,
-                    color = DesktopColors.Slate400
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedTextField(
-                        value = targetVersion,
-                        onValueChange = { targetVersion = it },
-                        label = { Text("Target Version (e.g. ${availableVersions.firstOrNull() ?: server.version})") },
-                        singleLine = true,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Button(
-                        onClick = {
-                            if (viewModel.processManager.isServerRunning(server.id)) {
-                                viewModel.showToast("Stop the server before upgrading.")
-                                return@Button
-                            }
-                            upgrading = true
-                            viewModel.scope.launch {
-                                try {
-                                    val ok = viewModel.softwareManager.upgradeServerVersion(
-                                        server = server,
-                                        newVersion = targetVersion.trim(),
-                                        createBackup = true,
-                                        processManager = viewModel.processManager
-                                    ) { msg, _ ->
-                                        viewModel.showToast(msg)
-                                    }
-                                    if (ok) {
-                                        val newJava = determineJavaVersion(targetVersion.trim(), server.type)
-                                        viewModel.showToast("Upgraded to ${server.type.displayName} $targetVersion (Java $newJava)")
-                                    } else {
-                                        viewModel.showToast("Upgrade failed for ${server.type.displayName} $targetVersion")
-                                    }
-                                } finally {
-                                    upgrading = false
+                                if (viewModel.processManager.isServerRunning(server.id)) {
+                                    viewModel.showToast("Stop the server before upgrading.")
+                                    return@Button
                                 }
-                            }
-                        },
-                        enabled = !upgrading,
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
-                    ) {
-                        Text(if (upgrading) "Upgrading..." else "Backup & Upgrade", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                }
-            }
-
-            DesktopPanelCard(modifier = Modifier.weight(1f)) {
-                Text("Discord Webhook Notifications", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                OutlinedTextField(
-                    value = discordUrl,
-                    onValueChange = { discordUrl = it },
-                    label = { Text("Discord Webhook URL") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    LabeledCheckbox("Enable Webhook Alerts", discordEnabled) { discordEnabled = it }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(
-                            onClick = {
+                                upgrading = true
                                 viewModel.scope.launch {
-                                    val payload = JSONObject()
-                                        .put("username", "MineServe")
-                                        .put("content", "MineServe Linux test notification for **${server.name}**.")
-                                        .toString()
-                                    val ok = runCatching {
-                                        val req = MineServeHttpClient.newRequestBuilder(discordUrl.trim())
-                                            .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
-                                            .build()
-                                        MineServeHttpClient.client.newCall(req).execute().use { it.isSuccessful }
-                                    }.getOrDefault(false)
-                                    viewModel.showToast(if (ok) "Sent test message to Discord!" else "Discord webhook test failed")
+                                    try {
+                                        val ok = viewModel.softwareManager.upgradeServerVersion(
+                                            server = server,
+                                            newVersion = targetVersion.trim(),
+                                            createBackup = true,
+                                            processManager = viewModel.processManager
+                                        ) { msg, _ ->
+                                            viewModel.showToast(msg)
+                                        }
+                                        if (ok) {
+                                            val newJava = determineJavaVersion(targetVersion.trim(), server.type)
+                                            viewModel.showToast("Upgraded to ${server.type.displayName} $targetVersion (Java $newJava)")
+                                        } else {
+                                            viewModel.showToast("Upgrade failed for ${server.type.displayName} $targetVersion")
+                                        }
+                                    } finally {
+                                        upgrading = false
+                                    }
                                 }
-                            }
-                        ) {
-                            Text("Test", fontSize = 12.sp)
-                        }
-                        Button(
-                            onClick = {
-                                val cfg = server.discordWebhookConfig.copy(enabled = discordEnabled, webhookUrl = discordUrl.trim())
-                                viewModel.serverRepository.updateServer(server.copy(discordWebhookConfig = cfg))
-                                viewModel.showToast("Saved Discord webhook settings")
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                            enabled = !upgrading,
+                            shape = ShapeDefaults.Medium
                         ) {
-                            Text("Save", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Icon(Icons.Rounded.SystemUpdateAlt, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(if (upgrading) "Upgrading..." else "Backup & Upgrade")
                         }
                     }
                 }
             }
-        }
 
-        // Card 4: Proxy Network / Internal Loopback Binding (127.0.0.1)
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth()) {
-            var loopbackOnly by remember(server.id) {
-                mutableStateOf(viewModel.serverRepository.loadServerProperties(server.id).serverIp.trim() == "127.0.0.1")
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            MineServeSettingsGroup(
+                title = if (server.type.isProxy) "Proxy Routing" else "Proxy Backend Loopback",
+                modifier = Modifier.weight(1f)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = if (server.type.isProxy) "Velocity / BungeeCord Proxy Routing" else "Internal Loopback Binding (Proxy Backend Mode)",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Text(
-                        text = if (server.type.isProxy) {
-                            "Configure backend server routes in velocity.toml / config.yml via the Files tab or Web Admin UI."
-                        } else {
-                            "Bind server-ip strictly to 127.0.0.1 so only a local Velocity or BungeeCord proxy on this host can connect to this backend server."
-                        },
-                        fontSize = 12.sp,
-                        color = DesktopColors.Slate400
-                    )
+                var loopbackOnly by remember(server.id) {
+                    mutableStateOf(viewModel.serverRepository.loadServerProperties(server.id).serverIp.trim() == "127.0.0.1")
                 }
-                if (!server.type.isProxy) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        LabeledCheckbox("Bind strictly to 127.0.0.1", loopbackOnly) { checked ->
+                if (server.type.isProxy) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Configure backend server routes in velocity.toml / config.yml via the Files tab or Web Admin UI.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    MineServePreferenceRow(
+                        title = "Bind strictly to 127.0.0.1",
+                        subtitle = "Allows only local Velocity/BungeeCord proxies on this host to connect (sets online-mode=false)",
+                        checked = loopbackOnly,
+                        onCheckedChange = { checked ->
                             loopbackOnly = checked
                             if (checked) onlineMode = false
                             val currentProps = viewModel.serverRepository.loadServerProperties(server.id)
@@ -592,154 +683,440 @@ fun DesktopSettingsTab(
                                     onlineMode = if (checked) false else currentProps.onlineMode
                                 )
                             )
-                            viewModel.showToast(if (checked) "Bound backend to 127.0.0.1 (online-mode=false)" else "Cleared 127.0.0.1 loopback binding")
-                        }
-                    }
+                            viewModel.showToast(
+                                if (checked) "Bound backend to 127.0.0.1 (online-mode=false)" else "Cleared 127.0.0.1 loopback binding"
+                            )
+                        },
+                        icon = Icons.Rounded.Lan
+                    )
                 }
             }
         }
 
-        // Card 5: Danger Zone
-        DesktopPanelCard(
-            modifier = Modifier.fillMaxWidth(),
-            borderColor = DesktopColors.RedstonePrimary.copy(alpha = 0.5f)
+        // 5. Danger Zone
+        MineServeCard(
+            containerColor = colorScheme.errorContainer.copy(alpha = 0.35f),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text("Danger Zone: Delete Server", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = DesktopColors.RedstoneLight)
-                    Text("Permanently deletes ${server.name} and all world files on disk.", fontSize = 12.sp, color = DesktopColors.Slate400)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Warning,
+                        contentDescription = null,
+                        tint = colorScheme.error,
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Column {
+                        Text(
+                            text = "Danger Zone: Delete Server",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorScheme.error
+                        )
+                        Text(
+                            text = "Permanently deletes ${server.name} and all world files on disk.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                if (!confirmDelete) {
-                    Button(
-                        onClick = { confirmDelete = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.RedstonePrimary, contentColor = Color.White)
-                    ) {
-                        Text("Delete Server", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                } else {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = {
-                                viewModel.scope.launch {
-                                    viewModel.networkManager.stopTunnel(server.id)
-                                    viewModel.networkManager.releasePortForward(server.id)
-                                    if (viewModel.processManager.isServerRunning(server.id)) {
-                                        viewModel.processManager.stopServerAndWait(server.id)
-                                    }
-                                    viewModel.serverRepository.deleteServer(server.id)
-                                    viewModel.showToast("Deleted server ${server.name}")
-                                }
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.RedstonePrimary, contentColor = Color.White)
-                        ) {
-                            Text("Confirm Permanent Delete", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                        }
-                        OutlinedButton(onClick = { confirmDelete = false }) {
-                            Text("Cancel", fontSize = 12.sp)
-                        }
-                    }
+                Button(
+                    onClick = { showDeleteDialog = true },
+                    shape = ShapeDefaults.Medium,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = colorScheme.error,
+                        contentColor = colorScheme.onError
+                    )
+                ) {
+                    Icon(Icons.Rounded.DeleteForever, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Delete Server")
                 }
             }
         }
     }
 }
 
-@Composable
-private fun LabeledCheckbox(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.clickable { onCheckedChange(!checked) }
-    ) {
-        Checkbox(checked = checked, onCheckedChange = onCheckedChange)
-        Text(label, fontSize = 12.sp, color = DesktopColors.Slate300)
-    }
+private enum class DesktopPlayerFilter(val label: String) {
+    ONLINE("Online"),
+    OPERATORS("Operators"),
+    WHITELISTED("Whitelisted"),
+    BANNED("Banned")
 }
 
+private data class DesktopPlayerRowItem(
+    val title: String,
+    val subtitle: String,
+    val isOp: Boolean = false,
+    val isOnline: Boolean = false,
+    val isBanned: Boolean = false,
+    val isIpBan: Boolean = false
+)
+
+private data class PendingPlayerAction(
+    val username: String,
+    val actionTitle: String,
+    val commandPrefix: String,
+    val message: String,
+    val isDestructive: Boolean
+)
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DesktopPlayersTab(
     viewModel: DesktopViewModel,
     server: MinecraftServer,
     metrics: ServerMetrics?
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = LocalMineServeColors.current
+    val monoFont = LocalMineServeMonoFontFamily.current
+
+    var searchQuery by remember { mutableStateOf("") }
     var targetPlayer by remember { mutableStateOf("") }
+    var activeFilter by remember { mutableStateOf(DesktopPlayerFilter.ONLINE) }
+    var playerLists by remember(server.id) { mutableStateOf(ServerPlayerLists()) }
+    var pendingAction by remember { mutableStateOf<PendingPlayerAction?>(null) }
+
     val onlinePlayers = metrics?.onlinePlayers ?: emptyList()
 
+    LaunchedEffect(server.id, onlinePlayers.size) {
+        playerLists = viewModel.loadPlayerLists(server.id)
+    }
+
+    pendingAction?.let { action ->
+        MineServeDialog(
+            onDismissRequest = { pendingAction = null },
+            title = action.actionTitle,
+            confirmLabel = "Confirm",
+            isDestructive = action.isDestructive,
+            icon = if (action.isDestructive) Icons.Rounded.Block else Icons.Rounded.Shield,
+            onConfirm = {
+                viewModel.processManager.sendCommand(server.id, "${action.commandPrefix} ${action.username}")
+                viewModel.showToast("Sent: ${action.commandPrefix} ${action.username}")
+                playerLists = viewModel.loadPlayerLists(server.id)
+                pendingAction = null
+            }
+        ) {
+            Text(
+                text = action.message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colorScheme.onSurfaceVariant
+            )
+        }
+    }
+
+    val opNames = remember(playerLists) { playerLists.ops.map { it.name.lowercase(Locale.US) }.toSet() }
+    val rows: List<DesktopPlayerRowItem> = remember(activeFilter, onlinePlayers, playerLists, searchQuery) {
+        val base = when (activeFilter) {
+            DesktopPlayerFilter.ONLINE -> onlinePlayers.map { player ->
+                DesktopPlayerRowItem(
+                    title = player,
+                    subtitle = "Connected now",
+                    isOp = player.lowercase(Locale.US) in opNames,
+                    isOnline = true
+                )
+            }
+            DesktopPlayerFilter.OPERATORS -> playerLists.ops.map { op ->
+                DesktopPlayerRowItem(
+                    title = op.name,
+                    subtitle = "Level ${op.level} - ${op.uuid.ifBlank { "Offline UUID" }}",
+                    isOp = true
+                )
+            }
+            DesktopPlayerFilter.WHITELISTED -> playerLists.whitelist.map { w ->
+                DesktopPlayerRowItem(
+                    title = w.name,
+                    subtitle = w.uuid.ifBlank { "Whitelisted player" },
+                    isOp = w.name.lowercase(Locale.US) in opNames
+                )
+            }
+            DesktopPlayerFilter.BANNED -> playerLists.bannedPlayers.map { b ->
+                DesktopPlayerRowItem(
+                    title = b.name,
+                    subtitle = "${b.uuid.ifBlank { "Banned" }} - ${b.reason}",
+                    isBanned = true
+                )
+            } + playerLists.bannedIps.map { ip ->
+                DesktopPlayerRowItem(
+                    title = ip.ip,
+                    subtitle = "IP Ban - ${ip.reason}",
+                    isBanned = true,
+                    isIpBan = true
+                )
+            }
+        }
+        val q = searchQuery.trim()
+        if (q.isEmpty()) base else base.filter {
+            it.title.contains(q, ignoreCase = true) || it.subtitle.contains(q, ignoreCase = true)
+        }
+    }
+
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth()) {
-            Text("Player Administration & Access Control", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        // Quick Player Command Bar
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Player Administration & Access Control",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colorScheme.onSurface
+            )
             Spacer(modifier = Modifier.height(10.dp))
-            Row(
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = targetPlayer,
                     onValueChange = { targetPlayer = it },
-                    placeholder = { Text("Minecraft Username...", fontSize = 12.sp) },
+                    placeholder = { Text("Username or IP...", maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.width(280.dp)
                 )
                 listOf(
-                    "OP" to "op",
-                    "De-OP" to "deop",
-                    "Whitelist Add" to "whitelist add",
-                    "Whitelist Remove" to "whitelist remove",
-                    "Kick" to "kick",
-                    "Ban" to "ban",
-                    "Pardon" to "pardon"
-                ).forEach { (label, cmdPrefix) ->
-                    OutlinedButton(
+                    Triple("OP", "op", false),
+                    Triple("De-OP", "deop", false),
+                    Triple("Whitelist", "whitelist add", false),
+                    Triple("Kick", "kick", true),
+                    Triple("Ban", "ban", true),
+                    Triple("Pardon", "pardon", false)
+                ).forEach { (label, cmdPrefix, destructive) ->
+                    FilledTonalButton(
                         onClick = {
                             val p = targetPlayer.trim()
                             if (p.isNotEmpty()) {
-                                viewModel.processManager.sendCommand(server.id, "$cmdPrefix $p")
-                                viewModel.showToast("Sent: $cmdPrefix $p")
+                                if (destructive) {
+                                    pendingAction = PendingPlayerAction(
+                                        username = p,
+                                        actionTitle = "$label $p?",
+                                        commandPrefix = cmdPrefix,
+                                        message = "Run '$cmdPrefix $p' on ${server.name}?",
+                                        isDestructive = true
+                                    )
+                                } else {
+                                    viewModel.processManager.sendCommand(server.id, "$cmdPrefix $p")
+                                    viewModel.showToast("Sent: $cmdPrefix $p")
+                                }
                             }
-                        }
+                        },
+                        shape = ShapeDefaults.Small,
+                        colors = ButtonDefaults.filledTonalButtonColors(
+                            containerColor = if (destructive) colorScheme.errorContainer else colorScheme.surfaceContainerHigh,
+                            contentColor = if (destructive) colorScheme.onErrorContainer else colorScheme.onSurface
+                        )
                     ) {
-                        Text(label, fontSize = 11.sp)
+                        Text(label, style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
         }
 
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            Text("Currently Online (${onlinePlayers.size})", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Spacer(modifier = Modifier.height(10.dp))
-            if (onlinePlayers.isEmpty()) {
-                Text("No players are currently connected.", color = DesktopColors.Slate400, fontSize = 12.sp)
+        // Search + Filter Chips + Roster Table
+        MineServeCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DesktopPlayerFilter.entries.forEach { filter ->
+                        FilterChip(
+                            selected = activeFilter == filter,
+                            onClick = { activeFilter = filter },
+                            label = { Text(filter.label) },
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = colorScheme.secondaryContainer,
+                                selectedLabelColor = colorScheme.onSecondaryContainer,
+                                containerColor = colorScheme.surfaceContainerHigh,
+                                labelColor = colorScheme.onSurfaceVariant
+                            ),
+                            border = null
+                        )
+                    }
+                }
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = { Text("Search roster...") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    singleLine = true,
+                    modifier = Modifier.width(260.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            if (rows.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    MineServeEmptyState(
+                        icon = Icons.Rounded.People,
+                        title = "No ${activeFilter.label} Players",
+                        supportingText = if (searchQuery.isNotBlank()) {
+                            "No players match \"$searchQuery\"."
+                        } else {
+                            "Players in this category will appear here."
+                        }
+                    )
+                }
             } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    onlinePlayers.forEach { player ->
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = DesktopColors.Slate900,
-                            border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                MineServeTableContainer(modifier = Modifier.fillMaxSize()) {
+                    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                        rows.forEachIndexed { idx, row ->
+                            MineServeTableRow(
+                                showDivider = idx < rows.lastIndex,
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                             ) {
-                                Text(player, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color.White)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = { viewModel.processManager.sendCommand(server.id, "op $player") }) {
-                                        Text("OP", fontSize = 11.sp)
+                                // Player Avatar Squircle
+                                Surface(
+                                    shape = ShapeDefaults.Small,
+                                    color = if (row.isOp) extended.warningContainer else colorScheme.secondaryContainer,
+                                    contentColor = if (row.isOp) extended.onWarningContainer else colorScheme.onSecondaryContainer,
+                                    border = null,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Text(
+                                            text = row.title.take(1).uppercase(Locale.US),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
-                                    OutlinedButton(onClick = { viewModel.processManager.sendCommand(server.id, "kick $player") }) {
-                                        Text("Kick", fontSize = 11.sp, color = DesktopColors.AmberLight)
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = row.title,
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colorScheme.onSurface
+                                        )
+                                        if (row.isOp) {
+                                            Surface(
+                                                shape = ShapeDefaults.Small,
+                                                color = extended.warningContainer,
+                                                contentColor = extended.onWarningContainer,
+                                                border = null
+                                            ) {
+                                                Text(
+                                                    text = "OP",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    fontWeight = FontWeight.Bold,
+                                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                                )
+                                            }
+                                        }
                                     }
-                                    OutlinedButton(onClick = { viewModel.processManager.sendCommand(server.id, "ban $player") }) {
-                                        Text("Ban", fontSize = 11.sp, color = DesktopColors.RedstoneLight)
+                                    MineServeTableMonoText(
+                                        text = row.subtitle,
+                                        color = colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    if (row.isBanned) {
+                                        FilledTonalButton(
+                                            onClick = {
+                                                val cmd = if (row.isIpBan) "pardon-ip" else "pardon"
+                                                pendingAction = PendingPlayerAction(
+                                                    username = row.title,
+                                                    actionTitle = "Pardon ${row.title}?",
+                                                    commandPrefix = cmd,
+                                                    message = "Remove ban for ${row.title}?",
+                                                    isDestructive = false
+                                                )
+                                            },
+                                            shape = ShapeDefaults.Small
+                                        ) {
+                                            Text("Pardon")
+                                        }
+                                    } else {
+                                        FilledTonalButton(
+                                            onClick = {
+                                                val cmd = if (row.isOp) "deop" else "op"
+                                                viewModel.processManager.sendCommand(server.id, "$cmd ${row.title}")
+                                                viewModel.showToast("Sent: $cmd ${row.title}")
+                                            },
+                                            shape = ShapeDefaults.Small
+                                        ) {
+                                            Text(if (row.isOp) "De-OP" else "OP")
+                                        }
+                                        if (activeFilter == DesktopPlayerFilter.WHITELISTED) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    viewModel.processManager.sendCommand(server.id, "whitelist remove ${row.title}")
+                                                    viewModel.showToast("Removed ${row.title} from whitelist")
+                                                },
+                                                shape = ShapeDefaults.Small
+                                            ) {
+                                                Text("Unwhitelist")
+                                            }
+                                        } else {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    viewModel.processManager.sendCommand(server.id, "whitelist add ${row.title}")
+                                                    viewModel.showToast("Whitelisted ${row.title}")
+                                                },
+                                                shape = ShapeDefaults.Small
+                                            ) {
+                                                Text("Whitelist")
+                                            }
+                                        }
+                                        if (row.isOnline) {
+                                            FilledTonalButton(
+                                                onClick = {
+                                                    pendingAction = PendingPlayerAction(
+                                                        username = row.title,
+                                                        actionTitle = "Kick ${row.title}?",
+                                                        commandPrefix = "kick",
+                                                        message = "Disconnect ${row.title} from ${server.name}?",
+                                                        isDestructive = true
+                                                    )
+                                                },
+                                                shape = ShapeDefaults.Small,
+                                                colors = ButtonDefaults.filledTonalButtonColors(
+                                                    containerColor = extended.warningContainer,
+                                                    contentColor = extended.onWarningContainer
+                                                )
+                                            ) {
+                                                Text("Kick")
+                                            }
+                                        }
+                                        FilledTonalButton(
+                                            onClick = {
+                                                pendingAction = PendingPlayerAction(
+                                                    username = row.title,
+                                                    actionTitle = "Ban ${row.title}?",
+                                                    commandPrefix = "ban",
+                                                    message = "Permanently ban ${row.title} from ${server.name}?",
+                                                    isDestructive = true
+                                                )
+                                            },
+                                            shape = ShapeDefaults.Small,
+                                            colors = ButtonDefaults.filledTonalButtonColors(
+                                                containerColor = colorScheme.errorContainer,
+                                                contentColor = colorScheme.onErrorContainer
+                                            )
+                                        ) {
+                                            Text("Ban")
+                                        }
                                     }
                                 }
                             }
@@ -751,31 +1128,66 @@ fun DesktopPlayersTab(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun DesktopAutomationTab(
     viewModel: DesktopViewModel,
     server: MinecraftServer
 ) {
+    val colorScheme = MaterialTheme.colorScheme
+    val monoFont = LocalMineServeMonoFontFamily.current
     val cfg = server.automationConfig
+
     var idleSleep by remember(server.id) { mutableStateOf(cfg.idleSleepEnabled) }
     var idleMinutes by remember(server.id) { mutableStateOf(cfg.idleSleepTimeoutMinutes.toString()) }
     var autoWake by remember(server.id) { mutableStateOf(cfg.autoWakeOnPing) }
 
     var newTaskName by remember { mutableStateOf("") }
     var newTaskType by remember { mutableStateOf(ScheduledTaskType.WORLD_BACKUP) }
+    var newFrequency by remember { mutableStateOf(ScheduleFrequency.INTERVAL) }
     var newIntervalMin by remember { mutableStateOf("360") }
+    var newCronExpr by remember { mutableStateOf("0 */6 * * *") }
+    var newCommand by remember { mutableStateOf("") }
+
+    var discordEnabled by remember(server.id) { mutableStateOf(server.discordWebhookConfig.enabled) }
+    var discordUrl by remember(server.id) { mutableStateOf(server.discordWebhookConfig.webhookUrl) }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth()) {
+        // 1. Smart Idle Sleep & Auto-Wake
+        MineServeSettingsGroup(title = "Smart Idle Sleep & Auto-Wake") {
+            MineServePreferenceRow(
+                title = "Enable Idle Auto-Sleep",
+                subtitle = "Automatically stop the server after inactivity to save CPU and RAM",
+                checked = idleSleep,
+                onCheckedChange = { idleSleep = it },
+                icon = Icons.Rounded.PowerSettingsNew
+            )
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            MineServePreferenceRow(
+                title = "Auto-Wake on Player Ping",
+                subtitle = "Wake the server automatically when a player joins or pings the port",
+                checked = autoWake,
+                onCheckedChange = { autoWake = it }
+            )
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Idle Auto-Sleep & Auto-Wake on Ping", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                OutlinedTextField(
+                    value = idleMinutes,
+                    onValueChange = { idleMinutes = it },
+                    label = { Text("Idle Timeout (minutes)") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                    modifier = Modifier.width(200.dp)
+                )
                 Button(
                     onClick = {
                         val updated = cfg.copy(
@@ -786,67 +1198,104 @@ fun DesktopAutomationTab(
                         viewModel.serverRepository.updateServer(server.copy(automationConfig = updated))
                         viewModel.showToast("Saved automation settings")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                    shape = ShapeDefaults.Medium
                 ) {
-                    Text("Save Automation", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text("Save Idle Policy")
                 }
-            }
-            Spacer(modifier = Modifier.height(10.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                LabeledCheckbox("Enable Idle Auto-Sleep", idleSleep) { idleSleep = it }
-                OutlinedTextField(
-                    value = idleMinutes,
-                    onValueChange = { idleMinutes = it },
-                    label = { Text("Idle Timeout (minutes)") },
-                    singleLine = true,
-                    modifier = Modifier.width(180.dp)
-                )
-                LabeledCheckbox("Auto-Wake when player pings server", autoWake) { autoWake = it }
             }
         }
 
-        DesktopPanelCard(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            Text("Scheduled Tasks (${cfg.scheduledTasks.size})", fontWeight = FontWeight.Bold, fontSize = 15.sp)
-            Spacer(modifier = Modifier.height(10.dp))
+        // 2. Scheduled Tasks (Interval & Cron)
+        MineServeCard(modifier = Modifier.fillMaxWidth()) {
             Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(Icons.Rounded.Schedule, contentDescription = null, tint = colorScheme.primary, modifier = Modifier.size(20.dp))
+                Text(
+                    text = "Scheduled Tasks (${cfg.scheduledTasks.size})",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
                     value = newTaskName,
                     onValueChange = { newTaskName = it },
-                    placeholder = { Text("Task Name (optional)...", fontSize = 12.sp) },
+                    label = { Text("Task Name (optional)") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.width(200.dp)
                 )
                 ScheduledTaskType.entries.forEach { t ->
-                    val active = newTaskType == t
-                    Surface(
-                        shape = RoundedCornerShape(6.dp),
-                        color = if (active) DesktopColors.EmeraldPrimary else DesktopColors.Slate900,
-                        border = BorderStroke(1.dp, if (active) DesktopColors.EmeraldPrimary else DesktopColors.ObsidianCardBorder),
-                        modifier = Modifier.clickable { newTaskType = t }
-                    ) {
-                        Text(
-                            text = t.displayName,
-                            color = if (active) Color.Black else DesktopColors.Slate300,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                        )
-                    }
+                    FilterChip(
+                        selected = newTaskType == t,
+                        onClick = { newTaskType = t },
+                        label = { Text(t.displayName) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = colorScheme.secondaryContainer,
+                            selectedLabelColor = colorScheme.onSecondaryContainer,
+                            containerColor = colorScheme.surfaceContainerHigh,
+                            labelColor = colorScheme.onSurfaceVariant
+                        ),
+                        border = null
+                    )
                 }
-                OutlinedTextField(
-                    value = newIntervalMin,
-                    onValueChange = { newIntervalMin = it },
-                    label = { Text("Every (min)") },
-                    singleLine = true,
-                    modifier = Modifier.width(110.dp)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
+            ) {
+                FilterChip(
+                    selected = newFrequency == ScheduleFrequency.INTERVAL,
+                    onClick = { newFrequency = ScheduleFrequency.INTERVAL },
+                    label = { Text("Interval") },
+                    border = null
                 )
+                FilterChip(
+                    selected = newFrequency == ScheduleFrequency.CUSTOM_CRON,
+                    onClick = { newFrequency = ScheduleFrequency.CUSTOM_CRON },
+                    label = { Text("Cron") },
+                    border = null
+                )
+                if (newFrequency == ScheduleFrequency.CUSTOM_CRON) {
+                    OutlinedTextField(
+                        value = newCronExpr,
+                        onValueChange = { newCronExpr = it },
+                        label = { Text("Cron Expression") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.width(180.dp)
+                    )
+                } else {
+                    OutlinedTextField(
+                        value = newIntervalMin,
+                        onValueChange = { newIntervalMin = it },
+                        label = { Text("Every (min)") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.width(130.dp)
+                    )
+                }
+                if (newTaskType == ScheduledTaskType.CUSTOM_COMMAND || newTaskType == ScheduledTaskType.BROADCAST_MESSAGE) {
+                    OutlinedTextField(
+                        value = newCommand,
+                        onValueChange = { newCommand = it },
+                        label = { Text(if (newTaskType == ScheduledTaskType.CUSTOM_COMMAND) "Console Command" else "Broadcast Text") },
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                        modifier = Modifier.width(240.dp)
+                    )
+                }
                 Button(
                     onClick = {
                         val task = ScheduledTask(
@@ -855,41 +1304,57 @@ fun DesktopAutomationTab(
                             name = newTaskName.trim().ifBlank { newTaskType.displayName },
                             enabled = true,
                             taskType = newTaskType,
-                            frequency = ScheduleFrequency.INTERVAL,
-                            intervalMinutes = newIntervalMin.toIntOrNull()?.coerceAtLeast(5) ?: 360
+                            frequency = newFrequency,
+                            intervalMinutes = newIntervalMin.toIntOrNull()?.coerceAtLeast(5) ?: 360,
+                            cronExpression = if (newFrequency == ScheduleFrequency.CUSTOM_CRON) newCronExpr.trim() else "",
+                            command = newCommand.trim()
                         )
                         viewModel.serverRepository.updateServer(
                             server.copy(automationConfig = cfg.copy(scheduledTasks = cfg.scheduledTasks + task))
                         )
                         newTaskName = ""
+                        newCommand = ""
                         viewModel.showToast("Added scheduled task ${task.name}")
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DesktopColors.EmeraldPrimary, contentColor = Color.Black)
+                    shape = ShapeDefaults.Medium
                 ) {
-                    Text("+ Add Task", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add Task")
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                cfg.scheduledTasks.forEach { task ->
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = DesktopColors.Slate900,
-                        border = BorderStroke(1.dp, DesktopColors.ObsidianCardBorder),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+            if (cfg.scheduledTasks.isEmpty()) {
+                MineServeEmptyState(
+                    icon = Icons.Rounded.Schedule,
+                    title = "No Scheduled Tasks",
+                    supportingText = "Add an automated backup, restart, or command schedule above."
+                )
+            } else {
+                MineServeTableContainer(modifier = Modifier.fillMaxWidth()) {
+                    cfg.scheduledTasks.forEachIndexed { idx, task ->
+                        MineServeTableRow(
+                            showDivider = idx < cfg.scheduledTasks.lastIndex,
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                         ) {
-                            Column {
-                                Text(task.name, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = Color.White)
-                                Text("${task.taskType.displayName} - ${task.frequencyDescription}", fontSize = 11.sp, color = DesktopColors.Slate400)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = task.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorScheme.onSurface
+                                )
+                                MineServeTableMonoText(
+                                    text = "${task.taskType.displayName} - ${task.frequencyDescription}",
+                                    color = colorScheme.onSurfaceVariant
+                                )
                             }
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
                                 Switch(
                                     checked = task.enabled,
                                     onCheckedChange = { enabled ->
@@ -897,16 +1362,85 @@ fun DesktopAutomationTab(
                                         viewModel.serverRepository.updateServer(server.copy(automationConfig = cfg.copy(scheduledTasks = next)))
                                     }
                                 )
-                                OutlinedButton(
+                                IconButton(
                                     onClick = {
                                         val next = cfg.scheduledTasks.filterNot { it.id == task.id }
                                         viewModel.serverRepository.updateServer(server.copy(automationConfig = cfg.copy(scheduledTasks = next)))
-                                    }
+                                    },
+                                    modifier = Modifier.size(32.dp)
                                 ) {
-                                    Text("Delete", fontSize = 11.sp, color = DesktopColors.RedstoneLight)
+                                    Icon(
+                                        imageVector = Icons.Rounded.Delete,
+                                        contentDescription = "Delete task",
+                                        tint = colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // 3. Discord Webhook Event Notifications
+        MineServeSettingsGroup(title = "Discord Webhook Notifications") {
+            MineServePreferenceRow(
+                title = "Enable Webhook Alerts",
+                subtitle = "Send server start, stop, crash, and player events to Discord",
+                checked = discordEnabled,
+                onCheckedChange = { discordEnabled = it },
+                icon = Icons.Rounded.Notifications
+            )
+            HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedTextField(
+                    value = discordUrl,
+                    onValueChange = { discordUrl = it },
+                    label = { Text("Discord Webhook URL") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    FilledTonalButton(
+                        onClick = {
+                            viewModel.scope.launch {
+                                val payload = JSONObject()
+                                    .put("username", "MineServe")
+                                    .put("content", "MineServe Linux test notification for **${server.name}**.")
+                                    .toString()
+                                val ok = runCatching {
+                                    val req = MineServeHttpClient.newRequestBuilder(discordUrl.trim())
+                                        .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                                        .build()
+                                    MineServeHttpClient.client.newCall(req).execute().use { it.isSuccessful }
+                                }.getOrDefault(false)
+                                viewModel.showToast(if (ok) "Sent test message to Discord!" else "Discord webhook test failed")
+                            }
+                        },
+                        shape = ShapeDefaults.Medium
+                    ) {
+                        Text("Test")
+                    }
+                    Button(
+                        onClick = {
+                            val updated = server.discordWebhookConfig.copy(
+                                enabled = discordEnabled,
+                                webhookUrl = discordUrl.trim()
+                            )
+                            viewModel.serverRepository.updateServer(server.copy(discordWebhookConfig = updated))
+                            viewModel.showToast("Saved Discord webhook settings")
+                        },
+                        shape = ShapeDefaults.Medium
+                    ) {
+                        Text("Save Webhook")
                     }
                 }
             }
