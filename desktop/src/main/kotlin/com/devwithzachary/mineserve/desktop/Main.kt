@@ -271,6 +271,7 @@ fun main(args: Array<String>) {
         System.err.println("Failed to start MineServe Web Admin on ${options.bindHost}:${options.port}")
         return
     }
+    networkManager.webAdminPortProvider = { webServer.actualPort }
 
     val runHeadless = options.headless || GraphicsEnvironment.isHeadless()
     val lanIp = DesktopHostTelemetry.getLocalIpAddress() ?: "127.0.0.1"

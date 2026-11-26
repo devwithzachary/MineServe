@@ -762,6 +762,116 @@ fun DesktopWorldTab(
                 }
             }
 
+            MineServeSettingsGroup(title = "Chunk Pre-Generator") {
+                val pregenStates by com.devwithzachary.mineserve.engine.WorldPregenManager.states.collectAsState()
+                val statuses by viewModel.processManager.serverStatuses.collectAsState()
+                val pregenState = pregenStates[server.id] ?: com.devwithzachary.mineserve.engine.PregenState()
+                val isServerRunning = statuses[server.id] == com.devwithzachary.mineserve.model.ServerStatus.RUNNING
+                var pregenDim by remember(server.id) { mutableStateOf(DimensionType.OVERWORLD) }
+                var pregenRadius by remember(server.id) { mutableStateOf(500) }
+
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Pre-generate chunks in a radius around spawn to eliminate exploration lag. Uses Chunky if installed, or native /forceload batches.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant
+                    )
+                    Text("Dimension", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        DimensionType.entries.forEach { d ->
+                            FilterChip(
+                                selected = pregenDim == d,
+                                onClick = { pregenDim = d },
+                                enabled = !pregenState.isRunning,
+                                label = { Text(d.displayName) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = colorScheme.secondaryContainer,
+                                    selectedLabelColor = colorScheme.onSecondaryContainer,
+                                    containerColor = colorScheme.surfaceContainerHigh,
+                                    labelColor = colorScheme.onSurfaceVariant
+                                ),
+                                border = null
+                            )
+                        }
+                    }
+                    Text("Radius", style = MaterialTheme.typography.labelMedium, color = colorScheme.onSurfaceVariant)
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf(250, 500, 1000, 2000).forEach { r ->
+                            FilterChip(
+                                selected = pregenRadius == r,
+                                onClick = { pregenRadius = r },
+                                enabled = !pregenState.isRunning,
+                                label = { Text("${r}m") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = colorScheme.secondaryContainer,
+                                    selectedLabelColor = colorScheme.onSecondaryContainer,
+                                    containerColor = colorScheme.surfaceContainerHigh,
+                                    labelColor = colorScheme.onSurfaceVariant
+                                ),
+                                border = null
+                            )
+                        }
+                    }
+                    if (pregenState.isRunning || pregenState.percent > 0) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            LinearProgressIndicator(
+                                progress = { (pregenState.percent / 100f).coerceIn(0f, 1f) },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            Text(
+                                text = "${pregenState.statusMessage} (${pregenState.percent}%)",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        if (pregenState.isRunning) {
+                            FilledTonalButton(
+                                onClick = {
+                                    com.devwithzachary.mineserve.engine.WorldPregenManager.stopPregen(server.id) { cmd ->
+                                        viewModel.processManager.sendCommand(server.id, cmd)
+                                    }
+                                    viewModel.showToast("Stopped chunk pre-generation")
+                                },
+                                shape = ShapeDefaults.Medium,
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = colorScheme.errorContainer,
+                                    contentColor = colorScheme.onErrorContainer
+                                )
+                            ) {
+                                Text("Stop Pre-Gen")
+                            }
+                        } else {
+                            Button(
+                                onClick = {
+                                    val dir = viewModel.serverRepository.getServerDirectory(server.id)
+                                    com.devwithzachary.mineserve.engine.WorldPregenManager.startPregen(
+                                        serverId = server.id,
+                                        serverDir = dir,
+                                        dimension = pregenDim,
+                                        centerX = 0,
+                                        centerZ = 0,
+                                        radiusBlocks = pregenRadius
+                                    ) { cmd -> viewModel.processManager.sendCommand(server.id, cmd) }
+                                    viewModel.showToast("Started ${pregenDim.displayName} pre-gen (${pregenRadius}m)")
+                                },
+                                enabled = isServerRunning,
+                                shape = ShapeDefaults.Medium
+                            ) {
+                                Text(if (isServerRunning) "Start Pre-Gen" else "Start Server First")
+                            }
+                        }
+                    }
+                }
+            }
+
             Column(
                 modifier = Modifier.weight(1.1f),
                 verticalArrangement = Arrangement.spacedBy(16.dp)

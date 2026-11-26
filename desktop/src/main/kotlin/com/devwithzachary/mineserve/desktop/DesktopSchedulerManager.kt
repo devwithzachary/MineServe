@@ -201,15 +201,24 @@ class DesktopSchedulerManager(
                     worldOnly = true,
                     retentionLimit = task.backupRetentionCount
                 )
-                val backupFile = res.getOrNull()
-                if (backupFile != null) {
-                    DiscordWebhookClient.notifyBackupCompleted(server, "World Backup", backupFile.name)
+                val backupEntry = res.getOrNull()
+                if (backupEntry != null) {
+                    DiscordWebhookClient.notifyBackupCompleted(server, "World Backup", backupEntry.fileName)
+                    if (server.cloudBackupConfig.enabled &&
+                        server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV &&
+                        server.cloudBackupConfig.webDavUrl.isNotBlank()
+                    ) {
+                        val backupFile = java.io.File(java.io.File(serverRepository.getServerDirectory(server.id), "backups"), backupEntry.fileName)
+                        if (backupFile.exists()) {
+                            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig)
+                        }
+                    }
                 }
                 if (isRunning) {
                     processManager.sendCommand(server.id, "save-on")
                     processManager.appendSystemMessage(
                         server.id,
-                        "[MineServe Scheduler] Automated world backup completed: ${backupFile?.name ?: "done"}"
+                        "[MineServe Scheduler] Automated world backup completed: ${backupEntry?.fileName ?: "done"}"
                     )
                 }
             }
@@ -224,15 +233,24 @@ class DesktopSchedulerManager(
                     worldOnly = false,
                     retentionLimit = task.backupRetentionCount
                 )
-                val backupFile = res.getOrNull()
-                if (backupFile != null) {
-                    DiscordWebhookClient.notifyBackupCompleted(server, "Full Server Backup", backupFile.name)
+                val backupEntry = res.getOrNull()
+                if (backupEntry != null) {
+                    DiscordWebhookClient.notifyBackupCompleted(server, "Full Server Backup", backupEntry.fileName)
+                    if (server.cloudBackupConfig.enabled &&
+                        server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV &&
+                        server.cloudBackupConfig.webDavUrl.isNotBlank()
+                    ) {
+                        val backupFile = java.io.File(java.io.File(serverRepository.getServerDirectory(server.id), "backups"), backupEntry.fileName)
+                        if (backupFile.exists()) {
+                            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig)
+                        }
+                    }
                 }
                 if (isRunning) {
                     processManager.sendCommand(server.id, "save-on")
                     processManager.appendSystemMessage(
                         server.id,
-                        "[MineServe Scheduler] Automated full backup completed: ${backupFile?.name ?: "done"}"
+                        "[MineServe Scheduler] Automated full backup completed: ${backupEntry?.fileName ?: "done"}"
                     )
                 }
             }

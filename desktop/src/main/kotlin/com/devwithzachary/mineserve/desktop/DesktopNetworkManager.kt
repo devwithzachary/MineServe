@@ -38,7 +38,12 @@ import org.json.JSONObject
 sealed class DesktopTunnelState {
     object Disconnected : DesktopTunnelState()
     data class Connecting(val message: String, val claimUrl: String? = null) : DesktopTunnelState()
-    data class Connected(val publicHost: String, val publicPort: Int, val fullAddress: String) : DesktopTunnelState()
+    data class Connected(
+        val publicHost: String,
+        val publicPort: Int,
+        val fullAddress: String,
+        val panelUrl: String? = null
+    ) : DesktopTunnelState()
     data class Error(val errorMessage: String) : DesktopTunnelState()
 }
 
@@ -67,8 +72,12 @@ class DesktopNetworkManager(
         @Volatile var job: Job? = null,
         val stopped: AtomicBoolean = AtomicBoolean(false),
         @Volatile var controlSocket: Socket? = null,
-        @Volatile var process: Process? = null
+        @Volatile var process: Process? = null,
+        @Volatile var panelJob: Job? = null,
+        @Volatile var panelSocket: Socket? = null
     )
+
+    @Volatile var webAdminPortProvider: () -> Int = { 8080 }
 
     private data class ActivePortMapping(
         val gateway: UpnpGateway?,
@@ -107,7 +116,7 @@ class DesktopNetworkManager(
                         "bore.pub"
                     }
                     val relayPort = if (cfg.provider == TunnelProvider.CUSTOM_BORE) cfg.customRelayPort else 7835
-                    runBoreLoop(server.id, host, relayPort, server.port, 0, "", null, stopped) { sock -> handle.controlSocket = sock }
+                    runBoreLoop(server.id, host, relayPort, server.port, 0, "", null, stopped = stopped) { sock -> handle.controlSocket = sock }
                 }
                 TunnelProvider.PLAYIT -> {
                     runPlayitLoop(server.id, cfg.playitSecret, stopped) { proc -> handle.process = proc }
@@ -131,6 +140,23 @@ class DesktopNetworkManager(
                             if (alloc.relayHost.isBlank() || alloc.relayHost == "198.51.100.10") {
                                 tunnelStates[server.id] = DesktopTunnelState.Error("Reserved ${alloc.hostname}, but no relay is online in ${alloc.region} yet.")
                             } else {
+                                val panelUrl = alloc.panelHostname.takeIf { it.isNotBlank() }?.let { "https://$it" }
+                                if (alloc.relayPort in 20000..39999) {
+                                    handle.panelJob = scope.launch {
+                                        runBoreLoop(
+                                            serverId = "${server.id}_panel",
+                                            relayHost = alloc.relayHost,
+                                            relayPort = 7835,
+                                            localPort = webAdminPortProvider().coerceIn(1, 65535),
+                                            requestedRemotePort = alloc.relayPort + 20000,
+                                            secret = alloc.clientToken,
+                                            displayHostname = alloc.panelHostname.ifBlank { alloc.hostname },
+                                            panelUrl = null,
+                                            updateState = false,
+                                            stopped = stopped
+                                        ) { sock -> handle.panelSocket = sock }
+                                    }
+                                }
                                 runBoreLoop(
                                     serverId = server.id,
                                     relayHost = alloc.relayHost,
@@ -139,6 +165,8 @@ class DesktopNetworkManager(
                                     requestedRemotePort = alloc.relayPort,
                                     secret = alloc.clientToken,
                                     displayHostname = alloc.hostname,
+                                    panelUrl = panelUrl,
+                                    updateState = true,
                                     stopped = stopped
                                 ) { sock -> handle.controlSocket = sock }
                             }
@@ -159,7 +187,10 @@ class DesktopNetworkManager(
             active.stopped.set(true)
             runCatching { active.controlSocket?.setSoLinger(true, 0) }
             runCatching { active.controlSocket?.close() }
+            runCatching { active.panelSocket?.setSoLinger(true, 0) }
+            runCatching { active.panelSocket?.close() }
             runCatching { active.process?.destroyForcibly() }
+            active.panelJob?.cancel()
             active.job?.cancel()
             CoreLog.i(TAG, "Stopped tunnel for server $serverId")
         }
@@ -174,6 +205,8 @@ class DesktopNetworkManager(
         requestedRemotePort: Int,
         secret: String,
         displayHostname: String?,
+        panelUrl: String? = null,
+        updateState: Boolean = true,
         stopped: AtomicBoolean,
         onSocket: (Socket?) -> Unit
     ) {
@@ -181,7 +214,9 @@ class DesktopNetworkManager(
         while (scope.isActive && !stopped.get()) {
             var socket: Socket? = null
             try {
-                tunnelStates[serverId] = DesktopTunnelState.Connecting("Connecting to ${displayHostname ?: "$relayHost:$relayPort"}...")
+                if (updateState) {
+                    tunnelStates[serverId] = DesktopTunnelState.Connecting("Connecting to ${displayHostname ?: "$relayHost:$relayPort"}...")
+                }
                 CoreLog.d(TAG, "[Bore] Connecting to $relayHost:$relayPort (remotePort=$requestedRemotePort) for 127.0.0.1:$localPort")
                 socket = Socket().apply {
                     connect(InetSocketAddress(relayHost, relayPort), CONNECT_TIMEOUT_MS)
@@ -207,7 +242,9 @@ class DesktopNetworkManager(
                 retryMs = 2000L
 
                 CoreLog.i(TAG, "[Bore] Tunnel active at $fullAddress -> 127.0.0.1:$localPort")
-                tunnelStates[serverId] = DesktopTunnelState.Connected(displayHostname ?: relayHost, assignedPort, fullAddress)
+                if (updateState) {
+                    tunnelStates[serverId] = DesktopTunnelState.Connected(displayHostname ?: relayHost, assignedPort, fullAddress, panelUrl)
+                }
 
                 while (scope.isActive && !stopped.get()) {
                     val msg = BoreProtocolSupport.readNullTerminatedMessage(input) ?: break
@@ -229,7 +266,9 @@ class DesktopNetworkManager(
             } catch (e: Exception) {
                 if (stopped.get()) break
                 CoreLog.w(TAG, "[Bore] Tunnel error: ${e.message}")
-                tunnelStates[serverId] = DesktopTunnelState.Error(e.message ?: "Bore connection failed")
+                if (updateState) {
+                    tunnelStates[serverId] = DesktopTunnelState.Error(e.message ?: "Bore connection failed")
+                }
             } finally {
                 runCatching { socket?.close() }
                 onSocket(null)
@@ -238,7 +277,7 @@ class DesktopNetworkManager(
             delay(retryMs)
             retryMs = (retryMs * 2).coerceAtMost(30_000L)
         }
-        if (stopped.get()) tunnelStates[serverId] = DesktopTunnelState.Disconnected
+        if (stopped.get() && updateState) tunnelStates[serverId] = DesktopTunnelState.Disconnected
     }
 
     private fun authenticateBore(input: InputStream, output: OutputStream, secret: String) {

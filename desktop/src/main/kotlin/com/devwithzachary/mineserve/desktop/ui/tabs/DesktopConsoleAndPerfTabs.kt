@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
@@ -66,6 +67,7 @@ import com.devwithzachary.mineserve.designsystem.theme.LocalMineServeMonoFontFam
 import com.devwithzachary.mineserve.desktop.DesktopHostTelemetry
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.QuickFixType
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.util.FileStorageUtils
@@ -86,6 +88,8 @@ fun DesktopConsoleTab(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val refreshTriggers by viewModel.processManager.refreshTriggers.collectAsState()
+    val crashReports by viewModel.processManager.crashReports.collectAsState()
+    val crashReport = crashReports[server.id]
     val trigger = refreshTriggers[server.id] ?: 0L
     val lines = remember(server.id, trigger) {
         viewModel.processManager.getRecentConsoleLines(server.id, 2000)
@@ -109,6 +113,72 @@ fun DesktopConsoleTab(
             MineServeCard(
                 modifier = Modifier.weight(1f).fillMaxHeight()
             ) {
+                if (crashReport != null) {
+                    Surface(
+                        color = colorScheme.errorContainer.copy(alpha = 0.7f),
+                        shape = ShapeDefaults.Medium,
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Crash Diagnosis: ${crashReport.title}",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorScheme.onErrorContainer
+                                )
+                                TextButton(onClick = { viewModel.processManager.dismissCrashReport(server.id) }) {
+                                    Text("Dismiss", color = colorScheme.onErrorContainer)
+                                }
+                            }
+                            Text(
+                                text = crashReport.summary,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onErrorContainer
+                            )
+                            if (crashReport.suggestedFixes.isNotEmpty()) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    crashReport.suggestedFixes.forEach { fix ->
+                                        FilledTonalButton(
+                                            onClick = {
+                                                val dir = viewModel.serverRepository.getServerDirectory(server.id)
+                                                when (fix.actionType) {
+                                                    QuickFixType.ACCEPT_EULA -> {
+                                                        java.io.File(dir, "eula.txt").writeText("eula=true\n")
+                                                        viewModel.serverRepository.updateServer(server.copy(eulaAccepted = true))
+                                                        viewModel.showToast("Accepted EULA in eula.txt")
+                                                    }
+                                                    QuickFixType.CHANGE_JAVA_VERSION -> {
+                                                        val jVer = fix.payload.toIntOrNull() ?: 21
+                                                        viewModel.serverRepository.updateServer(server.copy(javaVersion = jVer))
+                                                        viewModel.showToast("Switched Java runtime to Java $jVer")
+                                                    }
+                                                    QuickFixType.INCREASE_RAM -> {
+                                                        val nextRam = fix.payload.toIntOrNull() ?: (server.allocatedRamMb + 1024)
+                                                        viewModel.serverRepository.updateServer(server.copy(allocatedRamMb = nextRam))
+                                                        viewModel.showToast("Updated RAM allocation to ${nextRam} MB")
+                                                    }
+                                                    else -> viewModel.openServerSettings()
+                                                }
+                                                viewModel.processManager.dismissCrashReport(server.id)
+                                            },
+                                            shape = ShapeDefaults.Small
+                                        ) {
+                                            Text(fix.label)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,

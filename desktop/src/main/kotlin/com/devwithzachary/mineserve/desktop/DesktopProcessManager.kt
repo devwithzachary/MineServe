@@ -1,7 +1,9 @@
 package com.devwithzachary.mineserve.desktop
 
 import com.devwithzachary.mineserve.core.CoreLog
+import com.devwithzachary.mineserve.engine.CrashLogAnalyzer
 import com.devwithzachary.mineserve.engine.StandbyPingManager
+import com.devwithzachary.mineserve.model.CrashDiagnosticReport
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
@@ -73,6 +75,13 @@ class DesktopProcessManager(
 
     private val _refreshTriggers = MutableStateFlow<Map<String, Long>>(emptyMap())
     val refreshTriggers: StateFlow<Map<String, Long>> = _refreshTriggers.asStateFlow()
+
+    private val _crashReports = MutableStateFlow<Map<String, CrashDiagnosticReport?>>(emptyMap())
+    val crashReports: StateFlow<Map<String, CrashDiagnosticReport?>> = _crashReports.asStateFlow()
+
+    fun dismissCrashReport(serverId: String) {
+        _crashReports.update { it - serverId }
+    }
 
     init {
         startMetricsLoop()
@@ -153,6 +162,7 @@ class DesktopProcessManager(
     fun startServer(server: MinecraftServer, autoRestartOnCrash: Boolean = true) {
         StandbyPingManager.instance.stopStandby(server.id)
         if (isServerRunning(server.id) || sessions.containsKey(server.id)) return
+        _crashReports.update { it - server.id }
         val session = RunningSession(server = server)
         sessions[server.id] = session
         updateStatus(server.id, ServerStatus.STARTING)
@@ -280,6 +290,12 @@ class DesktopProcessManager(
                     }
                 } else {
                     DiscordWebhookClient.notifyServerCrash(latest, "Exit code $exitCode")
+                    val diagReport = CrashLogAnalyzer.analyzeServer(serverDir)
+                        ?: CrashLogAnalyzer.parseLogContent(getRecentConsoleLines(server.id, 200).joinToString("\n"))
+                    if (diagReport != null) {
+                        _crashReports.update { it + (server.id to diagReport) }
+                        appendConsoleLine(server.id, "[MineServe Crash Analyzer] ${diagReport.title}: ${diagReport.summary}")
+                    }
                     updateStatus(server.id, ServerStatus.ERROR)
                     if (autoRestartOnCrash && canAutoRestartAfterCrash(server.id)) {
                         appendConsoleLine(server.id, "[MineServe Watchdog] Unexpected exit ($exitCode). Auto-restarting in 5 seconds...")

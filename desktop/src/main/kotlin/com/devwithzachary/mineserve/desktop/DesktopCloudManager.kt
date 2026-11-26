@@ -19,7 +19,8 @@ data class DesktopCloudTunnelAllocation(
     val relayHost: String,
     val relayPort: Int,
     val region: String,
-    val clientToken: String
+    val clientToken: String,
+    val panelHostname: String = ""
 )
 
 class DesktopCloudManager(
@@ -224,14 +225,16 @@ class DesktopCloudManager(
                 }
                 val j = JSONObject(body)
                 refreshProfile()
+                val hostname = j.optString("hostname", "$cleanSub.$domain")
                 Result.success(
                     DesktopCloudTunnelAllocation(
                         tunnelId = j.optString("tunnelId", ""),
-                        hostname = j.optString("hostname", "$cleanSub.$domain"),
+                        hostname = hostname,
                         relayHost = j.optString("relayHost", ""),
                         relayPort = j.optInt("relayPort", 0),
                         region = j.optString("region", region),
-                        clientToken = j.optString("clientToken", "")
+                        clientToken = j.optString("clientToken", ""),
+                        panelHostname = j.optString("panelHostname", "").ifBlank { hostname.replace(".play.", ".panel.") }
                     )
                 )
             }

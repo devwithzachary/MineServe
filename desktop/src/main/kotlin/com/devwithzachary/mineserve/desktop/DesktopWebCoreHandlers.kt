@@ -807,6 +807,17 @@ internal class DesktopWebCoreHandlers(
                             if (worldOnly) "World Backup" else "Full Server Backup",
                             b.fileName
                         )
+                        if (server.cloudBackupConfig.enabled &&
+                            server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV &&
+                            server.cloudBackupConfig.webDavUrl.isNotBlank()
+                        ) {
+                            val backupFile = File(File(serverRepository.getServerDirectory(server.id), "backups"), b.fileName)
+                            if (backupFile.exists()) {
+                                scopeProvider()?.launch {
+                                    com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig)
+                                }
+                            }
+                        }
                         sendJson(out, 200, "OK", JSONObject().put("success", true).put("fileName", b.fileName))
                     },
                     onFailure = { err ->

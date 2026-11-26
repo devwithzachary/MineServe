@@ -555,6 +555,7 @@ fun DesktopBackupsTab(
     var webDavUrl by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavUrl) }
     var webDavUser by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavUsername) }
     var webDavPass by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavPassword) }
+    var webDavRemotePath by remember(server.id) { mutableStateOf(server.cloudBackupConfig.webDavRemotePath) }
 
     LaunchedEffect(server.id) {
         viewModel.refreshCloudBackups()
@@ -910,8 +911,57 @@ fun DesktopBackupsTab(
                                 modifier = Modifier.weight(1f)
                             )
                         }
+                        OutlinedTextField(
+                            value = webDavRemotePath,
+                            onValueChange = { webDavRemotePath = it },
+                            label = { Text("Remote Folder Path") },
+                            placeholder = { Text("/MineServe/Backups") },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                    ) {
+                        if (cloudProvider == CloudProviderType.WEBDAV) {
+                            FilledTonalButton(
+                                onClick = {
+                                    viewModel.testWebDavConnection(
+                                        server.cloudBackupConfig.copy(
+                                            enabled = cloudSyncEnabled,
+                                            provider = cloudProvider,
+                                            webDavUrl = webDavUrl.trim(),
+                                            webDavUsername = webDavUser.trim(),
+                                            webDavPassword = webDavPass,
+                                            webDavRemotePath = webDavRemotePath.trim().ifBlank { "/MineServe/Backups" }
+                                        )
+                                    )
+                                },
+                                shape = ShapeDefaults.Medium
+                            ) {
+                                Text("Test Connection")
+                            }
+                            FilledTonalButton(
+                                onClick = {
+                                    val updated = server.cloudBackupConfig.copy(
+                                        enabled = cloudSyncEnabled,
+                                        provider = cloudProvider,
+                                        webDavUrl = webDavUrl.trim(),
+                                        webDavUsername = webDavUser.trim(),
+                                        webDavPassword = webDavPass,
+                                        webDavRemotePath = webDavRemotePath.trim().ifBlank { "/MineServe/Backups" }
+                                    )
+                                    val nextSrv = server.copy(cloudBackupConfig = updated)
+                                    viewModel.serverRepository.updateServer(nextSrv)
+                                    viewModel.uploadLatestBackupToWebDav(nextSrv)
+                                },
+                                shape = ShapeDefaults.Medium
+                            ) {
+                                Text("Sync Latest")
+                            }
+                        }
                         Button(
                             onClick = {
                                 val next = server.cloudBackupConfig.copy(
@@ -919,7 +969,8 @@ fun DesktopBackupsTab(
                                     provider = cloudProvider,
                                     webDavUrl = webDavUrl.trim(),
                                     webDavUsername = webDavUser.trim(),
-                                    webDavPassword = webDavPass
+                                    webDavPassword = webDavPass,
+                                    webDavRemotePath = webDavRemotePath.trim().ifBlank { "/MineServe/Backups" }
                                 )
                                 viewModel.serverRepository.updateServer(server.copy(cloudBackupConfig = next))
                                 viewModel.showToast("Saved cloud backup sync settings")

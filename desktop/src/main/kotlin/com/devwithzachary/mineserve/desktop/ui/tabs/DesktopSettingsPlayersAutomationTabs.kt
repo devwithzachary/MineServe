@@ -36,6 +36,8 @@ import androidx.compose.material.icons.rounded.SystemUpdateAlt
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -43,6 +45,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ShapeDefaults
 import androidx.compose.material3.Slider
@@ -79,11 +82,13 @@ import com.devwithzachary.mineserve.desktop.DesktopTunnelState
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.MinecraftServer
+import com.devwithzachary.mineserve.model.ProxyRoute
 import com.devwithzachary.mineserve.model.ScheduleFrequency
 import com.devwithzachary.mineserve.model.ScheduledTask
 import com.devwithzachary.mineserve.model.ScheduledTaskType
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerPlayerLists
+import com.devwithzachary.mineserve.model.ServerType
 import com.devwithzachary.mineserve.model.TunnelProvider
 import com.devwithzachary.mineserve.model.determineJavaVersion
 import kotlinx.coroutines.launch
@@ -660,12 +665,141 @@ fun DesktopSettingsTab(
                     mutableStateOf(viewModel.serverRepository.loadServerProperties(server.id).serverIp.trim() == "127.0.0.1")
                 }
                 if (server.type.isProxy) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Configure backend server routes in velocity.toml / config.yml via the Files tab or Web Admin UI.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = colorScheme.onSurfaceVariant
-                        )
+                    val allServers by viewModel.serverRepository.servers.collectAsState()
+                    val candidates = remember(allServers, server.id) {
+                        allServers.filter { it.id != server.id && !it.type.isProxy }
+                    }
+                    var proxyOnlineMode by remember(server.id, server.proxyConfig) { mutableStateOf(server.proxyConfig.onlineMode) }
+                    var routes by remember(server.id, server.proxyConfig) { mutableStateOf(server.proxyConfig.routes) }
+                    var selectedBackendId by remember(candidates) { mutableStateOf(candidates.firstOrNull()?.id.orEmpty()) }
+                    var aliasInput by remember(server.id) { mutableStateOf("") }
+                    var backendMenuOpen by remember { mutableStateOf(false) }
+
+                    MineServePreferenceRow(
+                        title = "Proxy Online Mode",
+                        subtitle = "Authenticate connecting players with Mojang on the proxy",
+                        checked = proxyOnlineMode,
+                        onCheckedChange = { proxyOnlineMode = it }
+                    )
+                    HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        if (routes.isEmpty()) {
+                            Text(
+                                text = "No backend servers linked yet. Add a backend server below.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            routes.forEachIndexed { idx, r ->
+                                val target = candidates.firstOrNull { it.id == r.targetServerId }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = r.alias,
+                                            style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = colorScheme.onSurface
+                                        )
+                                        Text(
+                                            text = "${target?.name ?: r.targetServerId} -> ${r.host}:${target?.port ?: r.port}",
+                                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = monoFont),
+                                            color = colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    IconButton(onClick = { routes = routes.toMutableList().also { it.removeAt(idx) } }) {
+                                        Icon(Icons.Rounded.Delete, contentDescription = "Remove route", tint = colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+
+                        if (candidates.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(modifier = Modifier.weight(1f)) {
+                                    val chosen = candidates.firstOrNull { it.id == selectedBackendId } ?: candidates.first()
+                                    OutlinedButton(
+                                        onClick = { backendMenuOpen = true },
+                                        shape = ShapeDefaults.Small,
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("${chosen.name} (:${chosen.port})", maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                    DropdownMenu(expanded = backendMenuOpen, onDismissRequest = { backendMenuOpen = false }) {
+                                        candidates.forEach { b ->
+                                            DropdownMenuItem(
+                                                text = { Text("${b.name} (${b.type.displayName} :${b.port})") },
+                                                onClick = {
+                                                    selectedBackendId = b.id
+                                                    if (aliasInput.isBlank()) {
+                                                        aliasInput = com.devwithzachary.mineserve.desktop.DesktopProxyConfigWriter.sanitizeProxyAlias(b.name)
+                                                    }
+                                                    backendMenuOpen = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                OutlinedTextField(
+                                    value = aliasInput,
+                                    onValueChange = { aliasInput = it },
+                                    label = { Text("Alias") },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                                    modifier = Modifier.width(120.dp)
+                                )
+                                FilledTonalButton(
+                                    onClick = {
+                                        val chosen = candidates.firstOrNull { it.id == selectedBackendId } ?: return@FilledTonalButton
+                                        val cleanAlias = com.devwithzachary.mineserve.desktop.DesktopProxyConfigWriter.sanitizeProxyAlias(
+                                            aliasInput.ifBlank { chosen.name }
+                                        )
+                                        routes = routes.filterNot { it.targetServerId == chosen.id || it.alias == cleanAlias } +
+                                            ProxyRoute(
+                                                alias = cleanAlias,
+                                                targetServerId = chosen.id,
+                                                host = "127.0.0.1",
+                                                port = chosen.port
+                                            )
+                                        aliasInput = ""
+                                    },
+                                    shape = ShapeDefaults.Small
+                                ) {
+                                    Text("+ Add")
+                                }
+                            }
+                        }
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                            Button(
+                                onClick = {
+                                    val nextCfg = server.proxyConfig.copy(
+                                        onlineMode = proxyOnlineMode,
+                                        routes = routes,
+                                        tryOrder = routes.map { it.alias }
+                                    )
+                                    com.devwithzachary.mineserve.desktop.DesktopProxyConfigWriter.saveAndApplyProxyConfig(
+                                        proxyServer = server,
+                                        cfg = nextCfg,
+                                        serverRepository = viewModel.serverRepository
+                                    )
+                                    viewModel.showToast("Generated ${if (server.type == ServerType.VELOCITY) "velocity.toml" else "config.yml"} & bound backends to 127.0.0.1")
+                                },
+                                shape = ShapeDefaults.Medium
+                            ) {
+                                Text("Save & Generate Config")
+                            }
+                        }
                     }
                 } else {
                     MineServePreferenceRow(

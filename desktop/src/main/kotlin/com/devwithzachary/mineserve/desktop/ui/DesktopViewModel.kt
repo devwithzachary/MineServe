@@ -617,10 +617,55 @@ class DesktopViewModel(
                             if (worldOnly) "World Backup" else "Full Server Backup",
                             b.fileName
                         )
+                        val backupFile = File(File(serverRepository.getServerDirectory(sid), "backups"), b.fileName)
+                        if (backupFile.exists()) maybeAutoUploadWebDav(srv, backupFile)
                     }
                     showToast("Backup created: ${b.fileName}")
                 },
                 onFailure = { err -> showToast("Backup failed: ${err.message}") }
+            )
+        }
+    }
+
+    fun testWebDavConnection(config: com.devwithzachary.mineserve.backup.cloud.CloudBackupConfig) {
+        scope.launch {
+            showToast("Testing WebDAV connection...")
+            com.devwithzachary.mineserve.backup.cloud.WebDavClient().testConnection(config).fold(
+                onSuccess = { msg -> showToast(msg) },
+                onFailure = { err -> showToast("WebDAV failed: ${err.message}") }
+            )
+        }
+    }
+
+    fun uploadLatestBackupToWebDav(server: MinecraftServer) {
+        val latest = serverRepository.listBackups(server.id).firstOrNull()
+        if (latest == null) {
+            showToast("Create a local backup first.")
+            return
+        }
+        val backupFile = File(File(serverRepository.getServerDirectory(server.id), "backups"), latest.fileName)
+        if (!backupFile.exists()) {
+            showToast("Backup file not found on disk.")
+            return
+        }
+        scope.launch {
+            showToast("Uploading ${latest.fileName} to WebDAV...")
+            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig).fold(
+                onSuccess = { msg -> showToast(msg) },
+                onFailure = { err -> showToast("WebDAV upload failed: ${err.message}") }
+            )
+        }
+    }
+
+    private fun maybeAutoUploadWebDav(server: MinecraftServer, file: File) {
+        val cfg = server.cloudBackupConfig
+        if (!cfg.enabled || cfg.provider != com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV || cfg.webDavUrl.isBlank()) {
+            return
+        }
+        scope.launch {
+            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(file, cfg).fold(
+                onSuccess = { showToast("Synced ${file.name} to WebDAV") },
+                onFailure = { err -> showToast("WebDAV sync failed: ${err.message}") }
             )
         }
     }

@@ -473,4 +473,61 @@ class DesktopEngineTest {
             tempRoot.deleteRecursively()
         }
     }
+
+    @Test
+    fun `CrashLogAnalyzer, WorldPregenManager, and DesktopProxyConfigWriter work across desktop`() {
+        // 1. CrashLogAnalyzer
+        val javaReport = com.devwithzachary.mineserve.engine.CrashLogAnalyzer.parseLogContent(
+            "java.lang.UnsupportedClassVersionError: net/minecraft/server/Main has been compiled by a more recent version of the Java Runtime (class file version 65.0), this version of the Java Runtime only recognizes class file versions up to 61.0"
+        )
+        assertNotNull(javaReport)
+        assertEquals(com.devwithzachary.mineserve.model.CrashIssueType.INCOMPATIBLE_JAVA_VERSION, javaReport!!.issueType)
+
+        val eulaReport = com.devwithzachary.mineserve.engine.CrashLogAnalyzer.parseLogContent("You need to agree to the EULA in order to run the server.")
+        assertNotNull(eulaReport)
+        assertEquals(com.devwithzachary.mineserve.model.CrashIssueType.EULA_NOT_ACCEPTED, eulaReport!!.issueType)
+
+        // 2. WorldPregenManager
+        val tempRoot = Files.createTempDirectory("mineserve_phase2_test").toFile()
+        try {
+            val paths = DesktopDataPaths(tempRoot)
+            val repo = DesktopServerRepository(paths)
+            val proxy = repo.createServer("VelocityProxy", ServerType.VELOCITY, "3.4.0", 25577, 1024, "Proxy")
+            val lobby = repo.createServer("Lobby", ServerType.PAPER, "1.21.4", 25566, 2048, "Lobby")
+
+            val lobbyDir = repo.getServerDirectory(lobby.id)
+            val pluginsDir = File(lobbyDir, "plugins").apply { mkdirs() }
+            File(pluginsDir, "Chunky-1.4.0.jar").writeText("stub")
+            assertTrue(com.devwithzachary.mineserve.engine.WorldPregenManager.hasChunkyInstalled(lobbyDir))
+
+            val cmds = mutableListOf<String>()
+            com.devwithzachary.mineserve.engine.WorldPregenManager.startPregen(
+                serverId = lobby.id,
+                serverDir = lobbyDir,
+                dimension = com.devwithzachary.mineserve.model.DimensionType.OVERWORLD,
+                centerX = 0,
+                centerZ = 0,
+                radiusBlocks = 500
+            ) { cmds.add(it) }
+            assertTrue(com.devwithzachary.mineserve.engine.WorldPregenManager.getState(lobby.id).isRunning)
+            assertTrue(cmds.any { it == "chunky start" })
+            com.devwithzachary.mineserve.engine.WorldPregenManager.stopPregen(lobby.id) { cmds.add(it) }
+            assertFalse(com.devwithzachary.mineserve.engine.WorldPregenManager.getState(lobby.id).isRunning)
+
+            // 3. DesktopProxyConfigWriter
+            val cfg = com.devwithzachary.mineserve.model.ProxyServerConfig(
+                onlineMode = true,
+                routes = listOf(com.devwithzachary.mineserve.model.ProxyRoute("lobby", lobby.id, "127.0.0.1", lobby.port))
+            )
+            DesktopProxyConfigWriter.saveAndApplyProxyConfig(proxy, cfg, repo)
+            val proxyDir = repo.getServerDirectory(proxy.id)
+            assertTrue(File(proxyDir, "velocity.toml").exists())
+            assertTrue(File(proxyDir, "forwarding.secret").exists())
+            val lobbyProps = repo.loadServerProperties(lobby.id)
+            assertEquals("127.0.0.1", lobbyProps.serverIp)
+            assertFalse(lobbyProps.onlineMode)
+        } finally {
+            tempRoot.deleteRecursively()
+        }
+    }
 }

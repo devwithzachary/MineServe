@@ -172,6 +172,18 @@ class DesktopServerSoftwareManager(
             onProgress("Downloading ${server.type.displayName} ($pct%)...", 25 + (pct * 65 / 100))
         }
 
+        if (server.type == ServerType.BEDROCK_GEYSER) {
+            onProgress("Bundling GeyserMC for Bedrock cross-play...", 92)
+            runCatching {
+                val geyserUrl = "https://download.geysermc.org/v2/projects/geyser/versions/latest/builds/latest/downloads/spigot"
+                val pluginsDir = File(serverDir, "plugins").apply { mkdirs() }
+                val geyserDest = File(pluginsDir, "Geyser-Spigot.jar")
+                downloadFile(geyserUrl, geyserDest) {}
+            }.onFailure { err ->
+                CoreLog.w(TAG, "Failed bundling Geyser-Spigot.jar: ${err.message}")
+            }
+        }
+
         if (server.type == ServerType.FORGE || server.type == ServerType.NEOFORGE) {
             onProgress("Ensuring Java ${server.javaVersion} is installed...", 90)
             val javaBin = javaManager.installJava(server.javaVersion) { msg ->
