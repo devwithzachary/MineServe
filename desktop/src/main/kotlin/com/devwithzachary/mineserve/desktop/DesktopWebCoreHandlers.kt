@@ -802,6 +802,11 @@ internal class DesktopWebCoreHandlers(
                 serverRepository.createBackup(server.id, worldOnly).fold(
                     onSuccess = { b ->
                         userRepository.recordAudit(currentUser, "BACKUP_CREATE", server.name, b.fileName, effectiveIp)
+                        com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.notifyBackupCompleted(
+                            server,
+                            if (worldOnly) "World Backup" else "Full Server Backup",
+                            b.fileName
+                        )
                         sendJson(out, 200, "OK", JSONObject().put("success", true).put("fileName", b.fileName))
                     },
                     onFailure = { err ->

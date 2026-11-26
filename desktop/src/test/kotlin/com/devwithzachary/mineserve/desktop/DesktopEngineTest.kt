@@ -409,4 +409,68 @@ class DesktopEngineTest {
         assertTrue(DesktopHostTelemetry.getProcessCpuPercent(selfPid) >= 0f)
         assertTrue(DesktopHostTelemetry.getProcessRssMb(selfPid) >= 0L)
     }
+
+    @Test
+    fun `CronExpression, DiscordWebhookClient, StandbyPingManager, and DesktopSchedulerManager execute due tasks`() = runBlocking {
+        // 1. CronExpression
+        val cron = com.devwithzachary.mineserve.engine.CronExpression.parse("*/15 * * * *")
+        assertNotNull(cron)
+        val nextCron = cron!!.next(1_700_000_000_000L)
+        assertTrue(nextCron > 1_700_000_000_000L)
+
+        // 2. DiscordWebhookClient
+        assertTrue(com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.isValidWebhookUrl("https://discord.com/api/webhooks/123456/abcdef"))
+        assertFalse(com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.isValidWebhookUrl("https://example.com/hook"))
+        val embed = com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.buildEmbedPayload(
+            title = "Server Online",
+            description = "Test",
+            color = 0x10B981,
+            serverName = "Survival"
+        )
+        assertTrue(embed.contains("Server Online"))
+
+        // 3. DesktopSchedulerManager evaluateTasksOnce runs a due WORLD_BACKUP task
+        val tempRoot = Files.createTempDirectory("mineserve_sched_test").toFile()
+        try {
+            val paths = DesktopDataPaths(tempRoot)
+            val repo = DesktopServerRepository(paths)
+            val javaMgr = PortableJavaManager(paths)
+            val procMgr = DesktopProcessManager(repo, javaMgr)
+            val scheduler = DesktopSchedulerManager(repo, procMgr)
+
+            val created = repo.createServer("SchedTest", ServerType.PAPER, "1.21.4", 25565, 2048, "MOTD")
+            repo.createDirectory(created.id, "", "world")
+            repo.createFile(created.id, "world", "level.dat", "data")
+
+            val now = 1_700_000_000_000L
+            val dueTask = com.devwithzachary.mineserve.model.ScheduledTask(
+                serverId = created.id,
+                name = "Auto World Backup",
+                enabled = true,
+                taskType = com.devwithzachary.mineserve.model.ScheduledTaskType.WORLD_BACKUP,
+                frequency = com.devwithzachary.mineserve.model.ScheduleFrequency.INTERVAL,
+                intervalMinutes = 30,
+                nextRunTimestamp = now - 1000L
+            )
+            val updatedAuto = created.automationConfig.copy(scheduledTasks = listOf(dueTask))
+            repo.updateServer(created.copy(automationConfig = updatedAuto))
+
+            scheduler.evaluateTasksOnce(now)
+            val after = repo.getServer(created.id)!!
+            val ranTask = after.automationConfig.scheduledTasks.single()
+            assertEquals(now, ranTask.lastRunTimestamp)
+            assertEquals(now + 30 * 60_000L, ranTask.nextRunTimestamp)
+            assertEquals(1, repo.listBackups(created.id).size)
+
+            // 4. StandbyPingManager lifecycle on an ephemeral free port
+            val freePort = java.net.ServerSocket(0).use { it.localPort }
+            val standbySrv = after.copy(port = freePort)
+            com.devwithzachary.mineserve.engine.StandbyPingManager.instance.startStandby(standbySrv) {}
+            assertTrue(com.devwithzachary.mineserve.engine.StandbyPingManager.instance.isStandbyActive(standbySrv.id))
+            com.devwithzachary.mineserve.engine.StandbyPingManager.instance.stopStandby(standbySrv.id)
+            assertFalse(com.devwithzachary.mineserve.engine.StandbyPingManager.instance.isStandbyActive(standbySrv.id))
+        } finally {
+            tempRoot.deleteRecursively()
+        }
+    }
 }

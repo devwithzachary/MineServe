@@ -1,25 +1,28 @@
 package com.devwithzachary.mineserve.net.discord
 
-import android.util.Log
+import com.devwithzachary.mineserve.core.CoreLog as Log
 import com.devwithzachary.mineserve.model.DiscordWebhookConfig
 import com.devwithzachary.mineserve.model.MinecraftServer
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONArray
-import org.json.JSONObject
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.addJsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
+import kotlinx.serialization.json.putJsonObject
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Pure-OkHttp Discord Webhook event bridge for server lifecycle, player, and backup events.
@@ -168,7 +171,7 @@ object DiscordWebhookClient {
             val request = Request.Builder()
                 .url(webhookUrl)
                 .post(body)
-                .header("User-Agent", "MineServe-Webhook/1.6.0")
+                .header("User-Agent", "MineServe-Webhook/1.9.0")
                 .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
@@ -179,7 +182,7 @@ object DiscordWebhookClient {
         }
     }
 
-    private fun buildEmbedPayload(
+    fun buildEmbedPayload(
         title: String,
         description: String,
         color: Int,
@@ -187,33 +190,37 @@ object DiscordWebhookClient {
         thumbnailUrl: String? = null,
         fields: List<Pair<String, String>> = emptyList()
     ): String {
-        val embed = JSONObject()
-            .put("title", title)
-            .put("description", description)
-            .put("color", color)
-            .put("timestamp", isoUtcNow())
-            .put("footer", JSONObject().put("text", "MineServe | $serverName"))
-
-        if (!thumbnailUrl.isNullOrBlank()) {
-            embed.put("thumbnail", JSONObject().put("url", thumbnailUrl))
-        }
-        if (fields.isNotEmpty()) {
-            val fieldsArr = JSONArray()
-            for ((name, value) in fields) {
-                fieldsArr.put(
-                    JSONObject()
-                        .put("name", name)
-                        .put("value", value)
-                        .put("inline", true)
-                )
+        val root = buildJsonObject {
+            put("username", "MineServe")
+            putJsonArray("embeds") {
+                addJsonObject {
+                    put("title", title)
+                    put("description", description)
+                    put("color", color)
+                    put("timestamp", isoUtcNow())
+                    putJsonObject("footer") {
+                        put("text", "MineServe | $serverName")
+                    }
+                    if (!thumbnailUrl.isNullOrBlank()) {
+                        putJsonObject("thumbnail") {
+                            put("url", thumbnailUrl)
+                        }
+                    }
+                    if (fields.isNotEmpty()) {
+                        putJsonArray("fields") {
+                            for ((name, value) in fields) {
+                                addJsonObject {
+                                    put("name", name)
+                                    put("value", value)
+                                    put("inline", true)
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            embed.put("fields", fieldsArr)
         }
-
-        return JSONObject()
-            .put("username", "MineServe")
-            .put("embeds", JSONArray().put(embed))
-            .toString()
+        return root.toString()
     }
 
     private fun isoUtcNow(): String {
@@ -222,4 +229,3 @@ object DiscordWebhookClient {
         return sdf.format(Date())
     }
 }
-

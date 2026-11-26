@@ -1,10 +1,12 @@
 package com.devwithzachary.mineserve.desktop
 
 import com.devwithzachary.mineserve.core.CoreLog
+import com.devwithzachary.mineserve.engine.StandbyPingManager
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerMetrics
 import com.devwithzachary.mineserve.model.ServerStatus
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.net.discord.DiscordWebhookClient
 import com.devwithzachary.mineserve.util.ServerModFilter
 import java.io.BufferedReader
 import java.io.File
@@ -25,6 +27,7 @@ import kotlinx.coroutines.launch
 class DesktopProcessManager(
     private val serverRepository: DesktopServerRepository,
     private val javaManager: PortableJavaManager,
+    private val networkManager: DesktopNetworkManager? = null,
     private val verbose: Boolean = false,
     private val hasActiveTunnel: (String) -> Boolean = { false }
 ) {
@@ -45,6 +48,8 @@ class DesktopProcessManager(
         var pid: Long = -1L,
         val startTimeMillis: Long = System.currentTimeMillis(),
         @Volatile var stopRequested: Boolean = false,
+        @Volatile var isAutoSleeping: Boolean = false,
+        @Volatile var idleStartTimeMillis: Long? = System.currentTimeMillis(),
         val onlinePlayers: MutableSet<String> = ConcurrentHashMap.newKeySet(),
         var currentTps: Double = 20.0,
         var currentMspt: Double = 15.0,
@@ -84,7 +89,42 @@ class DesktopProcessManager(
         val st = getServerStatus(serverId)
         val session = sessions[serverId]
         val alive = session?.process?.isAlive == true
-        return (st == ServerStatus.STOPPED || st == ServerStatus.ERROR) && !alive && !sessions.containsKey(serverId)
+        return (st == ServerStatus.STOPPED || st == ServerStatus.STANDBY || st == ServerStatus.ERROR) &&
+            !alive &&
+            !sessions.containsKey(serverId)
+    }
+
+    fun isServerInStandby(serverId: String): Boolean {
+        return getServerStatus(serverId) == ServerStatus.STANDBY || StandbyPingManager.instance.isStandbyActive(serverId)
+    }
+
+    fun enterStandby(server: MinecraftServer) {
+        if (isServerRunning(server.id)) return
+        updateStatus(server.id, ServerStatus.STANDBY)
+        StandbyPingManager.instance.startStandby(
+            server = server,
+            onBindFailed = { failedServer, e ->
+                CoreLog.e(TAG, "Standby listener failed to bind for ${failedServer.name}: ${e.message}")
+                updateStatus(failedServer.id, ServerStatus.ERROR)
+            },
+            onWake = { wokeServer ->
+                CoreLog.i(TAG, "Standby ping woke server ${wokeServer.name} (${wokeServer.id})")
+                updateStatus(wokeServer.id, ServerStatus.STARTING)
+                val latest = serverRepository.getServer(wokeServer.id) ?: wokeServer
+                startServer(latest)
+            }
+        )
+    }
+
+    fun exitStandby(serverId: String) {
+        StandbyPingManager.instance.stopStandby(serverId)
+        if (getServerStatus(serverId) == ServerStatus.STANDBY) {
+            updateStatus(serverId, ServerStatus.STOPPED)
+        }
+    }
+
+    fun appendSystemMessage(serverId: String, line: String) {
+        appendConsoleLine(serverId, line)
     }
 
     fun getRecentConsoleLines(serverId: String, limit: Int = 2000): List<String> {
@@ -111,6 +151,7 @@ class DesktopProcessManager(
     }
 
     fun startServer(server: MinecraftServer, autoRestartOnCrash: Boolean = true) {
+        StandbyPingManager.instance.stopStandby(server.id)
         if (isServerRunning(server.id) || sessions.containsKey(server.id)) return
         val session = RunningSession(server = server)
         sessions[server.id] = session
@@ -171,6 +212,23 @@ class DesktopProcessManager(
                         appendConsoleLine(server.id, current)
                         if (getServerStatus(server.id) == ServerStatus.STARTING && DONE_REGEX.containsMatchIn(current)) {
                             updateStatus(server.id, ServerStatus.RUNNING)
+                            val latest = serverRepository.getServer(server.id) ?: server
+                            session.idleStartTimeMillis = System.currentTimeMillis()
+                            DiscordWebhookClient.notifyServerStart(latest)
+                            if (latest.tunnelConfig.autoStart &&
+                                networkManager != null &&
+                                networkManager.getTunnelState(server.id) is DesktopTunnelState.Disconnected
+                            ) {
+                                appendConsoleLine(server.id, "[MineServe Network] Auto-starting ${latest.tunnelConfig.provider.displayName} tunnel...")
+                                networkManager.startTunnel(latest)
+                            }
+                            if (latest.portForwardConfig.autoForward &&
+                                networkManager != null &&
+                                networkManager.getPortForwardState(server.id) is DesktopPortForwardState.Idle
+                            ) {
+                                appendConsoleLine(server.id, "[MineServe Network] Auto-forwarding port ${latest.port} via UPnP/NAT-PMP...")
+                                networkManager.startPortForward(latest)
+                            }
                             if (!hasActiveTunnel(server.id)) {
                                 val fw = DesktopFirewallChecker.checkInboundPort(server.port, isUdp = server.type == ServerType.BEDROCK_BDS)
                                 if (fw.isActive && !fw.isPortConfirmedOpen && !fw.warningMessage.isNullOrBlank()) {
@@ -179,8 +237,20 @@ class DesktopProcessManager(
                                 }
                             }
                         }
-                        JOIN_REGEX.find(current)?.groupValues?.getOrNull(1)?.let { session.onlinePlayers.add(it) }
-                        LEAVE_REGEX.find(current)?.groupValues?.getOrNull(1)?.let { session.onlinePlayers.remove(it) }
+                        JOIN_REGEX.find(current)?.groupValues?.getOrNull(1)?.let { player ->
+                            session.onlinePlayers.add(player)
+                            session.idleStartTimeMillis = null
+                            val latest = serverRepository.getServer(server.id) ?: server
+                            DiscordWebhookClient.notifyPlayerJoin(latest, player, session.onlinePlayers.size)
+                        }
+                        LEAVE_REGEX.find(current)?.groupValues?.getOrNull(1)?.let { player ->
+                            session.onlinePlayers.remove(player)
+                            if (session.onlinePlayers.isEmpty()) {
+                                session.idleStartTimeMillis = System.currentTimeMillis()
+                            }
+                            val latest = serverRepository.getServer(server.id) ?: server
+                            DiscordWebhookClient.notifyPlayerLeave(latest, player, session.onlinePlayers.size)
+                        }
                         if (current.contains("Can't keep up!", ignoreCase = true)) {
                             session.totalLagWarnings++
                             session.lastLagWarningTime = System.currentTimeMillis()
@@ -192,17 +262,30 @@ class DesktopProcessManager(
                 val exitCode = proc.waitFor()
                 appendConsoleLine(server.id, "[MineServe ${DesktopPlatform.shortName}] Server process exited with code $exitCode.")
                 val wasRequested = session.stopRequested
+                val wasAutoSleeping = session.isAutoSleeping
+                val isRestarting = restartingServers.contains(server.id)
+                val latest = serverRepository.getServer(server.id) ?: server
                 sessions.remove(server.id, session)
 
                 if (wasRequested || exitCode == 0) {
-                    updateStatus(server.id, ServerStatus.STOPPED)
+                    DiscordWebhookClient.notifyServerStop(latest)
+                    if (!isRestarting && (wasAutoSleeping || latest.automationConfig.autoWakeOnPing)) {
+                        enterStandby(latest)
+                    } else {
+                        updateStatus(server.id, ServerStatus.STOPPED)
+                        if (!isRestarting) {
+                            if (latest.tunnelConfig.autoStart) networkManager?.stopTunnel(server.id)
+                            if (latest.portForwardConfig.autoForward) networkManager?.releasePortForward(server.id)
+                        }
+                    }
                 } else {
+                    DiscordWebhookClient.notifyServerCrash(latest, "Exit code $exitCode")
                     updateStatus(server.id, ServerStatus.ERROR)
                     if (autoRestartOnCrash && canAutoRestartAfterCrash(server.id)) {
                         appendConsoleLine(server.id, "[MineServe Watchdog] Unexpected exit ($exitCode). Auto-restarting in 5 seconds...")
                         delay(5000)
-                        val latest = serverRepository.getServer(server.id) ?: server
-                        startServer(latest, autoRestartOnCrash = true)
+                        val latestForRestart = serverRepository.getServer(server.id) ?: server
+                        startServer(latestForRestart, autoRestartOnCrash = true)
                     } else if (autoRestartOnCrash) {
                         appendConsoleLine(server.id, "[MineServe Watchdog] Crash loop detected ($MAX_CRASH_RESTARTS crashes in 5m). Auto-restart paused.")
                     }
@@ -271,6 +354,10 @@ class DesktopProcessManager(
     }
 
     fun stopServer(serverId: String) {
+        if (isServerInStandby(serverId)) {
+            exitStandby(serverId)
+            return
+        }
         val session = sessions[serverId] ?: return
         session.stopRequested = true
         updateStatus(serverId, ServerStatus.STOPPING)
@@ -320,12 +407,14 @@ class DesktopProcessManager(
     }
 
     fun stopAllServers() {
+        StandbyPingManager.instance.stopAll()
         for (id in sessions.keys.toList()) {
             stopServer(id)
         }
     }
 
     fun stopAllServersBlocking(timeoutMs: Long = 25_000L) {
+        StandbyPingManager.instance.stopAll()
         val liveEntries = sessions.entries.map { it.key to it.value }
         if (liveEntries.isEmpty()) return
 
@@ -365,6 +454,27 @@ class DesktopProcessManager(
                     if (session.process?.isAlive == true) {
                         val ramUsed = DesktopHostTelemetry.getProcessRssMb(session.pid)
                         val cpuPct = DesktopHostTelemetry.getProcessCpuPercent(session.pid)
+                        val latestServer = serverRepository.getServer(id) ?: session.server
+
+                        // Idle Auto-Sleep check
+                        if (getServerStatus(id) == ServerStatus.RUNNING &&
+                            latestServer.automationConfig.idleSleepEnabled &&
+                            session.onlinePlayers.isEmpty()
+                        ) {
+                            val idleStart = session.idleStartTimeMillis ?: now.also { session.idleStartTimeMillis = it }
+                            val timeoutMin = latestServer.automationConfig.idleSleepTimeoutMinutes.coerceAtLeast(1)
+                            val timeoutMs = timeoutMin * 60_000L
+                            if (now - idleStart >= timeoutMs && !session.isAutoSleeping) {
+                                session.isAutoSleeping = true
+                                appendConsoleLine(
+                                    id,
+                                    "[MineServe Auto-Sleep] 0 players connected for ${timeoutMin}m. Stopping server and entering standby..."
+                                )
+                                stopServer(id)
+                            }
+                        } else if (session.onlinePlayers.isNotEmpty()) {
+                            session.idleStartTimeMillis = null
+                        }
                         val isRecentLag = (now - session.lastLagWarningTime) < 30_000L
                         if (isRecentLag) {
                             val targetTps = if (cpuPct > 85f) (20.0 - (cpuPct - 85f) * 0.15).coerceIn(14.0, 20.0) else 20.0

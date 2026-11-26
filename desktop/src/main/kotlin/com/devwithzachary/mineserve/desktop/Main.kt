@@ -232,14 +232,25 @@ fun main(args: Array<String>) {
     val processManager = DesktopProcessManager(
         serverRepository = serverRepository,
         javaManager = javaManager,
+        networkManager = networkManager,
         verbose = options.verbose,
         hasActiveTunnel = { serverId -> networkManager.getTunnelState(serverId) is DesktopTunnelState.Connected }
     )
+    val schedulerManager = DesktopSchedulerManager(
+        serverRepository = serverRepository,
+        processManager = processManager
+    )
+    schedulerManager.start()
 
-    // Auto-start any servers configured with autoStart = true
-    serverRepository.servers.value.filter { it.autoStart }.forEach { srv ->
-        println("[MineServe] Auto-starting server '${srv.name}' (${srv.type.displayName} ${srv.version})...")
-        processManager.startServer(srv)
+    // Auto-start any servers configured with autoStart = true, or enter standby if autoWakeOnPing = true
+    serverRepository.servers.value.forEach { srv ->
+        if (srv.autoStart) {
+            println("[MineServe] Auto-starting server '${srv.name}' (${srv.type.displayName} ${srv.version})...")
+            processManager.startServer(srv)
+        } else if (srv.automationConfig.autoWakeOnPing) {
+            println("[MineServe] Starting auto-wake standby listener for '${srv.name}' on port ${srv.port}...")
+            processManager.enterStandby(srv)
+        }
     }
 
     val webServer = DesktopWebServer(
@@ -280,6 +291,7 @@ fun main(args: Array<String>) {
     val trayRef = java.util.concurrent.atomic.AtomicReference<DesktopSystemTrayManager?>(null)
     val shutdownHook = Thread {
         println("\n[MineServe] Shutting down gracefully...")
+        schedulerManager.stop()
         trayRef.getAndSet(null)?.stop()
         networkManager.stopAll()
         processManager.stopAllServersBlocking()
@@ -374,6 +386,7 @@ fun main(args: Array<String>) {
                 onOpenWebAdmin = { viewModel.openUrlInBrowser("http://127.0.0.1:${webServer.actualPort}") },
                 onQuitApp = {
                     Thread({
+                        schedulerManager.stop()
                         networkManager.stopAll()
                         processManager.stopAllServersBlocking()
                         webServer.stop()
@@ -397,6 +410,7 @@ fun main(args: Array<String>) {
                     println("[MineServe] Window hidden to system tray ($runningCount server(s) running). Left-click or right-click the tray icon to restore.")
                 } else {
                     Thread({
+                        schedulerManager.stop()
                         networkManager.stopAll()
                         processManager.stopAllServersBlocking()
                         webServer.stop()

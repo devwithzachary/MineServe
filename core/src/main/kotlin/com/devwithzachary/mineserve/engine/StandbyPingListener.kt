@@ -1,6 +1,6 @@
 package com.devwithzachary.mineserve.engine
 
-import android.util.Log
+import com.devwithzachary.mineserve.core.CoreLog as Log
 import com.devwithzachary.mineserve.model.MinecraftServer
 import com.devwithzachary.mineserve.model.ServerType
 import kotlinx.coroutines.CoroutineScope
@@ -56,11 +56,13 @@ class StandbyPingListener(
     fun start() {
         if (!isRunning.compareAndSet(false, true)) return
 
-        scope.launch {
-            startTcpListener()
+        if (server.type != ServerType.BEDROCK_BDS) {
+            scope.launch {
+                startTcpListener()
+            }
         }
 
-        if (server.type == ServerType.BEDROCK_GEYSER) {
+        if (server.type == ServerType.BEDROCK_GEYSER || server.type == ServerType.BEDROCK_BDS) {
             scope.launch {
                 startUdpListener()
             }

@@ -611,6 +611,13 @@ class DesktopViewModel(
             serverRepository.createBackup(sid, worldOnly).fold(
                 onSuccess = { b ->
                     _localBackups.value = serverRepository.listBackups(sid)
+                    serverRepository.getServer(sid)?.let { srv ->
+                        com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.notifyBackupCompleted(
+                            srv,
+                            if (worldOnly) "World Backup" else "Full Server Backup",
+                            b.fileName
+                        )
+                    }
                     showToast("Backup created: ${b.fileName}")
                 },
                 onFailure = { err -> showToast("Backup failed: ${err.message}") }

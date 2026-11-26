@@ -757,25 +757,13 @@ internal class DesktopWebExtendedHandlers(
             }
             sub == "test" && method == "POST" -> {
                 val url = parseJson(body).optString("webhookUrl", cfg.webhookUrl).trim()
-                if (!url.startsWith("https://discord.com/api/webhooks/") && !url.startsWith("https://discordapp.com/api/webhooks/")) {
-                    sendJson(out, 400, "Bad Request", JSONObject().put("error", "Enter a valid Discord Webhook URL."))
-                    return
+                val res = kotlinx.coroutines.runBlocking {
+                    com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.sendTestMessage(url, server.name)
                 }
-                val payload = JSONObject()
-                    .put("username", "MineServe")
-                    .put("content", "MineServe ${DesktopPlatform.shortName} test notification for **${server.name}**.")
-                    .toString()
-                val ok = runCatching {
-                    val req = MineServeHttpClient.newRequestBuilder(url)
-                        .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
-                        .build()
-                    MineServeHttpClient.client.newCall(req).execute().use { it.isSuccessful }
-                }.getOrDefault(false)
-                if (ok) {
-                    sendJson(out, 200, "OK", JSONObject().put("success", true))
-                } else {
-                    sendJson(out, 400, "Bad Request", JSONObject().put("error", "Discord webhook test failed."))
-                }
+                res.fold(
+                    onSuccess = { sendJson(out, 200, "OK", JSONObject().put("success", true)) },
+                    onFailure = { err -> sendJson(out, 400, "Bad Request", JSONObject().put("error", err.message ?: "Discord webhook test failed.")) }
+                )
             }
             else -> sendJson(out, 405, "Method Not Allowed", JSONObject().put("error", "Method not allowed"))
         }

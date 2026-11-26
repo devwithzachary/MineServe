@@ -1412,17 +1412,13 @@ fun DesktopAutomationTab(
                     FilledTonalButton(
                         onClick = {
                             viewModel.scope.launch {
-                                val payload = JSONObject()
-                                    .put("username", "MineServe")
-                                    .put("content", "MineServe ${com.devwithzachary.mineserve.desktop.DesktopPlatform.shortName} test notification for **${server.name}**.")
-                                    .toString()
-                                val ok = runCatching {
-                                    val req = MineServeHttpClient.newRequestBuilder(discordUrl.trim())
-                                        .post(payload.toRequestBody("application/json; charset=utf-8".toMediaType()))
-                                        .build()
-                                    MineServeHttpClient.client.newCall(req).execute().use { it.isSuccessful }
-                                }.getOrDefault(false)
-                                viewModel.showToast(if (ok) "Sent test message to Discord!" else "Discord webhook test failed")
+                                val res = com.devwithzachary.mineserve.net.discord.DiscordWebhookClient.sendTestMessage(discordUrl.trim(), server.name)
+                                viewModel.showToast(
+                                    res.fold(
+                                        onSuccess = { "Sent test message to Discord!" },
+                                        onFailure = { it.message ?: "Discord webhook test failed" }
+                                    )
+                                )
                             }
                         },
                         shape = ShapeDefaults.Medium
