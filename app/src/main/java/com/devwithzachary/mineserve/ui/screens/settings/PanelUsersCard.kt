@@ -1,6 +1,8 @@
 package com.devwithzachary.mineserve.ui.screens.settings
 
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -17,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Group
 import androidx.compose.material.icons.rounded.History
@@ -45,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.devwithzachary.mineserve.auth.AuditLogCsvExporter
 import com.devwithzachary.mineserve.auth.AuditLogEntry
 import com.devwithzachary.mineserve.auth.PanelUser
 import com.devwithzachary.mineserve.auth.UserRole
@@ -80,6 +84,26 @@ fun PanelUsersCard(
     var editingUser by remember { mutableStateOf<PanelUser?>(null) }
     var deletingUser by remember { mutableStateOf<PanelUser?>(null) }
     var showAuditLog by remember { mutableStateOf(false) }
+
+    val csvExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        runCatching {
+            val csv = AuditLogCsvExporter.toCsv(auditEntries)
+            context.contentResolver.openOutputStream(uri)?.use { stream ->
+                stream.write(csv.toByteArray(Charsets.UTF_8))
+                stream.flush()
+            } ?: error("Unable to open output stream")
+        }.fold(
+            onSuccess = {
+                Toast.makeText(context, "Exported ${auditEntries.size} audit entries to CSV", Toast.LENGTH_SHORT).show()
+            },
+            onFailure = { err ->
+                Toast.makeText(context, err.message ?: "Failed to export CSV", Toast.LENGTH_LONG).show()
+            }
+        )
+    }
 
     val serverNameById = remember(servers) { servers.associate { it.id to it.name } }
 
@@ -253,6 +277,31 @@ fun PanelUsersCard(
                     )
                 } else {
                     val entries = auditEntries.take(15)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Showing latest ${entries.size} of ${auditEntries.size} events",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        FilledTonalButton(
+                            onClick = {
+                                csvExportLauncher.launch("mineserve-audit-log-${System.currentTimeMillis()}.csv")
+                            },
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            ),
+                            shape = ShapeDefaults.Small
+                        ) {
+                            Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export CSV", style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
                     MineServeTableContainer {
                         entries.forEachIndexed { index, entry ->
                             MineServeTableRow(showDivider = index < entries.lastIndex) {

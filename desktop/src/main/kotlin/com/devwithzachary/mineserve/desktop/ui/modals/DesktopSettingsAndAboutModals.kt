@@ -261,20 +261,81 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
                     }
 
                     // Data Directories
+                    val currentServersDir by viewModel.serversDirPath.collectAsState()
+                    val currentRuntimesDir by viewModel.runtimesDirPath.collectAsState()
+                    var serversDirInput by remember(currentServersDir) { mutableStateOf(currentServersDir) }
+                    var runtimesDirInput by remember(currentRuntimesDir) { mutableStateOf(currentRuntimesDir) }
+
                     MineServeSettingsGroup(title = "Host Directories") {
-                        MineServePreferenceRow(
-                            title = "Servers Directory",
-                            subtitle = viewModel.paths.serversDir.absolutePath,
-                            icon = Icons.Rounded.FolderOpen,
-                            onClick = { viewModel.openInFileManager(viewModel.paths.serversDir) }
-                        )
-                        HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
-                        MineServePreferenceRow(
-                            title = "Portable Java Runtimes Directory",
-                            subtitle = viewModel.paths.runtimesDir.absolutePath,
-                            icon = Icons.Rounded.FolderOpen,
-                            onClick = { viewModel.openInFileManager(viewModel.paths.runtimesDir) }
-                        )
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = serversDirInput,
+                                    onValueChange = { serversDirInput = it },
+                                    label = { Text("Servers Directory") },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = { viewModel.openInFileManager(viewModel.paths.serversDir) }
+                                ) {
+                                    Icon(Icons.Rounded.FolderOpen, contentDescription = "Open Servers Directory")
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = runtimesDirInput,
+                                    onValueChange = { runtimesDirInput = it },
+                                    label = { Text("Portable Java Runtimes Directory") },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                                    modifier = Modifier.weight(1f)
+                                )
+                                IconButton(
+                                    onClick = { viewModel.openInFileManager(viewModel.paths.runtimesDir) }
+                                ) {
+                                    Icon(Icons.Rounded.FolderOpen, contentDescription = "Open Java Runtimes Directory")
+                                }
+                            }
+                            Text(
+                                text = "Existing server files and Java runtimes are not moved automatically when changing paths.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                            ) {
+                                FilledTonalButton(
+                                    onClick = {
+                                        viewModel.updateHostDirectories("", "")
+                                    },
+                                    shape = ShapeDefaults.Medium
+                                ) {
+                                    Text("Reset Defaults")
+                                }
+                                Button(
+                                    onClick = {
+                                        viewModel.updateHostDirectories(serversDirInput, runtimesDirInput)
+                                    },
+                                    shape = ShapeDefaults.Medium
+                                ) {
+                                    Text("Save Directories")
+                                }
+                            }
+                        }
                     }
 
                     // Web Remote Admin Daemon

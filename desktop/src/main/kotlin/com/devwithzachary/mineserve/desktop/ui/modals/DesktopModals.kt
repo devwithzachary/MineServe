@@ -34,6 +34,7 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.FolderZip
 import androidx.compose.material.icons.rounded.LinearScale
 import androidx.compose.material.icons.rounded.Search
@@ -64,6 +65,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -78,6 +80,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.devwithzachary.mineserve.auth.AuditLogCsvExporter
 import com.devwithzachary.mineserve.auth.UserRole
 import com.devwithzachary.mineserve.designsystem.components.MineServeCard
 import com.devwithzachary.mineserve.designsystem.components.MineServeDialog
@@ -91,6 +94,7 @@ import com.devwithzachary.mineserve.desktop.LinuxHostTelemetry
 import com.devwithzachary.mineserve.desktop.ui.DesktopModal
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.model.ServerType
+import com.devwithzachary.mineserve.model.determineJavaVersion
 import com.devwithzachary.mineserve.util.FileStorageUtils
 import kotlinx.coroutines.launch
 import java.awt.FileDialog
@@ -203,7 +207,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                     color = colorScheme.onSurface
                 )
                 Text(
-                    text = if (step == 1) "Step 1 of 2 - Engine, Name & Version" else "Step 2 of 2 - Resources, Port & EULA",
+                    text = if (step == 1) "1. Software & Version" else "2. Configuration & EULA",
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.onSurfaceVariant
                 )
@@ -228,13 +232,19 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
 
         if (step == 1) {
             Text(
-                text = "Select Server Engine",
+                text = "Server Software",
                 style = MaterialTheme.typography.labelLarge,
                 color = colorScheme.primary
             )
             Spacer(modifier = Modifier.height(8.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                supportedTypes.chunked(3).forEach { rowTypes ->
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 280.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                supportedTypes.chunked(2).forEach { rowTypes ->
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         rowTypes.forEach { t ->
                             val active = type == t
@@ -246,17 +256,43 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                                 border = null,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text(
-                                    text = t.displayName,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-                                )
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = t.displayName,
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        if (active) {
+                                            Icon(
+                                                imageVector = Icons.Rounded.CheckCircle,
+                                                contentDescription = null,
+                                                tint = colorScheme.onPrimaryContainer,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                    Text(
+                                        text = t.description,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = if (active) colorScheme.onPrimaryContainer.copy(alpha = 0.85f) else colorScheme.onSurfaceVariant,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
                             }
                         }
-                        repeat(3 - rowTypes.size) {
+                        if (rowTypes.size == 1) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
                     }
@@ -265,61 +301,12 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Server Name") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1.2f)
-                )
-                ExposedDropdownMenuBox(
-                    expanded = versionDropdownExpanded,
-                    onExpandedChange = { versionDropdownExpanded = !versionDropdownExpanded },
-                    modifier = Modifier.weight(1f)
-                ) {
-                    OutlinedTextField(
-                        value = version,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("All Versions") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = versionDropdownExpanded) },
-                        singleLine = true,
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = versionDropdownExpanded,
-                        onDismissRequest = { versionDropdownExpanded = false },
-                        containerColor = colorScheme.surfaceContainerHighest,
-                        modifier = Modifier.heightIn(max = 260.dp)
-                    ) {
-                        availableVersions.forEach { v ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text = v,
-                                        style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
-                                        color = if (v == version) colorScheme.primary else colorScheme.onSurface
-                                    )
-                                },
-                                onClick = {
-                                    version = v
-                                    versionDropdownExpanded = false
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Minecraft Version",
+                style = MaterialTheme.typography.labelLarge,
+                color = colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(6.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -339,54 +326,72 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                     )
                 }
             }
+            Spacer(modifier = Modifier.height(8.dp))
+            ExposedDropdownMenuBox(
+                expanded = versionDropdownExpanded,
+                onExpandedChange = { versionDropdownExpanded = !versionDropdownExpanded },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                OutlinedTextField(
+                    value = version,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("All Versions") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = versionDropdownExpanded) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = versionDropdownExpanded,
+                    onDismissRequest = { versionDropdownExpanded = false },
+                    containerColor = colorScheme.surfaceContainerHighest,
+                    modifier = Modifier.heightIn(max = 260.dp)
+                ) {
+                    availableVersions.forEach { v ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = v,
+                                    style = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                                    color = if (v == version) colorScheme.primary else colorScheme.onSurface
+                                )
+                            },
+                            onClick = {
+                                version = v
+                                versionDropdownExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(18.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Button(
-                    onClick = { step = 2 },
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { viewModel.openModal(DesktopModal.NONE) },
                     shape = ShapeDefaults.Medium
                 ) {
-                    Text("Next: Resources")
+                    Text("Cancel")
+                }
+                Button(
+                    onClick = { step = 2 },
+                    enabled = version.isNotBlank(),
+                    shape = ShapeDefaults.Medium
+                ) {
+                    Text("Next: Configure Server")
                     Spacer(modifier = Modifier.width(6.dp))
                     Icon(Icons.AutoMirrored.Rounded.ArrowForward, contentDescription = null, modifier = Modifier.size(16.dp))
                 }
             }
         } else {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = motd,
-                    onValueChange = { motd = it },
-                    label = { Text("Server MOTD") },
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = portText,
-                    onValueChange = { portText = it },
-                    label = { Text("Port") },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
-                    modifier = Modifier.width(130.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text("Allocated Memory", style = MaterialTheme.typography.bodyLarge)
-                MineServeTableMonoText(text = "$ramMb MB / $maxRam MB max", color = colorScheme.primary)
-            }
-            Slider(
-                value = ramMb.toFloat(),
-                onValueChange = { ramMb = ((it.toInt() / 256) * 256).coerceIn(512, maxRam) },
-                valueRange = 512f..maxRam.toFloat()
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
+            val requiredJava = determineJavaVersion(version, type)
             MineServeCard(
                 containerColor = colorScheme.surfaceContainer,
                 shape = ShapeDefaults.Medium,
@@ -395,21 +400,77 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = name.trim().ifBlank { "Minecraft Server" },
+                        text = "${type.displayName} $version",
                         style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorScheme.onSurface
                     )
                     MineServeTableMonoText(
-                        text = "${type.displayName} $version - :$portText - $ramMb MB",
+                        text = if (type.isBedrockNative) "Bedrock Native" else "Java $requiredJava",
                         color = colorScheme.primary
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Server Name") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1.4f)
+                )
+                OutlinedTextField(
+                    value = portText,
+                    onValueChange = { portText = it.filter { ch -> ch.isDigit() }.take(5) },
+                    label = { Text("Port") },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = monoFont),
+                    modifier = Modifier.weight(0.6f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            OutlinedTextField(
+                value = motd,
+                onValueChange = { motd = it },
+                label = { Text("MOTD") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            MineServeCard(
+                containerColor = colorScheme.surfaceContainer,
+                shape = ShapeDefaults.Medium,
+                contentPadding = PaddingValues(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("RAM Allocation", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                        MineServeTableMonoText(text = "$ramMb MB / $maxRam MB max", color = colorScheme.primary)
+                    }
+                    Slider(
+                        value = ramMb.toFloat(),
+                        onValueChange = { ramMb = ((it.toInt() / 256) * 256).coerceIn(512, maxRam) },
+                        valueRange = 512f..maxRam.toFloat()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -428,7 +489,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                     }
                 ) {
                     Text(
-                        text = "Minecraft End User License Agreement (EULA)",
+                        text = "Minecraft EULA",
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.primary,
                         textDecoration = TextDecoration.Underline
@@ -450,6 +511,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            val portValid = portText.toIntOrNull()?.let { it in 1..65535 } == true
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -509,10 +571,10 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                             }
                         }
                     },
-                    enabled = !busy && eula,
+                    enabled = !busy && name.isNotBlank() && portValid && eula,
                     shape = ShapeDefaults.Medium
                 ) {
-                    Text(if (busy) "Installing..." else "Create & Download Server")
+                    Text(if (busy) "Installing..." else "Create & Download")
                 }
             }
         }
@@ -1000,12 +1062,15 @@ private fun UsersAndAuditModal(viewModel: DesktopViewModel) {
     val monoFont = LocalMineServeMonoFontFamily.current
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US) }
 
+    val allServers by viewModel.serverRepository.servers.collectAsState()
     var activeTab by remember { mutableIntStateOf(0) } // 0: Users & Roles, 1: Audit Log
     var users by remember { mutableStateOf(viewModel.userRepository.listUsers()) }
     val auditEntries = remember(users) { viewModel.userRepository.getAuditLog(150) }
     var newUsername by remember { mutableStateOf("") }
     var newPassword by remember { mutableStateOf("") }
     var newRole by remember { mutableStateOf(UserRole.ADMIN) }
+    var restrictServers by remember { mutableStateOf(false) }
+    var selectedServerIds by remember { mutableStateOf(setOf<String>()) }
     var auditQuery by remember { mutableStateOf("") }
     var pendingDeleteUserId by remember { mutableStateOf<Pair<String, String>?>(null) }
 
@@ -1081,57 +1146,128 @@ private fun UsersAndAuditModal(viewModel: DesktopViewModel) {
                 contentPadding = PaddingValues(14.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    itemVerticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = newUsername,
-                        onValueChange = { newUsername = it },
-                        label = { Text("Username") },
-                        singleLine = true,
-                        modifier = Modifier.width(170.dp)
-                    )
-                    OutlinedTextField(
-                        value = newPassword,
-                        onValueChange = { newPassword = it },
-                        label = { Text("Password", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        placeholder = { Text("Min 6 chars", maxLines = 1, overflow = TextOverflow.Ellipsis) },
-                        singleLine = true,
-                        modifier = Modifier.width(200.dp)
-                    )
-                    listOf(UserRole.ADMIN, UserRole.MODERATOR, UserRole.VIEWER).forEach { r ->
-                        FilterChip(
-                            selected = newRole == r,
-                            onClick = { newRole = r },
-                            label = { Text(r.displayName) },
-                            colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = colorScheme.secondaryContainer,
-                                selectedLabelColor = colorScheme.onSecondaryContainer,
-                                containerColor = colorScheme.surfaceContainerHigh,
-                                labelColor = colorScheme.onSurfaceVariant
-                            ),
-                            border = null
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            viewModel.userRepository.createUser(newUsername.trim(), newPassword, newRole).fold(
-                                onSuccess = {
-                                    users = viewModel.userRepository.listUsers()
-                                    newUsername = ""
-                                    newPassword = ""
-                                    viewModel.showToast("Created user")
-                                },
-                                onFailure = { err -> viewModel.showToast(err.message ?: "Failed to create user") }
-                            )
-                        },
-                        shape = ShapeDefaults.Medium
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Add User")
+                        OutlinedTextField(
+                            value = newUsername,
+                            onValueChange = { newUsername = it },
+                            label = { Text("Username") },
+                            singleLine = true,
+                            modifier = Modifier.width(170.dp)
+                        )
+                        OutlinedTextField(
+                            value = newPassword,
+                            onValueChange = { newPassword = it },
+                            label = { Text("Password", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            placeholder = { Text("Min 6 chars", maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                            singleLine = true,
+                            modifier = Modifier.width(200.dp)
+                        )
+                        listOf(UserRole.ADMIN, UserRole.MODERATOR, UserRole.VIEWER).forEach { r ->
+                            FilterChip(
+                                selected = newRole == r,
+                                onClick = { newRole = r },
+                                label = { Text(r.displayName) },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = colorScheme.secondaryContainer,
+                                    selectedLabelColor = colorScheme.onSecondaryContainer,
+                                    containerColor = colorScheme.surfaceContainerHigh,
+                                    labelColor = colorScheme.onSurfaceVariant
+                                ),
+                                border = null
+                            )
+                        }
+                    }
+
+                    if (newRole != UserRole.OWNER) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.clickable { restrictServers = !restrictServers }
+                        ) {
+                            Checkbox(
+                                checked = restrictServers,
+                                onCheckedChange = { restrictServers = it }
+                            )
+                            Text(
+                                text = "Restrict access to specific servers only",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = colorScheme.onSurface
+                            )
+                        }
+                        if (restrictServers) {
+                            if (allServers.isEmpty()) {
+                                Text(
+                                    text = "No servers created yet.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    allServers.forEach { srv ->
+                                        val selected = selectedServerIds.contains(srv.id)
+                                        FilterChip(
+                                            selected = selected,
+                                            onClick = {
+                                                selectedServerIds = if (selected) {
+                                                    selectedServerIds - srv.id
+                                                } else {
+                                                    selectedServerIds + srv.id
+                                                }
+                                            },
+                                            label = { Text(srv.name, style = MaterialTheme.typography.labelSmall) },
+                                            colors = FilterChipDefaults.filterChipColors(
+                                                selectedContainerColor = colorScheme.primaryContainer,
+                                                selectedLabelColor = colorScheme.onPrimaryContainer,
+                                                containerColor = colorScheme.surfaceContainerHigh,
+                                                labelColor = colorScheme.onSurfaceVariant
+                                            ),
+                                            border = null
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        Button(
+                            onClick = {
+                                val effectiveRestrict = newRole != UserRole.OWNER && restrictServers
+                                val allowedIds = if (effectiveRestrict) selectedServerIds.toList() else emptyList()
+                                viewModel.userRepository.createUser(
+                                    username = newUsername.trim(),
+                                    password = newPassword,
+                                    role = newRole,
+                                    restrictServers = effectiveRestrict,
+                                    allowedServerIds = allowedIds
+                                ).fold(
+                                    onSuccess = {
+                                        users = viewModel.userRepository.listUsers()
+                                        newUsername = ""
+                                        newPassword = ""
+                                        restrictServers = false
+                                        selectedServerIds = emptySet()
+                                        viewModel.showToast("Created user")
+                                    },
+                                    onFailure = { err -> viewModel.showToast(err.message ?: "Failed to create user") }
+                                )
+                            },
+                            shape = ShapeDefaults.Medium
+                        ) {
+                            Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Create User")
+                        }
                     }
                 }
             }
@@ -1141,6 +1277,12 @@ private fun UsersAndAuditModal(viewModel: DesktopViewModel) {
             MineServeTableContainer(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(users, key = { it.id }) { u ->
+                        val scopeText = if (u.role == UserRole.OWNER || !u.restrictServers) {
+                            "All servers"
+                        } else {
+                            val names = allServers.filter { u.allowedServerIds.contains(it.id) }.map { it.name }
+                            if (names.isEmpty()) "Restricted (0 servers)" else "Restricted: ${names.joinToString(", ")}"
+                        }
                         MineServeTableRow(
                             showDivider = u != users.last(),
                             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
@@ -1152,8 +1294,9 @@ private fun UsersAndAuditModal(viewModel: DesktopViewModel) {
                                     fontWeight = FontWeight.SemiBold,
                                     color = colorScheme.onSurface
                                 )
-                                MineServeTableMonoText(
-                                    text = "ID: ${u.id}",
+                                Text(
+                                    text = scopeText,
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.onSurfaceVariant
                                 )
                             }
@@ -1199,14 +1342,44 @@ private fun UsersAndAuditModal(viewModel: DesktopViewModel) {
                 }
             }
 
-            OutlinedTextField(
-                value = auditQuery,
-                onValueChange = { auditQuery = it },
-                placeholder = { Text("Filter audit events by user, action, target, or IP...") },
-                leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = auditQuery,
+                    onValueChange = { auditQuery = it },
+                    placeholder = { Text("Filter audit events by user, action, target, or IP...") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                FilledTonalButton(
+                    onClick = {
+                        val dialog = FileDialog(null as Frame?, "Export Audit Log CSV", FileDialog.SAVE)
+                        dialog.file = "mineserve-audit-log-${System.currentTimeMillis()}.csv"
+                        dialog.isVisible = true
+                        val dir = dialog.directory
+                        val fileName = dialog.file
+                        if (dir != null && fileName != null) {
+                            runCatching {
+                                val targetFile = File(dir, fileName)
+                                targetFile.writeText(AuditLogCsvExporter.toCsv(filteredAudit))
+                                viewModel.showToast("Exported ${filteredAudit.size} audit entries to ${targetFile.name}")
+                            }.onFailure { err ->
+                                viewModel.showToast("CSV export failed: ${err.message}")
+                            }
+                        }
+                    },
+                    enabled = filteredAudit.isNotEmpty(),
+                    shape = ShapeDefaults.Medium
+                ) {
+                    Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Export CSV")
+                }
+            }
             Spacer(modifier = Modifier.height(10.dp))
 
             if (filteredAudit.isEmpty()) {

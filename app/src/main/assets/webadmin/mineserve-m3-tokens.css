@@ -1,0 +1,335 @@
+/* ==========================================================================
+   MineServe Material Design 3 Tokens ("Obsidian & Ore")
+   Single canonical hex token file for Headless WebUI.
+   Zero external font CDNs; zero card 1px borders.
+   ========================================================================== */
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-500.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Plus Jakarta Sans";
+  src: url("/fonts/plus-jakarta-sans-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-700.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Surface Ladder */
+  --md-sys-color-surface-container-lowest: #070A12;
+  --md-sys-color-surface: #0B0F19;
+  --md-sys-color-background: #0B0F19;
+  --md-sys-color-surface-container-low: #0F172A;
+  --md-sys-color-surface-container: #1B2333;
+  --md-sys-color-surface-container-high: #242F44;
+  --md-sys-color-surface-container-highest: #2E3B54;
+  --md-sys-color-on-surface: #E2E8F0;
+  --md-sys-color-on-surface-variant: #94A3B8;
+  --md-sys-color-outline: #64748B;
+  --md-sys-color-outline-variant: #334155;
+  --md-sys-color-outline-variant-divider: rgba(51, 65, 85, 0.4);
+  --md-sys-color-scrim: rgba(7, 10, 18, 0.72);
+
+  /* Emerald Primary */
+  --md-sys-color-primary: #34D399;
+  --md-sys-color-on-primary: #003824;
+  --md-sys-color-primary-container: #064E3B;
+  --md-sys-color-on-primary-container: #A7F3D0;
+  --ms-color-brand-seed: #10B981;
+
+  /* Slate Secondary */
+  --md-sys-color-secondary: #94A3B8;
+  --md-sys-color-on-secondary: #0F172A;
+  --md-sys-color-secondary-container: #1E293B;
+  --md-sys-color-on-secondary-container: #E2E8F0;
+
+  /* Diamond Tertiary */
+  --md-sys-color-tertiary: #22D3EE;
+  --md-sys-color-on-tertiary: #003640;
+  --md-sys-color-tertiary-container: #0E4F5C;
+  --md-sys-color-on-tertiary-container: #CFFAFE;
+
+  /* Gold Warning (extended) */
+  --md-sys-color-warning: #FBBF24;
+  --md-sys-color-on-warning: #3D2600;
+  --md-sys-color-warning-container: #452706;
+  --md-sys-color-on-warning-container: #FDE68A;
+
+  /* Redstone Error */
+  --md-sys-color-error: #F87171;
+  --md-sys-color-on-error: #450A0A;
+  --md-sys-color-error-container: #5C1111;
+  --md-sys-color-on-error-container: #FECACA;
+
+  /* Fixed Console Terminal & Chart Tokens */
+  --ms-console-bg: #070A12;
+  --ms-console-fg: #E2E8F0;
+  --ms-chart-primary-fill: rgba(52, 211, 153, 0.14);
+  --ms-chart-tertiary-fill: rgba(34, 211, 238, 0.14);
+  --ms-chart-grid: rgba(51, 65, 85, 0.35);
+  --ms-elevation-popover: 0 12px 32px rgba(7, 10, 18, 0.55);
+
+  /* Typography */
+  --md-sys-typescale-font-sans: "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --md-sys-typescale-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Shape Scale */
+  --md-sys-shape-extra-small: 4px;
+  --md-sys-shape-small: 8px;
+  --md-sys-shape-medium: 12px;
+  --md-sys-shape-large: 16px;
+  --md-sys-shape-extra-large: 28px;
+  --md-sys-shape-full: 999px;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Slate-Tinted Light Mode */
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface: #F8FAFC;
+  --md-sys-color-background: #F8FAFC;
+  --md-sys-color-surface-container-low: #F1F5F9;
+  --md-sys-color-surface-container: #E2E8F0;
+  --md-sys-color-surface-container-high: #DAE3EE;
+  --md-sys-color-surface-container-highest: #CBD5E1;
+  --md-sys-color-on-surface: #0F172A;
+  --md-sys-color-on-surface-variant: #475569;
+  --md-sys-color-outline: #64748B;
+  --md-sys-color-outline-variant: #CBD5E1;
+  --md-sys-color-outline-variant-divider: rgba(203, 213, 225, 0.7);
+  --md-sys-color-scrim: rgba(15, 23, 42, 0.45);
+
+  /* Emerald Primary */
+  --md-sys-color-primary: #059669;
+  --md-sys-color-on-primary: #FFFFFF;
+  --md-sys-color-primary-container: #D1FAE5;
+  --md-sys-color-on-primary-container: #064E3B;
+  --ms-color-brand-seed: #10B981;
+
+  /* Slate Secondary */
+  --md-sys-color-secondary: #475569;
+  --md-sys-color-on-secondary: #FFFFFF;
+  --md-sys-color-secondary-container: #E2E8F0;
+  --md-sys-color-on-secondary-container: #0F172A;
+
+  /* Diamond Tertiary */
+  --md-sys-color-tertiary: #0891B2;
+  --md-sys-color-on-tertiary: #FFFFFF;
+  --md-sys-color-tertiary-container: #CFFAFE;
+  --md-sys-color-on-tertiary-container: #0E4F5C;
+
+  /* Gold Warning */
+  --md-sys-color-warning: #D97706;
+  --md-sys-color-on-warning: #FFFFFF;
+  --md-sys-color-warning-container: #FEF3C7;
+  --md-sys-color-on-warning-container: #452706;
+
+  /* Redstone Error */
+  --md-sys-color-error: #DC2626;
+  --md-sys-color-on-error: #FFFFFF;
+  --md-sys-color-error-container: #FEE2E2;
+  --md-sys-color-on-error-container: #5C1111;
+
+  /* Console terminal remains dark #070A12 for ANSI log legibility */
+  --ms-console-bg: #070A12;
+  --ms-console-fg: #E2E8F0;
+  --ms-chart-primary-fill: rgba(5, 150, 105, 0.14);
+  --ms-chart-tertiary-fill: rgba(8, 145, 178, 0.14);
+  --ms-chart-grid: rgba(148, 163, 184, 0.35);
+  --ms-elevation-popover: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+
+/* ==========================================================================
+   Reusable Material Design 3 Component Primitives
+   ========================================================================== */
+
+.m3-card {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border: none;
+  border-radius: var(--md-sys-shape-large);
+  padding: 16px;
+}
+
+.m3-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.m3-settings-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  letter-spacing: 0.1px;
+  color: var(--md-sys-color-primary);
+  margin: 0;
+}
+
+.m3-preference-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant-divider);
+}
+
+.m3-preference-row:last-child {
+  border-bottom: none;
+}
+
+.m3-table {
+  background: var(--md-sys-color-surface-container);
+  color: var(--md-sys-color-on-surface);
+  border: none;
+  border-radius: var(--md-sys-shape-large);
+  overflow: hidden;
+}
+
+.m3-table-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant-divider);
+}
+
+.m3-table-row:last-child {
+  border-bottom: none;
+}
+
+.m3-segmented-row {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--md-sys-color-outline-variant);
+  border-radius: var(--md-sys-shape-full);
+  overflow: hidden;
+  background: transparent;
+  flex-shrink: 0;
+}
+
+.m3-segmented-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: none;
+  border-right: 1px solid var(--md-sys-color-outline-variant);
+  background: transparent;
+  color: var(--md-sys-color-on-surface-variant);
+  font-family: var(--md-sys-typescale-font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.m3-segmented-btn:last-child {
+  border-right: none;
+}
+
+.m3-segmented-btn:hover {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+}
+
+.m3-segmented-btn.active {
+  background: var(--md-sys-color-secondary-container);
+  color: var(--md-sys-color-on-secondary-container);
+}
+
+.m3-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: none;
+  border-radius: var(--md-sys-shape-small);
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  font-family: var(--md-sys-typescale-font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.m3-chip--primary {
+  background: var(--md-sys-color-primary-container);
+  color: var(--md-sys-color-on-primary-container);
+}
+
+.m3-chip--tertiary {
+  background: var(--md-sys-color-tertiary-container);
+  color: var(--md-sys-color-on-tertiary-container);
+}
+
+.m3-chip--warning {
+  background: var(--md-sys-color-warning-container);
+  color: var(--md-sys-color-on-warning-container);
+}
+
+.m3-chip--error {
+  background: var(--md-sys-color-error-container);
+  color: var(--md-sys-color-on-error-container);
+}
+
+.m3-chip--neutral {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.m3-dialog {
+  background: var(--md-sys-color-surface-container-high);
+  color: var(--md-sys-color-on-surface);
+  border: none;
+  border-radius: var(--md-sys-shape-extra-large);
+  padding: 24px;
+}

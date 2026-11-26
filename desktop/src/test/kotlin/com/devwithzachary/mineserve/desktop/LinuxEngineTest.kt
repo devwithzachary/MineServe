@@ -280,4 +280,59 @@ class LinuxEngineTest {
             tempRoot.deleteRecursively()
         }
     }
+
+    @Test
+    fun `LinuxDataPaths updateDirectories persists custom paths and resets cleanly`() {
+        val tempRoot = Files.createTempDirectory("mineserve-paths-test").toFile()
+        try {
+            val customServers = File(tempRoot, "custom-servers")
+            val customRuntimes = File(tempRoot, "custom-runtimes")
+            val regularFile = File(tempRoot, "not-a-dir").apply { writeText("x") }
+
+            val paths = LinuxDataPaths(tempRoot)
+            assertTrue(paths.updateDirectories("relative/path", null).isFailure)
+            assertTrue(paths.updateDirectories(regularFile.absolutePath, null).isFailure)
+
+            val updated = paths.updateDirectories(customServers.absolutePath, customRuntimes.absolutePath)
+            assertTrue(updated.isSuccess)
+            assertEquals(customServers.absolutePath, paths.serversDir.absolutePath)
+            assertEquals(customRuntimes.absolutePath, paths.runtimesDir.absolutePath)
+
+            // Reload from desktop_config.json
+            val reloaded = LinuxDataPaths(tempRoot)
+            assertEquals(customServers.absolutePath, reloaded.serversDir.absolutePath)
+            assertEquals(customRuntimes.absolutePath, reloaded.runtimesDir.absolutePath)
+
+            // Blank resets to defaults
+            val reset = reloaded.updateDirectories("", "")
+            assertTrue(reset.isSuccess)
+            assertEquals(reloaded.defaultServersDir.absolutePath, reloaded.serversDir.absolutePath)
+            assertEquals(reloaded.defaultRuntimesDir.absolutePath, reloaded.runtimesDir.absolutePath)
+        } finally {
+            tempRoot.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `AuditLogCsvExporter escapes cells and formats ISO timestamps`() {
+        val entries = listOf(
+            com.devwithzachary.mineserve.auth.AuditLogEntry(
+                id = "audit-1",
+                timestamp = 0L,
+                username = "alex_mod",
+                role = "MODERATOR",
+                action = "CONSOLE_CMD",
+                target = "srv-1",
+                details = "say \"hello\", world",
+                clientIp = "127.0.0.1"
+            )
+        )
+        val csv = com.devwithzachary.mineserve.auth.AuditLogCsvExporter.toCsv(entries).trim().lines()
+        assertEquals(2, csv.size)
+        assertEquals("Timestamp,Username,Role,Action,Target,Details,IP", csv[0])
+        assertEquals(
+            """"1970-01-01T00:00:00.000Z","alex_mod","MODERATOR","CONSOLE_CMD","srv-1","say ""hello"", world","127.0.0.1"""",
+            csv[1]
+        )
+    }
 }

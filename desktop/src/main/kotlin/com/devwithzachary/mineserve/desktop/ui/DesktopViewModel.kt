@@ -155,6 +155,12 @@ class DesktopViewModel(
     private val _webAdminRunning = MutableStateFlow(webServer.isRunning)
     val webAdminRunning: StateFlow<Boolean> = _webAdminRunning.asStateFlow()
 
+    private val _serversDirPath = MutableStateFlow(paths.serversDir.absolutePath)
+    val serversDirPath: StateFlow<String> = _serversDirPath.asStateFlow()
+
+    private val _runtimesDirPath = MutableStateFlow(paths.runtimesDir.absolutePath)
+    val runtimesDirPath: StateFlow<String> = _runtimesDirPath.asStateFlow()
+
     private val _toastMessage = MutableStateFlow<String?>(null)
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
@@ -327,6 +333,27 @@ class DesktopViewModel(
             obj.put("themeMode", mode.name)
             uiSettingsFile.writeText(obj.toString(2))
         }
+    }
+
+    fun updateHostDirectories(serversPath: String?, runtimesPath: String?) {
+        val anyActive = processManager.serverStatuses.value.values.any {
+            it == com.devwithzachary.mineserve.model.ServerStatus.RUNNING ||
+                it == com.devwithzachary.mineserve.model.ServerStatus.STARTING
+        }
+        if (anyActive) {
+            showToast("Stop all running servers before changing host directories.")
+            return
+        }
+        paths.updateDirectories(serversPath, runtimesPath).fold(
+            onSuccess = { (srvDir, rtDir) ->
+                _serversDirPath.value = srvDir.absolutePath
+                _runtimesDirPath.value = rtDir.absolutePath
+                showToast("Updated host directories.")
+            },
+            onFailure = { err ->
+                showToast(err.message ?: "Failed to update host directories.")
+            }
+        )
     }
 
     fun setShowWhatsNewOnUpdate(enabled: Boolean) {

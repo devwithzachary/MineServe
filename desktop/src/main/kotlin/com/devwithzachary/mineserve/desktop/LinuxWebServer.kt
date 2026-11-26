@@ -245,6 +245,16 @@ class LinuxWebServer(
                 coreHandlers.handleGetSystem(out)
                 return
             }
+            if (path == "/api/host/directories" && method == "GET") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                coreHandlers.handleGetHostDirectories(out)
+                return
+            }
+            if (path == "/api/host/directories" && method == "POST") {
+                if (!requirePerm(out, currentUser, Permission.MANAGE_HOST)) return
+                coreHandlers.handleUpdateHostDirectories(out, body, currentUser, effectiveIp)
+                return
+            }
             if (path == "/api/about" && method == "GET") {
                 sendJson(
                     out,
@@ -900,9 +910,16 @@ class LinuxWebServer(
     private fun serveStaticAsset(out: OutputStream, path: String) {
         val clean = when (path) {
             "/", "/index.html" -> "webadmin/index.html"
+            "/mineserve-m3-tokens.css" -> "webadmin/mineserve-m3-tokens.css"
             "/app.js" -> "webadmin/app.js"
             "/styles.css" -> "webadmin/styles.css"
             "/logo.png" -> "webadmin/logo.png"
+            "/fonts/plus-jakarta-sans-400.woff2" -> "webadmin/fonts/plus-jakarta-sans-400.woff2"
+            "/fonts/plus-jakarta-sans-500.woff2" -> "webadmin/fonts/plus-jakarta-sans-500.woff2"
+            "/fonts/plus-jakarta-sans-600.woff2" -> "webadmin/fonts/plus-jakarta-sans-600.woff2"
+            "/fonts/plus-jakarta-sans-700.woff2" -> "webadmin/fonts/plus-jakarta-sans-700.woff2"
+            "/fonts/jetbrains-mono-400.woff2" -> "webadmin/fonts/jetbrains-mono-400.woff2"
+            "/fonts/jetbrains-mono-700.woff2" -> "webadmin/fonts/jetbrains-mono-700.woff2"
             else -> null
         }
         if (clean == null) {
@@ -919,10 +936,17 @@ class LinuxWebServer(
             clean.endsWith(".html") -> "text/html; charset=utf-8"
             clean.endsWith(".js") -> "application/javascript; charset=utf-8"
             clean.endsWith(".css") -> "text/css; charset=utf-8"
+            clean.endsWith(".woff2") -> "font/woff2"
+            clean.endsWith(".svg") -> "image/svg+xml"
             clean.endsWith(".png") -> "image/png"
             else -> "application/octet-stream"
         }
-        WebHttpUtils.sendResponse(out, 200, "OK", contentType, bytes)
+        val extraHeaders = if (clean.endsWith(".woff2")) {
+            mapOf("Cache-Control" to "public, max-age=31536000, immutable")
+        } else {
+            emptyMap()
+        }
+        WebHttpUtils.sendResponse(out, 200, "OK", contentType, bytes, extraHeaders)
     }
 
     private fun requirePerm(out: OutputStream, user: PanelUser, permission: Permission, serverId: String? = null): Boolean {

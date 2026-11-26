@@ -1369,9 +1369,16 @@ class WebAdminServer(
     private fun serveStaticAsset(out: OutputStream, path: String): Boolean {
         val assetName = when (path) {
             "/", "/index.html" -> "index.html"
+            "/mineserve-m3-tokens.css" -> "mineserve-m3-tokens.css"
             "/styles.css" -> "styles.css"
             "/app.js" -> "app.js"
             "/logo.png" -> "logo.png"
+            "/fonts/plus-jakarta-sans-400.woff2" -> "fonts/plus-jakarta-sans-400.woff2"
+            "/fonts/plus-jakarta-sans-500.woff2" -> "fonts/plus-jakarta-sans-500.woff2"
+            "/fonts/plus-jakarta-sans-600.woff2" -> "fonts/plus-jakarta-sans-600.woff2"
+            "/fonts/plus-jakarta-sans-700.woff2" -> "fonts/plus-jakarta-sans-700.woff2"
+            "/fonts/jetbrains-mono-400.woff2" -> "fonts/jetbrains-mono-400.woff2"
+            "/fonts/jetbrains-mono-700.woff2" -> "fonts/jetbrains-mono-700.woff2"
             else -> return false
         }
         val bytes = assetProvider(assetName) ?: return false
@@ -1379,10 +1386,17 @@ class WebAdminServer(
             assetName.endsWith(".html") -> "text/html; charset=utf-8"
             assetName.endsWith(".css") -> "text/css; charset=utf-8"
             assetName.endsWith(".js") -> "application/javascript; charset=utf-8"
+            assetName.endsWith(".woff2") -> "font/woff2"
+            assetName.endsWith(".svg") -> "image/svg+xml"
             assetName.endsWith(".png") -> "image/png"
             else -> "application/octet-stream"
         }
-        sendResponse(out, 200, "OK", contentType, bytes)
+        val extraHeaders = if (assetName.endsWith(".woff2")) {
+            mapOf("Cache-Control" to "public, max-age=31536000, immutable")
+        } else {
+            emptyMap()
+        }
+        sendResponse(out, 200, "OK", contentType, bytes, extraHeaders)
         return true
     }
 

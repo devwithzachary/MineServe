@@ -77,7 +77,63 @@ internal class LinuxWebCoreHandlers(
             .put("ramStepMb", 256)
             .put("version", MineServeAboutData.APP_VERSION)
             .put("isPlayStore", false)
+            .put("serversDir", paths.serversDir.absolutePath)
+            .put("runtimesDir", paths.runtimesDir.absolutePath)
+            .put("defaultServersDir", paths.defaultServersDir.absolutePath)
+            .put("defaultRuntimesDir", paths.defaultRuntimesDir.absolutePath)
         sendJson(out, 200, "OK", resp)
+    }
+
+    fun handleGetHostDirectories(out: OutputStream) {
+        sendJson(
+            out,
+            200,
+            "OK",
+            JSONObject()
+                .put("serversDir", paths.serversDir.absolutePath)
+                .put("runtimesDir", paths.runtimesDir.absolutePath)
+                .put("defaultServersDir", paths.defaultServersDir.absolutePath)
+                .put("defaultRuntimesDir", paths.defaultRuntimesDir.absolutePath)
+        )
+    }
+
+    fun handleUpdateHostDirectories(out: OutputStream, body: String, currentUser: PanelUser, effectiveIp: String) {
+        val anyActive = processManager.serverStatuses.value.values.any {
+            it == com.devwithzachary.mineserve.model.ServerStatus.RUNNING ||
+                it == com.devwithzachary.mineserve.model.ServerStatus.STARTING
+        }
+        if (anyActive) {
+            sendJson(out, 409, "Conflict", JSONObject().put("error", "Stop all running servers before changing host directories."))
+            return
+        }
+        val j = parseJson(body)
+        val serversDirPath = if (j.has("serversDir")) j.optString("serversDir", "") else null
+        val runtimesDirPath = if (j.has("runtimesDir")) j.optString("runtimesDir", "") else null
+        paths.updateDirectories(serversDirPath, runtimesDirPath).fold(
+            onSuccess = { (srvDir, rtDir) ->
+                userRepository.recordAudit(
+                    currentUser,
+                    "HOST_DIRECTORIES_UPDATE",
+                    "host",
+                    "servers=${srvDir.absolutePath}, runtimes=${rtDir.absolutePath}",
+                    effectiveIp
+                )
+                sendJson(
+                    out,
+                    200,
+                    "OK",
+                    JSONObject()
+                        .put("success", true)
+                        .put("serversDir", srvDir.absolutePath)
+                        .put("runtimesDir", rtDir.absolutePath)
+                        .put("defaultServersDir", paths.defaultServersDir.absolutePath)
+                        .put("defaultRuntimesDir", paths.defaultRuntimesDir.absolutePath)
+                )
+            },
+            onFailure = { err ->
+                sendJson(out, 400, "Bad Request", JSONObject().put("error", err.message ?: "Invalid directory path"))
+            }
+        )
     }
 
     fun handleGetJavaStatus(out: OutputStream) {

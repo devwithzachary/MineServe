@@ -1,9 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MineServe Web Admin</title>
+  <link rel="stylesheet" href="/mineserve-m3-tokens.css">
   <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
@@ -24,7 +25,12 @@
         </div>
         <div class="form-group">
           <label for="login-pass">Password</label>
-          <input type="password" id="login-pass" autocomplete="current-password" required>
+          <div class="password-field-wrap">
+            <input type="password" id="login-pass" autocomplete="current-password" required>
+            <button type="button" class="password-toggle-btn" data-toggle-password="login-pass" aria-label="Show password">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16q1.875 0 3.188-1.312T16.5 11.5t-1.312-3.187T12 7T8.813 8.313T7.5 11.5t1.313 3.188T12 16m0-1.8q-1.125 0-1.912-.788T9.3 11.5t.788-1.912T12 8.8t1.913.788t.787 1.912t-.787 1.913T12 14.2m0 4.8q-3.65 0-6.65-2.037T1 11.5q1.35-3.425 4.35-5.462T12 4t6.65 2.038T23 11.5q-1.35 3.425-4.35 5.463T12 19"/></svg>
+            </button>
+          </div>
         </div>
         <div id="login-error" class="error-banner hidden"></div>
         <button type="submit" id="login-btn" class="btn btn-primary btn-full">Sign In</button>
@@ -34,135 +40,238 @@
 
   <!-- Main App View -->
   <div id="app-view" class="app-shell hidden">
+    <div id="sidebar-backdrop" class="sidebar-backdrop"></div>
+
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-header">
         <div class="brand-row">
-          <img src="/logo.png" alt="MineServe Logo" class="brand-logo-sm">
-          <span class="brand-title">MineServe</span>
+          <div class="brand-logo-slot">
+            <img src="/logo.png" alt="MineServe Logo" class="brand-logo-img">
+          </div>
+          <div class="brand-meta">
+            <div class="brand-title-row">
+              <span class="brand-title">MineServe</span>
+              <span id="sidebar-version-pill" class="version-pill mono">v1.8.1</span>
+            </div>
+            <div id="system-info" class="system-info">Loading host info...</div>
+          </div>
         </div>
-        <button id="mobile-close-sidebar" class="btn-icon mobile-only" title="Close Menu">✕</button>
+        <button id="mobile-close-sidebar" class="btn-icon mobile-only" type="button" title="Close Menu" aria-label="Close Menu">
+          <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
       </div>
 
       <div class="sidebar-actions">
-        <button id="open-create-modal-btn" class="btn btn-primary btn-full">+ New Server</button>
-        <button id="open-import-server-modal-btn" class="btn btn-secondary btn-sm btn-full" style="margin-top:6px;">Import Server (.zip)</button>
+        <button id="open-create-modal-btn" class="btn btn-primary" type="button">
+          <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M11 13H6q-.425 0-.712-.288T5 12t.288-.712T6 11h5V6q0-.425.288-.712T12 5t.713.288T13 6v5h5q.425 0 .713.288T19 12t-.288.713T18 13h-5v5q0 .425-.288.713T12 19t-.712-.288T11 18z"/></svg>
+          <span>New Server</span>
+        </button>
+        <button id="open-import-server-modal-btn" class="btn-icon-outlined" type="button" title="Import Server (.zip)" aria-label="Import Server (.zip)">
+          <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M14 14v-2h-2v2zm2-2v-2h-2v2zm-2-2V8h-2v2zm-10 10q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20zm0-2h16V8h-4v2h2v2h-2v2h2v2h-2v2h-2v-2h2v-2h-2v-2h2V8h-8.825l-2-2H4z"/></svg>
+        </button>
       </div>
 
-      <div class="sidebar-section-label">Servers</div>
       <div id="server-list" class="server-list"></div>
 
       <div class="sidebar-footer">
-        <div id="current-user-pill" class="user-profile-pill hidden">
-          <span id="current-user-name" class="user-profile-name">admin</span>
-          <span id="current-user-role" class="role-badge OWNER">Owner</span>
+        <button id="open-cloud-modal-btn" class="drawer-nav-item drawer-nav-item--cloud hidden" type="button">
+          <span class="drawer-nav-item-left">
+            <svg class="ms-icon ms-icon--tertiary" viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 20q-2.275 0-3.887-1.575T1 14.575q0-1.95 1.175-3.475T5.25 9.15q.625-2.3 2.5-3.725T12 4q2.925 0 4.963 2.038T19 11q1.725.2 2.863 1.488T23 15.5q0 1.875-1.312 3.188T18.5 20z"/></svg>
+            <span>MineServe Cloud</span>
+          </span>
+          <span id="sidebar-cloud-badge" class="m3-chip m3-chip--tertiary hidden"></span>
+        </button>
+
+        <button id="open-users-modal-btn" class="drawer-nav-item hidden" type="button">
+          <span class="drawer-nav-item-left">
+            <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 12q-1.65 0-2.825-1.175T8 8t1.175-2.825T12 4t2.825 1.175T16 8t-1.175 2.825T12 12m-8 8v-2.8q0-.85.438-1.562T5.6 14.55q1.55-.775 3.15-1.162T12 13t3.25.388 3.15 1.162q.725.375 1.163 1.088T20 17.2V20z"/></svg>
+            <span>Users &amp; Audit</span>
+          </span>
+        </button>
+
+        <button id="open-host-tools-btn" class="drawer-nav-item hidden" type="button">
+          <span class="drawer-nav-item-left">
+            <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="m9.25 22l-.4-3.2q-.325-.125-.612-.3t-.563-.375L4.7 19.375l-2.75-4.75l2.575-1.95q-.05-.175-.062-.338T4.45 12t.013-.338.062-.337L1.95 9.375l2.75-4.75l2.975 1.25q.275-.2.575-.375t.6-.3l.4-3.2h5.5l.4 3.2q.325.125.613.3t.562.375l2.975-1.25l2.75 4.75l-2.575 1.95q.05.175.063.338T19.55 12t-.013.338-.062.337l2.575 1.95l-2.75 4.75l-2.975-1.25q-.275.2-.575.375t-.6.3l-.4 3.2zM12 15.5q1.45 0 2.475-1.025T15.5 12t-1.025-2.475T12 8.5T9.525 9.525T8.5 12t1.025 2.475T12 15.5"/></svg>
+            <span>App Settings</span>
+          </span>
+        </button>
+
+        <div class="account-profile-wrap">
+          <button id="current-user-pill" class="account-profile-chip hidden" type="button" aria-expanded="false" aria-haspopup="true">
+            <span class="account-profile-left">
+              <span id="current-user-avatar" class="account-avatar">A</span>
+              <span id="current-user-name" class="user-profile-name">admin</span>
+            </span>
+            <span class="account-profile-right">
+              <span id="current-user-role" class="role-badge OWNER">Owner</span>
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="m12 15l-5-5h10z"/></svg>
+            </span>
+          </button>
+
+          <div id="account-popover-menu" class="account-popover hidden" role="menu">
+            <button id="open-password-modal-btn" class="popover-menu-item" type="button" role="menuitem">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14q-.825 0-1.412-.587T5 12t.588-1.412T7 10t1.413.588T9 12t-.587 1.413T7 14m0 4q-2.5 0-4.25-1.75T1 12t1.75-4.25T7 6q1.675 0 3.038.825T12.2 9H21l3 3l-4.5 4.5l-2-1.5l-2 1.5l-2.125-1.5H12.2q-.8 1.35-2.162 2.175T7 18"/></svg>
+              <span>Change Password</span>
+            </button>
+            <button id="logout-btn" class="popover-menu-item popover-menu-item--danger" type="button" role="menuitem">
+              <svg class="ms-icon ms-icon--sm ms-icon--error" viewBox="0 0 24 24" fill="currentColor"><path d="M5 21q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h7v2H5v14h7v2zm11-4l-1.375-1.45l2.55-2.55H9v-2h8.175l-2.55-2.55L16 7l5 5z"/></svg>
+              <span>Sign Out</span>
+            </button>
+          </div>
         </div>
-        <div id="system-info" class="system-info">Loading host info...</div>
-        <button id="open-cloud-modal-btn" class="btn btn-primary btn-sm btn-full hidden" style="margin-bottom:6px;">MineServe Cloud</button>
-        <button id="open-users-modal-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Users &amp; Sessions</button>
-        <button id="open-audit-view-btn" class="btn btn-secondary btn-sm btn-full hidden" style="margin-bottom:6px;">Audit Log</button>
-        <button id="open-host-tools-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">App Settings</button>
-        <button id="open-about-modal-btn" class="btn btn-secondary btn-sm btn-full" style="margin-bottom:6px;">About &amp; Credits</button>
-        <button id="open-password-modal-btn" class="btn btn-ghost btn-sm btn-full" style="margin-bottom:6px;">Change Password</button>
-        <button id="logout-btn" class="btn btn-ghost btn-sm btn-full">Sign Out</button>
       </div>
     </aside>
 
     <main class="main-content">
       <header class="topbar">
-        <div class="topbar-left">
-          <button id="mobile-menu-btn" class="btn-icon mobile-only" title="Menu">☰</button>
-          <div>
-            <h2 id="active-server-name">Select a Server</h2>
-            <div id="active-server-meta" class="server-meta-line"></div>
+        <div class="topbar-main-row">
+          <div class="topbar-left">
+            <button id="mobile-menu-btn" class="btn-icon mobile-only" type="button" title="Menu" aria-label="Menu">
+              <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3 18v-2h18v2zm0-5v-2h18v2zm0-5V6h18v2z"/></svg>
+            </button>
+            <div class="topbar-identity">
+              <div class="topbar-title-row">
+                <h2 id="active-server-name">Select a Server</h2>
+                <span id="active-server-badge" class="status-badge hidden">STOPPED</span>
+              </div>
+              <div id="active-server-meta" class="server-meta-line"></div>
+            </div>
+          </div>
+
+          <div id="server-controls" class="topbar-controls hidden">
+            <button id="btn-start" class="btn btn-primary btn-sm" type="button">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M8 19V5l11 7z"/></svg>
+              <span>Start</span>
+            </button>
+            <button id="btn-restart" class="btn btn-secondary btn-sm" type="button">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 20q-3.35 0-5.675-2.325T4 12t2.325-5.675T12 4q1.725 0 3.3.712T18 6.75V4h2v7h-7V9h4.2q-.8-1.4-2.187-2.2T12 6Q9.5 6 7.75 7.75T6 12t1.75 4.25T12 18q1.925 0 3.475-1.1T17.65 14h2.1q-.7 2.65-2.85 4.325T12 20"/></svg>
+              <span>Restart</span>
+            </button>
+            <button id="btn-stop" class="btn btn-danger btn-sm" type="button">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18V6h12v12z"/></svg>
+              <span>Stop</span>
+            </button>
           </div>
         </div>
-        <div id="server-controls" class="topbar-controls hidden">
-          <span id="active-server-badge" class="status-badge">STOPPED</span>
-          <button id="btn-start" class="btn btn-primary btn-sm">Start</button>
-          <button id="btn-restart" class="btn btn-secondary btn-sm">Restart</button>
-          <button id="btn-stop" class="btn btn-danger btn-sm">Stop</button>
+
+        <!-- Connection & Public Access Strip -->
+        <div id="connection-strip" class="connection-strip hidden">
+          <button id="btn-copy-local-addr" class="m3-chip m3-chip--neutral net-chip-btn hidden" type="button" title="Copy LAN IP">
+            <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M4 18q-.825 0-1.412-.587T2 16V6q0-.825.588-1.412T4 4h16q.825 0 1.413.588T22 6v10q0 .825-.587 1.413T20 18zm0-2h16V6H4zm0 4v-2h16v2z"/></svg>
+            <span id="net-local-label" class="hidden">LAN</span>
+            <code id="net-local-addr" class="mono"></code>
+            <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18q-.825 0-1.412-.587T7 16V4q0-.825.588-1.412T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.587 1.413T18 18zm0-2h9V4H9zm-4 6q-.825 0-1.412-.587T3 20V6h2v14h11v2z"/></svg>
+          </button>
+
+          <button id="btn-copy-public-addr" class="m3-chip m3-chip--neutral net-chip-btn" type="button" title="Public Tunnel Status">
+            <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22m-1-2.05V18q-.825 0-1.412-.587T9 16v-1l-4.8-4.8q-.075.45-.137.9T4 12q0 3.025 1.988 5.3T11 19.95m6.9-2.55q.5-.55.9-1.187t.663-1.325T19.863 13.5T20 12q0-2.45-1.362-4.475T15 4.6V5q0 .825-.587 1.413T13 7h-2v2q0 .425-.288.713T10 10H8v2h6q.425 0 .713.288T15 13v3h1q.65 0 1.175.388T17.9 17.4"/></svg>
+            <span id="net-public-badge">LAN Only</span>
+            <code id="net-public-addr" class="mono hidden"></code>
+          </button>
+
+          <button id="btn-open-network-tab" class="m3-chip m3-chip--neutral net-chip-btn" type="button">
+            <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M11 21v-6h2v2h8v2h-8v2zm-8-2v-2h6v2zm4-4v-2H3v-2h4V9h2v6zm4-2v-2h10v2zm4-4V3h2v2h4v2h-4v2zM3 7V5h10v2z"/></svg>
+            <span>Configure</span>
+          </button>
+
+          <span id="net-public-note" class="connection-note"></span>
         </div>
       </header>
 
       <div id="empty-state" class="empty-state">
-        <div class="empty-icon">🖥️</div>
+        <div class="m3-empty-icon">
+          <svg class="ms-icon ms-icon--lg" viewBox="0 0 24 24" fill="currentColor"><path d="M4 20q-.825 0-1.412-.587T2 18v-4q0-.825.588-1.412T4 12h16q.825 0 1.413.588T22 14v4q0 .825-.587 1.413T20 20zm2-3q.425 0 .713-.288T7 16t-.288-.712T6 15t-.712.288T5 16t.288.713T6 17m-2-7q-.825 0-1.412-.587T2 8V4q0-.825.588-1.412T4 2h16q.825 0 1.413.588T22 4v4q0 .825-.587 1.413T20 10zm2-3q.425 0 .713-.288T7 6t-.288-.712T6 5t-.712.288T5 6t.288.713T6 7"/></svg>
+        </div>
         <h3>No Server Selected</h3>
         <p>Select a server from the sidebar or create a new one to start managing it.</p>
-        <button id="empty-create-btn" class="btn btn-primary">+ Create Server</button>
+        <button id="empty-create-btn" class="btn btn-primary" type="button">+ New Server</button>
       </div>
 
       <div id="server-workspace" class="workspace hidden">
-        <!-- Connection & Public Access Strip -->
-        <div id="connection-strip" class="connection-strip">
-          <div class="connection-group">
-            <span id="net-public-badge" class="net-pill offline">LAN Only</span>
-            <code id="net-public-addr" class="addr-chip mono hidden"></code>
-            <button id="btn-copy-public-addr" class="btn btn-secondary btn-sm hidden" type="button">Copy Address</button>
-            <span id="net-public-note" class="connection-note"></span>
-          </div>
-          <div class="connection-group">
-            <span id="net-local-label" class="connection-note hidden">LAN:</span>
-            <code id="net-local-addr" class="addr-chip mono hidden"></code>
-            <button id="btn-copy-local-addr" class="btn btn-ghost btn-sm hidden" type="button">Copy LAN</button>
-            <button id="btn-open-network-tab" class="btn btn-ghost btn-sm" type="button">Network Settings</button>
-          </div>
-        </div>
-
-        <!-- Metrics Strip -->
+        <!-- Metrics Strip (4 MetricTelemetryTile cards) -->
         <div class="metrics-grid">
           <div class="metric-card">
-            <span class="metric-label">CPU</span>
-            <span id="metric-cpu" class="metric-value">0%</span>
+            <div class="metric-header">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 15q.625 0 1.063-.437T13.5 13.5q0-.25-.075-.462t-.2-.388l3.525-4.725l-4.725 3.525q-.175-.125-.388-.2t-.462-.075q-.625 0-1.062.438T9.7 12.7q0 .625.438 1.063T12 15m0 5q-2.075 0-3.9-.788t-3.175-2.137T2.788 13.9T2 10q0-1.825.638-3.488T4.45 3.55L5.875 4.975Q4.95 6 4.475 7.263T4 10q0 3.35 2.325 5.675T12 18t5.675-2.325T20 10q0-1.575-.587-3T17.75 4.45l1.425-1.425q1.35 1.35 2.088 3.163T22 10q0 2.075-.788 3.9t-2.137 3.175t-3.175 2.138T12 20"/></svg>
+              <span class="metric-label">CPU</span>
+            </div>
+            <span id="metric-cpu" class="metric-value">0.0%</span>
+            <div class="metric-progress-track"><div id="metric-cpu-bar" class="metric-progress-fill"></div></div>
           </div>
+
           <div class="metric-card">
-            <span class="metric-label">Memory</span>
+            <div class="metric-header">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M9 15V9h6v6zm2-2h2v-2h-2zm-2 8v-2H7q-.825 0-1.412-.587T5 17v-2H3v-2h2v-2H3V9h2V7q0-.825.588-1.412T7 5h2V3h2v2h2V3h2v2h2q.825 0 1.413.588T19 7v2h2v2h-2v2h2v2h-2v2q0 .825-.587 1.413T17 19h-2v2h-2v-2h-2v2zm8-4V7H7v10z"/></svg>
+              <span class="metric-label">Memory</span>
+            </div>
             <span id="metric-ram" class="metric-value">0 / 0 MB</span>
+            <div class="metric-progress-track"><div id="metric-ram-bar" class="metric-progress-fill"></div></div>
           </div>
+
           <div class="metric-card">
-            <span class="metric-label">TPS / MSPT</span>
-            <span id="metric-tps" class="metric-value">20.0 / 0.0 ms</span>
+            <div class="metric-header">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M9 3V1h6v2zm2 11h2V8h-2zm1 8q-1.85 0-3.488-.712T5.65 19.35t-1.937-2.863T3 13t.713-3.488T5.65 6.65t2.863-1.937T12 4q1.55 0 2.975.5t2.675 1.45l1.4-1.4l1.4 1.4l-1.4 1.4Q20 8.6 20.5 10.025T21 13q0 1.85-.713 3.488T18.35 19.35t-2.863 1.938T12 22"/></svg>
+              <span class="metric-label">TPS / MSPT</span>
+            </div>
+            <span id="metric-tps" class="metric-value">-- / --</span>
+            <div class="metric-progress-track"><div id="metric-tps-bar" class="metric-progress-fill"></div></div>
           </div>
+
           <div class="metric-card">
-            <span class="metric-label">Players</span>
-            <span id="metric-players" class="metric-value">0</span>
+            <div class="metric-header">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M1 20v-2.8q0-.85.438-1.562T2.6 14.55q1.55-.775 3.15-1.162T9 13t3.25.388 3.15 1.162q.725.375 1.163 1.088T17 17.2V20zm18 0v-3q0-1.1-.612-2.113T16.65 13.1q1.275.15 2.4.513t2.1.887q.9.5 1.375 1.112T23 17v3zM9 12q-1.65 0-2.825-1.175T5 8t1.175-2.825T9 4t2.825 1.175T13 8t-1.175 2.825T9 12m10-4q0 1.65-1.175 2.825T15 12q-.275 0-.7-.062t-.7-.138q.675-.8 1.038-1.775T15 8t-.362-2.025T13.6 4.2q.35-.125.7-.163T15 4q1.65 0 2.825 1.175T19 8"/></svg>
+              <span class="metric-label">Players</span>
+            </div>
+            <span id="metric-players" class="metric-value">0 Online</span>
+            <div class="metric-progress-track"><div id="metric-players-bar" class="metric-progress-fill"></div></div>
           </div>
         </div>
 
-        <!-- Workspace Tabs -->
-        <nav class="tabs-bar">
-          <button class="tab-btn active" data-tab="console">Console</button>
-          <button class="tab-btn" data-tab="performance">Performance</button>
-          <button class="tab-btn" data-tab="automation">Automation</button>
-          <button class="tab-btn" data-tab="files">Files</button>
-          <button class="tab-btn" data-tab="world">World</button>
-          <button class="tab-btn" data-tab="livemap">Live Map</button>
-          <button class="tab-btn" data-tab="settings">Settings &amp; Network</button>
-          <button class="tab-btn" data-tab="players">Players</button>
-          <button class="tab-btn" data-tab="backups">Backups</button>
-          <button class="tab-btn" data-tab="plugins">Plugins / Mods</button>
+        <!-- Canonical 6-Tab Workspace Bar -->
+        <nav class="tabs-bar" aria-label="Server workspace tabs">
+          <button class="tab-btn active" data-tab="console" type="button">Console</button>
+          <button class="tab-btn" data-tab="performance" type="button">Performance</button>
+          <button class="tab-btn" data-tab="players" type="button">Players</button>
+          <button class="tab-btn" data-tab="content" type="button">Content</button>
+          <button class="tab-btn" data-tab="worldmap" type="button">World &amp; Map</button>
+          <button class="tab-btn" data-tab="management" type="button">Management</button>
         </nav>
 
-        <!-- Console Tab -->
+        <!-- Tab 1: Console -->
         <section id="tab-console" class="tab-panel active">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-shrink:0;">
-            <span class="player-sub">Live Server Console (up to 2,000 lines)</span>
-            <button type="button" id="btn-copy-console" class="btn btn-secondary btn-sm">Copy Console Output</button>
+          <div class="m3-card console-card">
+            <div class="console-header-row">
+              <span id="console-line-count" class="player-sub">Live Server Console</span>
+              <button type="button" id="btn-copy-console" class="btn btn-secondary btn-sm">
+                <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M9 18q-.825 0-1.412-.587T7 16V4q0-.825.588-1.412T9 2h9q.825 0 1.413.588T20 4v12q0 .825-.587 1.413T18 18zm0-2h9V4H9zm-4 6q-.825 0-1.412-.587T3 20V6h2v14h11v2z"/></svg>
+                <span>Copy Console Output</span>
+              </button>
+            </div>
+            <div id="console-output" class="console-output"></div>
+            <div id="console-quick-chips" class="console-quick-chips">
+              <button type="button" class="console-quick-chip" data-cmd="save-all">save-all</button>
+              <button type="button" class="console-quick-chip" data-cmd="list">list</button>
+              <button type="button" class="console-quick-chip" data-cmd="time set day">time set day</button>
+              <button type="button" class="console-quick-chip" data-cmd="weather clear">weather clear</button>
+            </div>
+            <form id="console-form" class="console-input-bar">
+              <input type="text" id="console-input" placeholder="Enter server command (e.g. say Hello, list, op Steve, save-all)..." autocomplete="off">
+              <button type="submit" class="btn btn-primary" aria-label="Send command">
+                <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M3 20v-6l8-2l-8-2V4l19 8z"/></svg>
+                <span>Send</span>
+              </button>
+            </form>
           </div>
-          <div id="console-output" class="console-output"></div>
-          <form id="console-form" class="console-input-bar">
-            <input type="text" id="console-input" placeholder="Enter server command (e.g. say Hello, op Steve)..." autocomplete="off">
-            <button type="submit" class="btn btn-primary">Send</button>
-          </form>
         </section>
 
-        <!-- Performance Tab -->
+        <!-- Tab 2: Performance -->
         <section id="tab-performance" class="tab-panel">
           <div class="settings-layout">
             <div class="panel-card">
               <h3>Live Performance &amp; Storage</h3>
               <div class="metrics-grid">
                 <div class="metric-card"><span class="metric-label">CPU</span><span id="perf-cpu" class="metric-value">0%</span></div>
-                <div class="metric-card"><span class="metric-label">RAM</span><span id="perf-ram" class="metric-value">0 MB</span></div>
+                <div class="metric-card"><span class="metric-label">Memory</span><span id="perf-ram" class="metric-value">0 MB</span></div>
                 <div class="metric-card"><span class="metric-label">TPS</span><span id="perf-tps" class="metric-value">20.0</span></div>
                 <div class="metric-card"><span class="metric-label">MSPT</span><span id="perf-mspt" class="metric-value">0.0 ms</span></div>
                 <div class="metric-card"><span class="metric-label">Uptime</span><span id="perf-uptime" class="metric-value">0s</span></div>
@@ -170,592 +279,712 @@
                 <div class="metric-card"><span class="metric-label">Device Free</span><span id="perf-free-disk" class="metric-value">0 GB</span></div>
               </div>
             </div>
-            <div class="panel-card">
-              <div class="files-toolbar" style="margin-bottom:8px;">
-                <div>
-                  <h3 style="margin:0;">Telemetry Over Time</h3>
-                  <div id="perf-chart-summary" class="player-sub">Collecting live samples every 2.5s...</div>
-                </div>
-                <div class="chart-legend">
-                  <span class="legend-item"><span class="legend-dot legend-cpu"></span>CPU %</span>
-                  <span class="legend-item"><span class="legend-dot legend-ram"></span>RAM %</span>
-                  <span class="legend-item"><span class="legend-dot legend-tps"></span>TPS (scaled)</span>
-                  <button type="button" id="perf-clear-chart-btn" class="btn btn-ghost btn-sm">Clear</button>
-                </div>
-              </div>
-              <div class="chart-wrap">
-                <canvas id="perf-chart-canvas"></canvas>
-              </div>
-            </div>
-            <div class="panel-card">
-              <h3>JVM Optimization (Aikar's G1GC Preset)</h3>
-              <p class="player-sub" id="perf-aikar-status">Checking JVM flags...</p>
-              <button type="button" id="apply-aikar-btn" class="btn btn-primary btn-sm">Apply Aikar's G1GC Flags</button>
-            </div>
-          </div>
-        </section>
 
-        <!-- Automation Tab -->
-        <section id="tab-automation" class="tab-panel">
-          <div class="settings-layout">
-            <div class="panel-card">
-              <h3>Power &amp; Standby Automation</h3>
-              <form id="automation-power-form">
-                <div class="form-grid">
-                  <label class="checkbox-label"><input type="checkbox" id="auto-idle-sleep"><span>Idle Auto-Shutdown</span></label>
-                  <div class="form-group">
-                    <label for="auto-idle-mins">Idle Timeout (Minutes)</label>
-                    <input type="number" id="auto-idle-mins" min="1" max="240" value="10">
+            <div class="perf-charts-grid">
+              <div class="m3-card">
+                <div class="files-toolbar" style="margin-bottom:8px;">
+                  <div>
+                    <h3 style="margin:0;">CPU &amp; TPS Telemetry</h3>
+                    <div id="perf-chart-summary" class="player-sub">Collecting live samples every 2.5s...</div>
                   </div>
-                  <label class="checkbox-label"><input type="checkbox" id="auto-wake-ping"><span>Auto-Wake on Ping</span></label>
-                </div>
-                <button type="submit" class="btn btn-primary btn-sm">Save Power Settings</button>
-              </form>
-            </div>
-            <div class="panel-card">
-              <h3>Scheduled Tasks</h3>
-              <form id="automation-task-form" class="inline-form">
-                <input type="text" id="task-name" placeholder="Task name (e.g. Nightly Backup)" required>
-                <select id="task-type">
-                  <option value="WORLD_BACKUP">World Backup</option>
-                  <option value="FULL_BACKUP">Full Backup</option>
-                  <option value="RESTART_SERVER">Restart Server</option>
-                  <option value="BROADCAST_MESSAGE">Broadcast</option>
-                  <option value="CUSTOM_COMMAND">Command</option>
-                </select>
-                <select id="task-freq">
-                  <option value="INTERVAL">Every N Minutes</option>
-                  <option value="DAILY_TIME">Daily Time</option>
-                </select>
-                <input type="number" id="task-interval" min="1" value="360" placeholder="Minutes" style="max-width:110px;">
-                <input type="text" id="task-cmd" placeholder="Command / message (optional)">
-                <button type="submit" class="btn btn-primary btn-sm">+ Add Task</button>
-              </form>
-              <div id="automation-tasks-list" class="player-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Files Tab -->
-        <section id="tab-files" class="tab-panel">
-          <div class="files-toolbar">
-            <div class="files-breadcrumb">
-              <button id="files-up-btn" class="btn btn-secondary btn-sm" type="button">Up</button>
-              <span id="files-current-path" class="mono">/</span>
-            </div>
-            <div class="player-actions">
-              <button id="files-new-file-btn" class="btn btn-secondary btn-sm" type="button">+ New File</button>
-              <button id="files-new-dir-btn" class="btn btn-secondary btn-sm" type="button">+ New Folder</button>
-              <button id="files-upload-btn" class="btn btn-primary btn-sm" type="button">Upload File</button>
-              <input type="file" id="files-upload-input" class="hidden" multiple>
-              <button id="files-refresh-btn" class="btn btn-secondary btn-sm" type="button">Refresh</button>
-            </div>
-          </div>
-          <div class="files-layout">
-            <div id="files-list" class="files-list" title="Drag and drop files here to upload"></div>
-            <div id="file-editor-pane" class="file-editor-pane hidden">
-              <div class="editor-header">
-                <span id="editor-filename" class="mono"></span>
-                <div class="editor-actions">
-                  <button id="editor-save-btn" class="btn btn-primary btn-sm" type="button">Save</button>
-                  <button id="editor-close-btn" class="btn btn-ghost btn-sm" type="button">Close</button>
-                </div>
-              </div>
-              <textarea id="editor-textarea" spellcheck="false"></textarea>
-            </div>
-          </div>
-        </section>
-
-        <!-- World Tab -->
-        <section id="tab-world" class="tab-panel">
-          <div class="settings-layout">
-            <div class="panel-card">
-              <h3>World Summary (<span id="world-level-name">world</span>)</h3>
-              <p class="player-sub" id="world-totals">Loading world info...</p>
-              <div id="world-dimensions-list" class="player-list"></div>
-            </div>
-            <div class="panel-card">
-              <h3>World Import &amp; Export</h3>
-              <p class="player-sub">Export your Overworld, Nether, and End as a .zip archive, or import a Java Edition world (.zip / .mcworld). Stop the server first.</p>
-              <div class="toggle-row" style="margin-bottom:12px;">
-                <button type="button" id="world-export-btn" class="btn btn-secondary btn-sm">Export World (.zip)</button>
-              </div>
-              <form id="world-import-form" class="inline-form">
-                <input type="file" id="world-import-file" accept=".zip,.mcworld" required>
-                <label class="checkbox-label"><input type="checkbox" id="world-import-backup" checked><span>Backup before import</span></label>
-                <button type="submit" id="world-import-btn" class="btn btn-primary btn-sm">Import World</button>
-              </form>
-            </div>
-            <div class="panel-card">
-              <h3>Chunk Pruner &amp; Optimizer</h3>
-              <p class="player-sub">Delete uninhabited or lightly explored chunks to reclaim storage. Stop the server before pruning.</p>
-              <div class="form-grid" style="margin-bottom:12px;">
-                <div class="form-group">
-                  <label for="prune-threshold">Inhabited Time Threshold</label>
-                  <select id="prune-threshold">
-                    <option value="UNTOUCHED">0s (Untouched / Pass-through only)</option>
-                    <option value="THIRTY_SECONDS">30s (Quick Sprint)</option>
-                    <option value="TWO_MINUTES">2m (Brief Visit)</option>
-                    <option value="FIVE_MINUTES">5m (Light Exploration)</option>
-                  </select>
-                </div>
-              </div>
-              <div class="toggle-row" style="margin-bottom:12px;">
-                <label class="checkbox-label"><input type="checkbox" id="prune-nether" checked><span>Prune Nether (DIM-1)</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prune-end" checked><span>Prune The End (DIM1)</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prune-backup" checked><span>Create world backup first</span></label>
-              </div>
-              <button type="button" id="optimize-world-btn" class="btn btn-primary btn-sm">Run Chunk Pruner</button>
-              <p class="player-sub" id="prune-last-result" style="margin-top:8px;"></p>
-            </div>
-            <div class="panel-card">
-              <h3>Chunk Pre-Generator</h3>
-              <p class="player-sub">Pre-generate chunks around spawn (0, 0) while the server is running to eliminate exploration lag.</p>
-              <div class="form-grid" style="margin-bottom:10px;">
-                <div class="form-group">
-                  <label for="pregen-dim">Dimension</label>
-                  <select id="pregen-dim">
-                    <option value="OVERWORLD">Overworld</option>
-                    <option value="NETHER">The Nether</option>
-                    <option value="THE_END">The End</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="pregen-radius">Radius (blocks)</label>
-                  <select id="pregen-radius">
-                    <option value="250">250m</option>
-                    <option value="500" selected>500m</option>
-                    <option value="1000">1000m</option>
-                    <option value="2000">2000m</option>
-                  </select>
-                </div>
-              </div>
-              <div id="pregen-status-text" class="player-sub" style="margin-bottom:8px;">Idle</div>
-              <div class="player-actions">
-                <button type="button" id="pregen-start-btn" class="btn btn-primary btn-sm">Start Pre-Generation</button>
-                <button type="button" id="pregen-stop-btn" class="btn btn-danger btn-sm hidden">Stop Pre-Generation</button>
-              </div>
-            </div>
-            <div class="panel-card">
-              <div class="files-toolbar">
-                <h3 style="margin:0;">Region File Inspector (.mca)</h3>
-                <button type="button" id="regions-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
-              </div>
-              <p class="player-sub">Top .mca region files sorted by size. Stop the server to delete a region.</p>
-              <div id="regions-list" class="player-list" style="max-height:320px;"></div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Live Map Tab -->
-        <section id="tab-livemap" class="tab-panel">
-          <div class="panel-card">
-            <div class="files-toolbar">
-              <div>
-                <h3 style="margin:0;">Live Map (Squaremap)</h3>
-                <div id="livemap-status-text" class="player-sub">Checking Squaremap status...</div>
-              </div>
-              <div class="player-actions">
-                <button type="button" id="livemap-install-btn" class="btn btn-primary btn-sm hidden">Install Squaremap</button>
-                <button type="button" id="livemap-open-btn" class="btn btn-secondary btn-sm hidden">Open in New Tab</button>
-                <button type="button" id="livemap-uninstall-btn" class="btn btn-danger btn-sm hidden">Uninstall</button>
-              </div>
-            </div>
-            <div id="livemap-port-row" class="inline-form hidden" style="margin-top:10px;align-items:center;">
-              <label for="livemap-port-input" class="player-sub" style="margin:0;">Squaremap HTTP Port:</label>
-              <input type="number" id="livemap-port-input" min="1024" max="65535" value="8081" style="max-width:120px;">
-              <button type="button" id="livemap-port-save-btn" class="btn btn-secondary btn-sm">Save Port</button>
-            </div>
-            <div id="livemap-conflict-banner" class="conflict-banner hidden"></div>
-            <iframe id="livemap-frame" class="livemap-frame hidden" title="Squaremap Live Map"></iframe>
-          </div>
-        </section>
-
-        <!-- Settings & Properties Tab -->
-        <section id="tab-settings" class="tab-panel">
-          <form id="settings-form" class="settings-layout">
-            <div class="panel-card">
-              <h3>Server Runtime &amp; Configuration</h3>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="set-name">Server Name</label>
-                  <input type="text" id="set-name" required>
-                </div>
-                <div class="form-group">
-                  <label for="set-java">Java Version</label>
-                  <select id="set-java">
-                    <option value="8">Java 8</option>
-                    <option value="17">Java 17</option>
-                    <option value="21">Java 21</option>
-                    <option value="25">Java 25</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="set-port">Server Port</label>
-                  <input type="number" id="set-port" min="1" max="65535" required>
-                </div>
-                <div class="form-group span-2">
-                  <div class="ram-slider-header">
-                    <label for="set-ram">Allocated RAM</label>
-                    <span id="set-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
-                  </div>
-                  <input type="range" id="set-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
-                  <div class="ram-slider-meta">
-                    <span id="set-ram-min">512 MB</span>
-                    <span id="set-ram-device-hint">Device RAM: detecting...</span>
-                    <span id="set-ram-max">4.0 GB max</span>
+                  <div class="chart-legend">
+                    <span class="legend-item"><span class="legend-dot legend-cpu"></span>CPU %</span>
+                    <span class="legend-item"><span class="legend-dot legend-tps"></span>TPS</span>
+                    <button type="button" id="perf-clear-chart-btn" class="btn btn-ghost btn-sm">Clear</button>
                   </div>
                 </div>
-              </div>
-              <div class="form-group">
-                <label for="set-jvm-args">JVM Arguments</label>
-                <input type="text" id="set-jvm-args" class="mono">
-              </div>
-              <div class="toggle-row">
-                <label class="checkbox-label">
-                  <input type="checkbox" id="set-autostart">
-                  <span>Auto-start when app launches</span>
-                </label>
-                <label class="checkbox-label">
-                  <input type="checkbox" id="set-eula">
-                  <span>Minecraft EULA accepted</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="panel-card">
-              <h3>server.properties</h3>
-              <div class="form-grid">
-                <div class="form-group span-2">
-                  <label for="prop-motd">MOTD</label>
-                  <input type="text" id="prop-motd">
-                </div>
-                <div class="form-group">
-                  <label for="prop-max-players">Max Players</label>
-                  <input type="number" id="prop-max-players" min="1" max="1000">
-                </div>
-                <div class="form-group">
-                  <label for="prop-gamemode">Gamemode</label>
-                  <select id="prop-gamemode">
-                    <option value="survival">Survival</option>
-                    <option value="creative">Creative</option>
-                    <option value="adventure">Adventure</option>
-                    <option value="spectator">Spectator</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="prop-difficulty">Difficulty</label>
-                  <select id="prop-difficulty">
-                    <option value="peaceful">Peaceful</option>
-                    <option value="easy">Easy</option>
-                    <option value="normal">Normal</option>
-                    <option value="hard">Hard</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="prop-view-distance">View Distance</label>
-                  <input type="number" id="prop-view-distance" min="2" max="32">
-                </div>
-                <div class="form-group">
-                  <label for="prop-sim-distance">Simulation Distance</label>
-                  <input type="number" id="prop-sim-distance" min="2" max="32">
-                </div>
-                <div class="form-group">
-                  <label for="prop-level-name">World Name</label>
-                  <input type="text" id="prop-level-name">
-                </div>
-                <div class="form-group">
-                  <label for="prop-level-seed">World Seed</label>
-                  <input type="text" id="prop-level-seed">
+                <div class="chart-wrap">
+                  <canvas id="perf-chart-cpu-canvas"></canvas>
                 </div>
               </div>
 
-              <div class="checkbox-grid">
-                <label class="checkbox-label"><input type="checkbox" id="prop-pvp"><span>PvP Enabled</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-hardcore"><span>Hardcore Mode</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-online-mode"><span>Online Mode (Auth)</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-whitelist"><span>Whitelist Enabled</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-enforce-whitelist"><span>Enforce Whitelist</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-cmd-block"><span>Command Blocks</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-spawn-monsters"><span>Spawn Monsters</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-spawn-animals"><span>Spawn Animals</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-spawn-npcs"><span>Spawn Villagers/NPCs</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-allow-flight"><span>Allow Flight</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-allow-nether"><span>Allow Nether</span></label>
-                <label class="checkbox-label"><input type="checkbox" id="prop-force-gamemode"><span>Force Gamemode</span></label>
+              <div class="m3-card">
+                <div class="files-toolbar" style="margin-bottom:8px;">
+                  <div>
+                    <h3 style="margin:0;">Memory Allocation</h3>
+                    <div id="perf-mem-summary" class="player-sub">JVM heap and container footprint</div>
+                  </div>
+                  <div class="chart-legend">
+                    <span class="legend-item"><span class="legend-dot legend-ram"></span>Memory %</span>
+                  </div>
+                </div>
+                <div class="chart-wrap">
+                  <canvas id="perf-chart-mem-canvas"></canvas>
+                </div>
               </div>
             </div>
 
-            <div class="settings-footer">
-              <button type="button" id="delete-server-btn" class="btn btn-danger">Delete Server</button>
-              <button type="submit" class="btn btn-primary">Save Settings</button>
-            </div>
-          </form>
-
-          <div class="panel-card" style="margin-top: 14px;">
-            <div class="files-toolbar">
-              <h3 style="margin:0;">Software Version &amp; Build Updates</h3>
-              <span id="upgrade-current-label" class="player-sub"></span>
-            </div>
-            <p id="upgrade-build-status" class="player-sub">Checking latest server build...</p>
-            <div class="inline-form" style="margin-top:8px;">
-              <select id="upgrade-version-select" style="flex:1;min-width:160px;"></select>
-              <label class="checkbox-label" style="white-space:nowrap;">
-                <input type="checkbox" id="upgrade-create-backup" checked>
-                <span>Pre-upgrade backup</span>
-              </label>
-              <button type="button" id="upgrade-latest-build-btn" class="btn btn-secondary btn-sm">Update Latest Build</button>
-              <button type="button" id="upgrade-server-btn" class="btn btn-primary btn-sm">Upgrade Version</button>
-            </div>
-            <div id="upgrade-progress-box" class="progress-box hidden" style="margin-top:10px;">
-              <div class="progress-text-row">
-                <span id="upgrade-progress-msg">Preparing upgrade...</span>
-                <span id="upgrade-progress-pct">0%</span>
-              </div>
-              <div class="progress-track"><div id="upgrade-progress-fill" class="progress-fill" style="width:0%;"></div></div>
-            </div>
-          </div>
-
-          <div class="players-grid" style="margin-top: 14px;">
-            <div class="panel-card">
-              <h3>Public Multiplayer Tunnel</h3>
-              <p id="tunnel-status-text" class="player-sub">Disconnected</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="net-tunnel-provider">Provider</label>
-                  <select id="net-tunnel-provider">
-                    <option value="BORE">Instant Free Tunnel (bore.pub)</option>
-                    <option value="PLAYIT">Playit.gg</option>
-                    <option value="CUSTOM_BORE">Custom Bore Relay</option>
-                    <option value="MINESERVE_CLOUD">MineServe Cloud (*.play.mineserve.app)</option>
-                  </select>
-                </div>
-                <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
-                  <label for="net-cloud-subdomain">Cloud Subdomain</label>
-                  <input type="text" id="net-cloud-subdomain" placeholder="myserver">
-                </div>
-                <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
-                  <label for="net-cloud-region">Cloud Relay Region</label>
-                  <select id="net-cloud-region">
-                    <option value="us-east">US East</option>
-                    <option value="eu-west">EU West</option>
-                    <option value="eu-central">EU Central</option>
-                    <option value="ap-southeast">Asia Pacific</option>
-                  </select>
-                </div>
-                <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
-                  <label for="net-cloud-domain">Cloud Domain</label>
-                  <select id="net-cloud-domain">
-                    <option value="play.mineserve.app">play.mineserve.app</option>
-                    <option value="playms.uk">playms.uk (Pro)</option>
-                  </select>
+            <div class="m3-settings-group">
+              <h4 class="m3-settings-group-title">JVM Optimization</h4>
+              <div class="m3-card">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                  <div>
+                    <h3 style="margin:0 0 4px;">Aikar's G1GC Preset</h3>
+                    <p class="player-sub" id="perf-aikar-status" style="margin:0;">Checking JVM flags...</p>
+                  </div>
+                  <button type="button" id="apply-aikar-btn" class="btn btn-primary btn-sm">Apply Aikar's G1GC Flags</button>
                 </div>
               </div>
-              <div id="tunnel-cloud-unlinked-callout" class="hidden" style="margin:10px 0;padding:12px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.35);">
-                <div style="font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:4px;">MineServe Cloud Account Required</div>
-                <div class="player-sub" style="margin-bottom:8px;">Sign in or start a 7-day free trial of MineServe Plus to reserve custom *.play.mineserve.app (or Pro *.playms.uk) addresses across US, UK, EU, and Asia Pacific relays.</div>
-                <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                  <button type="button" id="tunnel-open-cloud-modal-btn" class="btn btn-primary btn-sm">Sign In / Setup MineServe Cloud</button>
-                  <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Sign Up / 7-Day Free Trial ↗</a>
-                </div>
-              </div>
-              <div class="form-grid">
-                <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
-                  <label for="net-bore-host">Custom Relay Host</label>
-                  <input type="text" id="net-bore-host" value="bore.pub">
-                </div>
-                <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
-                  <label for="net-bore-port">Custom Relay Port</label>
-                  <input type="number" id="net-bore-port" value="7835">
-                </div>
-                <div class="form-group hidden" data-tunnel-provider="PLAYIT">
-                  <label for="net-playit-secret">Playit Secret (optional)</label>
-                  <input type="password" id="net-playit-secret" placeholder="Leave blank to keep existing">
-                </div>
-              </div>
-              <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="net-tunnel-autostart"><span>Auto-start tunnel with server</span></label>
-              <div class="player-actions">
-                <button type="button" id="tunnel-start-btn" class="btn btn-primary btn-sm">Start Tunnel</button>
-                <button type="button" id="tunnel-stop-btn" class="btn btn-danger btn-sm">Stop Tunnel</button>
-                <button type="button" id="tunnel-save-btn" class="btn btn-secondary btn-sm">Save</button>
-              </div>
-            </div>
-
-            <div class="panel-card">
-              <h3>Router Port Forwarding (UPnP / NAT-PMP)</h3>
-              <p id="pf-status-text" class="player-sub">Idle</p>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="net-pf-protocol">Protocol</label>
-                  <select id="net-pf-protocol">
-                    <option value="BOTH">TCP + UDP</option>
-                    <option value="TCP">TCP Only</option>
-                    <option value="UDP">UDP Only</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="net-pf-lease">Lease Duration (sec, 0=perm)</label>
-                  <input type="number" id="net-pf-lease" min="0" value="0">
-                </div>
-              </div>
-              <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="net-pf-auto"><span>Auto-forward port on start</span></label>
-              <div class="player-actions">
-                <button type="button" id="pf-start-btn" class="btn btn-primary btn-sm">Map Port</button>
-                <button type="button" id="pf-stop-btn" class="btn btn-danger btn-sm">Release Port</button>
-                <button type="button" id="pf-save-btn" class="btn btn-secondary btn-sm">Save</button>
-              </div>
-            </div>
-
-            <div class="panel-card">
-              <h3>Discord Webhook &amp; Event Bridge</h3>
-              <p class="player-sub">Broadcast server startup, shutdown, crashes, player join/leave, and backup events to a Discord channel with zero plugins.</p>
-              <form id="discord-webhook-form">
-                <div class="toggle-row" style="margin-bottom:10px;">
-                  <label class="checkbox-label"><input type="checkbox" id="discord-enabled"><span>Enable Discord Webhook Bridge</span></label>
-                </div>
-                <div class="form-group" style="margin-bottom:10px;">
-                  <label for="discord-url">Discord Webhook URL</label>
-                  <input type="url" id="discord-url" placeholder="https://discord.com/api/webhooks/...">
-                </div>
-                <div class="toggle-row" style="margin-bottom:12px;">
-                  <label class="checkbox-label"><input type="checkbox" id="discord-start" checked><span>Server Online</span></label>
-                  <label class="checkbox-label"><input type="checkbox" id="discord-stop" checked><span>Server Offline</span></label>
-                  <label class="checkbox-label"><input type="checkbox" id="discord-crash" checked><span>Crash / Unexpected Exit</span></label>
-                  <label class="checkbox-label"><input type="checkbox" id="discord-join" checked><span>Player Join</span></label>
-                  <label class="checkbox-label"><input type="checkbox" id="discord-leave" checked><span>Player Leave</span></label>
-                  <label class="checkbox-label"><input type="checkbox" id="discord-backup" checked><span>Backup Completed</span></label>
-                  <label class="checkbox-label"><input type="checkbox" id="discord-skins" checked><span>Player Avatar Skins</span></label>
-                </div>
-                <div class="player-actions">
-                  <button type="submit" class="btn btn-primary btn-sm">Save Webhook Settings</button>
-                  <button type="button" id="discord-test-btn" class="btn btn-secondary btn-sm">Test Webhook</button>
-                </div>
-              </form>
-            </div>
-
-            <div class="panel-card">
-              <h3 id="proxy-card-title">Proxy Network &amp; Loopback Binding</h3>
-              <p class="player-sub" id="proxy-card-desc">Configure Velocity/BungeeCord backend routes or bind this server to 127.0.0.1.</p>
-              <div id="proxy-card-body"></div>
             </div>
           </div>
         </section>
 
-        <!-- Players Tab -->
+        <!-- Tab 3: Players -->
         <section id="tab-players" class="tab-panel">
-          <div class="players-grid">
-            <div class="panel-card">
-              <h3>Online Players</h3>
-              <div id="players-online-list" class="player-list"></div>
+          <div class="settings-layout">
+            <div class="m3-card">
+              <h3>Player Administration &amp; Access Control</h3>
+              <div class="player-quick-bar">
+                <input type="text" id="player-quick-target" placeholder="Minecraft username or IP address...">
+                <button type="button" class="btn btn-secondary btn-sm" data-player-quick="op">OP</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-player-quick="deop">De-OP</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-player-quick="whitelist">Whitelist</button>
+                <button type="button" class="btn btn-danger btn-sm" data-player-quick="kick">Kick</button>
+                <button type="button" class="btn btn-danger btn-sm" data-player-quick="ban">Ban</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-player-quick="pardon">Pardon</button>
+                <button type="button" class="btn btn-danger btn-sm" data-player-quick="banip">Ban IP</button>
+              </div>
             </div>
 
-            <div class="panel-card">
-              <h3>Whitelist</h3>
-              <form id="whitelist-add-form" class="inline-form">
-                <input type="text" id="whitelist-add-input" placeholder="Player username" required>
-                <button type="submit" class="btn btn-primary btn-sm">Add</button>
-              </form>
-              <div id="players-whitelist-list" class="player-list"></div>
-            </div>
-
-            <div class="panel-card">
-              <h3>Operators (OPs)</h3>
-              <form id="op-add-form" class="inline-form">
-                <input type="text" id="op-add-input" placeholder="Player username" required>
-                <select id="op-level-input" title="OP Level">
-                  <option value="4">Level 4</option>
-                  <option value="3">Level 3</option>
-                  <option value="2">Level 2</option>
-                  <option value="1">Level 1</option>
-                </select>
-                <button type="submit" class="btn btn-primary btn-sm">Op</button>
-              </form>
-              <div id="players-ops-list" class="player-list"></div>
-            </div>
-
-            <div class="panel-card">
-              <h3>Banned Players</h3>
-              <form id="ban-add-form" class="inline-form">
-                <input type="text" id="ban-add-input" placeholder="Player username" required>
-                <input type="text" id="ban-reason-input" placeholder="Reason (optional)">
-                <button type="submit" class="btn btn-danger btn-sm">Ban</button>
-              </form>
-              <div id="players-banned-list" class="player-list"></div>
-            </div>
-
-            <div class="panel-card">
-              <h3>Banned IPs</h3>
-              <form id="banip-add-form" class="inline-form">
-                <input type="text" id="banip-add-input" placeholder="IP address" required>
-                <input type="text" id="banip-reason-input" placeholder="Reason (optional)">
-                <button type="submit" class="btn btn-danger btn-sm">Ban IP</button>
-              </form>
-              <div id="players-banned-ips-list" class="player-list"></div>
+            <div class="m3-card">
+              <div class="files-toolbar" style="margin-bottom:12px;">
+                <div id="player-filter-chips" class="filter-chip-row">
+                  <button type="button" class="m3-filter-chip active" data-player-filter="online">Online (<span id="players-count-online">0</span>)</button>
+                  <button type="button" class="m3-filter-chip" data-player-filter="ops">Operators (<span id="players-count-ops">0</span>)</button>
+                  <button type="button" class="m3-filter-chip" data-player-filter="whitelist">Whitelisted (<span id="players-count-whitelist">0</span>)</button>
+                  <button type="button" class="m3-filter-chip" data-player-filter="banned">Banned (<span id="players-count-banned">0</span>)</button>
+                  <button type="button" class="m3-filter-chip" data-player-filter="bannedIps">Banned IPs (<span id="players-count-bannedips">0</span>)</button>
+                </div>
+                <input type="search" id="players-roster-search" placeholder="Search roster..." style="max-width:240px;">
+              </div>
+              <div id="players-roster-table" class="m3-table"></div>
             </div>
           </div>
         </section>
-        <!-- Backups Tab -->
-        <section id="tab-backups" class="tab-panel">
-          <div class="panel-card">
+
+        <!-- Tab 4: Content (Plugins / Mods | Files) -->
+        <section id="tab-content" class="tab-panel">
+          <div class="subtab-toolbar">
+            <div class="m3-segmented-row" role="tablist" aria-label="Content sections">
+              <button type="button" class="m3-segmented-btn active" data-parent-tab="content" data-subtab="plugins">Plugins / Mods</button>
+              <button type="button" class="m3-segmented-btn" data-parent-tab="content" data-subtab="files">Files</button>
+            </div>
+          </div>
+
+          <div id="subtab-plugins" class="subtab-panel active">
+            <div class="content-split-grid">
+              <div class="settings-layout">
+                <div class="m3-card">
+                  <div class="files-toolbar" style="margin-bottom:10px;">
+                    <h3 style="margin:0;">Installed Plugins / Mods</h3>
+                  </div>
+                  <input type="search" id="plugins-filter-input" placeholder="Filter installed plugins or mods..." style="margin-bottom:10px;">
+                  <div id="plugins-installed-list" class="m3-table" style="max-height:46vh;overflow-y:auto;"></div>
+                </div>
+
+                <div class="m3-settings-group">
+                  <h4 class="m3-settings-group-title">Manual &amp; Modpack Imports</h4>
+                  <div class="m3-card">
+                    <h3>Upload Custom .jar</h3>
+                    <p class="player-sub">Upload a custom plugin or mod .jar file directly into this server's plugins/ or mods/ directory.</p>
+                    <form id="plugin-upload-form" class="inline-form" style="margin-bottom:14px;">
+                      <input type="file" id="plugin-upload-file" accept=".jar" required>
+                      <button type="submit" id="plugin-upload-btn" class="btn btn-primary btn-sm">Upload .jar</button>
+                    </form>
+                    <h3>Import Modrinth Modpack (.mrpack)</h3>
+                    <p class="player-sub">Upload a Modrinth .mrpack archive to extract overrides and download all server-compatible mods. Stop the server first.</p>
+                    <form id="modpack-import-form" class="inline-form" style="margin-bottom:0;">
+                      <input type="file" id="modpack-import-file" accept=".mrpack" required>
+                      <button type="submit" id="modpack-import-btn" class="btn btn-primary btn-sm">Import .mrpack</button>
+                    </form>
+                    <div id="modpack-import-status" class="player-sub" style="margin-top:8px;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="m3-card">
+                <h3>Modrinth Marketplace</h3>
+                <form id="modrinth-search-form" class="inline-form">
+                  <input type="text" id="modrinth-query" placeholder="Search Modrinth (Geyser, LuckPerms, Lithium, WorldEdit)..." required>
+                  <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                </form>
+                <div id="modrinth-results-list" style="display:flex;flex-direction:column;gap:8px;max-height:62vh;overflow-y:auto;">
+                  <div class="empty-state" style="padding:28px 16px;">
+                    <div class="m3-empty-icon">
+                      <svg class="ms-icon ms-icon--lg" viewBox="0 0 24 24" fill="currentColor"><path d="M9.5 16q-2.725 0-4.612-1.888T3 9.5t1.888-4.612T9.5 3t4.613 1.888T16 9.5q0 1.1-.35 2.075T14.7 13.3l5.6 5.6q.275.275.275.7t-.275.7t-.7.275t-.7-.275l-5.6-5.6q-.75.6-1.725.95T9.5 16m0-2q1.875 0 3.188-1.312T14 9.5t-1.312-3.187T9.5 5T6.313 6.313T5 9.5t1.313 3.188T9.5 14"/></svg>
+                    </div>
+                    <h3>Search Modrinth</h3>
+                    <p>Enter a plugin or mod name above to browse compatible versions for this server.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="subtab-files" class="subtab-panel">
             <div class="files-toolbar">
-              <h3 style="margin:0;">Server Backups</h3>
+              <div class="files-breadcrumb">
+                <button id="files-up-btn" class="btn btn-secondary btn-sm" type="button">Up</button>
+                <span id="files-current-path" class="mono">/</span>
+              </div>
               <div class="player-actions">
-                <button type="button" id="backup-world-btn" class="btn btn-primary btn-sm">+ World Backup</button>
-                <button type="button" id="backup-full-btn" class="btn btn-secondary btn-sm">+ Full Backup</button>
+                <button id="files-new-file-btn" class="btn btn-secondary btn-sm" type="button">+ New File</button>
+                <button id="files-new-dir-btn" class="btn btn-secondary btn-sm" type="button">+ New Folder</button>
+                <button id="files-upload-btn" class="btn btn-primary btn-sm" type="button">Upload File</button>
+                <input type="file" id="files-upload-input" class="hidden" multiple>
+                <button id="files-refresh-btn" class="btn btn-secondary btn-sm" type="button">Refresh</button>
               </div>
             </div>
-            <div id="backups-list" class="player-list" style="max-height:42vh;"></div>
-          </div>
-
-          <div class="panel-card" style="margin-top:14px;">
-            <div class="files-toolbar">
-              <h3 style="margin:0;">MineServe Cloud Snapshots</h3>
-              <button type="button" id="cloud-backups-refresh-btn" class="btn btn-secondary btn-sm">Refresh Cloud</button>
+            <div id="files-drop-banner" class="files-drop-banner">
+              <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M11 16V7.85l-2.6 2.6L7 9l5-5l5 5l-1.4 1.45l-2.6-2.6V16zm-5 4q-.825 0-1.412-.587T4 18v-3h2v3h12v-3h2v3q0 .825-.587 1.413T18 20z"/></svg>
+              <span>Drag and drop files into the directory list below to upload directly to the current folder.</span>
             </div>
-            <p id="cloud-backups-status" class="player-sub">Remote encrypted snapshots stored in MineServe Cloud (R2).</p>
-            <div id="backups-cloud-unlinked-callout" class="hidden" style="margin:10px 0;padding:12px;border-radius:10px;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.35);">
-              <div style="font-size:13px;font-weight:700;color:#6ee7b7;margin-bottom:4px;">Get Started with Encrypted Cloud Backups</div>
-              <div class="player-sub" style="margin-bottom:8px;">Sign in to MineServe Cloud or start a 7-day free trial to sync world backups off-device to encrypted Cloudflare R2 storage (10 GB on Plus, 50 GB on Pro).</div>
-              <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <button type="button" id="backups-open-cloud-modal-btn" class="btn btn-primary btn-sm">Sign In / Setup MineServe Cloud</button>
-                <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Sign Up / 7-Day Free Trial ↗</a>
+            <div class="files-layout">
+              <div id="files-list" class="files-list" title="Drag and drop files here to upload"></div>
+              <div id="file-editor-pane" class="file-editor-pane hidden">
+                <div class="editor-header">
+                  <span id="editor-filename" class="mono"></span>
+                  <div class="editor-actions">
+                    <button id="editor-save-btn" class="btn btn-primary btn-sm" type="button">Save</button>
+                    <button id="editor-close-btn" class="btn btn-ghost btn-sm" type="button">Close</button>
+                  </div>
+                </div>
+                <textarea id="editor-textarea" spellcheck="false"></textarea>
               </div>
             </div>
-            <div id="cloud-backups-list" class="player-list" style="max-height:38vh;"></div>
           </div>
         </section>
 
-        <!-- Plugins / Mods Tab -->
-        <section id="tab-plugins" class="tab-panel">
-          <div class="players-grid">
-            <div class="panel-card">
-              <h3>Installed Plugins / Mods</h3>
-              <div id="plugins-installed-list" class="player-list" style="max-height:55vh;"></div>
+        <!-- Tab 5: World & Map (World | Live Map) -->
+        <section id="tab-worldmap" class="tab-panel">
+          <div class="subtab-toolbar">
+            <div class="m3-segmented-row" role="tablist" aria-label="World and map sections">
+              <button type="button" class="m3-segmented-btn active" data-parent-tab="worldmap" data-subtab="world">World</button>
+              <button type="button" class="m3-segmented-btn" data-parent-tab="worldmap" data-subtab="livemap">Live Map</button>
             </div>
-            <div class="panel-card">
-              <h3>Search Modrinth</h3>
-              <form id="modrinth-search-form" class="inline-form">
-                <input type="text" id="modrinth-query" placeholder="Search plugins or mods..." required>
-                <button type="submit" class="btn btn-primary btn-sm">Search</button>
-              </form>
-              <div id="modrinth-results-list" class="player-list" style="max-height:50vh;"></div>
+          </div>
+
+          <div id="subtab-world" class="subtab-panel active">
+            <div class="settings-layout">
+              <div class="m3-card">
+                <div class="files-toolbar" style="margin-bottom:6px;">
+                  <h3 style="margin:0;">World Summary (<span id="world-level-name">world</span>)</h3>
+                  <span class="player-sub mono" id="world-totals">Loading world info...</span>
+                </div>
+                <div id="world-dimensions-list" class="dimensions-grid" style="margin-top:10px;"></div>
+              </div>
+
+              <div class="m3-settings-group">
+                <h4 class="m3-settings-group-title">World Seed &amp; Gamerules</h4>
+                <div class="m3-card">
+                  <div class="form-group">
+                    <label for="world-seed-input">Level Seed</label>
+                    <div class="inline-form" style="margin-bottom:0;">
+                      <input type="text" id="world-seed-input" class="mono" placeholder="(Random seed on first generation)">
+                      <button type="button" id="world-seed-copy-btn" class="btn btn-secondary btn-sm">Copy Seed</button>
+                    </div>
+                  </div>
+                  <div class="form-grid">
+                    <div class="form-group">
+                      <label for="world-difficulty">Difficulty</label>
+                      <select id="world-difficulty">
+                        <option value="peaceful">Peaceful</option>
+                        <option value="easy">Easy</option>
+                        <option value="normal">Normal</option>
+                        <option value="hard">Hard</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="world-gamemode">Default Gamemode</label>
+                      <select id="world-gamemode">
+                        <option value="survival">Survival</option>
+                        <option value="creative">Creative</option>
+                        <option value="adventure">Adventure</option>
+                        <option value="spectator">Spectator</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="toggle-row" style="justify-content:space-between;align-items:center;">
+                    <div style="display:flex;gap:18px;flex-wrap:wrap;">
+                      <label class="checkbox-label"><input type="checkbox" id="world-allow-nether"><span>Allow Nether</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="world-spawn-monsters"><span>Spawn Monsters</span></label>
+                    </div>
+                    <button type="button" id="world-rules-save-btn" class="btn btn-primary btn-sm">Save World Rules</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="players-grid">
+                <div class="m3-card">
+                  <h3>World Import &amp; Export</h3>
+                  <p class="player-sub">Export your Overworld, Nether, and End as a .zip archive, or import a Java Edition world (.zip / .mcworld). Stop the server first.</p>
+                  <div class="toggle-row" style="margin-bottom:12px;">
+                    <button type="button" id="world-export-btn" class="btn btn-secondary btn-sm">Export World (.zip)</button>
+                  </div>
+                  <form id="world-import-form" class="inline-form">
+                    <input type="file" id="world-import-file" accept=".zip,.mcworld" required>
+                    <label class="checkbox-label"><input type="checkbox" id="world-import-backup" checked><span>Backup before import</span></label>
+                    <button type="submit" id="world-import-btn" class="btn btn-primary btn-sm">Import World</button>
+                  </form>
+                </div>
+
+                <div class="m3-card">
+                  <h3>Chunk Pruner &amp; Optimizer</h3>
+                  <p class="player-sub">Delete uninhabited or lightly explored chunks to reclaim storage. Stop the server before pruning.</p>
+                  <div class="form-grid" style="margin-bottom:12px;">
+                    <div class="form-group">
+                      <label for="prune-threshold">Inhabited Time Threshold</label>
+                      <select id="prune-threshold">
+                        <option value="UNTOUCHED">0s (Untouched / Pass-through only)</option>
+                        <option value="THIRTY_SECONDS">30s (Quick Sprint)</option>
+                        <option value="TWO_MINUTES">2m (Brief Visit)</option>
+                        <option value="FIVE_MINUTES">5m (Light Exploration)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="toggle-row" style="margin-bottom:12px;">
+                    <label class="checkbox-label"><input type="checkbox" id="prune-nether" checked><span>Prune Nether (DIM-1)</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="prune-end" checked><span>Prune The End (DIM1)</span></label>
+                    <label class="checkbox-label"><input type="checkbox" id="prune-backup" checked><span>Create world backup first</span></label>
+                  </div>
+                  <button type="button" id="optimize-world-btn" class="btn btn-primary btn-sm">Run Chunk Pruner</button>
+                  <p class="player-sub" id="prune-last-result" style="margin-top:8px;"></p>
+                </div>
+
+                <div class="m3-card">
+                  <h3>Chunk Pre-Generator</h3>
+                  <p class="player-sub">Pre-generate chunks around spawn (0, 0) while the server is running to eliminate exploration lag.</p>
+                  <div class="form-grid" style="margin-bottom:10px;">
+                    <div class="form-group">
+                      <label for="pregen-dim">Dimension</label>
+                      <select id="pregen-dim">
+                        <option value="OVERWORLD">Overworld</option>
+                        <option value="NETHER">The Nether</option>
+                        <option value="THE_END">The End</option>
+                      </select>
+                    </div>
+                    <div class="form-group">
+                      <label for="pregen-radius">Radius (blocks)</label>
+                      <select id="pregen-radius">
+                        <option value="250">250m</option>
+                        <option value="500" selected>500m</option>
+                        <option value="1000">1000m</option>
+                        <option value="2000">2000m</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div id="pregen-status-text" class="player-sub" style="margin-bottom:8px;">Idle</div>
+                  <div class="player-actions">
+                    <button type="button" id="pregen-start-btn" class="btn btn-primary btn-sm">Start Pre-Generation</button>
+                    <button type="button" id="pregen-stop-btn" class="btn btn-danger btn-sm hidden">Stop Pre-Generation</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="m3-card">
+                <div class="files-toolbar">
+                  <h3 style="margin:0;">Region File Inspector (.mca)</h3>
+                  <button type="button" id="regions-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
+                </div>
+                <p class="player-sub">Top .mca region files sorted by size. Stop the server to delete a region.</p>
+                <div id="regions-list" class="m3-table" style="max-height:320px;overflow-y:auto;"></div>
+              </div>
             </div>
-            <div class="panel-card">
-              <h3>Upload Custom .jar</h3>
-              <p class="player-sub">Upload a custom plugin or mod .jar file directly into this server's plugins/ or mods/ directory.</p>
-              <form id="plugin-upload-form" class="inline-form">
-                <input type="file" id="plugin-upload-file" accept=".jar" required>
-                <button type="submit" id="plugin-upload-btn" class="btn btn-primary btn-sm">Upload .jar</button>
-              </form>
+          </div>
+
+          <div id="subtab-livemap" class="subtab-panel">
+            <div class="m3-card">
+              <div class="files-toolbar">
+                <div>
+                  <h3 style="margin:0;">Squaremap Live Web Map</h3>
+                  <div id="livemap-status-text" class="player-sub">Checking Squaremap status...</div>
+                </div>
+                <div class="livemap-port-group">
+                  <div id="livemap-port-row" class="livemap-port-group hidden">
+                    <label for="livemap-port-input" class="player-sub" style="margin:0;">Port:</label>
+                    <input type="number" id="livemap-port-input" min="1024" max="65535" value="8081" class="mono">
+                    <button type="button" id="livemap-port-save-btn" class="btn btn-secondary btn-sm">Save Port</button>
+                  </div>
+                  <button type="button" id="livemap-install-btn" class="btn btn-primary btn-sm hidden">Install Squaremap</button>
+                  <button type="button" id="livemap-open-btn" class="btn btn-primary btn-sm hidden">Open in New Tab</button>
+                  <button type="button" id="livemap-uninstall-btn" class="btn btn-danger btn-sm hidden">Uninstall</button>
+                </div>
+              </div>
+              <div id="livemap-conflict-banner" class="conflict-banner hidden"></div>
+              <div id="livemap-empty-state" class="empty-state hidden" style="padding:40px 16px;">
+                <div class="m3-empty-icon">
+                  <svg class="ms-icon ms-icon--lg" viewBox="0 0 24 24" fill="currentColor"><path d="m15 21l-6-2.1l-4.65 1.8q-.5.2-.925-.112T3 19.75V5.7q0-.325.188-.575T3.7 4.75L9 3l6 2.1l4.65-1.8q.5-.2.925.113T21 4.25v14.05q0 .325-.187.575t-.513.375zm-1-2.45V6.85l-4-1.4v11.7z"/></svg>
+                </div>
+                <h3>Live Map Unavailable</h3>
+                <p id="livemap-empty-desc">Install Squaremap and start the server to explore your world live in the browser.</p>
+              </div>
+              <iframe id="livemap-frame" class="livemap-frame hidden" title="Squaremap Live Map"></iframe>
             </div>
-            <div class="panel-card">
-              <h3>Import Modrinth Modpack (.mrpack)</h3>
-              <p class="player-sub">Upload a Modrinth .mrpack archive to extract overrides and download all server-compatible mods. Stop the server first.</p>
-              <form id="modpack-import-form" class="inline-form">
-                <input type="file" id="modpack-import-file" accept=".mrpack" required>
-                <button type="submit" id="modpack-import-btn" class="btn btn-primary btn-sm">Import .mrpack</button>
-              </form>
-              <div id="modpack-import-status" class="player-sub" style="margin-top:8px;"></div>
+          </div>
+        </section>
+
+        <!-- Tab 6: Management (Network & JVM | Backups | Automation) -->
+        <section id="tab-management" class="tab-panel">
+          <div class="subtab-toolbar">
+            <div class="m3-segmented-row" role="tablist" aria-label="Management sections">
+              <button type="button" class="m3-segmented-btn active" data-parent-tab="management" data-subtab="settings">Network &amp; JVM</button>
+              <button type="button" class="m3-segmented-btn" data-parent-tab="management" data-subtab="backups">Backups</button>
+              <button type="button" class="m3-segmented-btn" data-parent-tab="management" data-subtab="automation">Automation</button>
+            </div>
+          </div>
+
+          <div id="subtab-settings" class="subtab-panel active">
+            <form id="settings-form" class="settings-layout">
+              <div class="panel-card">
+                <h3>Server Runtime &amp; Configuration</h3>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="set-name">Server Name</label>
+                    <input type="text" id="set-name" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-java">Java Version</label>
+                    <select id="set-java">
+                      <option value="8">Java 8</option>
+                      <option value="17">Java 17</option>
+                      <option value="21">Java 21</option>
+                      <option value="25">Java 25</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="set-port">Server Port</label>
+                    <input type="number" id="set-port" min="1" max="65535" required>
+                  </div>
+                  <div class="form-group span-2">
+                    <div class="ram-slider-header">
+                      <label for="set-ram">Allocated RAM</label>
+                      <span id="set-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
+                    </div>
+                    <input type="range" id="set-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
+                    <div class="ram-slider-meta">
+                      <span id="set-ram-min">512 MB</span>
+                      <span id="set-ram-device-hint">Device RAM: detecting...</span>
+                      <span id="set-ram-max">4.0 GB max</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="set-jvm-args">JVM Arguments</label>
+                  <input type="text" id="set-jvm-args" class="mono">
+                </div>
+                <div class="toggle-row">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="set-autostart">
+                    <span>Auto-start when app launches</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="set-eula">
+                    <span>Minecraft EULA accepted</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="panel-card">
+                <h3>server.properties</h3>
+                <div class="form-grid">
+                  <div class="form-group span-2">
+                    <label for="prop-motd">MOTD</label>
+                    <input type="text" id="prop-motd">
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-max-players">Max Players</label>
+                    <input type="number" id="prop-max-players" min="1" max="1000">
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-gamemode">Gamemode</label>
+                    <select id="prop-gamemode">
+                      <option value="survival">Survival</option>
+                      <option value="creative">Creative</option>
+                      <option value="adventure">Adventure</option>
+                      <option value="spectator">Spectator</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-difficulty">Difficulty</label>
+                    <select id="prop-difficulty">
+                      <option value="peaceful">Peaceful</option>
+                      <option value="easy">Easy</option>
+                      <option value="normal">Normal</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-view-distance">View Distance</label>
+                    <input type="number" id="prop-view-distance" min="2" max="32">
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-sim-distance">Simulation Distance</label>
+                    <input type="number" id="prop-sim-distance" min="2" max="32">
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-level-name">World Name</label>
+                    <input type="text" id="prop-level-name">
+                  </div>
+                  <div class="form-group">
+                    <label for="prop-level-seed">World Seed</label>
+                    <input type="text" id="prop-level-seed">
+                  </div>
+                </div>
+
+                <div class="checkbox-grid">
+                  <label class="checkbox-label"><input type="checkbox" id="prop-pvp"><span>PvP Enabled</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-hardcore"><span>Hardcore Mode</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-online-mode"><span>Online Mode (Auth)</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-whitelist"><span>Whitelist Enabled</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-enforce-whitelist"><span>Enforce Whitelist</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-cmd-block"><span>Command Blocks</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-spawn-monsters"><span>Spawn Monsters</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-spawn-animals"><span>Spawn Animals</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-spawn-npcs"><span>Spawn Villagers/NPCs</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-allow-flight"><span>Allow Flight</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-allow-nether"><span>Allow Nether</span></label>
+                  <label class="checkbox-label"><input type="checkbox" id="prop-force-gamemode"><span>Force Gamemode</span></label>
+                </div>
+              </div>
+
+              <div class="settings-footer">
+                <button type="button" id="delete-server-btn" class="btn btn-danger">Delete Server</button>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+              </div>
+            </form>
+
+            <div class="panel-card" style="margin-top: 14px;">
+              <div class="files-toolbar">
+                <h3 style="margin:0;">Software Version &amp; Build Updates</h3>
+                <span id="upgrade-current-label" class="player-sub"></span>
+              </div>
+              <p id="upgrade-build-status" class="player-sub">Checking latest server build...</p>
+              <div class="inline-form" style="margin-top:8px;">
+                <select id="upgrade-version-select" style="flex:1;min-width:160px;"></select>
+                <label class="checkbox-label" style="white-space:nowrap;">
+                  <input type="checkbox" id="upgrade-create-backup" checked>
+                  <span>Pre-upgrade backup</span>
+                </label>
+                <button type="button" id="upgrade-latest-build-btn" class="btn btn-secondary btn-sm">Update Latest Build</button>
+                <button type="button" id="upgrade-server-btn" class="btn btn-primary btn-sm">Upgrade Version</button>
+              </div>
+              <div id="upgrade-progress-box" class="progress-box hidden" style="margin-top:10px;">
+                <div class="progress-text-row">
+                  <span id="upgrade-progress-msg">Preparing upgrade...</span>
+                  <span id="upgrade-progress-pct">0%</span>
+                </div>
+                <div class="progress-track"><div id="upgrade-progress-fill" class="progress-fill" style="width:0%;"></div></div>
+              </div>
+            </div>
+
+            <div class="players-grid" style="margin-top: 14px;">
+              <div class="m3-card">
+                <div class="tunnel-accent-header">
+                  <svg class="ms-icon ms-icon--tertiary" viewBox="0 0 24 24" fill="currentColor"><path d="M12 22q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22"/></svg>
+                  <h3>Public Multiplayer Tunnel</h3>
+                </div>
+                <p id="tunnel-status-text" class="player-sub">Disconnected</p>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="net-tunnel-provider">Provider</label>
+                    <select id="net-tunnel-provider">
+                      <option value="BORE">Instant Free Tunnel (bore.pub)</option>
+                      <option value="PLAYIT">Playit.gg</option>
+                      <option value="CUSTOM_BORE">Custom Bore Relay</option>
+                      <option value="MINESERVE_CLOUD">MineServe Cloud (*.play.mineserve.app)</option>
+                    </select>
+                  </div>
+                  <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
+                    <label for="net-cloud-subdomain">Cloud Subdomain</label>
+                    <input type="text" id="net-cloud-subdomain" placeholder="myserver">
+                  </div>
+                  <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
+                    <label for="net-cloud-region">Cloud Relay Region</label>
+                    <select id="net-cloud-region">
+                      <option value="us-east">US East</option>
+                      <option value="eu-west">EU West</option>
+                      <option value="eu-central">EU Central</option>
+                      <option value="ap-southeast">Asia Pacific</option>
+                    </select>
+                  </div>
+                  <div class="form-group hidden" data-tunnel-provider="MINESERVE_CLOUD">
+                    <label for="net-cloud-domain">Cloud Domain</label>
+                    <select id="net-cloud-domain">
+                      <option value="play.mineserve.app">play.mineserve.app</option>
+                      <option value="playms.uk">playms.uk (Pro)</option>
+                    </select>
+                  </div>
+                </div>
+                <div id="tunnel-cloud-unlinked-callout" class="m3-callout hidden">
+                  <div class="m3-callout-title">MineServe Cloud Account Required</div>
+                  <div class="player-sub" style="margin-bottom:8px;">Sign in or start a 7-day free trial of MineServe Plus to reserve custom *.play.mineserve.app (or Pro *.playms.uk) addresses across US, UK, EU, and Asia Pacific relays.</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" id="tunnel-open-cloud-modal-btn" class="btn btn-primary btn-sm">Sign In / Setup MineServe Cloud</button>
+                    <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Sign Up / 7-Day Free Trial ↗</a>
+                  </div>
+                </div>
+                <div class="form-grid">
+                  <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
+                    <label for="net-bore-host">Custom Relay Host</label>
+                    <input type="text" id="net-bore-host" value="bore.pub">
+                  </div>
+                  <div class="form-group hidden" data-tunnel-provider="CUSTOM_BORE">
+                    <label for="net-bore-port">Custom Relay Port</label>
+                    <input type="number" id="net-bore-port" value="7835">
+                  </div>
+                  <div class="form-group hidden" data-tunnel-provider="PLAYIT">
+                    <label for="net-playit-secret">Playit Secret (optional)</label>
+                    <input type="password" id="net-playit-secret" placeholder="Leave blank to keep existing">
+                  </div>
+                </div>
+                <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="net-tunnel-autostart"><span>Auto-start tunnel with server</span></label>
+                <div class="player-actions">
+                  <button type="button" id="tunnel-start-btn" class="btn btn-primary btn-sm">Start Tunnel</button>
+                  <button type="button" id="tunnel-stop-btn" class="btn btn-danger btn-sm">Stop Tunnel</button>
+                  <button type="button" id="tunnel-save-btn" class="btn btn-secondary btn-sm">Save</button>
+                </div>
+              </div>
+
+              <div class="m3-card">
+                <h3>Router Port Forwarding (UPnP / NAT-PMP)</h3>
+                <p id="pf-status-text" class="player-sub">Idle</p>
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="net-pf-protocol">Protocol</label>
+                    <select id="net-pf-protocol">
+                      <option value="BOTH">TCP + UDP</option>
+                      <option value="TCP">TCP Only</option>
+                      <option value="UDP">UDP Only</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label for="net-pf-lease">Lease Duration (sec, 0=perm)</label>
+                    <input type="number" id="net-pf-lease" min="0" value="0">
+                  </div>
+                </div>
+                <label class="checkbox-label" style="margin-bottom:10px;"><input type="checkbox" id="net-pf-auto"><span>Auto-forward port on start</span></label>
+                <div class="player-actions">
+                  <button type="button" id="pf-start-btn" class="btn btn-primary btn-sm">Map Port</button>
+                  <button type="button" id="pf-stop-btn" class="btn btn-danger btn-sm">Release Port</button>
+                  <button type="button" id="pf-save-btn" class="btn btn-secondary btn-sm">Save</button>
+                </div>
+              </div>
+
+              <div class="m3-card">
+                <h3 id="proxy-card-title">Proxy Network &amp; Loopback Binding</h3>
+                <p class="player-sub" id="proxy-card-desc">Configure Velocity/BungeeCord backend routes or bind this server to 127.0.0.1.</p>
+                <div id="proxy-card-body"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="subtab-backups" class="subtab-panel">
+            <div class="m3-settings-group">
+              <h4 class="m3-settings-group-title">Local Snapshots</h4>
+              <div class="m3-card">
+                <div class="files-toolbar">
+                  <h3 style="margin:0;">Server Backups</h3>
+                  <div class="player-actions">
+                    <button type="button" id="backup-world-btn" class="btn btn-primary btn-sm">+ World Backup</button>
+                    <button type="button" id="backup-full-btn" class="btn btn-secondary btn-sm">+ Full Backup</button>
+                  </div>
+                </div>
+                <div id="backups-list" class="m3-table" style="max-height:42vh;overflow-y:auto;"></div>
+              </div>
+            </div>
+
+            <div class="m3-settings-group" style="margin-top:14px;">
+              <h4 class="m3-settings-group-title">MineServe Cloud Snapshots</h4>
+              <div class="m3-card">
+                <div class="files-toolbar">
+                  <h3 style="margin:0;">Encrypted R2 Snapshots</h3>
+                  <button type="button" id="cloud-backups-refresh-btn" class="btn btn-secondary btn-sm">Refresh Cloud</button>
+                </div>
+                <p id="cloud-backups-status" class="player-sub">Remote encrypted snapshots stored in MineServe Cloud (R2).</p>
+                <div id="backups-cloud-unlinked-callout" class="m3-callout hidden">
+                  <div class="m3-callout-title">Get Started with Encrypted Cloud Backups</div>
+                  <div class="player-sub" style="margin-bottom:8px;">Sign in to MineServe Cloud or start a 7-day free trial to sync world backups off-device to encrypted Cloudflare R2 storage (10 GB on Plus, 50 GB on Pro).</div>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" id="backups-open-cloud-modal-btn" class="btn btn-primary btn-sm">Sign In / Setup MineServe Cloud</button>
+                    <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Sign Up / 7-Day Free Trial ↗</a>
+                  </div>
+                </div>
+                <div id="cloud-backups-list" class="m3-table" style="max-height:38vh;overflow-y:auto;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="subtab-automation" class="subtab-panel">
+            <div class="settings-layout">
+              <div class="m3-settings-group">
+                <h4 class="m3-settings-group-title">Power &amp; Standby</h4>
+                <div class="m3-card">
+                  <form id="automation-power-form">
+                    <div class="form-grid">
+                      <label class="checkbox-label"><input type="checkbox" id="auto-idle-sleep"><span>Idle Auto-Shutdown</span></label>
+                      <div class="form-group">
+                        <label for="auto-idle-mins">Idle Timeout (Minutes)</label>
+                        <input type="number" id="auto-idle-mins" min="1" max="240" value="10">
+                      </div>
+                      <label class="checkbox-label"><input type="checkbox" id="auto-wake-ping"><span>Auto-Wake on Ping</span></label>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Save Power Settings</button>
+                  </form>
+                </div>
+              </div>
+
+              <div class="m3-settings-group">
+                <h4 class="m3-settings-group-title">Scheduled Tasks</h4>
+                <div class="m3-card">
+                  <form id="automation-task-form" class="inline-form">
+                    <input type="text" id="task-name" placeholder="Task name (e.g. Nightly Backup)" required>
+                    <select id="task-type">
+                      <option value="WORLD_BACKUP">World Backup</option>
+                      <option value="FULL_BACKUP">Full Backup</option>
+                      <option value="RESTART_SERVER">Restart Server</option>
+                      <option value="BROADCAST_MESSAGE">Broadcast</option>
+                      <option value="CUSTOM_COMMAND">Command</option>
+                    </select>
+                    <select id="task-freq">
+                      <option value="INTERVAL">Every N Minutes</option>
+                      <option value="DAILY_TIME">Daily Time</option>
+                    </select>
+                    <input type="number" id="task-interval" min="1" value="360" placeholder="Minutes" style="max-width:110px;">
+                    <input type="text" id="task-cmd" placeholder="Command / message (optional)">
+                    <button type="submit" class="btn btn-primary btn-sm">+ Add Task</button>
+                  </form>
+                  <div id="automation-tasks-list" class="m3-table"></div>
+                </div>
+              </div>
+
+              <div class="m3-settings-group">
+                <h4 class="m3-settings-group-title">Discord Webhook &amp; Event Bridge</h4>
+                <div class="m3-card">
+                  <p class="player-sub" style="margin-top:0;">Broadcast server startup, shutdown, crashes, player join/leave, and backup events to a Discord channel with zero plugins.</p>
+                  <form id="discord-webhook-form">
+                    <div class="toggle-row" style="margin-bottom:10px;">
+                      <label class="checkbox-label"><input type="checkbox" id="discord-enabled"><span>Enable Discord Webhook Bridge</span></label>
+                    </div>
+                    <div class="form-group" style="margin-bottom:10px;">
+                      <label for="discord-url">Discord Webhook URL</label>
+                      <input type="url" id="discord-url" placeholder="https://discord.com/api/webhooks/...">
+                    </div>
+                    <div class="toggle-row" style="margin-bottom:12px;">
+                      <label class="checkbox-label"><input type="checkbox" id="discord-start" checked><span>Server Online</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="discord-stop" checked><span>Server Offline</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="discord-crash" checked><span>Crash / Unexpected Exit</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="discord-join" checked><span>Player Join</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="discord-leave" checked><span>Player Leave</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="discord-backup" checked><span>Backup Completed</span></label>
+                      <label class="checkbox-label"><input type="checkbox" id="discord-skins" checked><span>Player Avatar Skins</span></label>
+                    </div>
+                    <div class="player-actions">
+                      <button type="submit" class="btn btn-primary btn-sm">Save Webhook Settings</button>
+                      <button type="button" id="discord-test-btn" class="btn btn-secondary btn-sm">Test Webhook</button>
+                    </div>
+                  </form>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -763,32 +992,49 @@
     </main>
   </div>
 
-  <!-- Create Server Modal -->
-  <div id="create-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Create New Minecraft Server</h3>
-        <button id="close-create-modal" class="btn-icon">✕</button>
+  <!-- Create Server 2-Step Wizard Modal -->
+  <dialog id="create-modal" class="m3-dialog-native m3-dialog--md">
+    <div class="modal-header">
+      <h3>Create New Minecraft Server</h3>
+      <button id="close-create-modal" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+
+    <div class="wizard-steps-indicator">
+      <span id="create-step-ind-1" class="wizard-step-pill active">1. Software &amp; Version</span>
+      <span id="create-step-ind-2" class="wizard-step-pill">2. Configuration &amp; EULA</span>
+    </div>
+
+    <form id="create-server-form">
+      <div id="create-step-1">
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--md-sys-color-on-surface-variant);margin-bottom:8px;">Server Software</label>
+        <div id="create-software-grid" class="software-cards-grid"></div>
+        <select id="create-type" class="hidden"></select>
+
+        <div class="form-group">
+          <label for="create-version">Minecraft Version</label>
+          <div id="create-quick-versions" class="quick-version-chips"></div>
+          <select id="create-version" required></select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" id="cancel-create-btn" class="btn btn-ghost">Cancel</button>
+          <button type="button" id="create-next-btn" class="btn btn-primary">Next: Configure Server</button>
+        </div>
       </div>
-      <form id="create-server-form">
+
+      <div id="create-step-2" class="hidden">
         <div class="form-grid">
           <div class="form-group">
             <label for="create-name">Server Name</label>
             <input type="text" id="create-name" placeholder="My Survival World" required>
           </div>
           <div class="form-group">
-            <label for="create-type">Server Software</label>
-            <select id="create-type" required></select>
-          </div>
-          <div class="form-group">
-            <label for="create-version">Minecraft Version</label>
-            <select id="create-version" required></select>
-          </div>
-          <div class="form-group">
             <label for="create-port">Port</label>
             <input type="number" id="create-port" min="1" max="65535" value="25565" required>
           </div>
-          <div class="form-group">
+          <div class="form-group span-2">
             <label for="create-motd">MOTD</label>
             <input type="text" id="create-motd" value="A MineServe Minecraft Server">
           </div>
@@ -808,7 +1054,7 @@
 
         <label class="checkbox-label eula-box">
           <input type="checkbox" id="create-eula">
-          <span>I agree to the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer">Minecraft EULA</a></span>
+          <span>I agree to the <a href="https://www.minecraft.net/en-us/eula" target="_blank" rel="noopener noreferrer">Minecraft EULA</a></span>
         </label>
 
         <div id="create-progress-box" class="progress-box hidden">
@@ -824,176 +1070,224 @@
         <div id="create-error" class="error-banner hidden"></div>
 
         <div class="modal-footer">
-          <button type="button" id="cancel-create-btn" class="btn btn-ghost">Cancel</button>
+          <button type="button" id="create-back-btn" class="btn btn-secondary">Back</button>
           <button type="submit" id="submit-create-btn" class="btn btn-primary">Create &amp; Download</button>
         </div>
-      </form>
-    </div>
-  </div>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Dedicated MineServe Cloud Modal -->
-  <div id="cloud-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:820px;">
-      <div class="modal-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <h3 style="margin:0;">MineServe Cloud</h3>
-          <span id="cloud-tier-badge" class="status-badge RUNNING">OPTIONAL ADD-ON</span>
-        </div>
-        <button id="close-cloud-modal" class="btn-icon">✕</button>
+  <dialog id="cloud-modal" class="m3-dialog-native m3-dialog--lg">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <svg class="ms-icon ms-icon--tertiary" viewBox="0 0 24 24" fill="currentColor"><path d="M6.5 20q-2.275 0-3.887-1.575T1 14.575q0-1.95 1.175-3.475T5.25 9.15q.625-2.3 2.5-3.725T12 4q2.925 0 4.963 2.038T19 11q1.725.2 2.863 1.488T23 15.5q0 1.875-1.312 3.188T18.5 20z"/></svg>
+        <h3 style="margin:0;">MineServe Cloud</h3>
+        <span id="cloud-tier-badge" class="status-badge RUNNING">OPTIONAL ADD-ON</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:14px;max-height:78vh;overflow-y:auto;padding-right:4px;">
-        <div class="panel-card">
-          <div class="files-toolbar">
-            <h3 style="margin:0;">MineServe Cloud Account</h3>
-            <div style="display:flex;gap:8px;align-items:center;">
-              <button type="button" id="cloud-refresh-btn" class="btn btn-secondary btn-sm">Refresh Profile</button>
-              <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Open Cloud Portal ↗</a>
-              <button type="button" id="cloud-logout-btn" class="btn btn-danger btn-sm hidden">Sign Out</button>
-            </div>
-          </div>
-          <div id="cloud-status-summary" class="player-sub" style="margin-top:8px;">Loading cloud account...</div>
-          <div id="cloud-signin-box" class="hidden" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px solid var(--border-subtle);">
-            <div style="font-size:13px;font-weight:600;color:var(--text-primary);">Sign In with Email Verification Code</div>
-            <div class="player-sub">Already have a MineServe Cloud account or started your 7-day free trial at <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" style="color:var(--emerald);">cloud.mineserve.app</a>? Enter your email below to link this host:</div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <input type="email" id="cloud-otp-email" placeholder="you@example.com" style="flex:1;min-width:220px;" />
-              <button type="button" id="cloud-otp-request-btn" class="btn btn-primary btn-sm">Send 6-Digit Code</button>
-            </div>
-            <div id="cloud-otp-verify-row" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-              <input type="text" id="cloud-otp-code" placeholder="Enter 6-digit email code" maxlength="6" style="flex:1;min-width:160px;" />
-              <button type="button" id="cloud-otp-verify-btn" class="btn btn-primary btn-sm">Verify &amp; Sign In</button>
-            </div>
+      <button id="close-cloud-modal" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
+      <div class="m3-card">
+        <div class="files-toolbar">
+          <h3 style="margin:0;">MineServe Cloud Account</h3>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button type="button" id="cloud-refresh-btn" class="btn btn-secondary btn-sm">Refresh Profile</button>
+            <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Open Cloud Portal ↗</a>
+            <button type="button" id="cloud-logout-btn" class="btn btn-danger btn-sm hidden">Sign Out</button>
           </div>
         </div>
-
-        <div class="players-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));">
-          <div class="panel-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <h3 style="margin:0;">Free Forever</h3>
-              <span class="role-badge VIEWER">LOCAL</span>
-            </div>
-            <div style="font-size:18px;font-weight:800;color:var(--emerald);margin:6px 0 2px;">$0 / month</div>
-            <div class="player-sub" style="margin-bottom:8px;">Everything local in MineServe</div>
-            <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-muted);line-height:1.6;">
-              <li>Unlimited Java &amp; Bedrock servers</li>
-              <li>Built-in Bore, Playit.gg &amp; router UPnP</li>
-              <li>Local Wi-Fi Web Admin &amp; Live Map</li>
-              <li>Local backups &amp; self-hosted WebDAV</li>
-            </ul>
+        <div id="cloud-status-summary" class="player-sub" style="margin-top:8px;">Loading cloud account...</div>
+        <div id="cloud-signin-box" class="hidden" style="margin-top:12px;display:flex;flex-direction:column;gap:10px;padding-top:10px;border-top:1px solid var(--md-sys-color-outline-variant-divider);">
+          <div style="font-size:13px;font-weight:600;color:var(--md-sys-color-on-surface);">Sign In with Email Verification Code</div>
+          <div class="player-sub">Already have a MineServe Cloud account or started your 7-day free trial at <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" style="color:var(--md-sys-color-primary);">cloud.mineserve.app</a>? Enter your email below to link this host:</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="email" id="cloud-otp-email" placeholder="you@example.com" style="flex:1;min-width:220px;" />
+            <button type="button" id="cloud-otp-request-btn" class="btn btn-primary btn-sm">Send 6-Digit Code</button>
           </div>
-
-          <div class="panel-card" style="border-color:var(--emerald);">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <h3 style="margin:0;">MineServe Plus</h3>
-              <span class="status-badge RUNNING">7-DAY FREE TRIAL</span>
-            </div>
-            <div style="font-size:18px;font-weight:800;color:var(--emerald);margin:6px 0 2px;">$2.99 / mo <span style="font-size:12px;font-weight:500;color:var(--text-muted);">or $29 / yr</span></div>
-            <div class="player-sub" style="margin-bottom:8px;">7 days free for new subscribers</div>
-            <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-muted);line-height:1.6;">
-              <li>1 custom <code>*.play.mineserve.app</code> address</li>
-              <li>Remote Web Admin &amp; Live Map access</li>
-              <li>10 GB encrypted Cloudflare R2 backups</li>
-              <li>Multi-region low-latency relays (US, UK, EU, AP)</li>
-            </ul>
-          </div>
-
-          <div class="panel-card">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <h3 style="margin:0;">MineServe Pro</h3>
-              <span class="role-badge OWNER">CREATORS</span>
-            </div>
-            <div style="font-size:18px;font-weight:800;color:var(--emerald);margin:6px 0 2px;">$6.99 / mo <span style="font-size:12px;font-weight:500;color:var(--text-muted);">or $69 / yr</span></div>
-            <div class="player-sub" style="margin-bottom:8px;">For communities &amp; multi-server hosts</div>
-            <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-muted);line-height:1.6;">
-              <li>Up to 3 custom addresses</li>
-              <li>Short <code>*.playms.uk</code> addresses (e.g. <code>smp.playms.uk</code>)</li>
-              <li>50 GB encrypted Cloudflare R2 backups</li>
-              <li>Custom domain CNAME / SRV support</li>
-            </ul>
+          <div id="cloud-otp-verify-row" class="hidden" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <input type="text" id="cloud-otp-code" placeholder="Enter 6-digit email code" maxlength="6" style="flex:1;min-width:160px;" />
+            <button type="button" id="cloud-otp-verify-btn" class="btn btn-primary btn-sm">Verify &amp; Sign In</button>
           </div>
         </div>
+      </div>
 
-        <div class="panel-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-          <div>
-            <div style="font-size:14px;font-weight:700;color:var(--text-primary);">Ready to try MineServe Plus or manage your plan?</div>
-            <div class="player-sub">Sign up or start your 7-day free trial in the browser portal, then enter your email above to link this host.</div>
+      <div class="players-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));">
+        <div class="m3-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">Free Forever</h3>
+            <span class="role-badge VIEWER">LOCAL</span>
           </div>
-          <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-primary" style="text-decoration:none;">Start 7-Day Free Trial in Browser Portal ↗</a>
+          <div style="font-size:18px;font-weight:800;color:var(--md-sys-color-primary);margin:6px 0 2px;">$0 / month</div>
+          <div class="player-sub" style="margin-bottom:8px;">Everything local in MineServe</div>
+          <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;">
+            <li>Unlimited Java &amp; Bedrock servers</li>
+            <li>Built-in Bore, Playit.gg &amp; router UPnP</li>
+            <li>Local Wi-Fi Web Admin &amp; Live Map</li>
+            <li>Local backups &amp; self-hosted WebDAV</li>
+          </ul>
         </div>
+
+        <div class="m3-card panel-card--featured">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">MineServe Plus</h3>
+            <span class="status-badge RUNNING">7-DAY FREE TRIAL</span>
+          </div>
+          <div style="font-size:18px;font-weight:800;color:var(--md-sys-color-primary);margin:6px 0 2px;">$2.99 / mo <span style="font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface-variant);">or $29 / yr</span></div>
+          <div class="player-sub" style="margin-bottom:8px;">7 days free for new subscribers</div>
+          <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;">
+            <li>1 custom <code>*.play.mineserve.app</code> address</li>
+            <li>Remote Web Admin &amp; Live Map access</li>
+            <li>10 GB encrypted Cloudflare R2 backups</li>
+            <li>Multi-region low-latency relays (US, UK, EU, AP)</li>
+          </ul>
+        </div>
+
+        <div class="m3-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="margin:0;">MineServe Pro</h3>
+            <span class="role-badge OWNER">CREATORS</span>
+          </div>
+          <div style="font-size:18px;font-weight:800;color:var(--md-sys-color-primary);margin:6px 0 2px;">$6.99 / mo <span style="font-size:12px;font-weight:500;color:var(--md-sys-color-on-surface-variant);">or $69 / yr</span></div>
+          <div class="player-sub" style="margin-bottom:8px;">For communities &amp; multi-server hosts</div>
+          <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--md-sys-color-on-surface-variant);line-height:1.6;">
+            <li>Up to 3 custom addresses</li>
+            <li>Short <code>*.playms.uk</code> addresses (e.g. <code>smp.playms.uk</code>)</li>
+            <li>50 GB encrypted Cloudflare R2 backups</li>
+            <li>Custom domain CNAME / SRV support</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="m3-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--md-sys-color-on-surface);">Ready to try MineServe Plus or manage your plan?</div>
+          <div class="player-sub">Sign up or start your 7-day free trial in the browser portal, then enter your email above to link this host.</div>
+        </div>
+        <a href="https://cloud.mineserve.app" target="_blank" rel="noopener" class="btn btn-primary">Start 7-Day Free Trial in Browser Portal ↗</a>
       </div>
     </div>
-  </div>
+  </dialog>
 
   <!-- App Settings & Host Tools Modal -->
-  <div id="host-tools-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:780px;">
-      <div class="modal-header">
-        <h3>App Settings, Java Runtimes &amp; Diagnostics</h3>
-        <button id="close-host-tools-modal" class="btn-icon">✕</button>
+  <dialog id="host-tools-modal" class="m3-dialog-native m3-dialog--lg">
+    <div class="modal-header">
+      <h3>App Settings &amp; Host Diagnostics</h3>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button type="button" id="open-about-modal-btn" class="btn btn-secondary btn-sm">
+          <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M11 17h2v-6h-2zm1-8q.425 0 .713-.288T13 8t-.288-.712T12 7t-.712.288T11 8t.288.713T12 9m0 13q-2.075 0-3.9-.788t-3.175-2.137T2.788 15.9T2 12t.788-3.9t2.137-3.175T8.1 2.788T12 2t3.9.788t3.175 2.137T21.213 8.1T22 12t-.788 3.9t-2.137 3.175t-3.175 2.138T12 22"/></svg>
+          <span>About &amp; Credits</span>
+        </button>
+        <button id="close-host-tools-modal" class="btn-icon" type="button" aria-label="Close">
+          <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
-        <div class="panel-card">
+    </div>
+
+    <div class="subtab-toolbar">
+      <div class="m3-segmented-row" role="tablist" aria-label="App Settings sections">
+        <button type="button" class="m3-segmented-btn active" data-host-tab="appearance">Appearance &amp; Host</button>
+        <button type="button" class="m3-segmented-btn" data-host-tab="java">Java Runtimes</button>
+        <button type="button" class="m3-segmented-btn" data-host-tab="diagnostics">Diagnostics</button>
+        <button type="button" class="m3-segmented-btn" data-host-tab="updates">Updates</button>
+      </div>
+    </div>
+
+    <div style="max-height:70vh;overflow-y:auto;padding-right:4px;display:flex;flex-direction:column;gap:14px;">
+      <div id="host-pane-appearance" class="subtab-panel active">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="m3-settings-group">
+            <h4 class="m3-settings-group-title">Appearance &amp; Display</h4>
+            <div class="m3-card">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                <div>
+                  <h3 style="margin:0;">Color Scheme</h3>
+                  <div class="player-sub" style="margin-top:4px;">Switch between Obsidian Dark, Slate Light, or follow your browser system theme.</div>
+                </div>
+                <div class="theme-pill-group" style="min-width:220px;">
+                  <button type="button" class="theme-pill-btn active" data-theme-choice="dark">Dark</button>
+                  <button type="button" class="theme-pill-btn" data-theme-choice="light">Light</button>
+                  <button type="button" class="theme-pill-btn" data-theme-choice="system">System</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="host-dirs-group" class="m3-settings-group hidden">
+            <h4 class="m3-settings-group-title">Host Directories</h4>
+            <div class="m3-card">
+              <div class="form-grid">
+                <div class="form-group span-2">
+                  <label for="host-dir-servers">Servers Directory</label>
+                  <input type="text" id="host-dir-servers" class="mono" placeholder="/home/user/.local/share/mineserve/servers">
+                </div>
+                <div class="form-group span-2">
+                  <label for="host-dir-runtimes">Portable Java Runtimes Directory</label>
+                  <input type="text" id="host-dir-runtimes" class="mono" placeholder="/home/user/.local/share/mineserve/runtimes/java">
+                </div>
+              </div>
+              <p class="player-sub" style="margin:0 0 10px;">Existing server files and Java runtimes are not moved automatically when changing paths. Stop all running servers first.</p>
+              <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+                <button type="button" id="host-dirs-reset-btn" class="btn btn-secondary btn-sm">Reset Defaults</button>
+                <button type="button" id="host-dirs-save-btn" class="btn btn-primary btn-sm">Save Directories</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="safeguards-card" class="m3-settings-group">
+            <h4 class="m3-settings-group-title">Battery &amp; Thermal Safeguards</h4>
+            <div class="m3-card">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label class="checkbox-label"><input type="checkbox" id="sg-battery-enabled"><span>Low Battery Auto-Stop (when unplugged)</span></label>
+                </div>
+                <div class="form-group">
+                  <label for="sg-battery-pct">Minimum Battery (%)</label>
+                  <select id="sg-battery-pct">
+                    <option value="10">10%</option>
+                    <option value="15">15%</option>
+                    <option value="20">20%</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="checkbox-label"><input type="checkbox" id="sg-thermal-enabled"><span>Thermal Auto-Stop</span></label>
+                </div>
+                <div class="form-group">
+                  <label for="sg-thermal-c">Max Battery Temp (°C)</label>
+                  <select id="sg-thermal-c">
+                    <option value="42">42°C</option>
+                    <option value="45">45°C</option>
+                    <option value="48">48°C</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+                <button type="button" id="sg-save-btn" class="btn btn-primary btn-sm">Save Safeguards</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="host-pane-java" class="subtab-panel">
+        <div class="m3-card">
           <div class="files-toolbar">
             <h3 style="margin:0;">Java Runtime Manager (OpenJDK)</h3>
             <button type="button" id="java-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
           </div>
           <p class="player-sub" id="java-manager-status" style="margin-top:6px;">Checking installed Java runtimes...</p>
-          <div id="java-runtimes-list" class="player-list" style="margin-top:8px;"></div>
+          <div id="java-runtimes-list" class="m3-table" style="margin-top:8px;"></div>
         </div>
+      </div>
 
-        <div class="panel-card">
-          <div class="files-toolbar">
-            <div>
-              <h3 style="margin:0;">App Updates &amp; Releases</h3>
-              <div id="web-update-status" class="player-sub" style="margin-top:4px;">Check GitHub Releases for new MineServe versions.</div>
-            </div>
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-              <button type="button" id="open-whatsnew-from-settings-btn" class="btn btn-secondary btn-sm">What's New in v1.8</button>
-              <button type="button" id="web-update-check-btn" class="btn btn-primary btn-sm">Check for Updates</button>
-              <a id="web-update-link-btn" href="https://github.com/devwithzachary/MineServe/releases" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">GitHub Releases ↗</a>
-            </div>
-          </div>
-          <label class="checkbox-label" style="margin-top:10px;">
-            <input type="checkbox" id="settings-whatsnew-autoshow" checked>
-            <span>Automatically show "What's New" guide after major updates</span>
-          </label>
-          <pre id="web-update-notes" class="console-output hidden" style="max-height:140px;margin-top:8px;font-size:11px;white-space:pre-wrap;"></pre>
-        </div>
-
-        <div id="safeguards-card" class="panel-card">
-          <h3>Battery &amp; Thermal Safeguards</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="checkbox-label"><input type="checkbox" id="sg-battery-enabled"><span>Low Battery Auto-Stop (when unplugged)</span></label>
-            </div>
-            <div class="form-group">
-              <label for="sg-battery-pct">Minimum Battery (%)</label>
-              <select id="sg-battery-pct">
-                <option value="10">10%</option>
-                <option value="15">15%</option>
-                <option value="20">20%</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="checkbox-label"><input type="checkbox" id="sg-thermal-enabled"><span>Thermal Auto-Stop</span></label>
-            </div>
-            <div class="form-group">
-              <label for="sg-thermal-c">Max Battery Temp (°C)</label>
-              <select id="sg-thermal-c">
-                <option value="42">42°C</option>
-                <option value="45">45°C</option>
-                <option value="48">48°C</option>
-              </select>
-            </div>
-          </div>
-          <button type="button" id="sg-save-btn" class="btn btn-primary btn-sm" style="margin-top:8px;">Save Safeguards</button>
-        </div>
-
-        <div class="panel-card">
+      <div id="host-pane-diagnostics" class="subtab-panel">
+        <div class="m3-card">
           <div class="files-toolbar">
             <h3 style="margin:0;">Diagnostics &amp; Error Logs</h3>
             <div class="player-actions">
-              <select id="diag-filter-mode" style="padding:4px 8px;">
+              <select id="diag-filter-mode" style="width:auto;">
                 <option value="MINESERVE_TAGS">MineServe Tags</option>
                 <option value="ERRORS_ONLY">Errors &amp; Crashes</option>
                 <option value="ALL_APP_LOGS">All App Logs</option>
@@ -1003,113 +1297,152 @@
               <button type="button" id="diag-bundle-btn" class="btn btn-primary btn-sm">Download .zip</button>
             </div>
           </div>
-          <div id="diag-selftest-list" class="player-list" style="margin-top:8px;"></div>
-          <pre id="diag-logcat-output" class="console-output" style="max-height:220px;margin-top:8px;font-size:11px;">Click "Capture Logs" to inspect redacted app &amp; engine logs.</pre>
+          <div id="diag-selftest-list" class="m3-table" style="margin-top:8px;"></div>
+          <pre id="diag-logcat-output" class="console-output" style="max-height:240px;margin-top:8px;font-size:11px;">Click "Capture Logs" to inspect redacted app &amp; engine logs.</pre>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- About, Changelog & Open-Source Credits Modal -->
-  <div id="about-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:860px;">
-      <div class="modal-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <img src="/logo.png" alt="MineServe" style="width:28px;height:28px;border-radius:6px;">
-          <h3 style="margin:0;">About MineServe, Changelog &amp; Open-Source Credits</h3>
-        </div>
-        <button id="close-about-modal" class="btn-icon">✕</button>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:14px;max-height:78vh;overflow-y:auto;padding-right:4px;">
-        <div class="panel-card">
-          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+      <div id="host-pane-updates" class="subtab-panel">
+        <div class="m3-card">
+          <div class="files-toolbar">
             <div>
-              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-                <strong style="font-size:18px;">MineServe</strong>
-                <span id="about-version-badge" class="status-badge RUNNING">v1.8.0</span>
-                <span id="about-platform-badge" class="role-badge OWNER">LINUX</span>
-                <span class="role-badge VIEWER">GPL-3.0</span>
-              </div>
-              <div class="player-sub" style="margin-top:4px;">Open-Source Minecraft Java, Modded, Proxy &amp; Bedrock Server Manager</div>
+              <h3 style="margin:0;">App Updates &amp; Releases</h3>
+              <div id="web-update-status" class="player-sub" style="margin-top:4px;">Check GitHub Releases for new MineServe versions.</div>
             </div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <a id="about-link-website" href="https://mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Website ↗</a>
-              <a id="about-link-github" href="https://github.com/devwithzachary/MineServe" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">GitHub ↗</a>
-              <a id="about-link-issues" href="https://github.com/devwithzachary/MineServe/issues" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Report Issue ↗</a>
-              <a id="about-link-discord" href="https://discord.gg/QdT9yCrKmV" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;">Discord ↗</a>
-              <a id="about-link-patreon" href="https://patreon.com/devwithzachary" target="_blank" rel="noopener" class="btn btn-primary btn-sm hidden" style="text-decoration:none;">Patreon ↗</a>
-              <a id="about-link-bmac" href="https://www.buymeacoffee.com/devwithzachary" target="_blank" rel="noopener" class="btn btn-secondary btn-sm hidden" style="text-decoration:none;">Buy Me a Coffee ↗</a>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <button type="button" id="open-whatsnew-from-settings-btn" class="btn btn-secondary btn-sm">What's New in v1.8</button>
+              <button type="button" id="web-update-check-btn" class="btn btn-primary btn-sm">Check for Updates</button>
+              <a id="web-update-link-btn" href="https://github.com/devwithzachary/MineServe/releases" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">GitHub Releases ↗</a>
             </div>
           </div>
-          <div id="about-supporters-box" class="hidden" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border-subtle);">
-            <div style="font-size:12px;font-weight:700;color:var(--emerald);margin-bottom:6px;">Project Supporters</div>
-            <div id="about-supporters-list" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
-          </div>
-        </div>
-
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button type="button" id="about-tab-changelog-btn" class="btn btn-primary btn-sm">Release Changelog</button>
-          <button type="button" id="about-tab-credits-btn" class="btn btn-secondary btn-sm">Software &amp; Open-Source Credits</button>
-          <button type="button" id="open-whatsnew-from-about-btn" class="btn btn-secondary btn-sm">View What's New Guide</button>
-        </div>
-
-        <div id="about-changelog-section" class="panel-card">
-          <h3 style="margin-top:0;">Platform Release History</h3>
-          <div id="about-changelog-list" style="display:flex;flex-direction:column;gap:12px;"></div>
-        </div>
-
-        <div id="about-credits-section" class="panel-card hidden">
-          <div class="files-toolbar" style="margin-bottom:10px;">
-            <h3 style="margin:0;">Software &amp; Open-Source Credits</h3>
-            <div id="about-credits-filters" style="display:flex;gap:6px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-primary btn-sm" data-credit-cat="ALL">All</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="SERVERS">Server Software</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="SYSTEM">Runtime &amp; Linux</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="TUNNELING">Tunneling</button>
-              <button type="button" class="btn btn-secondary btn-sm" data-credit-cat="LIBRARIES">APIs &amp; Libraries</button>
-            </div>
-          </div>
-          <div id="about-credits-list" class="player-list"></div>
+          <label class="checkbox-label" style="margin-top:10px;">
+            <input type="checkbox" id="settings-whatsnew-autoshow" checked>
+            <span>Automatically show "What's New" guide after major updates</span>
+          </label>
+          <pre id="web-update-notes" class="console-output hidden" style="max-height:180px;margin-top:10px;font-size:11px;white-space:pre-wrap;"></pre>
         </div>
       </div>
     </div>
-  </div>
+  </dialog>
+
+  <!-- About, Changelog, Supporters & Open-Source Credits Modal -->
+  <dialog id="about-modal" class="m3-dialog-native m3-dialog--lg">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="/logo.png" alt="MineServe" style="width:28px;height:28px;border-radius:6px;">
+        <h3 style="margin:0;">About MineServe &amp; Credits</h3>
+      </div>
+      <button id="close-about-modal" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:14px;max-height:76vh;overflow-y:auto;padding-right:4px;">
+      <div class="m3-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <strong style="font-size:18px;">MineServe</strong>
+              <span id="about-version-badge" class="status-badge RUNNING">v1.8.1</span>
+              <span id="about-platform-badge" class="role-badge OWNER">LINUX</span>
+              <span class="role-badge VIEWER">GPL-3.0</span>
+            </div>
+            <div class="player-sub" style="margin-top:4px;">Open-Source Minecraft Java, Modded, Proxy &amp; Bedrock Server Manager</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <a id="about-link-website" href="https://mineserve.app" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Website ↗</a>
+            <a id="about-link-github" href="https://github.com/devwithzachary/MineServe" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">GitHub ↗</a>
+            <a id="about-link-issues" href="https://github.com/devwithzachary/MineServe/issues" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Report Issue ↗</a>
+            <a id="about-link-discord" href="https://discord.gg/QdT9yCrKmV" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Discord ↗</a>
+            <a id="about-link-patreon" href="https://patreon.com/devwithzachary" target="_blank" rel="noopener" class="btn btn-danger btn-sm hidden">Patreon ↗</a>
+            <a id="about-link-bmac" href="https://www.buymeacoffee.com/devwithzachary" target="_blank" rel="noopener" class="btn btn-secondary btn-sm hidden">Buy Me a Coffee ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="files-toolbar" style="margin-bottom:0;">
+        <div class="m3-segmented-row" role="tablist" aria-label="About sections">
+          <button type="button" id="about-tab-changelog-btn" class="m3-segmented-btn active" data-about-tab="changelog">Changelog</button>
+          <button type="button" id="about-tab-supporters-btn" class="m3-segmented-btn" data-about-tab="supporters">Supporters</button>
+          <button type="button" id="about-tab-credits-btn" class="m3-segmented-btn" data-about-tab="credits">Open-Source Credits</button>
+        </div>
+        <button type="button" id="open-whatsnew-from-about-btn" class="btn btn-secondary btn-sm">View What's New Guide</button>
+      </div>
+
+      <div id="about-changelog-section" class="m3-card">
+        <h3 style="margin-top:0;">Platform Release History</h3>
+        <div id="about-changelog-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+      </div>
+
+      <div id="about-supporters-section" class="hidden" style="display:flex;flex-direction:column;gap:10px;">
+        <div class="m3-card">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <svg class="ms-icon ms-icon--error" viewBox="0 0 24 24" fill="currentColor"><path d="m12 21l-1.45-1.3q-2.525-2.275-4.175-3.925T3.75 12.812T2.388 10.4T2 8.15Q2 5.8 3.575 4.225T7.5 2.65q1.3 0 2.475.55T12 4.75q.85-1 2.025-1.55t2.475-.55q2.35 0 3.925 1.575T22 8.15q0 1.15-.387 2.25t-1.363 2.412t-2.625 2.963T13.45 19.7z"/></svg>
+            <h3 style="margin:0;">Project Supporters</h3>
+          </div>
+          <p class="player-sub" style="margin:0;">Huge thank you to everyone supporting MineServe's free, open-source development on Patreon and Buy Me a Coffee.</p>
+        </div>
+        <div id="about-supporters-list" class="m3-table"></div>
+      </div>
+
+      <div id="about-credits-section" class="m3-card hidden">
+        <div class="files-toolbar" style="margin-bottom:10px;">
+          <h3 style="margin:0;">Software &amp; Open-Source Credits</h3>
+          <div id="about-credits-filters" style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="m3-filter-chip active" data-credit-cat="ALL">All</button>
+            <button type="button" class="m3-filter-chip" data-credit-cat="SERVERS">Server Software</button>
+            <button type="button" class="m3-filter-chip" data-credit-cat="SYSTEM">Runtime &amp; Linux</button>
+            <button type="button" class="m3-filter-chip" data-credit-cat="TUNNELING">Tunneling</button>
+            <button type="button" class="m3-filter-chip" data-credit-cat="LIBRARIES">APIs &amp; Libraries</button>
+          </div>
+        </div>
+        <div id="about-credits-list" class="m3-table"></div>
+      </div>
+    </div>
+  </dialog>
 
   <!-- What's New Feature Guide Modal -->
-  <div id="whatsnew-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:780px;">
-      <div class="modal-header">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <img src="/logo.png" alt="MineServe" style="width:28px;height:28px;border-radius:6px;">
-          <h3 id="whatsnew-title" style="margin:0;">What's New in MineServe 1.8</h3>
-          <span id="whatsnew-version-badge" class="status-badge RUNNING">v1.8</span>
-        </div>
-        <button id="close-whatsnew-modal" class="btn-icon">✕</button>
+  <dialog id="whatsnew-modal" class="m3-dialog-native m3-dialog--lg">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <img src="/logo.png" alt="MineServe" style="width:28px;height:28px;border-radius:6px;">
+        <h3 id="whatsnew-title" style="margin:0;">What's New in MineServe 1.8</h3>
+        <span id="whatsnew-version-badge" class="status-badge RUNNING">v1.8</span>
       </div>
-      <div style="display:flex;flex-direction:column;gap:12px;max-height:72vh;overflow-y:auto;padding-right:4px;">
-        <p id="whatsnew-subtitle" class="player-sub" style="margin:0;">Explore the biggest new features added in this update, ordered by impact, with quick steps on where to find them.</p>
-        <div id="whatsnew-features-list" style="display:flex;flex-direction:column;gap:12px;"></div>
-      </div>
-      <div class="modal-footer" style="justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);">
-        <label class="checkbox-label" style="margin:0;">
-          <input type="checkbox" id="whatsnew-never-show-chk">
-          <span>Don't show automatically on future updates</span>
-        </label>
-        <button type="button" id="whatsnew-got-it-btn" class="btn btn-primary">Got It, Let's Go!</button>
-      </div>
+      <button id="close-whatsnew-modal" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
     </div>
-  </div>
+    <div style="display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow-y:auto;padding-right:4px;">
+      <p id="whatsnew-subtitle" class="player-sub" style="margin:0;">Explore the biggest new features added in this update, ordered by impact, with quick steps on where to find them.</p>
+      <div id="whatsnew-features-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--md-sys-color-outline-variant-divider);">
+      <label class="checkbox-label" style="margin:0;">
+        <input type="checkbox" id="whatsnew-never-show-chk">
+        <span>Don't show automatically on future updates</span>
+      </label>
+      <button type="button" id="whatsnew-got-it-btn" class="btn btn-primary">Got It, Let's Go!</button>
+    </div>
+  </dialog>
 
-  <!-- Users & Sessions Modal -->
-  <div id="users-modal" class="modal-backdrop hidden">
-    <div class="modal-card" style="max-width:760px;">
-      <div class="modal-header">
-        <h3>Users &amp; Active Sessions</h3>
-        <button id="close-users-modal-btn" class="btn-icon" type="button">✕</button>
+  <!-- Unified Users & Audit Modal -->
+  <dialog id="users-modal" class="m3-dialog-native m3-dialog--xl">
+    <div class="modal-header">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <h3>Users &amp; Audit</h3>
+        <div class="m3-segmented-row" role="tablist" aria-label="Users and Audit sections">
+          <button type="button" id="users-subtab-btn" class="m3-segmented-btn active" data-users-tab="users">Users &amp; Sessions</button>
+          <button type="button" id="audit-subtab-btn" class="m3-segmented-btn" data-users-tab="audit">Audit Log</button>
+        </div>
       </div>
+      <button id="close-users-modal-btn" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
 
+    <div id="users-tab-users" style="max-height:74vh;overflow-y:auto;padding-right:4px;">
       <div id="users-owner-section">
-        <div class="panel-card" style="margin-bottom:14px;">
+        <div class="m3-card" style="margin-bottom:14px;">
           <h3>Add User Account</h3>
           <form id="create-user-form">
             <div class="form-grid">
@@ -1119,7 +1452,12 @@
               </div>
               <div class="form-group">
                 <label for="new-user-pass">Password (min 6 chars)</label>
-                <input type="password" id="new-user-pass" required>
+                <div class="password-field-wrap">
+                  <input type="password" id="new-user-pass" required>
+                  <button type="button" class="password-toggle-btn" data-toggle-password="new-user-pass" aria-label="Show password">
+                    <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16q1.875 0 3.188-1.312T16.5 11.5t-1.312-3.187T12 7T8.813 8.313T7.5 11.5t1.313 3.188T12 16m0-1.8q-1.125 0-1.912-.788T9.3 11.5t.788-1.912T12 8.8t1.913.788t.787 1.912t-.787 1.913T12 14.2m0 4.8q-3.65 0-6.65-2.037T1 11.5q1.35-3.425 4.35-5.462T12 4t6.65 2.038T23 11.5q-1.35 3.425-4.35 5.463T12 19"/></svg>
+                  </button>
+                </div>
               </div>
               <div class="form-group">
                 <label for="new-user-role">Role</label>
@@ -1131,179 +1469,238 @@
                 </select>
               </div>
             </div>
-            <label class="checkbox-label" style="margin-bottom:8px;">
-              <input type="checkbox" id="new-user-restrict">
-              <span>Restrict access to specific servers only</span>
-            </label>
-            <div id="new-user-servers-box" class="checkbox-grid hidden" style="margin-bottom:10px;"></div>
-            <button type="submit" class="btn btn-primary btn-sm">+ Create User</button>
+            <div id="new-user-restrict-wrap">
+              <label class="checkbox-label" style="margin-bottom:8px;">
+                <input type="checkbox" id="new-user-restrict">
+                <span>Restrict access to specific servers only</span>
+              </label>
+              <div id="new-user-servers-box" class="checkbox-grid hidden" style="margin-bottom:10px;"></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+              <button type="submit" class="btn btn-primary btn-sm">+ Create User</button>
+            </div>
           </form>
         </div>
 
-        <div class="panel-card" style="margin-bottom:14px;">
+        <div class="m3-card" style="margin-bottom:14px;">
           <div class="files-toolbar">
             <h3 style="margin:0;">Panel Users</h3>
             <button type="button" id="users-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
           </div>
-          <div id="users-list" class="player-list" style="margin-top:8px;"></div>
+          <div id="users-list" class="m3-table" style="margin-top:8px;"></div>
         </div>
 
-        <div class="panel-card">
+        <div class="m3-card">
           <div class="files-toolbar">
             <h3 style="margin:0;">Active Sessions</h3>
             <button type="button" id="sessions-refresh-btn" class="btn btn-secondary btn-sm">Refresh</button>
           </div>
-          <div id="sessions-list" class="player-list" style="margin-top:8px;"></div>
+          <div id="sessions-list" class="m3-table" style="margin-top:8px;"></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Full-Screen Audit Log View -->
-  <div id="audit-fullscreen-view" class="fullscreen-overlay hidden">
-    <div class="fullscreen-header">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <button type="button" id="close-audit-view-btn" class="btn btn-secondary btn-sm">← Back</button>
-        <div>
-          <h2 style="margin:0;font-size:18px;">Audit Log</h2>
-          <div id="audit-summary-line" class="server-meta-line">Loading audit events...</div>
+    <div id="users-tab-audit" class="hidden" style="display:flex;flex-direction:column;height:72vh;">
+      <div class="files-toolbar" style="margin-bottom:10px;">
+        <div id="audit-summary-line" class="server-meta-line">Loading audit events...</div>
+        <div class="player-actions">
+          <button type="button" id="audit-export-csv-btn" class="btn btn-secondary btn-sm">Export CSV</button>
+          <button type="button" id="audit-refresh-btn" class="btn btn-primary btn-sm">Refresh</button>
         </div>
       </div>
-      <div class="player-actions">
-        <button type="button" id="audit-export-csv-btn" class="btn btn-secondary btn-sm">Export CSV</button>
-        <button type="button" id="audit-refresh-btn" class="btn btn-primary btn-sm">Refresh</button>
+      <div class="audit-filters-bar">
+        <input type="search" id="audit-search-input" placeholder="Search user, action, target, command, or IP..." style="flex:2;min-width:220px;">
+        <select id="audit-category-filter" style="flex:1;min-width:170px;">
+          <option value="ALL">All Categories</option>
+          <option value="AUTH">Auth (Login / Logout / Password)</option>
+          <option value="SERVER">Server Lifecycle</option>
+          <option value="CONSOLE">Console Commands</option>
+          <option value="FILES">Files &amp; Uploads</option>
+          <option value="PLAYERS">Players</option>
+          <option value="SETTINGS">Settings &amp; Safeguards</option>
+          <option value="USERS">Users &amp; Sessions</option>
+        </select>
+        <select id="audit-user-filter" style="flex:1;min-width:140px;">
+          <option value="ALL">All Users</option>
+        </select>
+        <select id="audit-limit-select" style="width:120px;flex:none;">
+          <option value="100">Last 100</option>
+          <option value="250" selected>Last 250</option>
+          <option value="500">Last 500</option>
+        </select>
+      </div>
+      <div class="audit-table-wrap">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Target</th>
+              <th>Details</th>
+              <th>IP</th>
+            </tr>
+          </thead>
+          <tbody id="audit-table-body"></tbody>
+        </table>
       </div>
     </div>
-
-    <div class="audit-filters-bar">
-      <input type="search" id="audit-search-input" placeholder="Search user, action, target, command, or IP..." style="flex:2;min-width:220px;">
-      <select id="audit-category-filter" style="flex:1;min-width:170px;">
-        <option value="ALL">All Categories</option>
-        <option value="AUTH">Auth (Login / Logout / Password)</option>
-        <option value="SERVER">Server Lifecycle</option>
-        <option value="CONSOLE">Console Commands</option>
-        <option value="FILES">Files &amp; Uploads</option>
-        <option value="PLAYERS">Players</option>
-        <option value="SETTINGS">Settings &amp; Safeguards</option>
-        <option value="USERS">Users &amp; Sessions</option>
-      </select>
-      <select id="audit-user-filter" style="flex:1;min-width:140px;">
-        <option value="ALL">All Users</option>
-      </select>
-      <select id="audit-limit-select" style="width:120px;flex:none;">
-        <option value="100">Last 100</option>
-        <option value="250" selected>Last 250</option>
-        <option value="500">Last 500</option>
-      </select>
-    </div>
-
-    <div class="audit-table-wrap">
-      <table class="audit-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>User</th>
-            <th>Action</th>
-            <th>Target</th>
-            <th>Details</th>
-            <th>IP</th>
-          </tr>
-        </thead>
-        <tbody id="audit-table-body"></tbody>
-      </table>
-    </div>
-  </div>
+  </dialog>
 
   <!-- Import Existing Server (.zip) Modal -->
-  <div id="import-server-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Import Existing Server (.zip)</h3>
-        <button id="close-import-server-modal" class="btn-icon" type="button">✕</button>
-      </div>
-      <form id="import-server-form">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="import-srv-name">Server Name</label>
-            <input type="text" id="import-srv-name" placeholder="Imported SMP" required>
-          </div>
-          <div class="form-group">
-            <label for="import-srv-type">Server Software</label>
-            <select id="import-srv-type">
-              <option value="PAPER" selected>Paper</option>
-              <option value="PURPUR">Purpur</option>
-              <option value="FOLIA">Folia</option>
-              <option value="VANILLA">Vanilla</option>
-              <option value="FABRIC">Fabric</option>
-              <option value="FORGE">Forge</option>
-              <option value="NEOFORGE">NeoForge</option>
-              <option value="VELOCITY">Velocity Proxy</option>
-              <option value="BUNGEECORD">BungeeCord Proxy</option>
-              <option value="BEDROCK_BDS">Bedrock Dedicated Server</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="import-srv-version">Minecraft Version Label</label>
-            <input type="text" id="import-srv-version" value="1.21.4" required>
-          </div>
-          <div class="form-group">
-            <label for="import-srv-port">Port</label>
-            <input type="number" id="import-srv-port" min="1" max="65535" value="25565" required>
-          </div>
-          <div class="form-group span-2">
-            <div class="ram-slider-header">
-              <label for="import-srv-ram">RAM Allocation</label>
-              <span id="import-srv-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
-            </div>
-            <input type="range" id="import-srv-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
-            <div class="ram-slider-meta">
-              <span id="import-srv-ram-min">512 MB</span>
-              <span id="import-srv-ram-device-hint">Device RAM: detecting...</span>
-              <span id="import-srv-ram-max">4.0 GB max</span>
-            </div>
-          </div>
-          <div class="form-group span-2">
-            <label for="import-srv-file">Server Archive (.zip)</label>
-            <input type="file" id="import-srv-file" accept=".zip" required>
-          </div>
-        </div>
-        <label class="checkbox-label eula-box">
-          <input type="checkbox" id="import-srv-eula">
-          <span>I agree to the <a href="https://aka.ms/MinecraftEULA" target="_blank" rel="noopener noreferrer">Minecraft EULA</a></span>
-        </label>
-        <div class="modal-footer">
-          <button type="button" id="cancel-import-server-btn" class="btn btn-ghost">Cancel</button>
-          <button type="submit" id="import-srv-submit-btn" class="btn btn-primary">Upload &amp; Import</button>
-        </div>
-      </form>
+  <dialog id="import-server-modal" class="m3-dialog-native m3-dialog--md">
+    <div class="modal-header">
+      <h3>Import Existing Server (.zip)</h3>
+      <button id="close-import-server-modal" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
     </div>
-  </div>
+    <form id="import-server-form">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="import-srv-name">Server Name</label>
+          <input type="text" id="import-srv-name" placeholder="Imported SMP" required>
+        </div>
+        <div class="form-group">
+          <label for="import-srv-type">Server Software</label>
+          <select id="import-srv-type">
+            <option value="PAPER" selected>Paper</option>
+            <option value="PURPUR">Purpur</option>
+            <option value="FOLIA">Folia</option>
+            <option value="VANILLA">Vanilla</option>
+            <option value="FABRIC">Fabric</option>
+            <option value="FORGE">Forge</option>
+            <option value="NEOFORGE">NeoForge</option>
+            <option value="VELOCITY">Velocity Proxy</option>
+            <option value="BUNGEECORD">BungeeCord Proxy</option>
+            <option value="BEDROCK_BDS">Bedrock Dedicated Server</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="import-srv-version">Minecraft Version Label</label>
+          <input type="text" id="import-srv-version" value="1.21.4" required>
+        </div>
+        <div class="form-group">
+          <label for="import-srv-port">Port</label>
+          <input type="number" id="import-srv-port" min="1" max="65535" value="25565" required>
+        </div>
+        <div class="form-group span-2">
+          <div class="ram-slider-header">
+            <label for="import-srv-ram">RAM Allocation</label>
+            <span id="import-srv-ram-display" class="ram-slider-value">2.0 GB (2048 MB)</span>
+          </div>
+          <input type="range" id="import-srv-ram" class="ram-range" min="512" max="4096" step="256" value="2048">
+          <div class="ram-slider-meta">
+            <span id="import-srv-ram-min">512 MB</span>
+            <span id="import-srv-ram-device-hint">Device RAM: detecting...</span>
+            <span id="import-srv-ram-max">4.0 GB max</span>
+          </div>
+        </div>
+        <div class="form-group span-2">
+          <label for="import-srv-file">Server Archive (.zip)</label>
+          <input type="file" id="import-srv-file" accept=".zip" required>
+        </div>
+      </div>
+      <label class="checkbox-label eula-box">
+        <input type="checkbox" id="import-srv-eula">
+        <span>I agree to the <a href="https://www.minecraft.net/en-us/eula" target="_blank" rel="noopener noreferrer">Minecraft EULA</a></span>
+      </label>
+      <div id="import-progress-box" class="progress-box hidden">
+        <div class="progress-text-row">
+          <span id="import-progress-msg">Uploading archive...</span>
+          <span id="import-progress-pct" class="mono">0%</span>
+        </div>
+        <div class="progress-track">
+          <div id="import-progress-fill" class="progress-fill" style="width: 0%;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-import-server-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="import-srv-submit-btn" class="btn btn-primary">Upload &amp; Import</button>
+      </div>
+    </form>
+  </dialog>
 
   <!-- Change Password Modal -->
-  <div id="password-modal" class="modal-backdrop hidden">
-    <div class="modal-card">
-      <div class="modal-header">
-        <h3>Change Password</h3>
-        <button id="close-password-modal-btn" class="btn-icon" type="button">✕</button>
-      </div>
-      <form id="change-password-form">
-        <div class="form-group">
-          <label for="pw-current">Current Password</label>
-          <input type="password" id="pw-current" required>
-        </div>
-        <div class="form-group">
-          <label for="pw-new">New Password (min 6 chars)</label>
-          <input type="password" id="pw-new" required>
-        </div>
-        <div class="modal-footer">
-          <button type="button" id="cancel-password-modal-btn" class="btn btn-ghost">Cancel</button>
-          <button type="submit" class="btn btn-primary">Update Password</button>
-        </div>
-      </form>
+  <dialog id="password-modal" class="m3-dialog-native m3-dialog--sm">
+    <div class="modal-header">
+      <h3>Change Password</h3>
+      <button id="close-password-modal-btn" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
     </div>
-  </div>
+    <form id="change-password-form">
+      <div class="form-group">
+        <label for="pw-current">Current Password</label>
+        <div class="password-field-wrap">
+          <input type="password" id="pw-current" required>
+          <button type="button" class="password-toggle-btn" data-toggle-password="pw-current" aria-label="Show password">
+            <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16q1.875 0 3.188-1.312T16.5 11.5t-1.312-3.187T12 7T8.813 8.313T7.5 11.5t1.313 3.188T12 16m0-1.8q-1.125 0-1.912-.788T9.3 11.5t.788-1.912T12 8.8t1.913.788t.787 1.912t-.787 1.913T12 14.2m0 4.8q-3.65 0-6.65-2.037T1 11.5q1.35-3.425 4.35-5.462T12 4t6.65 2.038T23 11.5q-1.35 3.425-4.35 5.463T12 19"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="pw-new">New Password (min 6 chars)</label>
+        <div class="password-field-wrap">
+          <input type="password" id="pw-new" required>
+          <button type="button" class="password-toggle-btn" data-toggle-password="pw-new" aria-label="Show password">
+            <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M12 16q1.875 0 3.188-1.312T16.5 11.5t-1.312-3.187T12 7T8.813 8.313T7.5 11.5t1.313 3.188T12 16m0-1.8q-1.125 0-1.912-.788T9.3 11.5t.788-1.912T12 8.8t1.913.788t.787 1.912t-.787 1.913T12 14.2m0 4.8q-3.65 0-6.65-2.037T1 11.5q1.35-3.425 4.35-5.462T12 4t6.65 2.038T23 11.5q-1.35 3.425-4.35 5.463T12 19"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-password-modal-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Password</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Session Expiry Modal -->
+  <dialog id="session-expired-modal" class="m3-dialog-native m3-dialog--sm">
+    <div class="modal-header">
+      <h3>Session Expired</h3>
+    </div>
+    <p class="player-sub" style="margin:0 0 16px;">Your Web Admin session has expired or was revoked. Sign in again to continue managing your servers.</p>
+    <div class="modal-footer">
+      <button type="button" id="session-expired-signin-btn" class="btn btn-primary">Sign In Again</button>
+    </div>
+  </dialog>
+
+  <!-- Reusable M3 Confirmation Dialog -->
+  <dialog id="m3-confirm-dialog" class="m3-dialog-native m3-dialog--sm">
+    <div class="modal-header">
+      <h3 id="m3-confirm-title">Confirm Action</h3>
+      <button id="m3-confirm-close-btn" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <p id="m3-confirm-message" class="player-sub" style="margin:0 0 16px;line-height:1.5;"></p>
+    <div class="modal-footer">
+      <button type="button" id="m3-confirm-cancel-btn" class="btn btn-ghost">Cancel</button>
+      <button type="button" id="m3-confirm-ok-btn" class="btn btn-primary">Confirm</button>
+    </div>
+  </dialog>
+
+  <!-- Reusable M3 Prompt Dialog -->
+  <dialog id="m3-prompt-dialog" class="m3-dialog-native m3-dialog--sm">
+    <div class="modal-header">
+      <h3 id="m3-prompt-title">Enter Value</h3>
+      <button id="m3-prompt-close-btn" class="btn-icon" type="button" aria-label="Close">
+        <svg class="ms-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <form id="m3-prompt-form">
+      <p id="m3-prompt-message" class="player-sub" style="margin:0 0 10px;"></p>
+      <div class="form-group">
+        <input type="text" id="m3-prompt-input" required>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="m3-prompt-cancel-btn" class="btn btn-ghost">Cancel</button>
+        <button type="submit" id="m3-prompt-ok-btn" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </dialog>
 
   <script src="/app.js"></script>
 </body>
 </html>
-

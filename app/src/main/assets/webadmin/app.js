@@ -5,6 +5,11 @@
     servers: [],
     selectedServerId: null,
     activeTab: "console",
+    subTabs: {
+      content: "plugins",
+      worldmap: "world",
+      management: "settings"
+    },
     currentPath: "",
     editingFile: null,
     cmdHistory: [],
@@ -14,10 +19,93 @@
     perfHistory: {},
     systemInfo: null,
     cloudLinked: false,
-    whatsNewChecked: false
+    whatsNewChecked: false,
+    themeMode: "dark",
+    wasAuthenticated: false,
+    playersData: null,
+    playersFilter: "online",
+    playersSearch: "",
+    installedPlugins: [],
+    pluginsFilter: "",
+    cachedSettings: null
   };
 
   const $ = (id) => document.getElementById(id);
+
+  function getCssToken(name, fallback = "") {
+    const val = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return val || fallback;
+  }
+
+  function resolveTheme(mode) {
+    if (mode === "system") {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+    }
+    return mode === "light" ? "light" : "dark";
+  }
+
+  function applyTheme(mode) {
+    const normalized = mode === "light" || mode === "system" ? mode : "dark";
+    state.themeMode = normalized;
+    try { localStorage.setItem("mineserve_web_theme", normalized); } catch (_) {}
+    document.documentElement.dataset.theme = resolveTheme(normalized);
+    document.querySelectorAll("[data-theme-choice]").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.themeChoice === normalized);
+    });
+    if (getEffectiveTab() === "performance") {
+      renderPerfChart();
+    }
+  }
+
+  function initTheme() {
+    let saved = "dark";
+    try { saved = localStorage.getItem("mineserve_web_theme") || "dark"; } catch (_) {}
+    applyTheme(saved);
+    if (window.matchMedia) {
+      const mq = window.matchMedia("(prefers-color-scheme: light)");
+      const handler = () => {
+        if (state.themeMode === "system") {
+          document.documentElement.dataset.theme = resolveTheme("system");
+          if (getEffectiveTab() === "performance") renderPerfChart();
+        }
+      };
+      if (mq.addEventListener) mq.addEventListener("change", handler);
+      else if (mq.addListener) mq.addListener(handler);
+    }
+  }
+
+  function getEffectiveTab() {
+    if (state.activeTab === "content") return state.subTabs.content || "plugins";
+    if (state.activeTab === "worldmap") return state.subTabs.worldmap || "world";
+    if (state.activeTab === "management") return state.subTabs.management || "settings";
+    return state.activeTab;
+  }
+
+  function setActiveTab(tab, subTab = null) {
+    state.activeTab = tab;
+    if (subTab && (tab === "content" || tab === "worldmap" || tab === "management")) {
+      state.subTabs[tab] = subTab;
+    }
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.tab === tab);
+    });
+    document.querySelectorAll(".tab-panel").forEach((panel) => {
+      panel.classList.toggle("active", panel.id === `tab-${tab}`);
+    });
+    if (tab === "content" || tab === "worldmap" || tab === "management") {
+      const activeSub = state.subTabs[tab];
+      document.querySelectorAll(`.m3-segmented-btn[data-parent-tab="${tab}"]`).forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.subtab === activeSub);
+      });
+      const parentEl = $(`tab-${tab}`);
+      if (parentEl) {
+        parentEl.querySelectorAll(".subtab-panel").forEach((sp) => {
+          sp.classList.toggle("active", sp.id === `subtab-${activeSub}`);
+        });
+      }
+    }
+    loadActiveTabData();
+  }
 
   function escapeHtml(str) {
     return String(str ?? "")
@@ -37,6 +125,102 @@
     setTimeout(() => el.remove(), 3400);
   }
 
+  function openDialog(id) {
+    const dlg = $(id);
+    if (!dlg) return;
+    if (typeof dlg.showModal === "function") {
+      if (!dlg.open) dlg.showModal();
+    } else {
+      dlg.setAttribute("open", "");
+    }
+  }
+
+  function closeDialog(id) {
+    const dlg = $(id);
+    if (!dlg) return;
+    if (typeof dlg.close === "function") {
+      if (dlg.open) dlg.close();
+    } else {
+      dlg.removeAttribute("open");
+    }
+  }
+
+  function showConfirmDialog({ title = "Confirm Action", message = "", confirmText = "Confirm", destructive = false } = {}) {
+    return new Promise((resolve) => {
+      const dlg = $("m3-confirm-dialog");
+      if (!dlg) { resolve(false); return; }
+      $("m3-confirm-title").textContent = title;
+      $("m3-confirm-message").textContent = message;
+      const okBtn = $("m3-confirm-ok-btn");
+      okBtn.textContent = confirmText;
+      okBtn.className = destructive ? "btn btn-danger" : "btn btn-primary";
+
+      let settled = false;
+      const finish = (val) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        closeDialog("m3-confirm-dialog");
+        resolve(val);
+      };
+      const onOk = () => finish(true);
+      const onCancel = () => finish(false);
+      const onClose = () => finish(false);
+      const cleanup = () => {
+        okBtn.removeEventListener("click", onOk);
+        $("m3-confirm-cancel-btn")?.removeEventListener("click", onCancel);
+        $("m3-confirm-close-btn")?.removeEventListener("click", onClose);
+        dlg.removeEventListener("cancel", onClose);
+      };
+      okBtn.addEventListener("click", onOk);
+      $("m3-confirm-cancel-btn")?.addEventListener("click", onCancel);
+      $("m3-confirm-close-btn")?.addEventListener("click", onClose);
+      dlg.addEventListener("cancel", onClose);
+      openDialog("m3-confirm-dialog");
+    });
+  }
+
+  function showPromptDialog({ title = "Enter Value", message = "", placeholder = "", defaultValue = "", inputType = "text", confirmText = "Save" } = {}) {
+    return new Promise((resolve) => {
+      const dlg = $("m3-prompt-dialog");
+      const form = $("m3-prompt-form");
+      const input = $("m3-prompt-input");
+      if (!dlg || !form || !input) { resolve(null); return; }
+      $("m3-prompt-title").textContent = title;
+      $("m3-prompt-message").textContent = message;
+      $("m3-prompt-ok-btn").textContent = confirmText;
+      input.type = inputType;
+      input.placeholder = placeholder;
+      input.value = defaultValue;
+
+      let settled = false;
+      const finish = (val) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        closeDialog("m3-prompt-dialog");
+        resolve(val);
+      };
+      const onSubmit = (e) => {
+        e.preventDefault();
+        finish(input.value);
+      };
+      const onCancel = () => finish(null);
+      const cleanup = () => {
+        form.removeEventListener("submit", onSubmit);
+        $("m3-prompt-cancel-btn")?.removeEventListener("click", onCancel);
+        $("m3-prompt-close-btn")?.removeEventListener("click", onCancel);
+        dlg.removeEventListener("cancel", onCancel);
+      };
+      form.addEventListener("submit", onSubmit);
+      $("m3-prompt-cancel-btn")?.addEventListener("click", onCancel);
+      $("m3-prompt-close-btn")?.addEventListener("click", onCancel);
+      dlg.addEventListener("cancel", onCancel);
+      openDialog("m3-prompt-dialog");
+      setTimeout(() => input.focus(), 40);
+    });
+  }
+
   async function apiFetch(url, options = {}) {
     const res = await fetch(url, {
       credentials: "same-origin",
@@ -50,7 +234,11 @@
     let data = {};
     try { data = text ? JSON.parse(text) : {}; } catch (_) {}
     if (res.status === 401 && url !== "/api/login") {
-      showLogin();
+      if (state.wasAuthenticated) {
+        openDialog("session-expired-modal");
+      } else {
+        showLogin();
+      }
       throw new Error(data.error || "Session expired");
     }
     if (!res.ok) {
@@ -75,21 +263,36 @@
     renderServerList();
 
     const m = data.metrics || {};
-    const cpu = Number(m.cpuPercentage || 0);
-    const ramUsed = Number(m.ramUsedMb || 0);
+    const isRunning = data.status === "RUNNING" || data.status === "STARTING";
+    const cpu = isRunning ? Number(m.cpuPercentage || 0) : 0;
+    const ramUsed = isRunning ? Number(m.ramUsedMb || 0) : 0;
     const ramMax = Number(m.ramMaxMb || data.allocatedRamMb || 1);
     const tpsNum = typeof m.tps === "number" ? m.tps : 20.0;
     const msptNum = typeof m.mspt === "number" ? m.mspt : 0.0;
+    const onlinePlayers = Number(m.onlinePlayerCount || 0);
 
-    $("metric-cpu").textContent = `${Math.round(cpu)}%`;
-    $("metric-ram").textContent = `${ramUsed} / ${data.allocatedRamMb || 0} MB`;
+    $("metric-cpu").textContent = `${cpu.toFixed(1)}%`;
+    $("metric-ram").textContent = `${ramUsed} / ${data.allocatedRamMb || ramMax} MB`;
     const tps = tpsNum.toFixed(1);
     if (data.status === "RUNNING") {
       recordPerfSample(data.id, cpu, ramUsed, ramMax, tpsNum, msptNum);
     }
-    const mspt = typeof m.mspt === "number" ? m.mspt.toFixed(1) : "0.0";
-    $("metric-tps").textContent = `${tps} / ${mspt} ms`;
-    $("metric-players").textContent = `${m.onlinePlayerCount || 0}`;
+    const mspt = msptNum.toFixed(1);
+    $("metric-tps").textContent = isRunning && typeof m.tps === "number" ? `${tps} / ${mspt}ms` : "-- / --";
+    $("metric-players").textContent = `${onlinePlayers} Online`;
+
+    const setBar = (id, pct, warnAt, errAt) => {
+      const bar = $(id);
+      if (!bar) return;
+      const clamped = Math.max(0, Math.min(100, pct));
+      bar.style.width = `${clamped}%`;
+      bar.classList.toggle("error", clamped >= errAt);
+      bar.classList.toggle("warning", clamped >= warnAt && clamped < errAt);
+    };
+    setBar("metric-cpu-bar", cpu, 70, 90);
+    setBar("metric-ram-bar", ramMax > 0 ? (ramUsed / ramMax) * 100 : 0, 75, 92);
+    setBar("metric-tps-bar", isRunning ? (msptNum / 50) * 100 : 0, 70, 95);
+    setBar("metric-players-bar", Math.min(100, (onlinePlayers / 20) * 100), 85, 100);
   }
 
   function connectServerStream(serverId) {
@@ -129,13 +332,16 @@
       clearInterval(state.pollTimer);
       state.pollTimer = null;
     }
+    state.wasAuthenticated = false;
     state.whatsNewChecked = false;
     state.cloudLinked = false;
+    closeDialog("session-expired-modal");
     $("app-view").classList.add("hidden");
     $("login-view").classList.remove("hidden");
   }
 
   function showApp() {
+    state.wasAuthenticated = true;
     $("login-view").classList.add("hidden");
     $("app-view").classList.remove("hidden");
     loadSystemInfo();
@@ -162,7 +368,11 @@
     const pill = $("current-user-pill");
     if (pill && u) {
       pill.classList.remove("hidden");
-      $("current-user-name").textContent = u.username || "admin";
+      const uname = u.username || "admin";
+      $("current-user-name").textContent = uname;
+      if ($("current-user-avatar")) {
+        $("current-user-avatar").textContent = uname.charAt(0).toUpperCase();
+      }
       const roleEl = $("current-user-role");
       roleEl.textContent = u.roleLabel || u.role || "User";
       roleEl.className = `role-badge ${u.role || "VIEWER"}`;
@@ -182,38 +392,62 @@
     $("open-import-server-modal-btn")?.classList.toggle("hidden", !canManageHost);
     $("open-cloud-modal-btn")?.classList.toggle("hidden", !canManageHost || !!state.isPlayStore);
     $("empty-create-btn")?.classList.toggle("hidden", !canManageHost);
-    $("open-host-tools-btn")?.classList.toggle("hidden", !canManageHost);
-    $("open-users-modal-btn")?.classList.toggle("hidden", !canManageUsers);
-    $("open-audit-view-btn")?.classList.toggle("hidden", !canViewAudit);
+    $("open-host-tools-btn")?.classList.toggle("hidden", false);
+    document.querySelectorAll('[data-host-tab="java"], [data-host-tab="diagnostics"], [data-host-tab="updates"]').forEach((btn) => {
+      btn.classList.toggle("hidden", !canManageHost);
+    });
+    const isLinux = !!(state.systemInfo && state.systemInfo.platform === "linux");
+    $("host-dirs-group")?.classList.toggle("hidden", !isLinux || !canManageHost);
+    $("safeguards-card")?.classList.toggle("hidden", isLinux || !canManageHost);
+    $("open-users-modal-btn")?.classList.toggle("hidden", !canManageUsers && !canViewAudit);
     $("btn-start")?.classList.toggle("hidden", !canControl);
     $("btn-restart")?.classList.toggle("hidden", !canControl);
     $("btn-stop")?.classList.toggle("hidden", !canControl);
     $("console-form")?.classList.toggle("hidden", !canConsoleWrite);
+    $("console-quick-chips")?.classList.toggle("hidden", !canConsoleWrite);
     $("btn-open-network-tab")?.classList.toggle("hidden", !canSettings);
     $("apply-aikar-btn")?.classList.toggle("hidden", !canSettings);
     $("delete-server-btn")?.classList.toggle("hidden", !canManageHost);
     $("cloud-backups-refresh-btn")?.closest(".panel-card")?.classList.toggle("hidden", !canBackupsManage);
 
+    const subTabPerms = {
+      plugins: canSettings,
+      files: canFiles,
+      world: canSettings,
+      livemap: true,
+      settings: canSettings,
+      backups: canBackups,
+      automation: canSettings
+    };
+    document.querySelectorAll(".m3-segmented-btn[data-subtab]").forEach((btn) => {
+      const st = btn.dataset.subtab;
+      btn.classList.toggle("hidden", !subTabPerms[st]);
+    });
+
     const tabPerms = {
       console: true,
       performance: true,
-      livemap: true,
       players: canPlayers,
-      backups: canBackups,
-      files: canFiles,
-      automation: canSettings,
-      world: canSettings,
-      settings: canSettings,
-      plugins: canSettings
+      content: subTabPerms.plugins || subTabPerms.files,
+      worldmap: subTabPerms.world || subTabPerms.livemap,
+      management: subTabPerms.settings || subTabPerms.backups || subTabPerms.automation
     };
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       const tab = btn.dataset.tab;
-      const allowed = !!tabPerms[tab];
-      btn.classList.toggle("hidden", !allowed);
+      btn.classList.toggle("hidden", !tabPerms[tab]);
     });
+
+    if (state.activeTab === "content" && !subTabPerms[state.subTabs.content]) {
+      state.subTabs.content = subTabPerms.plugins ? "plugins" : "files";
+    }
+    if (state.activeTab === "worldmap" && !subTabPerms[state.subTabs.worldmap]) {
+      state.subTabs.worldmap = subTabPerms.world ? "world" : "livemap";
+    }
+    if (state.activeTab === "management" && !subTabPerms[state.subTabs.management]) {
+      state.subTabs.management = subTabPerms.settings ? "settings" : (subTabPerms.backups ? "backups" : "automation");
+    }
     if (!tabPerms[state.activeTab]) {
-      const consoleTabBtn = document.querySelector('.tab-btn[data-tab="console"]');
-      if (consoleTabBtn) consoleTabBtn.click();
+      setActiveTab("console");
     }
   }
 
@@ -291,10 +525,14 @@
       const info = await apiFetch("/api/system");
       state.systemInfo = info;
       state.isPlayStore = !!info.isPlayStore;
+      if (info.version && $("sidebar-version-pill")) {
+        $("sidebar-version-pill").textContent = `v${info.version}`;
+      }
       $("system-info").textContent = info.platform === "linux"
         ? info.device
         : `${info.device} (Android ${info.android})`;
-      $("safeguards-card")?.classList.toggle("hidden", info.platform === "linux");
+      if (info.serversDir && $("host-dir-servers")) $("host-dir-servers").value = info.serversDir;
+      if (info.runtimesDir && $("host-dir-runtimes")) $("host-dir-runtimes").value = info.runtimesDir;
       applyUserPermissionsUi();
       syncCloudUnlinkedCallouts();
       if (info.maxAllocatableRamMb) {
@@ -341,18 +579,19 @@
     }
     container.innerHTML = state.servers.map((s) => `
       <div class="server-item ${s.id === state.selectedServerId ? "active" : ""}" data-id="${escapeHtml(s.id)}">
-        <div style="min-width:0;">
-          <div class="server-item-name">${escapeHtml(s.name)}</div>
-          <div class="server-item-sub">${escapeHtml(s.type)} ${escapeHtml(s.version)} · :${s.port}</div>
-        </div>
         <span class="dot ${escapeHtml(s.status)}"></span>
+        <div class="server-item-text">
+          <div class="server-item-name">${escapeHtml(s.name)}</div>
+          <div class="server-item-sub">${escapeHtml(s.type)} ${escapeHtml(s.version)} :${s.port}</div>
+        </div>
       </div>
     `).join("");
 
     container.querySelectorAll(".server-item").forEach((el) => {
       el.addEventListener("click", () => {
         selectServer(el.dataset.id);
-        $("sidebar").classList.remove("open");
+        $("sidebar")?.classList.remove("open");
+        $("sidebar-backdrop")?.classList.remove("open");
       });
     });
   }
@@ -361,8 +600,9 @@
     const server = state.servers.find((s) => s.id === state.selectedServerId);
     if (!server) return;
     $("active-server-name").textContent = server.name;
-    $("active-server-meta").textContent = `${server.type} ${server.version} · Port ${server.port} · ${server.allocatedRamMb} MB RAM`;
+    $("active-server-meta").textContent = `${server.type} ${server.version} / Port ${server.port} / ${server.allocatedRamMb} MB`;
     const badge = $("active-server-badge");
+    badge.classList.remove("hidden");
     badge.textContent = server.status;
     badge.className = `status-badge ${server.status}`;
 
@@ -403,14 +643,17 @@
   }
 
   function renderConnectionStrip(net) {
+    const strip = $("connection-strip");
     const badge = $("net-public-badge");
+    const pubBtn = $("btn-copy-public-addr");
     const pubAddr = $("net-public-addr");
-    const copyPubBtn = $("btn-copy-public-addr");
     const note = $("net-public-note");
     const localLabel = $("net-local-label");
     const localAddr = $("net-local-addr");
     const copyLocalBtn = $("btn-copy-local-addr");
-    if (!badge) return;
+    if (!badge || !pubBtn) return;
+
+    strip?.classList.remove("hidden");
 
     const publicAddress = net.publicAddress || "";
     const tunnelStatus = net.tunnelStatus || "disconnected";
@@ -419,49 +662,52 @@
 
     pubAddr.textContent = publicAddress;
     pubAddr.classList.toggle("hidden", !publicAddress);
-    copyPubBtn.classList.toggle("hidden", !publicAddress);
-    copyPubBtn.dataset.addr = publicAddress;
+    pubBtn.dataset.addr = publicAddress;
 
     if (publicAddress) {
-      badge.className = "net-pill active";
-      badge.textContent = `Public · ${activeMethod || "Online"}`;
+      pubBtn.className = "m3-chip m3-chip--tertiary net-chip-btn";
+      badge.textContent = `${activeMethod || "Tunnel"}:`;
       if (net.tunnelAddress && net.directAddress && net.tunnelAddress !== net.directAddress) {
         note.textContent = `UPnP also mapped: ${net.directAddress}`;
       } else {
         note.textContent = "";
       }
     } else if (tunnelStatus === "connecting") {
-      badge.className = "net-pill connecting";
-      badge.textContent = `${net.tunnelProviderLabel || "Tunnel"} · Connecting`;
+      pubBtn.className = "m3-chip m3-chip--warning net-chip-btn";
+      badge.textContent = `${net.tunnelProviderLabel || "Tunnel"}: Connecting`;
       note.textContent = net.tunnelMessage || "Establishing public tunnel...";
     } else if (pfStatus === "discovering") {
-      badge.className = "net-pill connecting";
-      badge.textContent = "UPnP / NAT-PMP · Mapping";
+      pubBtn.className = "m3-chip m3-chip--warning net-chip-btn";
+      badge.textContent = "UPnP / NAT-PMP: Mapping";
       note.textContent = net.portForwardMessage || "Mapping router port...";
     } else if (tunnelStatus === "error") {
-      badge.className = "net-pill error";
-      badge.textContent = `${net.tunnelProviderLabel || "Tunnel"} · Error`;
+      pubBtn.className = "m3-chip m3-chip--error net-chip-btn";
+      badge.textContent = `${net.tunnelProviderLabel || "Tunnel"}: Error`;
       note.textContent = net.tunnelMessage || "Tunnel connection failed";
     } else if (pfStatus === "failed") {
-      badge.className = "net-pill error";
-      badge.textContent = "Port Forward · Failed";
+      pubBtn.className = "m3-chip m3-chip--error net-chip-btn";
+      badge.textContent = "Port Forward: Failed";
       note.textContent = net.portForwardMessage || "Router mapping failed";
     } else {
-      badge.className = "net-pill offline";
-      badge.textContent = "Public Access · Off";
+      pubBtn.className = "m3-chip m3-chip--neutral net-chip-btn";
+      badge.textContent = "Tunnel Off";
       if (net.firewallWarning) {
         note.textContent = `Firewall warning: ${net.firewallWarning}`;
       } else {
-        note.textContent = "LAN only (enable a tunnel or UPnP in Network Settings)";
+        note.textContent = "";
       }
     }
 
     const lan = net.localAddress || "";
-    localLabel.classList.toggle("hidden", !lan);
-    localAddr.textContent = lan;
-    localAddr.classList.toggle("hidden", !lan);
-    copyLocalBtn.classList.toggle("hidden", !lan);
-    copyLocalBtn.dataset.addr = lan;
+    if (localLabel) localLabel.classList.toggle("hidden", !lan);
+    if (localAddr) {
+      localAddr.textContent = lan;
+      localAddr.classList.toggle("hidden", !lan);
+    }
+    if (copyLocalBtn) {
+      copyLocalBtn.classList.toggle("hidden", !lan);
+      copyLocalBtn.dataset.addr = lan;
+    }
   }
 
   function selectServer(serverId) {
@@ -474,6 +720,8 @@
       disconnectServerStream();
       $("active-server-name").textContent = "Select a Server";
       $("active-server-meta").textContent = "";
+      $("active-server-badge")?.classList.add("hidden");
+      $("connection-strip")?.classList.add("hidden");
       $("server-controls").classList.add("hidden");
       $("server-workspace").classList.add("hidden");
       $("empty-state").classList.remove("hidden");
@@ -499,16 +747,17 @@
 
   function loadActiveTabData() {
     if (!state.selectedServerId) return;
-    if (state.activeTab === "console") loadConsole();
-    else if (state.activeTab === "performance") loadPerformance();
-    else if (state.activeTab === "automation") loadAutomation();
-    else if (state.activeTab === "files") loadFiles(state.currentPath);
-    else if (state.activeTab === "world") loadWorld();
-    else if (state.activeTab === "livemap") loadLiveMap();
-    else if (state.activeTab === "settings") { loadSettings(); loadUpgradeVersions(); loadNetwork(); loadDiscordWebhook(); loadProxySettings(); }
-    else if (state.activeTab === "players") loadPlayers();
-    else if (state.activeTab === "backups") loadBackups();
-    else if (state.activeTab === "plugins") loadPlugins();
+    const eff = getEffectiveTab();
+    if (eff === "console") loadConsole();
+    else if (eff === "performance") loadPerformance();
+    else if (eff === "automation") { loadAutomation(); loadDiscordWebhook(); }
+    else if (eff === "files") loadFiles(state.currentPath);
+    else if (eff === "world") { loadWorld(); loadSettings(); }
+    else if (eff === "livemap") loadLiveMap();
+    else if (eff === "settings") { loadSettings(); loadUpgradeVersions(); loadNetwork(); loadProxySettings(); }
+    else if (eff === "players") loadPlayers();
+    else if (eff === "backups") loadBackups();
+    else if (eff === "plugins") loadPlugins();
   }
 
   async function pollActiveData() {
@@ -516,19 +765,20 @@
       await loadServers();
       return;
     }
+    const eff = getEffectiveTab();
     if (!state.sseConnected) {
       await loadServerDetails();
-      if (state.activeTab === "console") {
+      if (eff === "console") {
         await loadConsole();
       }
     }
-    if (state.activeTab === "performance") {
+    if (eff === "performance") {
       await loadPerformance();
-    } else if (state.activeTab === "settings") {
+    } else if (eff === "settings") {
       await loadNetwork(false);
-    } else if (state.activeTab === "players") {
+    } else if (eff === "players") {
       await loadPlayers();
-    } else if (state.activeTab === "world") {
+    } else if (eff === "world") {
       await loadPregenStatus();
     }
   }
@@ -537,11 +787,15 @@
   function updateConsoleOutput(lines) {
     const out = $("console-output");
     if (!out) return;
+    const countEl = $("console-line-count");
+    if (countEl) {
+      countEl.textContent = `Live Server Console (${lines.length} lines)`;
+    }
     let nextText = lines.join("\n");
     if (!nextText.trim()) {
       const srv = state.servers.find((s) => s.id === state.selectedServerId);
       if (srv && srv.status === "STOPPED") {
-        nextText = "Server is ready. Click the green Start button above to launch it.";
+        nextText = "Server is ready. Click Start above to launch it.";
       }
     }
     if (out.textContent === nextText) return;
@@ -579,23 +833,31 @@
       const list = $("files-list");
       const files = data.files || [];
       if (files.length === 0) {
-        list.innerHTML = `<div class="player-sub" style="padding: 16px;">Empty directory · Drag &amp; drop files here to upload</div>`;
+        list.innerHTML = `<div class="player-sub" style="padding: 16px;">Empty directory - drag &amp; drop files here to upload</div>`;
         return;
       }
+      const iconFolder = `<svg class="ms-icon ms-icon--sm ms-icon--primary" viewBox="0 0 24 24" fill="currentColor"><path d="M4 20q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z"/></svg>`;
+      const iconZip = `<svg class="ms-icon ms-icon--sm ms-icon--tertiary" viewBox="0 0 24 24" fill="currentColor"><path d="M14 14v-2h-2v2zm2-2v-2h-2v2zm-2-2V8h-2v2zm-10 10q-.825 0-1.412-.587T2 18V6q0-.825.588-1.412T4 4h6l2 2h8q.825 0 1.413.588T22 8v10q0 .825-.587 1.413T20 20z"/></svg>`;
+      const iconFile = `<svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M6 22q-.825 0-1.412-.587T4 20V4q0-.825.588-1.412T6 2h8l6 6v12q0 .825-.587 1.413T18 22zm7-13h5l-5-5z"/></svg>`;
+      const iconDownload = `<svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="m12 16l-5-5l1.4-1.45l2.6 2.6V4h2v8.15l2.6-2.6L17 11zm-6 4q-.825 0-1.412-.587T4 18v-3h2v3h12v-3h2v3q0 .825-.587 1.413T18 20z"/></svg>`;
+      const iconExtract = `<svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M11 16V7.85l-2.6 2.6L7 9l5-5l5 5l-1.4 1.45l-2.6-2.6V16zm-5 4q-.825 0-1.412-.587T4 18v-3h2v3h12v-3h2v3q0 .825-.587 1.413T18 20z"/></svg>`;
+      const iconEdit = `<svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="M3 21v-4.25L16.2 3.575q.3-.275.663-.425t.762-.15t.775.15t.65.45L20.425 5q.3.275.438.65T21 6.4q0 .4-.137.763t-.438.662L7.25 21zM17.6 7.8L19 6.4L17.6 5l-1.4 1.4z"/></svg>`;
+      const iconDelete = `<svg class="ms-icon ms-icon--sm ms-icon--error" viewBox="0 0 24 24" fill="currentColor"><path d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zm2-4h2V8H9zm4 0h2V8h-2z"/></svg>`;
+
       list.innerHTML = files.map((f) => {
         const isZip = !f.isDirectory && f.name.toLowerCase().endsWith(".zip");
         return `
         <div class="file-row">
           <button class="file-name-btn" data-path="${escapeHtml(f.relativePath)}" data-dir="${f.isDirectory}" data-editable="${f.isEditable}">
-            <span>${f.isDirectory ? "📁" : (isZip ? "🗜️" : "📄")}</span>
+            ${f.isDirectory ? iconFolder : (isZip ? iconZip : iconFile)}
             <span>${escapeHtml(f.name)}</span>
           </button>
           <div class="file-meta">
             <span>${f.isDirectory ? "Folder" : formatSize(f.sizeBytes)}</span>
-            ${!f.isDirectory ? `<a class="btn btn-ghost btn-sm" href="/api/servers/${encodeURIComponent(state.selectedServerId)}/files/download?path=${encodeURIComponent(f.relativePath)}" download title="Download">⬇</a>` : ""}
-            ${isZip ? `<button class="btn btn-ghost btn-sm file-unzip-btn" data-path="${escapeHtml(f.relativePath)}" title="Unzip Archive">📦</button>` : ""}
-            <button class="btn btn-ghost btn-sm file-rename-btn" data-path="${escapeHtml(f.relativePath)}" data-name="${escapeHtml(f.name)}" title="Rename">✏️</button>
-            <button class="btn btn-ghost btn-sm file-del-btn" data-path="${escapeHtml(f.relativePath)}" title="Delete">🗑️</button>
+            ${!f.isDirectory ? `<a class="btn-icon" href="/api/servers/${encodeURIComponent(state.selectedServerId)}/files/download?path=${encodeURIComponent(f.relativePath)}" download title="Download">${iconDownload}</a>` : ""}
+            ${isZip ? `<button type="button" class="btn-icon file-unzip-btn" data-path="${escapeHtml(f.relativePath)}" title="Unzip Archive">${iconExtract}</button>` : ""}
+            <button type="button" class="btn-icon file-rename-btn" data-path="${escapeHtml(f.relativePath)}" data-name="${escapeHtml(f.name)}" title="Rename">${iconEdit}</button>
+            <button type="button" class="btn-icon file-del-btn" data-path="${escapeHtml(f.relativePath)}" title="Delete">${iconDelete}</button>
           </div>
         </div>
       `;
@@ -618,7 +880,12 @@
         btn.addEventListener("click", async () => {
           const rel = btn.dataset.path;
           const oldName = btn.dataset.name;
-          const newName = window.prompt(`Rename "${oldName}" to:`, oldName);
+          const newName = await showPromptDialog({
+            title: "Rename Item",
+            message: `Rename "${oldName}" to:`,
+            defaultValue: oldName,
+            confirmText: "Rename"
+          });
           if (!newName || newName.trim() === oldName) return;
           try {
             await apiFetch(`/api/servers/${state.selectedServerId}/files/rename`, {
@@ -636,7 +903,12 @@
       list.querySelectorAll(".file-unzip-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const rel = btn.dataset.path;
-          if (!confirm(`Extract "${rel}" into the current folder?`)) return;
+          const ok = await showConfirmDialog({
+            title: "Extract Archive",
+            message: `Extract "${rel}" into the current folder?`,
+            confirmText: "Extract"
+          });
+          if (!ok) return;
           try {
             const res = await apiFetch(`/api/servers/${state.selectedServerId}/files/unzip`, {
               method: "POST",
@@ -653,7 +925,13 @@
       list.querySelectorAll(".file-del-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const rel = btn.dataset.path;
-          if (!confirm(`Delete "${rel}"?`)) return;
+          const ok = await showConfirmDialog({
+            title: "Delete File",
+            message: `Permanently delete "${rel}"?`,
+            confirmText: "Delete",
+            destructive: true
+          });
+          if (!ok) return;
           try {
             await apiFetch(`/api/servers/${state.selectedServerId}/files/delete`, {
               method: "POST",
@@ -698,6 +976,7 @@
     if (!state.selectedServerId) return;
     try {
       const data = await apiFetch(`/api/servers/${state.selectedServerId}/settings`);
+      state.cachedSettings = data;
       const srv = data.server || {};
       const props = data.properties || {};
 
@@ -730,6 +1009,12 @@
       $("prop-allow-flight").checked = !!props.allowFlight;
       $("prop-allow-nether").checked = !!props.allowNether;
       $("prop-force-gamemode").checked = !!props.forceGamemode;
+
+      if ($("world-seed-input")) $("world-seed-input").value = props.levelSeed || "";
+      if ($("world-difficulty")) $("world-difficulty").value = props.difficulty || "normal";
+      if ($("world-gamemode")) $("world-gamemode").value = props.gamemode || "survival";
+      if ($("world-allow-nether")) $("world-allow-nether").checked = !!props.allowNether;
+      if ($("world-spawn-monsters")) $("world-spawn-monsters").checked = !!props.spawnMonsters;
     } catch (e) {
       showToast(e.message, "error");
     }
@@ -740,96 +1025,144 @@
     if (!state.selectedServerId) return;
     try {
       const data = await apiFetch(`/api/servers/${state.selectedServerId}/players`);
-      renderOnlinePlayers(data.onlinePlayers || []);
-      renderSimpleList("players-whitelist-list", data.whitelist || [], "name", "whitelist");
-      renderOpsList(data.ops || []);
-      renderBannedList("players-banned-list", data.bannedPlayers || [], "name", "ban");
-      renderBannedList("players-banned-ips-list", data.bannedIps || [], "ip", "ban-ip");
+      state.playersData = data;
+      renderPlayersRoster();
     } catch (_) {}
   }
 
-  function renderOnlinePlayers(players) {
-    const el = $("players-online-list");
-    if (players.length === 0) {
-      el.innerHTML = `<div class="player-sub">No players online</div>`;
+  function renderPlayersRoster() {
+    const table = $("players-roster-table");
+    const data = state.playersData || {};
+    const online = data.onlinePlayers || [];
+    const ops = data.ops || [];
+    const whitelist = data.whitelist || [];
+    const banned = data.bannedPlayers || [];
+    const bannedIps = data.bannedIps || [];
+
+    if ($("players-count-online")) $("players-count-online").textContent = String(online.length);
+    if ($("players-count-ops")) $("players-count-ops").textContent = String(ops.length);
+    if ($("players-count-whitelist")) $("players-count-whitelist").textContent = String(whitelist.length);
+    if ($("players-count-banned")) $("players-count-banned").textContent = String(banned.length);
+    if ($("players-count-bannedips")) $("players-count-bannedips").textContent = String(bannedIps.length);
+
+    if (!table) return;
+    const filter = state.playersFilter || "online";
+    const q = (state.playersSearch || "").trim().toLowerCase();
+    const opSet = new Set(ops.map((o) => String(o.name || "").toLowerCase()));
+
+    let rows = [];
+    if (filter === "online") {
+      rows = online.map((name) => ({
+        title: name,
+        sub: opSet.has(String(name).toLowerCase()) ? "Online - Operator" : "Online Player",
+        isOp: opSet.has(String(name).toLowerCase()),
+        kind: "online"
+      }));
+    } else if (filter === "ops") {
+      rows = ops.map((op) => ({
+        title: op.name,
+        sub: `OP Level ${op.level || 4}${op.uuid ? ` | ${op.uuid}` : ""}`,
+        isOp: true,
+        kind: "ops"
+      }));
+    } else if (filter === "whitelist") {
+      rows = whitelist.map((w) => ({
+        title: w.name,
+        sub: w.uuid || "Whitelisted",
+        isOp: opSet.has(String(w.name || "").toLowerCase()),
+        kind: "whitelist"
+      }));
+    } else if (filter === "banned") {
+      rows = banned.map((b) => ({
+        title: b.name,
+        sub: `${b.reason || "Banned"}${b.uuid ? ` | ${b.uuid}` : ""}`,
+        isOp: false,
+        kind: "banned"
+      }));
+    } else if (filter === "bannedIps") {
+      rows = bannedIps.map((b) => ({
+        title: b.ip,
+        sub: b.reason || "Banned IP",
+        isOp: false,
+        kind: "bannedIps"
+      }));
+    }
+
+    if (q) {
+      rows = rows.filter((r) => `${r.title} ${r.sub}`.toLowerCase().includes(q));
+    }
+
+    if (rows.length === 0) {
+      table.innerHTML = `<div class="empty-state" style="padding:28px 16px;"><h3>No Matching Entries</h3><p style="margin-bottom:0;">Players in this category will appear here.</p></div>`;
       return;
     }
-    el.innerHTML = players.map((name) => `
-      <div class="player-row">
-        <span>${escapeHtml(name)}</span>
-        <div class="player-actions">
-          <button class="btn btn-secondary btn-sm online-op-btn" data-name="${escapeHtml(name)}">Op</button>
-          <button class="btn btn-ghost btn-sm online-kick-btn" data-name="${escapeHtml(name)}">Kick</button>
-          <button class="btn btn-danger btn-sm online-ban-btn" data-name="${escapeHtml(name)}">Ban</button>
-        </div>
-      </div>
-    `).join("");
 
-    el.querySelectorAll(".online-op-btn").forEach((b) => {
+    table.innerHTML = rows.map((r) => {
+      const initial = escapeHtml(String(r.title || "?").charAt(0).toUpperCase());
+      let actionsHtml = "";
+      if (r.kind === "online") {
+        actionsHtml = `
+          ${r.isOp
+            ? `<button type="button" class="btn btn-secondary btn-sm roster-deop-btn" data-name="${escapeHtml(r.title)}">De-OP</button>`
+            : `<button type="button" class="btn btn-secondary btn-sm roster-op-btn" data-name="${escapeHtml(r.title)}">OP</button>`}
+          <button type="button" class="btn btn-ghost btn-sm roster-kick-btn" data-name="${escapeHtml(r.title)}">Kick</button>
+          <button type="button" class="btn btn-danger btn-sm roster-ban-btn" data-name="${escapeHtml(r.title)}">Ban</button>
+        `;
+      } else if (r.kind === "ops") {
+        actionsHtml = `<button type="button" class="btn btn-ghost btn-sm roster-deop-btn" data-name="${escapeHtml(r.title)}">De-OP</button>`;
+      } else if (r.kind === "whitelist") {
+        actionsHtml = `<button type="button" class="btn btn-ghost btn-sm roster-wl-rm-btn" data-name="${escapeHtml(r.title)}">Remove</button>`;
+      } else if (r.kind === "banned") {
+        actionsHtml = `<button type="button" class="btn btn-secondary btn-sm roster-pardon-btn" data-name="${escapeHtml(r.title)}">Pardon</button>`;
+      } else if (r.kind === "bannedIps") {
+        actionsHtml = `<button type="button" class="btn btn-secondary btn-sm roster-pardonip-btn" data-ip="${escapeHtml(r.title)}">Pardon IP</button>`;
+      }
+      return `
+        <div class="m3-table-row">
+          <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+            <span class="player-avatar-badge ${r.isOp ? "player-avatar-badge--op" : ""}">${initial}</span>
+            <div style="min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong class="${r.kind === "bannedIps" ? "mono" : ""}">${escapeHtml(r.title)}</strong>
+                ${r.isOp ? `<span class="m3-chip m3-chip--warning">OP</span>` : ""}
+              </div>
+              <div class="player-sub mono" style="word-break:break-all;">${escapeHtml(r.sub)}</div>
+            </div>
+          </div>
+          <div class="player-actions">${actionsHtml}</div>
+        </div>
+      `;
+    }).join("");
+
+    table.querySelectorAll(".roster-op-btn").forEach((b) => {
       b.addEventListener("click", () => playerListAction("ops", { action: "add", name: b.dataset.name, level: 4 }));
     });
-    el.querySelectorAll(".online-kick-btn").forEach((b) => {
-      b.addEventListener("click", () => playerListAction("kick", { name: b.dataset.name, reason: "Kicked via Web Admin" }));
+    table.querySelectorAll(".roster-deop-btn").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const ok = await showConfirmDialog({ title: "Remove Operator", message: `Remove OP status from ${b.dataset.name}?`, confirmText: "De-OP" });
+        if (ok) playerListAction("ops", { action: "remove", name: b.dataset.name });
+      });
     });
-    el.querySelectorAll(".online-ban-btn").forEach((b) => {
-      b.addEventListener("click", () => playerListAction("ban", { action: "add", name: b.dataset.name, reason: "Banned via Web Admin" }));
+    table.querySelectorAll(".roster-wl-rm-btn").forEach((b) => {
+      b.addEventListener("click", () => playerListAction("whitelist", { action: "remove", name: b.dataset.name }));
     });
-  }
-
-  function renderSimpleList(containerId, items, keyField, endpoint) {
-    const el = $(containerId);
-    if (items.length === 0) {
-      el.innerHTML = `<div class="player-sub">Empty</div>`;
-      return;
-    }
-    el.innerHTML = items.map((item) => `
-      <div class="player-row">
-        <span>${escapeHtml(item[keyField])}</span>
-        <button class="btn btn-ghost btn-sm remove-btn" data-val="${escapeHtml(item[keyField])}">Remove</button>
-      </div>
-    `).join("");
-    el.querySelectorAll(".remove-btn").forEach((b) => {
-      b.addEventListener("click", () => playerListAction(endpoint, { action: "remove", [keyField]: b.dataset.val }));
+    table.querySelectorAll(".roster-kick-btn").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const ok = await showConfirmDialog({ title: "Kick Player", message: `Kick ${b.dataset.name} from the server?`, confirmText: "Kick", destructive: true });
+        if (ok) playerListAction("kick", { name: b.dataset.name, reason: "Kicked via Web Admin" });
+      });
     });
-  }
-
-  function renderOpsList(ops) {
-    const el = $("players-ops-list");
-    if (ops.length === 0) {
-      el.innerHTML = `<div class="player-sub">No operators</div>`;
-      return;
-    }
-    el.innerHTML = ops.map((op) => `
-      <div class="player-row">
-        <div>
-          <div>${escapeHtml(op.name)}</div>
-          <div class="player-sub">Level ${op.level}</div>
-        </div>
-        <button class="btn btn-ghost btn-sm deop-btn" data-name="${escapeHtml(op.name)}">Deop</button>
-      </div>
-    `).join("");
-    el.querySelectorAll(".deop-btn").forEach((b) => {
-      b.addEventListener("click", () => playerListAction("ops", { action: "remove", name: b.dataset.name }));
+    table.querySelectorAll(".roster-ban-btn").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const ok = await showConfirmDialog({ title: "Ban Player", message: `Permanently ban ${b.dataset.name} from this server?`, confirmText: "Ban", destructive: true });
+        if (ok) playerListAction("ban", { action: "add", name: b.dataset.name, reason: "Banned via Web Admin" });
+      });
     });
-  }
-
-  function renderBannedList(containerId, items, keyField, endpoint) {
-    const el = $(containerId);
-    if (items.length === 0) {
-      el.innerHTML = `<div class="player-sub">Empty</div>`;
-      return;
-    }
-    el.innerHTML = items.map((item) => `
-      <div class="player-row">
-        <div>
-          <div>${escapeHtml(item[keyField])}</div>
-          <div class="player-sub">${escapeHtml(item.reason || "Banned")}</div>
-        </div>
-        <button class="btn btn-ghost btn-sm pardon-btn" data-val="${escapeHtml(item[keyField])}">Pardon</button>
-      </div>
-    `).join("");
-    el.querySelectorAll(".pardon-btn").forEach((b) => {
-      b.addEventListener("click", () => playerListAction(endpoint, { action: "remove", [keyField]: b.dataset.val }));
+    table.querySelectorAll(".roster-pardon-btn").forEach((b) => {
+      b.addEventListener("click", () => playerListAction("ban", { action: "remove", name: b.dataset.name }));
+    });
+    table.querySelectorAll(".roster-pardonip-btn").forEach((b) => {
+      b.addEventListener("click", () => playerListAction("ban-ip", { action: "remove", ip: b.dataset.ip }));
     });
   }
 
@@ -874,14 +1207,10 @@
     if (hist.length > 60) hist.shift();
   }
 
-  function renderPerfChart() {
-    const canvas = $("perf-chart-canvas");
-    if (!canvas || !state.selectedServerId) return;
-    const hist = state.perfHistory[state.selectedServerId] || [];
-    const summaryEl = $("perf-chart-summary");
-
+  function drawPerfCanvas(canvas, hist, emptyMsg, seriesList) {
+    if (!canvas) return;
     const rect = canvas.parentElement.getBoundingClientRect();
-    const width = Math.max(300, Math.floor(rect.width || 600));
+    const width = Math.max(280, Math.floor(rect.width || 520));
     const height = Math.max(180, Math.floor(rect.height || 220));
     const dpr = window.devicePixelRatio || 1;
     canvas.width = width * dpr;
@@ -898,36 +1227,34 @@
     const plotW = width - padL - padR;
     const plotH = height - padT - padB;
 
-    // Gridlines & Y labels (0%, 25%, 50%, 75%, 100%)
-    ctx.font = "11px ui-monospace, monospace";
+    const gridColor = getCssToken("--ms-chart-grid");
+    const mutedColor = getCssToken("--md-sys-color-on-surface-variant");
+    const monoFont = getCssToken("--md-sys-typescale-font-mono");
+    const sansFont = getCssToken("--md-sys-typescale-font-sans");
+
+    ctx.font = `11px ${monoFont}`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
     for (let pct = 0; pct <= 100; pct += 25) {
       const y = padT + plotH - (pct / 100) * plotH;
-      ctx.strokeStyle = "rgba(148, 163, 184, 0.14)";
+      ctx.strokeStyle = gridColor;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(padL, y);
       ctx.lineTo(padL + plotW, y);
       ctx.stroke();
 
-      ctx.fillStyle = "#94a3b8";
+      ctx.fillStyle = mutedColor;
       ctx.fillText(`${pct}%`, padL - 6, y);
     }
 
     if (hist.length === 0) {
-      ctx.fillStyle = "#94a3b8";
+      ctx.fillStyle = mutedColor;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.font = "13px system-ui, sans-serif";
-      ctx.fillText("Start the server to record live CPU, RAM, and TPS telemetry.", width / 2, height / 2);
-      if (summaryEl) summaryEl.textContent = "Waiting for running server samples...";
+      ctx.font = `13px ${sansFont}`;
+      ctx.fillText(emptyMsg, width / 2, height / 2);
       return;
-    }
-
-    const latest = hist[hist.length - 1];
-    if (summaryEl) {
-      summaryEl.textContent = `${hist.length} samples · CPU ${latest.cpu.toFixed(1)}% · RAM ${latest.ramUsed}/${latest.ramMax} MB (${latest.ramPct.toFixed(0)}%) · TPS ${latest.tps.toFixed(1)} · MSPT ${latest.mspt.toFixed(1)} ms`;
     }
 
     const drawSeries = (values, color, fillAlpha) => {
@@ -955,19 +1282,52 @@
       ctx.restore();
     };
 
-    drawSeries(hist.map((h) => h.ramPct), "#10b981", "rgba(16, 185, 129, 0.10)");
-    drawSeries(hist.map((h) => h.cpu), "#38bdf8", "rgba(56, 189, 248, 0.12)");
-    drawSeries(hist.map((h) => (h.tps / 20) * 100), "#f59e0b", null);
+    seriesList.forEach((s) => drawSeries(s.values, s.color, s.fill));
 
-    // X-axis timestamps (oldest & newest)
     const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], { hour12: false, minute: "2-digit", second: "2-digit" });
-    ctx.fillStyle = "#94a3b8";
-    ctx.font = "11px ui-monospace, monospace";
+    const latest = hist[hist.length - 1];
+    ctx.fillStyle = mutedColor;
+    ctx.font = `11px ${monoFont}`;
     ctx.textBaseline = "top";
     ctx.textAlign = "left";
     ctx.fillText(fmtTime(hist[0].ts), padL, padT + plotH + 6);
     ctx.textAlign = "right";
     ctx.fillText(fmtTime(latest.ts), padL + plotW, padT + plotH + 6);
+  }
+
+  function renderPerfChart() {
+    if (!state.selectedServerId) return;
+    const hist = state.perfHistory[state.selectedServerId] || [];
+    const summaryEl = $("perf-chart-summary");
+    const memSummaryEl = $("perf-mem-summary");
+
+    const primaryColor = getCssToken("--md-sys-color-primary");
+    const primaryFill = getCssToken("--ms-chart-primary-fill");
+    const tertiaryColor = getCssToken("--md-sys-color-tertiary");
+    const tertiaryFill = getCssToken("--ms-chart-tertiary-fill");
+    const warningColor = getCssToken("--md-sys-color-warning");
+
+    if (hist.length === 0) {
+      if (summaryEl) summaryEl.textContent = "Waiting for running server samples...";
+      if (memSummaryEl) memSummaryEl.textContent = "Waiting for running server samples...";
+    } else {
+      const latest = hist[hist.length - 1];
+      if (summaryEl) {
+        summaryEl.textContent = `${hist.length} samples | CPU ${latest.cpu.toFixed(1)}% | TPS ${latest.tps.toFixed(1)} | MSPT ${latest.mspt.toFixed(1)} ms`;
+      }
+      if (memSummaryEl) {
+        memSummaryEl.textContent = `${latest.ramUsed} / ${latest.ramMax} MB (${latest.ramPct.toFixed(0)}%)`;
+      }
+    }
+
+    drawPerfCanvas($("perf-chart-cpu-canvas"), hist, "Start the server to record CPU and TPS.", [
+      { values: hist.map((h) => h.cpu), color: primaryColor, fill: primaryFill },
+      { values: hist.map((h) => (h.tps / 20) * 100), color: warningColor, fill: null }
+    ]);
+
+    drawPerfCanvas($("perf-chart-mem-canvas"), hist, "Start the server to record Memory usage.", [
+      { values: hist.map((h) => h.ramPct), color: tertiaryColor, fill: tertiaryFill }
+    ]);
   }
 
   async function loadPerformance() {
@@ -1010,14 +1370,14 @@
       const list = $("automation-tasks-list");
       const tasks = a.scheduledTasks || [];
       if (tasks.length === 0) {
-        list.innerHTML = `<div class="player-sub">No scheduled tasks configured.</div>`;
+        list.innerHTML = `<div class="player-sub" style="padding:14px;">No scheduled tasks configured.</div>`;
         return;
       }
       list.innerHTML = tasks.map((t) => `
-        <div class="player-row">
+        <div class="m3-table-row">
           <div>
-            <div>${escapeHtml(t.name)} <span class="player-sub">(${escapeHtml(t.taskTypeDisplay)})</span></div>
-            <div class="player-sub">${escapeHtml(t.frequencyDescription)}</div>
+            <div><strong>${escapeHtml(t.name)}</strong> <span class="m3-chip m3-chip--neutral">${escapeHtml(t.taskTypeDisplay)}</span></div>
+            <div class="player-sub mono" style="margin-top:2px;">${escapeHtml(t.frequencyDescription)}</div>
           </div>
           <div class="player-actions">
             <button class="btn btn-secondary btn-sm task-toggle-btn" data-id="${escapeHtml(t.id)}">${t.enabled ? "Disable" : "Enable"}</button>
@@ -1064,18 +1424,25 @@
       $("world-totals").textContent = `Total Size: ${formatSize(w.totalSizeBytes || 0)} · Estimated Chunks: ${w.totalEstimatedChunks || 0}`;
       const list = $("world-dimensions-list");
       list.innerHTML = (w.dimensions || []).map((d) => `
-        <div class="player-row">
+        <div class="m3-card" style="background:var(--md-sys-color-surface-container-low);display:flex;flex-direction:column;justify-content:space-between;gap:10px;">
           <div>
-            <div>${escapeHtml(d.displayName)}</div>
-            <div class="player-sub">${d.exists ? `${formatSize(d.sizeBytes)} · ${d.regionFileCount} regions · ${d.estimatedChunks} chunks` : "Not generated yet"}</div>
+            <div style="font-size:15px;font-weight:700;">${escapeHtml(d.displayName)}</div>
+            <div class="dimension-size">${d.exists ? formatSize(d.sizeBytes) : "0 B"}</div>
+            <div class="player-sub mono">${d.exists ? `${d.regionFileCount} regions | ${d.estimatedChunks} chunks` : "Not generated yet"}</div>
           </div>
-          <button class="btn btn-danger btn-sm dim-reset-btn" data-dim="${escapeHtml(d.type)}" ${d.exists ? "" : "disabled"}>Reset</button>
+          <button class="btn btn-danger btn-sm btn-full dim-reset-btn" data-dim="${escapeHtml(d.type)}" ${d.exists ? "" : "disabled"}>Reset ${escapeHtml(d.displayName)}</button>
         </div>
       `).join("");
 
       list.querySelectorAll(".dim-reset-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          if (!confirm(`Reset ${b.dataset.dim}? A world backup will be created first.`)) return;
+          const ok = await showConfirmDialog({
+            title: "Reset Dimension",
+            message: `Reset ${b.dataset.dim}? A world backup will be created automatically first.`,
+            confirmText: "Reset Dimension",
+            destructive: true
+          });
+          if (!ok) return;
           try {
             await apiFetch(`/api/servers/${state.selectedServerId}/world/reset`, {
               method: "POST", body: JSON.stringify({ dimension: b.dataset.dim, createBackup: true })
@@ -1111,21 +1478,27 @@
       const data = await apiFetch(`/api/servers/${state.selectedServerId}/world/regions`);
       const regions = data.regions || [];
       if (regions.length === 0) {
-        list.innerHTML = `<div class="player-sub">No .mca region files found.</div>`;
+        list.innerHTML = `<div class="player-sub" style="padding:14px;">No .mca region files found.</div>`;
         return;
       }
       list.innerHTML = regions.map((r) => `
-        <div class="player-row">
+        <div class="m3-table-row">
           <div>
-            <div class="mono">${escapeHtml(r.fileName)}</div>
-            <div class="player-sub">${escapeHtml(r.dimensionName)} · ${r.chunkCount}/1024 chunks · ${formatSize(r.sizeBytes)}</div>
+            <div class="mono"><strong>${escapeHtml(r.fileName)}</strong></div>
+            <div class="player-sub mono">${escapeHtml(r.dimensionName)} | ${r.chunkCount}/1024 chunks | ${formatSize(r.sizeBytes)}</div>
           </div>
           <button class="btn btn-danger btn-sm region-del-btn" data-dim="${escapeHtml(r.dimension)}" data-file="${escapeHtml(r.fileName)}">Delete</button>
         </div>
       `).join("");
       list.querySelectorAll(".region-del-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          if (!confirm(`Delete ${b.dataset.file}? Stop the server first.`)) return;
+          const ok = await showConfirmDialog({
+            title: "Delete Region File",
+            message: `Delete ${b.dataset.file}? Stop the server first.`,
+            confirmText: "Delete",
+            destructive: true
+          });
+          if (!ok) return;
           try {
             await apiFetch(`/api/servers/${state.selectedServerId}/world/regions/delete`, {
               method: "POST", body: JSON.stringify({ dimension: b.dataset.dim, fileName: b.dataset.file })
@@ -1165,17 +1538,23 @@
 
       const showMap = m.installed && m.isServerRunning && !m.portConflict;
       openBtn.classList.toggle("hidden", !showMap);
+      const emptyBox = $("livemap-empty-state");
+      const emptyDesc = $("livemap-empty-desc");
 
       if (!m.installed) {
-        $("livemap-status-text").textContent = m.supportsPluginsOrMods
+        const msg = m.supportsPluginsOrMods
           ? "Squaremap is not installed on this server."
           : "This server software does not support Squaremap.";
+        $("livemap-status-text").textContent = msg;
+        if (emptyDesc) emptyDesc.textContent = msg;
+        emptyBox?.classList.remove("hidden");
         conflictBanner.classList.add("hidden");
         frame.classList.add("hidden");
         frame.src = "about:blank";
       } else if (m.portConflict) {
         const suggested = m.suggestedPort || 8081;
         $("livemap-status-text").textContent = `Port conflict: Squaremap is on port ${m.port}, which is used by Web Admin.`;
+        emptyBox?.classList.add("hidden");
         conflictBanner.innerHTML = `
           <span>Squaremap cannot run on port ${m.port} while the Web Admin panel is using it. Switch Squaremap to port ${suggested} and restart the Minecraft server.</span>
           <button type="button" id="livemap-fix-port-btn" class="btn btn-primary btn-sm">Switch to Port ${suggested}</button>
@@ -1188,11 +1567,15 @@
         frame.src = "about:blank";
       } else if (!m.isServerRunning) {
         conflictBanner.classList.add("hidden");
-        $("livemap-status-text").textContent = `${m.pluginName} is installed (port ${m.port}). Start the server to view the live map.`;
+        const msg = `${m.pluginName} is installed (port ${m.port}). Start the server to view the live map.`;
+        $("livemap-status-text").textContent = msg;
+        if (emptyDesc) emptyDesc.textContent = msg;
+        emptyBox?.classList.remove("hidden");
         frame.classList.add("hidden");
         frame.src = "about:blank";
       } else {
         conflictBanner.classList.add("hidden");
+        emptyBox?.classList.add("hidden");
         const mapUrl = `${window.location.protocol}//${window.location.hostname}:${m.port}`;
         $("livemap-status-text").textContent = `${m.pluginName} active at ${mapUrl}`;
         openBtn.onclick = () => window.open(mapUrl, "_blank", "noopener");
@@ -1371,14 +1754,14 @@
       const list = $("backups-list");
       const backups = data.backups || [];
       if (backups.length === 0) {
-        list.innerHTML = `<div class="player-sub">No backups yet.</div>`;
+        list.innerHTML = `<div class="player-sub" style="padding:14px;">No backups yet.</div>`;
       } else {
         const canManageBackups = hasPerm("SERVER_BACKUPS_MANAGE");
         list.innerHTML = backups.map((b) => `
-        <div class="player-row">
+        <div class="m3-table-row">
           <div>
-            <div>${escapeHtml(b.fileName)}</div>
-            <div class="player-sub">${b.isWorldOnly ? "World Only" : "Full Server"} · ${formatSize(b.sizeBytes)} · ${new Date(b.timestamp).toLocaleString()}</div>
+            <div class="mono"><strong>${escapeHtml(b.fileName)}</strong></div>
+            <div class="player-sub mono">${b.isWorldOnly ? "World Only" : "Full Server"} | ${formatSize(b.sizeBytes)} | ${new Date(b.timestamp).toLocaleString()}</div>
           </div>
           <div class="player-actions">
             <a class="btn btn-secondary btn-sm" href="/api/servers/${state.selectedServerId}/backups/download?file=${encodeURIComponent(b.fileName)}" download>Download</a>
@@ -1412,7 +1795,12 @@
 
         list.querySelectorAll(".backup-restore-btn").forEach((b) => {
           b.addEventListener("click", async () => {
-            if (!confirm(`Restore "${b.dataset.file}"? Stop the server first.`)) return;
+            const ok = await showConfirmDialog({
+              title: "Restore Backup",
+              message: `Restore "${b.dataset.file}"? Stop the server first.`,
+              confirmText: "Restore"
+            });
+            if (!ok) return;
             try {
               await apiFetch(`/api/servers/${state.selectedServerId}/backups/restore`, {
                 method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
@@ -1425,7 +1813,13 @@
         });
         list.querySelectorAll(".backup-del-btn").forEach((b) => {
           b.addEventListener("click", async () => {
-            if (!confirm(`Delete backup "${b.dataset.file}"?`)) return;
+            const ok = await showConfirmDialog({
+              title: "Delete Backup",
+              message: `Delete backup "${b.dataset.file}"?`,
+              confirmText: "Delete",
+              destructive: true
+            });
+            if (!ok) return;
             try {
               await apiFetch(`/api/servers/${state.selectedServerId}/backups/delete`, {
                 method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
@@ -1456,14 +1850,14 @@
       const items = data.backups || [];
       statusEl.textContent = "Remote encrypted snapshots stored in MineServe Cloud (R2).";
       if (items.length === 0) {
-        list.innerHTML = `<div class="player-sub">No cloud snapshots for this server yet.</div>`;
+        list.innerHTML = `<div class="player-sub" style="padding:14px;">No cloud snapshots for this server yet.</div>`;
         return;
       }
       list.innerHTML = items.map((b) => `
-        <div class="player-row">
+        <div class="m3-table-row">
           <div>
-            <div>${escapeHtml(b.fileName)}</div>
-            <div class="player-sub">${formatSize(b.sizeBytes)} · ${b.createdAtEpochMs ? new Date(b.createdAtEpochMs).toLocaleString() : b.status}</div>
+            <div class="mono"><strong>${escapeHtml(b.fileName)}</strong></div>
+            <div class="player-sub mono">${formatSize(b.sizeBytes)} | ${b.createdAtEpochMs ? new Date(b.createdAtEpochMs).toLocaleString() : b.status}</div>
           </div>
           <div class="player-actions">
             <button class="btn btn-secondary btn-sm cloud-restore-btn" data-id="${escapeHtml(b.backupId)}" data-file="${escapeHtml(b.fileName)}">Restore</button>
@@ -1474,7 +1868,12 @@
 
       list.querySelectorAll(".cloud-restore-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          if (!confirm(`Download & restore cloud snapshot "${b.dataset.file}"? Stop the server first.`)) return;
+          const ok = await showConfirmDialog({
+            title: "Restore Cloud Snapshot",
+            message: `Download and restore cloud snapshot "${b.dataset.file}"? Stop the server first.`,
+            confirmText: "Restore"
+          });
+          if (!ok) return;
           b.disabled = true;
           b.textContent = "Restoring...";
           try {
@@ -1493,7 +1892,13 @@
 
       list.querySelectorAll(".cloud-del-btn").forEach((b) => {
         b.addEventListener("click", async () => {
-          if (!confirm("Delete this cloud snapshot?")) return;
+          const ok = await showConfirmDialog({
+            title: "Delete Cloud Snapshot",
+            message: "Delete this cloud snapshot from MineServe Cloud?",
+            confirmText: "Delete",
+            destructive: true
+          });
+          if (!ok) return;
           try {
             await apiFetch(`/api/servers/${state.selectedServerId}/backups/cloud/delete`, {
               method: "POST", body: JSON.stringify({ backupId: b.dataset.id })
@@ -1516,68 +1921,115 @@
     if (!state.selectedServerId) return;
     try {
       const data = await apiFetch(`/api/servers/${state.selectedServerId}/plugins`);
-      const list = $("plugins-installed-list");
-      const items = data.items || [];
-      if (items.length === 0) {
-        list.innerHTML = `<div class="player-sub">No plugins or mods installed.</div>`;
-        return;
-      }
-      list.innerHTML = items.map((p) => `
-        <div class="player-row">
-          <div>
-            <div>${escapeHtml(p.name)}</div>
-            <div class="player-sub">${escapeHtml(p.fileName)} · ${formatSize(p.sizeBytes)} · ${p.enabled ? "Enabled" : "Disabled"}</div>
-          </div>
-          <div class="player-actions">
-            <button class="btn btn-secondary btn-sm plug-toggle-btn" data-file="${escapeHtml(p.fileName)}">${p.enabled ? "Disable" : "Enable"}</button>
-            <button class="btn btn-danger btn-sm plug-del-btn" data-file="${escapeHtml(p.fileName)}">Delete</button>
-          </div>
-        </div>
-      `).join("");
-
-      list.querySelectorAll(".plug-toggle-btn").forEach((b) => {
-        b.addEventListener("click", async () => {
-          try {
-            await apiFetch(`/api/servers/${state.selectedServerId}/plugins/toggle`, {
-              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
-            });
-            loadPlugins();
-          } catch (err) {
-            showToast(err.message, "error");
-          }
-        });
-      });
-      list.querySelectorAll(".plug-del-btn").forEach((b) => {
-        b.addEventListener("click", async () => {
-          if (!confirm(`Delete "${b.dataset.file}"?`)) return;
-          try {
-            await apiFetch(`/api/servers/${state.selectedServerId}/plugins/delete`, {
-              method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
-            });
-            loadPlugins();
-          } catch (err) {
-            showToast(err.message, "error");
-          }
-        });
-      });
+      state.installedPlugins = data.items || [];
+      renderInstalledPlugins();
     } catch (e) {
       showToast(e.message, "error");
     }
   }
 
-  // Create Server Modal
+  function renderInstalledPlugins() {
+    const list = $("plugins-installed-list");
+    if (!list) return;
+    const q = (state.pluginsFilter || "").trim().toLowerCase();
+    const items = (state.installedPlugins || []).filter((p) => {
+      if (!q) return true;
+      return `${p.name} ${p.fileName}`.toLowerCase().includes(q);
+    });
+    if (items.length === 0) {
+      list.innerHTML = `<div class="player-sub" style="padding:14px;">${q ? "No matching plugins or mods." : "No plugins or mods installed."}</div>`;
+      return;
+    }
+    list.innerHTML = items.map((p) => `
+      <div class="m3-table-row">
+        <div style="min-width:0;flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <strong>${escapeHtml(p.name)}</strong>
+            <span class="m3-chip ${p.enabled ? "m3-chip--primary" : "m3-chip--neutral"}">${p.enabled ? "Enabled" : "Disabled"}</span>
+          </div>
+          <div class="player-sub mono" style="margin-top:2px;word-break:break-all;">${escapeHtml(p.fileName)} | ${formatSize(p.sizeBytes)}</div>
+        </div>
+        <div class="player-actions">
+          <button class="btn btn-secondary btn-sm plug-toggle-btn" data-file="${escapeHtml(p.fileName)}">${p.enabled ? "Disable" : "Enable"}</button>
+          <button class="btn btn-danger btn-sm plug-del-btn" data-file="${escapeHtml(p.fileName)}">Delete</button>
+        </div>
+      </div>
+    `).join("");
+
+    list.querySelectorAll(".plug-toggle-btn").forEach((b) => {
+      b.addEventListener("click", async () => {
+        try {
+          await apiFetch(`/api/servers/${state.selectedServerId}/plugins/toggle`, {
+            method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+          });
+          loadPlugins();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      });
+    });
+    list.querySelectorAll(".plug-del-btn").forEach((b) => {
+      b.addEventListener("click", async () => {
+        const ok = await showConfirmDialog({
+          title: "Delete Add-on",
+          message: `Delete "${b.dataset.file}" from this server?`,
+          confirmText: "Delete",
+          destructive: true
+        });
+        if (!ok) return;
+        try {
+          await apiFetch(`/api/servers/${state.selectedServerId}/plugins/delete`, {
+            method: "POST", body: JSON.stringify({ fileName: b.dataset.file })
+          });
+          loadPlugins();
+        } catch (err) {
+          showToast(err.message, "error");
+        }
+      });
+    });
+  }
+
+  // Create Server 2-Step Wizard Modal
+  function setCreateStep(step) {
+    const isStep2 = step === 2;
+    $("create-step-1")?.classList.toggle("hidden", isStep2);
+    $("create-step-2")?.classList.toggle("hidden", !isStep2);
+    $("create-step-ind-1")?.classList.toggle("active", !isStep2);
+    $("create-step-ind-2")?.classList.toggle("active", isStep2);
+  }
+
+  function renderSoftwareCards(selectedType) {
+    const grid = $("create-software-grid");
+    if (!grid) return;
+    grid.innerHTML = (state.softwareTypes || []).map((t) => `
+      <button type="button" class="software-tile ${t.name === selectedType ? "active" : ""}" data-sw-type="${escapeHtml(t.name)}">
+        <span class="software-tile-title">${escapeHtml(t.displayName)}</span>
+        <span class="software-tile-desc">${escapeHtml(t.description || t.category || "Server Software")}</span>
+      </button>
+    `).join("");
+    grid.querySelectorAll(".software-tile").forEach((tile) => {
+      tile.addEventListener("click", () => {
+        const type = tile.dataset.swType;
+        $("create-type").value = type;
+        grid.querySelectorAll(".software-tile").forEach((el) => el.classList.toggle("active", el === tile));
+        loadVersionsForType(type);
+      });
+    });
+  }
+
   async function openCreateModal() {
     $("create-error").classList.add("hidden");
     $("create-progress-box").classList.add("hidden");
     $("submit-create-btn").disabled = false;
     $("create-eula").checked = false;
+    setCreateStep(1);
 
     const usedPorts = new Set(state.servers.map((s) => s.port));
     let nextPort = 25565;
     while (usedPorts.has(nextPort)) nextPort++;
     $("create-port").value = nextPort;
 
-    $("create-modal").classList.remove("hidden");
+    openDialog("create-modal");
 
     if (state.softwareTypes.length === 0) {
       try {
@@ -1591,17 +2043,34 @@
         $("create-error").classList.remove("hidden");
       }
     }
-    await loadVersionsForType($("create-type").value || "PAPER");
+    const currentType = $("create-type").value || state.softwareTypes[0]?.name || "PAPER";
+    $("create-type").value = currentType;
+    renderSoftwareCards(currentType);
+    await loadVersionsForType(currentType);
   }
 
   async function loadVersionsForType(type) {
     const sel = $("create-version");
+    const quick = $("create-quick-versions");
     sel.innerHTML = `<option value="">Loading versions...</option>`;
+    if (quick) quick.innerHTML = "";
     sel.disabled = true;
     try {
       const data = await apiFetch(`/api/software/versions?type=${encodeURIComponent(type)}`);
       const versions = data.versions || [];
       sel.innerHTML = versions.map((v) => `<option value="${escapeHtml(v)}">${escapeHtml(v)}</option>`).join("");
+      if (quick && versions.length > 0) {
+        const top = versions.slice(0, 5);
+        quick.innerHTML = top.map((v, idx) =>
+          `<button type="button" class="quick-version-chip ${idx === 0 ? "active" : ""}" data-ver="${escapeHtml(v)}">${escapeHtml(v)}</button>`
+        ).join("");
+        quick.querySelectorAll(".quick-version-chip").forEach((chip) => {
+          chip.addEventListener("click", () => {
+            sel.value = chip.dataset.ver;
+            quick.querySelectorAll(".quick-version-chip").forEach((c) => c.classList.toggle("active", c === chip));
+          });
+        });
+      }
     } catch (e) {
       sel.innerHTML = `<option value="1.21.4">1.21.4</option>`;
     } finally {
@@ -1618,7 +2087,7 @@
       $("create-progress-fill").style.width = `${job.progress || 0}%`;
 
       if (job.status === "done") {
-        $("create-modal").classList.add("hidden");
+        closeDialog("create-modal");
         showToast("Server created! Click the green Start button above to launch it.");
         await loadServers();
         if (job.serverId) selectServer(job.serverId);
@@ -1648,16 +2117,22 @@
       const signinBox = $("cloud-signin-box");
       const logoutBtn = $("cloud-logout-btn");
       const badge = $("cloud-tier-badge");
+      const sidebarBadge = $("sidebar-cloud-badge");
       if (c.isLinked) {
         const usedMb = ((c.storageUsedBytes || 0) / (1024 * 1024)).toFixed(1);
         const quotaGb = ((c.storageQuotaBytes || 0) / (1024 * 1024 * 1024)).toFixed(0);
         $("cloud-status-summary").textContent = `Signed in as ${c.email || "user"} · Tier: ${c.tier} · Cloud Storage: ${usedMb} MB / ${quotaGb} GB · Active Subdomains: ${(c.activeSubdomains || []).join(", ") || "none"}`;
         if (badge) badge.textContent = `${c.tier || "FREE"} PLAN`;
+        if (sidebarBadge) {
+          sidebarBadge.textContent = String(c.tier || "FREE").toUpperCase();
+          sidebarBadge.classList.remove("hidden");
+        }
         signinBox?.classList.add("hidden");
         logoutBtn?.classList.remove("hidden");
       } else {
         $("cloud-status-summary").textContent = "Your host runs Minecraft servers 100% free forever (with Bore, Playit.gg, UPnP, and local/WebDAV backups). MineServe Cloud is an optional add-on that adds custom *.play.mineserve.app addresses, remote browser Web Admin from anywhere, and encrypted Cloudflare R2 backups.";
         if (badge) badge.textContent = "OPTIONAL ADD-ON";
+        sidebarBadge?.classList.add("hidden");
         signinBox?.classList.remove("hidden");
         logoutBtn?.classList.add("hidden");
       }
@@ -1683,15 +2158,15 @@
     if (listEl) {
       const features = data.features || [];
       listEl.innerHTML = features.map((f) => `
-          <div class="panel-card" style="padding:14px;">
+          <div class="m3-card" style="background:var(--md-sys-color-surface-container-low);padding:14px;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
               <span class="status-badge RUNNING">${escapeHtml(f.badge || "NEW")}</span>
-              <strong style="font-size:15px;color:var(--text-primary);">${escapeHtml(f.title || "")}</strong>
+              <strong style="font-size:15px;color:var(--md-sys-color-on-surface);">${escapeHtml(f.title || "")}</strong>
             </div>
             <div class="player-sub" style="line-height:1.55;margin-bottom:10px;">${escapeHtml(f.summary || "")}</div>
-            <div style="background:rgba(9,13,22,0.65);border:1px solid var(--border-subtle);border-radius:8px;padding:10px 12px;">
-              <div style="font-size:11px;font-weight:700;color:var(--emerald);text-transform:uppercase;margin-bottom:6px;">Where to find it</div>
-              <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--text-primary);line-height:1.6;">
+            <div class="m3-card" style="background:var(--md-sys-color-surface-container);padding:10px 12px;">
+              <div style="font-size:11px;font-weight:700;color:var(--md-sys-color-primary);text-transform:uppercase;margin-bottom:6px;">Where to find it</div>
+              <ol style="margin:0;padding-left:18px;font-size:12px;color:var(--md-sys-color-on-surface);line-height:1.6;">
                 ${(f.stepsToFind || []).map((s) => `<li>${escapeHtml(s)}</li>`).join("")}
               </ol>
             </div>
@@ -1705,7 +2180,7 @@
       const data = await apiFetch("/api/whats-new");
       renderWhatsNewModal(data);
       if (forceOpen || (openModalIfAutoOrForced && data.shouldAutoShow)) {
-        $("whatsnew-modal")?.classList.remove("hidden");
+        openDialog("whatsnew-modal");
         // Immediately mark seen on the host so neither Desktop/Android nor Web UI auto-pops it again
         await apiFetch("/api/whats-new", {
           method: "POST",
@@ -1745,20 +2220,80 @@
       }
     });
 
+    const closeAccountPopover = () => {
+      $("account-popover-menu")?.classList.add("hidden");
+      $("current-user-pill")?.setAttribute("aria-expanded", "false");
+    };
+
+    $("current-user-pill")?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const menu = $("account-popover-menu");
+      if (!menu) return;
+      const isHidden = menu.classList.toggle("hidden");
+      $("current-user-pill")?.setAttribute("aria-expanded", isHidden ? "false" : "true");
+    });
+
+    document.addEventListener("click", (e) => {
+      const wrap = document.querySelector(".account-profile-wrap");
+      if (wrap && !wrap.contains(e.target)) {
+        closeAccountPopover();
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeAccountPopover();
+    });
+
+    document.querySelectorAll("[data-theme-choice]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        applyTheme(btn.dataset.themeChoice);
+      });
+    });
+
     $("logout-btn").addEventListener("click", async () => {
+      closeAccountPopover();
       try { await apiFetch("/api/logout", { method: "POST" }); } catch (_) {}
       showLogin();
     });
 
-    $("mobile-menu-btn").addEventListener("click", () => $("sidebar").classList.add("open"));
-    $("mobile-close-sidebar").addEventListener("click", () => $("sidebar").classList.remove("open"));
+    const openDrawer = () => {
+      $("sidebar")?.classList.add("open");
+      $("sidebar-backdrop")?.classList.add("open");
+    };
+    const closeDrawer = () => {
+      $("sidebar")?.classList.remove("open");
+      $("sidebar-backdrop")?.classList.remove("open");
+    };
+    $("mobile-menu-btn")?.addEventListener("click", openDrawer);
+    $("mobile-close-sidebar")?.addEventListener("click", closeDrawer);
+    $("sidebar-backdrop")?.addEventListener("click", closeDrawer);
 
     document.querySelectorAll(".tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        state.activeTab = btn.dataset.tab;
-        document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === btn));
-        document.querySelectorAll(".tab-panel").forEach((p) => p.classList.toggle("active", p.id === `tab-${state.activeTab}`));
-        loadActiveTabData();
+        setActiveTab(btn.dataset.tab);
+      });
+    });
+
+    document.querySelectorAll(".m3-segmented-btn[data-subtab]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        setActiveTab(btn.dataset.parentTab, btn.dataset.subtab);
+      });
+    });
+
+    document.querySelectorAll(".console-quick-chip").forEach((chip) => {
+      chip.addEventListener("click", async () => {
+        const cmd = chip.dataset.cmd;
+        if (!cmd || !state.selectedServerId) return;
+        try {
+          await apiFetch(`/api/servers/${state.selectedServerId}/console`, {
+            method: "POST",
+            body: JSON.stringify({ command: cmd })
+          });
+          showToast(`Sent: ${cmd}`);
+          setTimeout(loadConsole, 200);
+        } catch (err) {
+          showToast(err.message, "error");
+        }
       });
     });
 
@@ -1795,15 +2330,18 @@
     });
     $("btn-copy-public-addr")?.addEventListener("click", () => {
       const addr = $("btn-copy-public-addr")?.dataset?.addr || "";
-      copyTextToClipboard(addr, "public address");
+      if (addr) {
+        copyTextToClipboard(addr, "public address");
+      } else {
+        setActiveTab("management", "settings");
+      }
     });
     $("btn-copy-local-addr")?.addEventListener("click", () => {
       const addr = $("btn-copy-local-addr")?.dataset?.addr || "";
       copyTextToClipboard(addr, "LAN address");
     });
     $("btn-open-network-tab")?.addEventListener("click", () => {
-      const settingsTabBtn = document.querySelector('.tab-btn[data-tab="settings"]');
-      if (settingsTabBtn) settingsTabBtn.click();
+      setActiveTab("management", "settings");
     });
     $("set-ram")?.addEventListener("input", (e) => {
       const disp = $("set-ram-display");
@@ -1922,7 +2460,13 @@
     $("delete-server-btn").addEventListener("click", async () => {
       if (!state.selectedServerId) return;
       const srv = state.servers.find((s) => s.id === state.selectedServerId);
-      if (!confirm(`Delete server "${srv?.name || state.selectedServerId}"? This removes all world data permanently.`)) return;
+      const ok = await showConfirmDialog({
+        title: "Delete Server",
+        message: `Delete server "${srv?.name || state.selectedServerId}"? This removes all world data permanently.`,
+        confirmText: "Delete Server",
+        destructive: true
+      });
+      if (!ok) return;
       try {
         await apiFetch(`/api/servers/${state.selectedServerId}/delete`, { method: "POST" });
         showToast("Server deleted");
@@ -1933,39 +2477,98 @@
       }
     });
 
-    // Players forms
-    $("whitelist-add-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = $("whitelist-add-input").value.trim();
-      if (!name) return;
-      await playerListAction("whitelist", { action: "add", name });
-      $("whitelist-add-input").value = "";
+    // Password visibility toggles
+    document.querySelectorAll(".password-toggle-btn[data-toggle-password]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const input = $(btn.dataset.togglePassword);
+        if (!input) return;
+        const show = input.type === "password";
+        input.type = show ? "text" : "password";
+        btn.setAttribute("aria-label", show ? "Hide password" : "Show password");
+      });
     });
-    $("op-add-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = $("op-add-input").value.trim();
-      const level = parseInt($("op-level-input").value, 10) || 4;
-      if (!name) return;
-      await playerListAction("ops", { action: "add", name, level });
-      $("op-add-input").value = "";
+
+    // Native <dialog> backdrop click-to-close (except session-expired-modal)
+    document.querySelectorAll("dialog.m3-dialog-native").forEach((dlg) => {
+      if (dlg.id === "session-expired-modal") return;
+      dlg.addEventListener("click", (e) => {
+        if (e.target === dlg) dlg.close();
+      });
     });
-    $("ban-add-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const name = $("ban-add-input").value.trim();
-      const reason = $("ban-reason-input").value.trim();
-      if (!name) return;
-      await playerListAction("ban", { action: "add", name, reason });
-      $("ban-add-input").value = "";
-      $("ban-reason-input").value = "";
+
+    $("session-expired-signin-btn")?.addEventListener("click", () => {
+      showLogin();
     });
-    $("banip-add-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const ip = $("banip-add-input").value.trim();
-      const reason = $("banip-reason-input").value.trim();
-      if (!ip) return;
-      await playerListAction("ban-ip", { action: "add", ip, reason });
-      $("banip-add-input").value = "";
-      $("banip-reason-input").value = "";
+
+    // Players Unified Filter & Quick Actions
+    document.querySelectorAll("#player-filter-chips [data-player-filter]").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        state.playersFilter = chip.dataset.playerFilter || "online";
+        document.querySelectorAll("#player-filter-chips [data-player-filter]").forEach((c) => {
+          c.classList.toggle("active", c === chip);
+        });
+        renderPlayersRoster();
+      });
+    });
+
+    $("players-roster-search")?.addEventListener("input", (e) => {
+      state.playersSearch = e.target.value || "";
+      renderPlayersRoster();
+    });
+
+    document.querySelectorAll("[data-player-quick]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const target = ($("player-quick-target")?.value || "").trim();
+        if (!target) {
+          showToast("Enter a player username or IP address first", "error");
+          return;
+        }
+        const act = btn.dataset.playerQuick;
+        if (act === "op") await playerListAction("ops", { action: "add", name: target, level: 4 });
+        else if (act === "deop") await playerListAction("ops", { action: "remove", name: target });
+        else if (act === "whitelist") await playerListAction("whitelist", { action: "add", name: target });
+        else if (act === "kick") {
+          const ok = await showConfirmDialog({ title: "Kick Player", message: `Kick ${target} from the server?`, confirmText: "Kick", destructive: true });
+          if (ok) await playerListAction("kick", { name: target, reason: "Kicked via Web Admin" });
+        } else if (act === "ban") {
+          const ok = await showConfirmDialog({ title: "Ban Player", message: `Permanently ban ${target}?`, confirmText: "Ban", destructive: true });
+          if (ok) await playerListAction("ban", { action: "add", name: target, reason: "Banned via Web Admin" });
+        } else if (act === "pardon") {
+          await playerListAction("ban", { action: "remove", name: target });
+        } else if (act === "banip") {
+          const ok = await showConfirmDialog({ title: "Ban IP Address", message: `Ban IP address ${target}?`, confirmText: "Ban IP", destructive: true });
+          if (ok) await playerListAction("ban-ip", { action: "add", ip: target, reason: "Banned IP via Web Admin" });
+        }
+        $("player-quick-target").value = "";
+      });
+    });
+
+    $("plugins-filter-input")?.addEventListener("input", (e) => {
+      state.pluginsFilter = e.target.value || "";
+      renderInstalledPlugins();
+    });
+
+    $("world-seed-copy-btn")?.addEventListener("click", () => {
+      const seed = ($("world-seed-input")?.value || "").trim();
+      if (!seed) {
+        showToast("World seed is random (empty)", "error");
+        return;
+      }
+      copyTextToClipboard(seed, "world seed");
+    });
+
+    $("world-rules-save-btn")?.addEventListener("click", async () => {
+      if (!state.selectedServerId) return;
+      try {
+        if ($("prop-level-seed")) $("prop-level-seed").value = $("world-seed-input")?.value || "";
+        if ($("prop-difficulty")) $("prop-difficulty").value = $("world-difficulty")?.value || "normal";
+        if ($("prop-gamemode")) $("prop-gamemode").value = $("world-gamemode")?.value || "survival";
+        if ($("prop-allow-nether")) $("prop-allow-nether").checked = !!$("world-allow-nether")?.checked;
+        if ($("prop-spawn-monsters")) $("prop-spawn-monsters").checked = !!$("world-spawn-monsters")?.checked;
+        $("settings-form")?.requestSubmit();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
     });
 
     // Performance, Automation, World, Live Map, Network, Backups, Plugins
@@ -2094,7 +2697,13 @@
       const pruneNether = $("prune-nether").checked;
       const pruneEnd = $("prune-end").checked;
       const createBackup = $("prune-backup").checked;
-      if (!confirm("Run chunk pruner with these options?")) return;
+      const ok = await showConfirmDialog({
+        title: "Run Chunk Pruner",
+        message: "Delete uninhabited chunks using the selected threshold? Stop the server first.",
+        confirmText: "Run Pruner",
+        destructive: true
+      });
+      if (!ok) return;
       const btn = $("optimize-world-btn");
       btn.disabled = true;
       btn.textContent = "Pruning...";
@@ -2132,7 +2741,14 @@
       }
     });
     $("livemap-uninstall-btn").addEventListener("click", async () => {
-      if (!state.selectedServerId || !confirm("Uninstall Squaremap?")) return;
+      if (!state.selectedServerId) return;
+      const ok = await showConfirmDialog({
+        title: "Uninstall Squaremap",
+        message: "Remove Squaremap plugin/mod from this server?",
+        confirmText: "Uninstall",
+        destructive: true
+      });
+      if (!ok) return;
       try {
         await apiFetch(`/api/servers/${state.selectedServerId}/livemap/uninstall`, { method: "POST" });
         showToast("Squaremap removed");
@@ -2365,12 +2981,15 @@
           return;
         }
         list.innerHTML = results.map((r) => `
-          <div class="player-row">
-            <div style="min-width:0;">
-              <div>${escapeHtml(r.name)} <span class="player-sub">by ${escapeHtml(r.author)}</span></div>
-              <div class="player-sub">${escapeHtml(r.description)}</div>
+          <div class="marketplace-card">
+            <div style="min-width:0;flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong>${escapeHtml(r.name)}</strong>
+                <span class="m3-chip m3-chip--neutral">by ${escapeHtml(r.author)}</span>
+              </div>
+              <div class="player-sub" style="margin-top:4px;line-height:1.45;">${escapeHtml(r.description)}</div>
             </div>
-            <button class="btn btn-primary btn-sm modrinth-install-btn" data-id="${escapeHtml(r.id)}">Install</button>
+            <button class="btn btn-secondary btn-sm modrinth-install-btn" data-id="${escapeHtml(r.id)}">Install</button>
           </div>
         `).join("");
         list.querySelectorAll(".modrinth-install-btn").forEach((b) => {
@@ -2396,11 +3015,13 @@
       }
     });
 
-    // Create Server Modal
+    // Create Server 2-Step Wizard Modal
     $("open-create-modal-btn").addEventListener("click", openCreateModal);
     $("empty-create-btn").addEventListener("click", openCreateModal);
-    $("close-create-modal").addEventListener("click", () => $("create-modal").classList.add("hidden"));
-    $("cancel-create-btn").addEventListener("click", () => $("create-modal").classList.add("hidden"));
+    $("close-create-modal").addEventListener("click", () => closeDialog("create-modal"));
+    $("cancel-create-btn").addEventListener("click", () => closeDialog("create-modal"));
+    $("create-next-btn")?.addEventListener("click", () => setCreateStep(2));
+    $("create-back-btn")?.addEventListener("click", () => setCreateStep(1));
     $("create-type").addEventListener("change", (e) => loadVersionsForType(e.target.value));
 
     $("create-server-form").addEventListener("submit", async (e) => {
@@ -2454,17 +3075,68 @@
 
     const openCloudModal = () => {
       if (state.isPlayStore) return;
-      $("cloud-modal")?.classList.remove("hidden");
+      openDialog("cloud-modal");
       loadCloudAccount();
     };
     $("open-cloud-modal-btn")?.addEventListener("click", openCloudModal);
     $("tunnel-open-cloud-modal-btn")?.addEventListener("click", openCloudModal);
     $("backups-open-cloud-modal-btn")?.addEventListener("click", openCloudModal);
-    $("close-cloud-modal")?.addEventListener("click", () => $("cloud-modal")?.classList.add("hidden"));
+    $("close-cloud-modal")?.addEventListener("click", () => closeDialog("cloud-modal"));
+
+    const switchHostTab = (tabName) => {
+      document.querySelectorAll("[data-host-tab]").forEach((b) => {
+        b.classList.toggle("active", b.dataset.hostTab === tabName);
+      });
+      ["appearance", "java", "diagnostics", "updates"].forEach((name) => {
+        $(`host-pane-${name}`)?.classList.toggle("active", name === tabName);
+      });
+    };
+
+    document.querySelectorAll("[data-host-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => switchHostTab(btn.dataset.hostTab));
+    });
+
+    const loadHostDirectories = async () => {
+      try {
+        const dirs = await apiFetch("/api/host/directories");
+        if ($("host-dir-servers") && dirs.serversDir) $("host-dir-servers").value = dirs.serversDir;
+        if ($("host-dir-runtimes") && dirs.runtimesDir) $("host-dir-runtimes").value = dirs.runtimesDir;
+      } catch (_) {}
+    };
+
+    const saveHostDirectories = async (serversDir, runtimesDir) => {
+      try {
+        const res = await apiFetch("/api/host/directories", {
+          method: "POST",
+          body: JSON.stringify({ serversDir, runtimesDir })
+        });
+        if ($("host-dir-servers") && res.serversDir) $("host-dir-servers").value = res.serversDir;
+        if ($("host-dir-runtimes") && res.runtimesDir) $("host-dir-runtimes").value = res.runtimesDir;
+        if (state.systemInfo) {
+          state.systemInfo.serversDir = res.serversDir;
+          state.systemInfo.runtimesDir = res.runtimesDir;
+        }
+        showToast("Updated host directories");
+        loadJavaRuntimes();
+      } catch (err) {
+        showToast(err.message, "error");
+      }
+    };
+
+    $("host-dirs-save-btn")?.addEventListener("click", () => {
+      saveHostDirectories(
+        ($("host-dir-servers")?.value || "").trim(),
+        ($("host-dir-runtimes")?.value || "").trim()
+      );
+    });
+    $("host-dirs-reset-btn")?.addEventListener("click", () => {
+      saveHostDirectories("", "");
+    });
 
     const openHostToolsModal = () => {
-      $("host-tools-modal").classList.remove("hidden");
-      $("safeguards-card")?.classList.toggle("hidden", !!(state.systemInfo && state.systemInfo.platform === "linux"));
+      applyUserPermissionsUi();
+      switchHostTab("appearance");
+      openDialog("host-tools-modal");
       const isPlay = !!state.isPlayStore;
       $("web-update-check-btn")?.classList.toggle("hidden", isPlay);
       $("web-update-link-btn")?.classList.toggle("hidden", isPlay);
@@ -2473,15 +3145,19 @@
           ? "App updates are managed via Google Play Store."
           : "Check GitHub Releases for new MineServe versions.";
       }
-      loadHostTools();
-      loadJavaRuntimes();
-      loadWhatsNewData(false);
+      if (hasPerm("MANAGE_HOST")) {
+        const isLinux = !!(state.systemInfo && state.systemInfo.platform === "linux");
+        if (isLinux) loadHostDirectories();
+        loadHostTools();
+        loadJavaRuntimes();
+        loadWhatsNewData(false);
+      }
     };
     $("open-host-tools-btn")?.addEventListener("click", openHostToolsModal);
 
     // What's New Feature Guide Modal (Synced with Desktop & Android UI)
     const closeWhatsNewModal = async () => {
-      $("whatsnew-modal")?.classList.add("hidden");
+      closeDialog("whatsnew-modal");
       const neverShow = !!$("whatsnew-never-show-chk")?.checked;
       try {
         await apiFetch("/api/whats-new", {
@@ -2522,7 +3198,7 @@
       loadWhatsNewData(false, true);
     });
     $("open-whatsnew-from-about-btn")?.addEventListener("click", () => {
-      $("about-modal")?.classList.add("hidden");
+      closeDialog("about-modal");
       loadWhatsNewData(false, true);
     });
 
@@ -2575,25 +3251,34 @@
         selectedCreditCategory === "ALL" || c.category === selectedCreditCategory
       );
       listEl.innerHTML = credits.map((c) => `
-        <div class="player-row" style="align-items:flex-start;">
+        <div class="m3-table-row" style="align-items:flex-start;">
           <div style="flex:1;min-width:0;">
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <strong>${escapeHtml(c.name)}</strong>
-              <span class="role-badge VIEWER">${escapeHtml(c.tag || c.categoryLabel || "")}</span>
-              <span class="role-badge">${escapeHtml(c.license || "")}</span>
+              <span class="m3-chip m3-chip--primary">${escapeHtml(c.tag || c.categoryLabel || "")}</span>
+              <span class="m3-chip m3-chip--neutral mono">${escapeHtml(c.license || "")}</span>
             </div>
             <div class="player-sub" style="margin-top:4px;">${escapeHtml(c.description || "")}</div>
           </div>
-          <a href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="text-decoration:none;white-space:nowrap;">Project ↗</a>
+          <a href="${escapeHtml(c.url || "#")}" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" style="white-space:nowrap;">Open Project ↗</a>
         </div>
       `).join("");
+    };
+
+    const switchAboutTab = (tabName) => {
+      document.querySelectorAll("[data-about-tab]").forEach((b) => {
+        b.classList.toggle("active", b.dataset.aboutTab === tabName);
+      });
+      $("about-changelog-section")?.classList.toggle("hidden", tabName !== "changelog");
+      $("about-supporters-section")?.classList.toggle("hidden", tabName !== "supporters");
+      $("about-credits-section")?.classList.toggle("hidden", tabName !== "credits");
     };
 
     const loadAboutModal = async () => {
       try {
         const data = await apiFetch("/api/about");
         cachedAboutData = data;
-        if ($("about-version-badge")) $("about-version-badge").textContent = `v${data.version || "1.8.0"}`;
+        if ($("about-version-badge")) $("about-version-badge").textContent = `v${data.version || "1.8.1"}`;
         if ($("about-platform-badge")) $("about-platform-badge").textContent = String(data.platform || "linux").toUpperCase();
 
         const links = data.links || {};
@@ -2607,24 +3292,45 @@
         const isPlay = !!data.isPlayStore;
         $("about-link-patreon")?.classList.toggle("hidden", isPlay);
         $("about-link-bmac")?.classList.toggle("hidden", isPlay);
-        $("about-supporters-box")?.classList.toggle("hidden", isPlay);
+        $("about-tab-supporters-btn")?.classList.toggle("hidden", isPlay);
 
         const supporters = data.supporters || [];
+        if ($("about-tab-supporters-btn")) {
+          $("about-tab-supporters-btn").textContent = `Supporters (${supporters.length})`;
+        }
+        if ($("about-tab-credits-btn")) {
+          $("about-tab-credits-btn").textContent = `Open-Source Credits (${(data.credits || []).length})`;
+        }
         if ($("about-supporters-list")) {
-          $("about-supporters-list").innerHTML = supporters.map((s) => `
-            <span class="role-badge VIEWER" title="${escapeHtml(s.tier || "")}">${escapeHtml(s.name)} · ${escapeHtml(s.tier || "")}</span>
-          `).join("");
+          if (supporters.length === 0) {
+            $("about-supporters-list").innerHTML = `<div class="player-sub" style="padding:14px;">Supporters list will appear here.</div>`;
+          } else {
+            $("about-supporters-list").innerHTML = supporters.map((s) => `
+              <div class="m3-table-row">
+                <div style="display:flex;align-items:center;gap:12px;min-width:0;flex:1;">
+                  <span class="supporter-heart-badge">
+                    <svg class="ms-icon ms-icon--sm" viewBox="0 0 24 24" fill="currentColor"><path d="m12 21l-1.45-1.3q-2.525-2.275-4.175-3.925T3.75 12.812T2.388 10.4T2 8.15Q2 5.8 3.575 4.225T7.5 2.65q1.3 0 2.475.55T12 4.75q.85-1 2.025-1.55t2.475-.55q2.35 0 3.925 1.575T22 8.15q0 1.15-.387 2.25t-1.363 2.412t-2.625 2.963T13.45 19.7z"/></svg>
+                  </span>
+                  <div style="min-width:0;">
+                    <div><strong>${escapeHtml(s.name)}</strong></div>
+                    <div style="font-size:11px;font-weight:600;color:var(--md-sys-color-primary);">${escapeHtml(s.tier || "")}</div>
+                  </div>
+                </div>
+                <span class="m3-chip m3-chip--error">Supporter</span>
+              </div>
+            `).join("");
+          }
         }
 
         const changelog = data.changelog || [];
         if ($("about-changelog-list")) {
           $("about-changelog-list").innerHTML = changelog.map((rel) => `
-            <div style="padding:12px;border:1px solid var(--border-subtle);border-radius:10px;background:rgba(15,23,42,0.55);">
+            <div class="m3-card" style="background:var(--md-sys-color-surface-container-low);padding:12px 14px;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <strong style="color:var(--emerald);font-size:14px;">${escapeHtml(rel.version)}</strong>
-                <span class="player-sub">${escapeHtml(rel.date)}</span>
+                <strong style="color:var(--md-sys-color-primary);font-size:14px;">${escapeHtml(rel.version)}</strong>
+                <span class="player-sub mono">${escapeHtml(rel.date)}</span>
               </div>
-              <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--text-primary);line-height:1.65;">
+              <ul style="margin:0;padding-left:18px;font-size:12px;color:var(--md-sys-color-on-surface);line-height:1.65;">
                 ${(rel.highlights || []).map((h) => `<li>${escapeHtml(h)}</li>`).join("")}
               </ul>
             </div>
@@ -2637,29 +3343,21 @@
     };
 
     $("open-about-modal-btn")?.addEventListener("click", () => {
-      $("about-modal")?.classList.remove("hidden");
+      switchAboutTab("changelog");
+      openDialog("about-modal");
       loadAboutModal();
     });
-    $("close-about-modal")?.addEventListener("click", () => $("about-modal")?.classList.add("hidden"));
+    $("close-about-modal")?.addEventListener("click", () => closeDialog("about-modal"));
 
-    $("about-tab-changelog-btn")?.addEventListener("click", () => {
-      $("about-changelog-section")?.classList.remove("hidden");
-      $("about-credits-section")?.classList.add("hidden");
-      $("about-tab-changelog-btn").className = "btn btn-primary btn-sm";
-      $("about-tab-credits-btn").className = "btn btn-secondary btn-sm";
-    });
-    $("about-tab-credits-btn")?.addEventListener("click", () => {
-      $("about-changelog-section")?.classList.add("hidden");
-      $("about-credits-section")?.classList.remove("hidden");
-      $("about-tab-credits-btn").className = "btn btn-primary btn-sm";
-      $("about-tab-changelog-btn").className = "btn btn-secondary btn-sm";
+    document.querySelectorAll("[data-about-tab]").forEach((btn) => {
+      btn.addEventListener("click", () => switchAboutTab(btn.dataset.aboutTab));
     });
 
     document.querySelectorAll("#about-credits-filters [data-credit-cat]").forEach((btn) => {
       btn.addEventListener("click", () => {
         selectedCreditCategory = btn.dataset.creditCat || "ALL";
         document.querySelectorAll("#about-credits-filters [data-credit-cat]").forEach((b) => {
-          b.className = b === btn ? "btn btn-primary btn-sm" : "btn btn-secondary btn-sm";
+          b.classList.toggle("active", b === btn);
         });
         renderAboutCredits();
       });
@@ -2686,7 +3384,7 @@
         showToast("Failed to copy console output", "error");
       }
     });
-    $("close-host-tools-modal").addEventListener("click", () => $("host-tools-modal").classList.add("hidden"));
+    $("close-host-tools-modal").addEventListener("click", () => closeDialog("host-tools-modal"));
     $("cloud-refresh-btn").addEventListener("click", async () => {
       try {
         await apiFetch("/api/cloud/refresh", { method: "POST" });
@@ -2736,7 +3434,13 @@
       }
     });
     $("cloud-logout-btn")?.addEventListener("click", async () => {
-      if (!confirm("Sign out of MineServe Cloud on this host?")) return;
+      const ok = await showConfirmDialog({
+        title: "Sign Out of MineServe Cloud",
+        message: "Sign out of MineServe Cloud on this host?",
+        confirmText: "Sign Out",
+        destructive: true
+      });
+      if (!ok) return;
       try {
         await apiFetch("/api/cloud/logout", { method: "POST" });
         await loadHostTools();
@@ -2778,9 +3482,12 @@
         const res = await apiFetch("/api/diagnostics/selftest");
         const checks = res.checks || [];
         list.innerHTML = checks.map((c) => `
-          <div class="player-row">
+          <div class="m3-table-row">
             <div>
-              <div>${c.passed ? "✅" : "❌"} ${escapeHtml(c.name)}</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="m3-chip ${c.passed ? "m3-chip--primary" : "m3-chip--error"}">${c.passed ? "PASS" : "FAIL"}</span>
+                <strong>${escapeHtml(c.name)}</strong>
+              </div>
               <div class="player-sub">${escapeHtml(c.detail)}</div>
             </div>
           </div>
@@ -2850,7 +3557,12 @@
     };
     $("files-new-file-btn")?.addEventListener("click", async () => {
       if (!state.selectedServerId) return;
-      const name = window.prompt("New file name (e.g. config.yml):");
+      const name = await showPromptDialog({
+        title: "Create New File",
+        message: "Enter a file name (e.g. config.yml):",
+        placeholder: "config.yml",
+        confirmText: "Create"
+      });
       if (!name || !name.trim()) return;
       try {
         await apiFetch(`/api/servers/${state.selectedServerId}/files/create`, {
@@ -2867,7 +3579,12 @@
     });
     $("files-new-dir-btn")?.addEventListener("click", async () => {
       if (!state.selectedServerId) return;
-      const name = window.prompt("New folder name:");
+      const name = await showPromptDialog({
+        title: "Create New Folder",
+        message: "Enter a folder name:",
+        placeholder: "plugins",
+        confirmText: "Create"
+      });
       if (!name || !name.trim()) return;
       try {
         await apiFetch(`/api/servers/${state.selectedServerId}/files/mkdir`, {
@@ -2908,24 +3625,36 @@
       });
     }
 
+    const switchUsersModalTab = async (tabName) => {
+      const showAudit = tabName === "audit";
+      $("users-subtab-btn")?.classList.toggle("active", !showAudit);
+      $("audit-subtab-btn")?.classList.toggle("active", showAudit);
+      $("users-tab-users")?.classList.toggle("hidden", showAudit);
+      $("users-tab-audit")?.classList.toggle("hidden", !showAudit);
+      if (showAudit) {
+        await loadAuditLog();
+      } else {
+        await Promise.all([loadPanelUsers(), loadActiveSessions()]);
+      }
+    };
+
     const openUsersModal = async () => {
-      $("users-modal").classList.remove("hidden");
+      const canManageUsers = hasPerm("MANAGE_USERS");
+      const canViewAudit = hasPerm("VIEW_AUDIT_LOG");
+      $("users-subtab-btn")?.classList.toggle("hidden", !canManageUsers);
+      $("audit-subtab-btn")?.classList.toggle("hidden", !canViewAudit);
+      openDialog("users-modal");
       renderUserServerCheckboxes();
-      await Promise.all([loadPanelUsers(), loadActiveSessions()]);
+      await switchUsersModalTab(canManageUsers ? "users" : "audit");
     };
     $("open-users-modal-btn")?.addEventListener("click", openUsersModal);
-    $("close-users-modal-btn")?.addEventListener("click", () => $("users-modal").classList.add("hidden"));
+    $("users-subtab-btn")?.addEventListener("click", () => switchUsersModalTab("users"));
+    $("audit-subtab-btn")?.addEventListener("click", () => switchUsersModalTab("audit"));
+    $("close-users-modal-btn")?.addEventListener("click", () => closeDialog("users-modal"));
     $("users-refresh-btn")?.addEventListener("click", () => loadPanelUsers());
     $("sessions-refresh-btn")?.addEventListener("click", () => loadActiveSessions());
 
-    // Full-Screen Audit Log View
-    $("open-audit-view-btn")?.addEventListener("click", async () => {
-      $("audit-fullscreen-view").classList.remove("hidden");
-      await loadAuditLog();
-    });
-    $("close-audit-view-btn")?.addEventListener("click", () => {
-      $("audit-fullscreen-view").classList.add("hidden");
-    });
+    // Audit Log Controls
     $("audit-refresh-btn")?.addEventListener("click", () => loadAuditLog());
     $("audit-limit-select")?.addEventListener("change", () => loadAuditLog());
     $("audit-search-input")?.addEventListener("input", () => renderFilteredAuditLog());
@@ -2944,7 +3673,12 @@
         showToast("Select a target version first", "error");
         return;
       }
-      if (!confirm(confirmText)) return;
+      const ok = await showConfirmDialog({
+        title: "Upgrade Server Software",
+        message: confirmText,
+        confirmText: "Upgrade"
+      });
+      if (!ok) return;
       const btn = $("upgrade-server-btn");
       const buildBtn = $("upgrade-latest-build-btn");
       const box = $("upgrade-progress-box");
@@ -3015,10 +3749,11 @@
       $("import-srv-name").value = "";
       $("import-srv-file").value = "";
       $("import-srv-eula").checked = false;
-      $("import-server-modal").classList.remove("hidden");
+      $("import-progress-box")?.classList.add("hidden");
+      openDialog("import-server-modal");
     });
-    $("close-import-server-modal")?.addEventListener("click", () => $("import-server-modal").classList.add("hidden"));
-    $("cancel-import-server-btn")?.addEventListener("click", () => $("import-server-modal").classList.add("hidden"));
+    $("close-import-server-modal")?.addEventListener("click", () => closeDialog("import-server-modal"));
+    $("cancel-import-server-btn")?.addEventListener("click", () => closeDialog("import-server-modal"));
     $("import-srv-ram")?.addEventListener("input", (e) => {
       const disp = $("import-srv-ram-display");
       if (disp) disp.textContent = formatRamValue(e.target.value);
@@ -3035,8 +3770,17 @@
         return;
       }
       const btn = $("import-srv-submit-btn");
+      const progBox = $("import-progress-box");
+      const progMsg = $("import-progress-msg");
+      const progPct = $("import-progress-pct");
+      const progFill = $("import-progress-fill");
       btn.disabled = true;
       btn.textContent = "Uploading & Extracting...";
+      progBox?.classList.remove("hidden");
+      if (progMsg) progMsg.textContent = "Uploading server archive...";
+      if (progPct) progPct.textContent = "0%";
+      if (progFill) progFill.style.width = "0%";
+
       try {
         const params = new URLSearchParams({
           name: $("import-srv-name").value.trim(),
@@ -3046,15 +3790,31 @@
           ramMb: $("import-srv-ram").value,
           eulaAccepted: "true"
         });
-        const res = await fetch(`/api/servers/import?${params.toString()}`, {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/octet-stream" },
-          body: file
+        const data = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", `/api/servers/import?${params.toString()}`, true);
+          xhr.withCredentials = true;
+          xhr.setRequestHeader("Content-Type", "application/octet-stream");
+          xhr.upload.onprogress = (evt) => {
+            if (evt.lengthComputable) {
+              const pct = Math.min(95, Math.round((evt.loaded / evt.total) * 95));
+              if (progPct) progPct.textContent = `${pct}%`;
+              if (progFill) progFill.style.width = `${pct}%`;
+              if (pct >= 95 && progMsg) progMsg.textContent = "Extracting archive on host...";
+            }
+          };
+          xhr.onload = () => {
+            let parsed = {};
+            try { parsed = JSON.parse(xhr.responseText || "{}"); } catch (_) {}
+            if (xhr.status >= 200 && xhr.status < 300) resolve(parsed);
+            else reject(new Error(parsed.error || `Import failed (${xhr.status})`));
+          };
+          xhr.onerror = () => reject(new Error("Network error during upload"));
+          xhr.send(file);
         });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || `Import failed (${res.status})`);
-        $("import-server-modal").classList.add("hidden");
+        if (progPct) progPct.textContent = "100%";
+        if (progFill) progFill.style.width = "100%";
+        closeDialog("import-server-modal");
         showToast(`Imported '${data.name}' (${data.extractedCount || 0} files, ${data.jarFileName})`);
         await loadServers();
         if (data.serverId) selectServer(data.serverId);
@@ -3064,6 +3824,20 @@
         btn.disabled = false;
         btn.textContent = "Upload & Import";
       }
+    });
+    $("new-user-role")?.addEventListener("change", (e) => {
+      const isOwner = e.target.value === "OWNER";
+      $("new-user-restrict-wrap")?.classList.toggle("hidden", isOwner);
+      if (isOwner) {
+        if ($("new-user-restrict")) $("new-user-restrict").checked = false;
+        $("new-user-servers-box")?.classList.add("hidden");
+      }
+    });
+    $("create-version")?.addEventListener("change", (e) => {
+      const selected = e.target.value;
+      document.querySelectorAll("#create-quick-versions .quick-version-chip").forEach((c) => {
+        c.classList.toggle("active", c.dataset.ver === selected);
+      });
     });
     $("new-user-restrict")?.addEventListener("change", (e) => {
       $("new-user-servers-box").classList.toggle("hidden", !e.target.checked);
@@ -3099,12 +3873,14 @@
 
     // Change Own Password Modal
     $("open-password-modal-btn")?.addEventListener("click", () => {
+      $("account-popover-menu")?.classList.add("hidden");
+      $("current-user-pill")?.setAttribute("aria-expanded", "false");
       $("pw-current").value = "";
       $("pw-new").value = "";
-      $("password-modal").classList.remove("hidden");
+      openDialog("password-modal");
     });
-    $("close-password-modal-btn")?.addEventListener("click", () => $("password-modal").classList.add("hidden"));
-    $("cancel-password-modal-btn")?.addEventListener("click", () => $("password-modal").classList.add("hidden"));
+    $("close-password-modal-btn")?.addEventListener("click", () => closeDialog("password-modal"));
+    $("cancel-password-modal-btn")?.addEventListener("click", () => closeDialog("password-modal"));
     $("change-password-form")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
@@ -3115,7 +3891,7 @@
             newPassword: $("pw-new").value
           })
         });
-        $("password-modal").classList.add("hidden");
+        closeDialog("password-modal");
         showToast("Password updated successfully");
       } catch (err) {
         showToast(err.message, "error");
@@ -3150,14 +3926,14 @@
           : "All servers";
         const lastLogin = u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : "Never";
         return `
-          <div class="player-row">
+          <div class="m3-table-row">
             <div>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <strong>${escapeHtml(u.username)}</strong>
                 <span class="role-badge ${escapeHtml(u.role)}">${escapeHtml(u.roleLabel || u.role)}</span>
                 ${!u.enabled ? `<span class="status-badge ERROR">DISABLED</span>` : ""}
               </div>
-              <div class="player-sub">${escapeHtml(scope)} · Last login: ${escapeHtml(lastLogin)}</div>
+              <div class="player-sub mono">${escapeHtml(scope)} | Last login: ${escapeHtml(lastLogin)}</div>
             </div>
             <div class="player-actions">
               <button class="btn btn-secondary btn-sm" data-user-toggle="${escapeHtml(u.id)}" data-enabled="${u.enabled ? "1" : "0"}">${u.enabled ? "Disable" : "Enable"}</button>
@@ -3189,7 +3965,13 @@
         btn.addEventListener("click", async () => {
           const id = btn.dataset.userReset;
           const uname = btn.dataset.username;
-          const newPw = window.prompt(`Enter a new password for ${uname} (min 6 chars):`);
+          const newPw = await showPromptDialog({
+            title: "Reset User Password",
+            message: `Enter a new password for ${uname} (min 6 chars):`,
+            inputType: "password",
+            placeholder: "New password",
+            confirmText: "Reset Password"
+          });
           if (!newPw) return;
           try {
             await apiFetch(`/api/users/${id}`, {
@@ -3208,7 +3990,13 @@
         btn.addEventListener("click", async () => {
           const id = btn.dataset.userDel;
           const uname = btn.dataset.username;
-          if (!window.confirm(`Delete user '${uname}'?`)) return;
+          const ok = await showConfirmDialog({
+            title: "Delete User Account",
+            message: `Delete user '${uname}'? Active sessions for this user will be invalidated.`,
+            confirmText: "Delete User",
+            destructive: true
+          });
+          if (!ok) return;
           try {
             await apiFetch(`/api/users/${id}`, { method: "DELETE" });
             showToast(`Deleted user ${uname}`);
@@ -3234,14 +4022,14 @@
         return;
       }
       list.innerHTML = sessions.map((s) => `
-        <div class="player-row">
+        <div class="m3-table-row">
           <div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
               <strong>${escapeHtml(s.username)}</strong>
               <span class="role-badge ${escapeHtml(s.role)}">${escapeHtml(s.role)}</span>
               ${s.isCurrent ? `<span class="status-badge RUNNING">THIS SESSION</span>` : ""}
             </div>
-            <div class="player-sub">IP: ${escapeHtml(s.clientIp || "unknown")} · Signed in ${escapeHtml(new Date(s.createdAt).toLocaleString())}</div>
+            <div class="player-sub mono">IP: ${escapeHtml(s.clientIp || "unknown")} | Signed in ${escapeHtml(new Date(s.createdAt).toLocaleString())}</div>
           </div>
           <div class="player-actions">
             <button class="btn btn-danger btn-sm" data-revoke-session="${escapeHtml(s.id)}">Revoke</button>
@@ -3361,7 +4149,7 @@
       }
 
       list.innerHTML = runtimes.map((r) => `
-        <div class="player-row">
+        <div class="m3-table-row">
           <div>
             <strong>OpenJDK ${r.version}</strong>
             <span class="status-badge ${r.installed ? "RUNNING" : ""}" style="margin-left:8px;">
@@ -3390,9 +4178,9 @@
         });
       });
 
-      if (installing && !$("host-tools-modal").classList.contains("hidden")) {
+      if (installing && $("host-tools-modal")?.open) {
         setTimeout(() => {
-          if (!$("host-tools-modal").classList.contains("hidden")) loadJavaRuntimes();
+          if ($("host-tools-modal")?.open) loadJavaRuntimes();
         }, 2500);
       }
     } catch (err) {
@@ -3459,6 +4247,7 @@
     }
   }
 
+  initTheme();
   bindEvents();
   checkAuth();
 })();
