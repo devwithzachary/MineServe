@@ -52,7 +52,7 @@ jobs:
     needs: meta
     steps:
       - name: Checkout repository (with submodules)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           fetch-depth: 0
@@ -89,7 +89,7 @@ jobs:
         run: rm -f key.properties app/release.keystore
 
       - name: Upload Android artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: android-artifacts
           path: |
@@ -102,18 +102,18 @@ jobs:
     needs: meta
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Build Linux packages (.tar.gz, .deb, .rpm, AppImage, PKGBUILD)
         env:
@@ -121,7 +121,7 @@ jobs:
         run: ./scripts/build_linux_packages.sh
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: linux-artifacts
           path: release/*
@@ -133,23 +133,23 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: macos-15
+          - os: macos-latest
             arch: arm64
           - os: macos-15-intel
             arch: x64
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Test and package macOS .dmg + portable .tar.gz
         env:
@@ -165,7 +165,7 @@ jobs:
           tar -C desktop/build/install/desktop -czf "release/MineServe-${RELEASE_VERSION}-macos-${TARGET_ARCH}-portable.tar.gz" .
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: macos-${{ matrix.arch }}-artifacts
           path: release/*
@@ -176,16 +176,16 @@ jobs:
     needs: meta
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: Ensure WiX Toolset 3.14 is on PATH
         shell: pwsh
@@ -217,7 +217,7 @@ jobs:
           Compress-Archive -Path "desktop\build\install\desktop\*" -DestinationPath "release\MineServe-$env:RELEASE_VERSION-windows-x64-portable.zip" -Force
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-artifacts
           path: release/*
@@ -233,10 +233,10 @@ jobs:
       - build-windows
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download all platform artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: release
           merge-multiple: true
@@ -264,7 +264,7 @@ jobs:
           } > release_notes.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.meta.outputs.version }}
           name: MineServe v${{ needs.meta.outputs.version }}
@@ -280,16 +280,16 @@ jobs:
       - publish-release
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -310,7 +310,7 @@ jobs:
 
       - name: Log in to Docker Hub (when configured)
         if: steps.check_dockerhub.outputs.enabled == 'true'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -335,7 +335,7 @@ jobs:
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
 
       - name: Build and push multi-arch Docker images
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -350,10 +350,10 @@ jobs:
       - publish-release
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-artifacts
           path: release
@@ -391,7 +391,7 @@ jobs:
 
       - name: Upload staged APT & RPM repo artifact (on dry-run)
         if: steps.apt_rpm.outputs.dry_run == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: apt-rpm-staging
           path: release/repo-staging
@@ -404,10 +404,10 @@ jobs:
       - publish-release
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Linux artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: linux-artifacts
           path: release
@@ -433,7 +433,7 @@ jobs:
           fi
 
       - name: Upload staged AUR PKGBUILD & .SRCINFO
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: aur-mineserve-bin
           path: release/aur-mineserve-bin
@@ -446,10 +446,10 @@ jobs:
       - publish-release
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Windows artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: windows-artifacts
           path: release
@@ -460,7 +460,7 @@ jobs:
         run: ./scripts/publish_winget.sh --version "$RELEASE_VERSION"
 
       - name: Upload Winget manifests artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: winget-manifests
           path: release/winget
