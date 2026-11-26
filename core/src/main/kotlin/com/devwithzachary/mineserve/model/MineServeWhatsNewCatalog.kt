@@ -22,80 +22,53 @@ data class SharedWhatsNewRelease(
  * Android, Linux Desktop, and the Web Remote Admin UI.
  */
 object MineServeWhatsNewCatalog {
-    const val CURRENT_MAJOR_VERSION = "1.8"
-    const val CURRENT_DISPLAY_VERSION = "v1.8"
+    const val CURRENT_MAJOR_VERSION = "1.9"
+    const val CURRENT_DISPLAY_VERSION = "v1.9"
 
-    private val ALL_FEATURES_1_8 = listOf(
+    private val ALL_FEATURES_1_9 = listOf(
         SharedWhatsNewFeature(
-            badge = "Linux Desktop & Headless",
-            title = "Native Linux Desktop GUI, System Tray & Headless Daemon",
-            summary = "MineServe now runs natively on Linux with zero virtualization overhead, automatic portable OpenJDK 8/17/21/25 downloads, an adaptive multi-pane Desktop UI, KDE/Wayland System Tray support, and a --headless CLI mode for home servers and VPS hosts.",
+            badge = "Material Design 3",
+            title = "All-New Obsidian & Ore Material 3 Redesign",
+            summary = "MineServe now features a unified Material Design 3 look across Android, Linux Desktop, and Web Remote Admin with Light & Dark themes, cleaner borderless tonal cards, and an optional Android 12+ Material You wallpaper color mode.",
             stepsToFind = listOf(
-                "Desktop GUI: Launch MineServe normally to use the side-by-side Console, Config Editor, Modrinth Browser, and In-App Live Map.",
-                "System Tray: Close the window while a server is running to minimize to your Linux notification tray. Left-click to restore or right-click for quick actions.",
-                "Headless Mode: Run mineserve --headless (or --print-service for a systemd unit) to host purely via the Web Remote Admin UI."
+                "Open App Settings -> Appearance to switch between Dark, Light, or System themes.",
+                "On Android 12+, enable Use Wallpaper Dynamic Colors in App Settings to match your device wallpaper."
             ),
-            iconKey = "desktop",
-            platform = ChangelogPlatform.LINUX
-        ),
-        SharedWhatsNewFeature(
-            badge = "Team Access & Security",
-            title = "Multi-User Web Admin Accounts, Roles & Audit Log",
-            summary = "Share your server panel safely with friends and moderators. Create individual accounts with Owner, Admin, Moderator, or Viewer permissions, limit users to specific servers, manage active login sessions, and review every action in the Audit Log.",
-            stepsToFind = listOf(
-                "In the Android app: Open App Settings -> Web Remote Admin, then scroll to Panel Users & Roles.",
-                "In the Desktop UI or Web UI: Click Users & Sessions (or Users & Audit) in the left sidebar to add accounts, assign roles, or revoke active sessions.",
-                "In the Web UI: Click Audit Log in the left sidebar to search, filter, and export a CSV history of all panel actions."
-            ),
-            iconKey = "security",
+            iconKey = "palette",
             platform = ChangelogPlatform.ALL
         ),
         SharedWhatsNewFeature(
-            badge = "Web Admin Upgrade",
-            title = "Live SSE Console, Full File Manager & In-Place Upgrader",
-            summary = "The Web Remote Admin panel now streams console output in real time with 2,000-line scrollback, includes a drag-and-drop File Manager (create, rename, upload, download, unzip), and lets you manage OpenJDK runtimes, upgrade Minecraft versions in place, or import existing server .zip archives.",
+            badge = "Desktop & WebUI",
+            title = "Unified 6-Tab Workspace & Offline-Ready Web Admin",
+            summary = "Desktop and Headless WebUI now share a clean 280dp navigation drawer, standardized Console, Performance, Players, Content, World & Map, and Management tabs, self-hosted fonts for offline LAN access, and native modals.",
             stepsToFind = listOf(
-                "Live Console & Copy: Open the Console tab in the Web UI or Desktop UI and click Copy Console Output anytime.",
-                "File Manager: Open the Files tab to create files/folders, rename items, extract .zip archives, or drag-and-drop uploads from your computer.",
-                "Version Upgrader: Open Settings & Network and scroll to Server Software Version & Upgrade to update builds or Minecraft versions with an automatic safety backup."
+                "Select any server in the Desktop app or Web Remote Admin to explore the unified 6-tab workspace.",
+                "Open App Settings in the WebUI to switch themes or manage Java Runtimes and Host Diagnostics."
             ),
             iconKey = "web",
             platform = ChangelogPlatform.ALL
         ),
         SharedWhatsNewFeature(
-            badge = "Modded Servers",
-            title = "Automatic Client-Only Mod Filtering for .mrpack Modpacks",
-            summary = "Importing Modrinth .mrpack modpacks is now much more reliable. MineServe automatically detects and disables client-only rendering and UI mods (like Sodium, Iris, ImmediatelyFast, and EntityCulling) as well as duplicate JARs so dedicated servers don't crash on startup.",
+            badge = "Server Creation",
+            title = "Streamlined 2-Step Create Server Flow",
+            summary = "Creating a new server is now consistent across every platform: pick your Minecraft version and server software with clear descriptions in Step 1, then configure your server name, port, MOTD, RAM, and EULA in Step 2.",
             stepsToFind = listOf(
-                "Create or select a Fabric, NeoForge, or Forge server and open the Plugins / Mods tab.",
-                "Click Import .mrpack and pick any Modrinth modpack archive.",
-                "MineServe will download all server mods, extract overrides, and automatically rename client-only mods to .jar.disabled."
+                "Click + Create Server on Android, Desktop, or the Web Remote Admin sidebar.",
+                "Pick your Minecraft version and software type in Step 1, then click Next to configure your server."
             ),
             iconKey = "mods",
             platform = ChangelogPlatform.ALL
         ),
         SharedWhatsNewFeature(
-            badge = "MineServe Cloud",
-            title = "Quick 6-Digit Email Code Cloud Sign-In",
-            summary = "Link your optional MineServe Cloud account directly inside the app, Desktop UI, or Web UI using a 6-digit email verification code to manage custom *.play.mineserve.app addresses and encrypted R2 cloud backups.",
+            badge = "Team & Host Control",
+            title = "Audit Log CSV Export, Server-Scoped Users & Custom Linux Paths",
+            summary = "Export your panel Audit Log to CSV on Android, Desktop, and WebUI, restrict Desktop user accounts to specific servers, and customize your Linux Server Data and Java Runtimes directories right from App Settings.",
             stepsToFind = listOf(
-                "Click MineServe Cloud in the sidebar (or top bar on Android).",
-                "Enter your email address and click Send 6-Digit Code.",
-                "Enter the code from your email to link your host immediately."
+                "Open Users & Audit (or Panel Users & Roles on Android) and click Export CSV.",
+                "On Linux Desktop or Linux WebUI, open App Settings -> Appearance & Host to change Server Data or Java Runtimes directories."
             ),
-            iconKey = "cloud",
+            iconKey = "security",
             platform = ChangelogPlatform.ALL
-        ),
-        SharedWhatsNewFeature(
-            badge = "Setup & Live Map",
-            title = "Smooth First-Run Setup Progress & Port 8081 Live Map",
-            summary = "Initial runtime setup now tracks live package extraction and OpenJDK installation stages smoothly from start to finish, and Squaremap Live Map now defaults to port 8081 so it never conflicts with Web Remote Admin on port 8080.",
-            stepsToFind = listOf(
-                "Open any plugin or mod server and switch to the Live Map tab.",
-                "Tap 1-Click Install Squaremap to pre-configure Squaremap on port 8081 and view your world map live."
-            ),
-            iconKey = "map",
-            platform = ChangelogPlatform.ANDROID
         )
     )
 
@@ -103,9 +76,9 @@ object MineServeWhatsNewCatalog {
         return SharedWhatsNewRelease(
             majorVersion = CURRENT_MAJOR_VERSION,
             displayVersion = CURRENT_DISPLAY_VERSION,
-            headline = "What's New in MineServe 1.8",
+            headline = "What's New in MineServe 1.9",
             subtitle = "Explore the biggest new features added in this update, ordered by impact, with quick steps on where to find them.",
-            features = ALL_FEATURES_1_8.filter { it.platform.matches(platform) }
+            features = ALL_FEATURES_1_9.filter { it.platform.matches(platform) }
         )
     }
 }

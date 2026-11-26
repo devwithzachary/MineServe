@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.Extension
+import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Terminal
@@ -28,6 +29,7 @@ data class WhatsNewRelease(
 )
 
 private fun resolveIcon(iconKey: String): ImageVector = when (iconKey) {
+    "palette" -> Icons.Default.Palette
     "security" -> Icons.Default.Security
     "web" -> Icons.Default.Dns
     "mods" -> Icons.Default.Extension

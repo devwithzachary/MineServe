@@ -2,6 +2,19 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
+## [1.9.0] - Unreleased
+
+### 🎨 Material Design 3 ("Obsidian & Ore") UI Overhaul
+- **Shared `:designsystem` Module (`MineServeTheme`, `MineServePalette`, `MineServeTypography`, shared M3 components)**: Unified Material Design 3 design tokens across Android and Linux Desktop with the "Obsidian & Ore" surface ladder (`#0B0F19` canvas, `#0F172A` drawer/rail, `#1B2333` borderless cards, `#070A12` terminal), Emerald/Diamond/Gold/Redstone accents, Slate-tinted Light Mode, optional Android 12+ Material You dynamic wallpaper color toggle (`Use Wallpaper Dynamic Colors`, off by default), `Plus Jakarta Sans` UI typography + `JetBrains Mono` terminal/telemetry typography, Material Symbols Rounded iconography, and elimination of `1px` card borders.
+- **Android Compose UI Refactor (`:app/ui`)**: Migrated Dashboard, Server Detail (unified 6-tab layout: `Console`, `Performance`, `Players`, `Content`, `World & Map`, `Management`), Splash/Setup, Create Server Wizard, Settings, Web Remote Admin, MineServe Cloud, About, Credits, and What's New screens to shared M3 surfaces, tonal telemetry tiles, and borderless cards.
+- **Linux Desktop Compose UI Refactor (`:desktop/ui`)**: Migrated the multi-pane Desktop UI to the `#0F172A` 280dp permanent M3 navigation drawer, unified 6-tab server workspace, borderless tonal telemetry charts (Emerald/Diamond fills), M3 dialogs (`28dp` radius on `#242F44`), and styled Project Supporters / Credits views.
+- **Embedded Headless WebUI 1:1 Parity Refactor (`app/src/main/assets/webadmin/`)**: Rebuilt the Web Remote Admin UI around `mineserve-m3-tokens.css` and self-hosted `.woff2` `Plus Jakarta Sans`, `JetBrains Mono`, and `Material Symbols Rounded` fonts for offline LAN operation, matching the Desktop 280dp drawer, unified 6-tab workspace, standardized telemetry tiles (`CPU`, `Memory`, `TPS / MSPT`, `Players`), native HTML `<dialog>` modals (replacing all browser `alert()`/`confirm()`/`prompt()` dialogs), and an Account Profile popover.
+
+### ✨ Cross-Platform UX & Parity
+- **Unified 2-Step Create Server Flow (`CreateServerWizardScreen.kt`, `DesktopModals.kt`, `webadmin/`)**: Standardized server creation across Android, Desktop, and Headless WebUI into Step 1 (Software picker with concise descriptions + Minecraft Version selector, pinned above a scrollable software list on Android) and Step 2 (Server Name, Port, MOTD, RAM allocation, and EULA acceptance).
+- **Audit Log CSV Export & Server-Scoped Users (`AuditLogCsvExporter.kt`, `DesktopModals.kt`, `PanelUsersCard.kt`, `webadmin/`)**: Added RFC-4180 Audit Log CSV export to both Desktop and Android, added per-server user access restriction controls to Desktop's Create User modal, and aligned the `+ Create User` action cleanly to the right across Desktop and WebUI.
+- **WebUI Settings Parity & Linux Host Directory Overrides (`LinuxDataPaths.kt`, `LinuxWebCoreHandlers.kt`, `DesktopSettingsAndAboutModals.kt`, `webadmin/`)**: Moved WebUI theme selection into App Settings, aligned WebUI App Settings tabs (`Appearance & Host`, `Java Runtimes`, `Diagnostics`, `Updates`) 1:1 with Desktop, and added configurable Linux Server Data and Java Runtimes directory settings (`GET/POST /api/host/directories`) accessible from both Desktop GUI and Linux Headless WebUI (guarded against active running servers).
+
 ## [1.8.1] - 2026-11-24
 
 ### 🐛 Bug Fixes

@@ -265,9 +265,32 @@ object MineServeAboutData {
 
     val FULL_CHANGELOG_HISTORY: List<PlatformReleaseChangelog> = listOf(
         PlatformReleaseChangelog(
+            version = "v1.9.0",
+            date = "In Progress",
+            initialExpanded = true,
+            highlights = listOf(
+                PlatformChangelogHighlight(
+                    text = "Material Design 3 \"Obsidian & Ore\" Redesign: Refreshed Android, Linux Desktop, and Web Remote Admin with Light and Dark themes, cleaner borderless tonal surfaces, and updated typography (Plus Jakarta Sans + JetBrains Mono).",
+                    platform = ChangelogPlatform.ALL
+                ),
+                PlatformChangelogHighlight(
+                    text = "Android Material You & Workspace Parity: Added an optional Android 12+ Material You wallpaper dynamic color toggle in App Settings, unified the 6-tab server workspace, and added Audit Log CSV export.",
+                    platform = ChangelogPlatform.ANDROID
+                ),
+                PlatformChangelogHighlight(
+                    text = "Unified 2-Step Create Server & WebUI Parity: Standardized server creation (software descriptions + Minecraft version in Step 1, configuration & EULA in Step 2) and brought 1:1 Headless WebUI parity with offline self-hosted fonts, native dialogs, and Desktop-matching App Settings tabs.",
+                    platform = ChangelogPlatform.ALL
+                ),
+                PlatformChangelogHighlight(
+                    text = "Desktop Team & Host Controls: Added per-server access restrictions in Desktop Create User, Audit Log CSV export on Desktop, and configurable Server Data and Java Runtimes directories in Desktop and Linux WebUI App Settings.",
+                    platform = ChangelogPlatform.LINUX
+                )
+            )
+        ),
+        PlatformReleaseChangelog(
             version = "v1.8.1",
             date = "November 24, 2026",
-            initialExpanded = true,
+            initialExpanded = false,
             highlights = listOf(
                 PlatformChangelogHighlight(
                     text = "Play Store Compliance & Android Reliability: Hid external donation links and GitHub APK self-update prompts on Google Play Store builds (retained on direct APK and F-Droid builds), fixed Bore and MineServe Cloud tunnels on Android 6 to 12, wired Keep Screen Awake on the live console, kept the foreground service active while Web Remote Admin is running, and honored custom JVM flags.",
