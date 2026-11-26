@@ -295,8 +295,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check Docker Hub credentials
+        id: check_dockerhub
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Log in to Docker Hub (when configured)
-        if: secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        if: steps.check_dockerhub.outputs.enabled == 'true'
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -308,6 +321,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.meta.outputs.version }}
           IS_PRERELEASE: ${{ needs.meta.outputs.is_prerelease }}
+          DOCKERHUB_ENABLED: ${{ steps.check_dockerhub.outputs.enabled }}
           DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
         run: |
           SECONDARY_TAG="latest"
@@ -315,7 +329,7 @@ jobs:
             SECONDARY_TAG="beta"
           fi
           TAGS="ghcr.io/devwithzachary/mineserve:${RELEASE_VERSION},ghcr.io/devwithzachary/mineserve:${SECONDARY_TAG}"
-          if [ -n "$DOCKERHUB_USER" ]; then
+          if [ "$DOCKERHUB_ENABLED" = "true" ] && [ -n "$DOCKERHUB_USER" ]; then
             TAGS="${TAGS},docker.io/${DOCKERHUB_USER}/mineserve:${RELEASE_VERSION},docker.io/${DOCKERHUB_USER}/mineserve:${SECONDARY_TAG}"
           fi
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
@@ -345,6 +359,7 @@ jobs:
           path: release
 
       - name: Stage or publish GPG-signed APT & RPM repos
+        id: apt_rpm
         shell: bash
         env:
           RELEASE_VERSION: ${{ needs.meta.outputs.version }}
@@ -365,15 +380,17 @@ jobs:
               git commit -m "Update APT & RPM repositories for MineServe v${RELEASE_VERSION}"
               git push origin HEAD
             fi
+            echo "dry_run=false" >> "$GITHUB_OUTPUT"
           else
             echo "Running dry-run APT & RPM verification with ephemeral GPG key..."
             gpg --batch --passphrase '' --quick-gen-key "MineServe Test Key <test@mineserve.app>" rsa3072 sign 1d
             TEST_KEY=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')
             ./scripts/publish_apt_rpm_repos.sh --dry-run --gpg-key "$TEST_KEY" --version "$RELEASE_VERSION"
+            echo "dry_run=true" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Upload staged APT & RPM repo artifact (on dry-run)
-        if: needs.meta.outputs.is_prerelease == 'true' || secrets.GPG_PRIVATE_KEY == '' || secrets.WEB_REPO_PAT == ''
+        if: steps.apt_rpm.outputs.dry_run == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: apt-rpm-staging
@@ -448,8 +465,20 @@ jobs:
           name: winget-manifests
           path: release/winget
 
+      - name: Check Winget PAT
+        id: check_winget
+        shell: bash
+        env:
+          WINGET_PAT: ${{ secrets.WINGET_PAT }}
+        run: |
+          if [ -n "$WINGET_PAT" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Submit Winget PR (stable releases with WINGET_PAT)
-        if: needs.meta.outputs.is_prerelease == 'false' && secrets.WINGET_PAT != ''
+        if: needs.meta.outputs.is_prerelease == 'false' && steps.check_winget.outputs.enabled == 'true'
         uses: vedantmgoyal9/winget-releaser@v2
         with:
           identifier: DevWithZachary.MineServe
