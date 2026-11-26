@@ -1,3 +1,4 @@
-• macOS & Windows Betas: Native Compose GUI, --headless Web Admin, and portable OpenJDK across macOS (.dmg) and Windows (.msi/.exe/.zip).
-• Material Design 3 ("Obsidian & Ore") UI: Refreshed Android, Desktop, and Web Admin with Light & Dark themes, borderless cards, and optional Android 12+ Material You colors.
-• Unified 6-Tab Workspace & Team Tools: Standardized Console/Performance/Players/Content/World & Map/Management tabs, 2-step Create Server flow, and Audit Log CSV export.
+• macOS & Windows Betas: Native Compose GUI, --headless Web Admin, and portable OpenJDK (.dmg, .msi/.exe/.zip).
+• Full Desktop Parity: Scheduled tasks, Idle Sleep & Auto-Wake, auto-tunnels/UPnP, Discord alerts, Chunk Pre-Gen, WebDAV sync, Crash quick-fixes, and Proxy editor.
+• Material Design 3 ("Obsidian & Ore"): Refreshed Android, Desktop, and WebUI with Light/Dark themes and Android 12+ Material You colors.
+• Unified 6-Tab Workspace: 2-step Create Server flow and Audit Log CSV export.

@@ -293,6 +293,10 @@ object MineServeAboutData {
                 PlatformChangelogHighlight(
                     text = "Desktop Team & Host Controls: Added per-server access restrictions in Desktop Create User, Audit Log CSV export on Desktop, and configurable Server Data and Java Runtimes directories in Desktop and Desktop WebUI App Settings.",
                     platform = ChangelogPlatform.ALL
+                ),
+                PlatformChangelogHighlight(
+                    text = "Full Desktop Engine Parity & Automation: Added Desktop background scheduling (backups, restarts, broadcasts, commands), Idle Sleep & Auto-Wake on Ping, auto-start tunnels/UPnP, live Discord webhooks, Cloud Web Panel relay, GeyserMC auto-bundling, Chunk Pre-Generator, WebDAV backup sync, Crash Log Analyzer with 1-click quick fixes, and native Velocity/BungeeCord Proxy Route editing.",
+                    platform = ChangelogPlatform.ALL
                 )
             )
         ),

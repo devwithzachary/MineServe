@@ -38,6 +38,17 @@ object MineServeWhatsNewCatalog {
             platform = ChangelogPlatform.ALL
         ),
         SharedWhatsNewFeature(
+            badge = "Desktop Parity",
+            title = "Desktop Automation, Crash Quick-Fixes & Full Feature Parity",
+            summary = "Desktop hosts (Linux, macOS, and Windows) now run scheduled backups and restarts, Idle Sleep with Auto-Wake on Ping, auto-start tunnels and UPnP, live Discord event alerts, WebDAV backup sync, Chunk Pre-Generation, automatic GeyserMC setup, Crash Log quick-fixes, and native Velocity/BungeeCord proxy routing.",
+            stepsToFind = listOf(
+                "Open a server's Management tab on Desktop to configure Automation schedules, Discord webhooks, or Proxy Routing.",
+                "Visit World & Map to pre-generate chunks, Backups to test/sync WebDAV, or Console after a crash for 1-click fixes."
+            ),
+            iconKey = "desktop",
+            platform = ChangelogPlatform.ALL
+        ),
+        SharedWhatsNewFeature(
             badge = "Material Design 3",
             title = "All-New Obsidian & Ore Material 3 Redesign",
             summary = "MineServe now features a unified Material Design 3 look across Android, Linux Desktop, and Web Remote Admin with Light & Dark themes, cleaner borderless tonal cards, and an optional Android 12+ Material You wallpaper color mode.",
@@ -72,11 +83,11 @@ object MineServeWhatsNewCatalog {
         ),
         SharedWhatsNewFeature(
             badge = "Team & Host Control",
-            title = "Audit Log CSV Export, Server-Scoped Users & Custom Linux Paths",
-            summary = "Export your panel Audit Log to CSV on Android, Desktop, and WebUI, restrict Desktop user accounts to specific servers, and customize your Linux Server Data and Java Runtimes directories right from App Settings.",
+            title = "Audit Log CSV Export, Server-Scoped Users & Custom Host Paths",
+            summary = "Export your panel Audit Log to CSV on Android, Desktop, and WebUI, restrict Desktop user accounts to specific servers, and customize your Server Data and Java Runtimes directories right from App Settings.",
             stepsToFind = listOf(
                 "Open Users & Audit (or Panel Users & Roles on Android) and click Export CSV.",
-                "On Linux Desktop or Linux WebUI, open App Settings -> Appearance & Host to change Server Data or Java Runtimes directories."
+                "On Desktop or Desktop WebUI, open App Settings -> Appearance & Host to change Server Data or Java Runtimes directories."
             ),
             iconKey = "security",
             platform = ChangelogPlatform.ALL
