@@ -114,7 +114,7 @@ internal fun DesktopAppSettingsModal(viewModel: DesktopViewModel) {
 
     var updateBusy by remember { mutableStateOf(false) }
     var updateHeadline by remember {
-        mutableStateOf("Installed Version: v${MineServeAboutData.APP_VERSION} (Synced across Android & Linux)")
+        mutableStateOf("Installed Version: v${MineServeAboutData.APP_VERSION} (Synced across Android & Desktop)")
     }
     var updateBody by remember { mutableStateOf("") }
     var updateUrl by remember { mutableStateOf(MineServeAboutData.GITHUB_RELEASES_URL) }

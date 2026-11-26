@@ -1640,7 +1640,9 @@
       }
 
       if (ts.status === "connected") {
-        $("tunnel-status-text").textContent = `Connected: ${ts.fullAddress}`;
+        $("tunnel-status-text").textContent = ts.panelUrl
+          ? `Connected: ${ts.fullAddress} | Panel: ${ts.panelUrl}`
+          : `Connected: ${ts.fullAddress}`;
       } else if (ts.status === "connecting") {
         $("tunnel-status-text").textContent = ts.claimUrl ? `Connecting (Claim: ${ts.claimUrl})` : (ts.message || "Connecting...");
       } else if (ts.status === "error") {

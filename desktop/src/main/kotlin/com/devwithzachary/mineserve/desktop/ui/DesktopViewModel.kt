@@ -617,8 +617,8 @@ class DesktopViewModel(
                             if (worldOnly) "World Backup" else "Full Server Backup",
                             b.fileName
                         )
-                        val backupFile = File(File(serverRepository.getServerDirectory(sid), "backups"), b.fileName)
-                        if (backupFile.exists()) maybeAutoUploadWebDav(srv, backupFile)
+                        val backupFile = File(serverRepository.getBackupsDirectory(sid), b.fileName)
+                        if (backupFile.exists()) maybeAutoSyncBackup(srv, backupFile)
                     }
                     showToast("Backup created: ${b.fileName}")
                 },
@@ -657,16 +657,32 @@ class DesktopViewModel(
         }
     }
 
-    private fun maybeAutoUploadWebDav(server: MinecraftServer, file: File) {
+    private fun maybeAutoSyncBackup(server: MinecraftServer, file: File) {
         val cfg = server.cloudBackupConfig
-        if (!cfg.enabled || cfg.provider != com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV || cfg.webDavUrl.isBlank()) {
-            return
-        }
-        scope.launch {
-            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(file, cfg).fold(
-                onSuccess = { showToast("Synced ${file.name} to WebDAV") },
-                onFailure = { err -> showToast("WebDAV sync failed: ${err.message}") }
-            )
+        if (!cfg.enabled) return
+        when (cfg.provider) {
+            com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV -> {
+                if (cfg.webDavUrl.isBlank()) return
+                scope.launch {
+                    com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(file, cfg).fold(
+                        onSuccess = { showToast("Synced ${file.name} to WebDAV") },
+                        onFailure = { err -> showToast("WebDAV sync failed: ${err.message}") }
+                    )
+                }
+            }
+            com.devwithzachary.mineserve.backup.cloud.CloudProviderType.MINESERVE_CLOUD -> {
+                if (!cloudManager.isLinked) return
+                scope.launch {
+                    cloudManager.uploadBackupToCloud(server.id, file).fold(
+                        onSuccess = {
+                            if (server.id == _selectedServerId.value) refreshCloudBackups()
+                            showToast("Synced ${file.name} to MineServe Cloud")
+                        },
+                        onFailure = { err -> showToast("MineServe Cloud sync failed: ${err.message}") }
+                    )
+                }
+            }
+            com.devwithzachary.mineserve.backup.cloud.CloudProviderType.SAF_FOLDER -> Unit
         }
     }
 

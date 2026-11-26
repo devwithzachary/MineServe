@@ -62,5 +62,6 @@ GEMINI.md
 # Remote Desktop Beta Builder configs & artifacts
 scripts/.macos-builder.env
 scripts/.windows-builder.env
+scripts/.gpg-signing.env
 dist-macos/
 dist-windows/

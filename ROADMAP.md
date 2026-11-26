@@ -13,9 +13,9 @@ Our goal is to deliver the most reliable, capable, and accessible dedicated Mine
 | **v1.4.2** | Android x86_64 PRoot Reliability & Codebase Modularity | October 2026 | **Shipped** ✅ |
 | **v1.5.0 / v1.5.1** | Connectivity, Cloud Backups, Web Remote Admin, Telemetry & Community | October / November 2026 | **Shipped** ✅ |
 | **v1.6.0 / v1.6.1** | Full Web UI, Bedrock Server, Proxies, Discord Bridge & R8 Optimization | November 2026 | **Shipped** ✅ |
-| **v1.7.0** | Optional MineServe Cloud (Account Linking, R2 Backups, Custom Tunnels & Cloud Discovery) | November 2026 (Week of Nov 16) | **In Progress** 🚧 |
-| **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Bug Fixes | November 2026 (Week of Nov 23) | **In Progress** 🚧 |
-| **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Nov / Dec 2026 (Week of Nov 30) | **Scheduled** 📋 |
+| **v1.7.0** | Optional MineServe Cloud (Account Linking, R2 Backups, Custom Tunnels & Cloud Discovery) | November 2026 (Week of Nov 16) | **Shipped** ✅ |
+| **v1.8.0** | Linux Beta (Native UI & Headless Mode), Distro Packaging & Bug Fixes | November 2026 (Week of Nov 23) | **Shipped** ✅ |
+| **v1.9.0** | Stable Linux, macOS & Windows Betas & Brand New Multi-Platform Website | Nov / Dec 2026 (Week of Nov 30) | **In Progress** 🚧 |
 | **v2.0.0** | Stable Kotlin Multiplatform Release (Android, Linux, macOS, Windows) | December 2026 (Week of Dec 7) | **Target Milestone** 🎯 |
 | **v2.1.0+** | Autonomous Ops, Clustering, Bare-Metal Bionic & Multi-Game Hosting | December 2026+ | **Exploration** 🔭 |
 
@@ -168,12 +168,14 @@ The 1.9.0 milestone graduates Linux to **Stable**, introduces **Beta** builds fo
   - Wire persisted `tunnelConfig.autoStart` and `portForwardConfig.autoForward` triggers into `LinuxProcessManager` server startup/shutdown lifecycle events.
   - Dispatch live `discordWebhookConfig` notifications (server start, stop, crash, player join/leave, and completed backups) natively from the Linux engine.
   - Implement the Linux background automation scheduler executing configured `automationConfig` scheduled tasks (backups, restarts, commands), idle sleep, and auto-wake on ping.
-- **Arch User Repository (AUR - `mineserve-bin`)**:
-  - Publish and maintain an official `mineserve-bin` package on the AUR (`aur.archlinux.org`) with automated `PKGBUILD` and `.SRCINFO` generation so Arch, CachyOS, EndeavourOS, Manjaro, and SteamOS users can install and update via `paru -S mineserve-bin` or `yay -S mineserve-bin`.
+- **Arch User Repository (AUR - `mineserve-bin` Staging)**:
+  - Automated `PKGBUILD` and `.SRCINFO` generation (`scripts/publish_aur.sh`) staged and ready in CI; live AUR submission is deferred to `v2.0.0` while AUR new account registration is temporarily closed (Arch/CachyOS users can install directly via the GitHub Release `.pkg.tar.zst` or `https://mineserve.app/install.sh`).
 - **GitHub Container Registry (`ghcr.io`) & Docker Hub Publishing**:
   - Publish official multi-arch (`linux/amd64` and `linux/arm64`) headless container images to `ghcr.io/devwithzachary/mineserve` and Docker Hub for one-command deployment on Docker, Compose, Portainer, Unraid, CasaOS, and Proxmox.
 - **Signed APT & RPM Package Repositories (`mineserve.app/apt` & `mineserve.app/rpm`)**:
   - Host GPG-signed static APT and RPM repositories so Debian/Ubuntu (`sudo apt upgrade`) and Fedora/RHEL (`sudo dnf upgrade`) systems receive automatic native package manager updates.
+- **End-to-End Automated GitHub Actions Release Pipeline (`.github/workflows/release.yml`)**:
+  - Automate building, testing, and publishing Android (F-Droid reproducible APK + Play Store AAB), Linux packages, macOS Beta, Windows Beta, multi-arch Docker, APT/RPM repos, AUR, and Winget from a single git tag push (with `-BETA` / pre-release tags automatically published as GitHub Pre-Releases).
 
 ### 🍎 2. macOS & Windows Desktop Betas (Native UI & Headless Mode)
 - **Windows Beta (`.exe` / `.msi` / Portable)**:
@@ -198,6 +200,14 @@ The 2.0.0 milestone completes MineServe's transformation into a unified **Kotlin
   - Every platform supports all server engines, isolated Java management, Modrinth plugins/mods/`.mrpack`, UPnP/NAT-PMP, Bore & Playit tunnels, Cloud Backups, Automation, and the Web UI.
 - **First-Class Headless Desktop Mode**:
   - Seamless toggle or CLI flag across Linux, macOS, and Windows to run MineServe headless with only the Web UI active for lightweight, always-on server hosting.
+
+### 🔐 2. Official Code Signing & Additional Package Managers
+- **Apple Developer Program, macOS Signing & Notarization + Homebrew Cask Tap**:
+  - Enroll in the Apple Developer Program, configure Developer ID Application code signing and `notarytool` notarization/stapling for macOS `.dmg` releases inside GitHub Actions, and publish an official Homebrew Cask tap (`brew install --cask mineserve`).
+- **SignPath Foundation Windows Code Signing**:
+  - Enroll `devwithzachary/MineServe` in the SignPath Foundation open-source code signing program and wire `signpath/github-action-submit-signing-request` into `.github/workflows/release.yml` so Windows `.msi` and `.exe` installers ship officially signed with zero SmartScreen warnings.
+- **Arch User Repository (`mineserve-bin`) Live Publishing**:
+  - Register an AUR maintainer account once `aur.archlinux.org` reopens new account registrations, upload `AUR_SSH_PRIVATE_KEY` via `./scripts/setup_github_secrets.sh --aur`, and publish `mineserve-bin` automatically via `.github/workflows/release.yml` so Arch, CachyOS, EndeavourOS, Manjaro, and SteamOS users can install via `paru -S mineserve-bin` or `yay -S mineserve-bin`.
 
 ---
 

@@ -807,14 +807,24 @@ internal class DesktopWebCoreHandlers(
                             if (worldOnly) "World Backup" else "Full Server Backup",
                             b.fileName
                         )
-                        if (server.cloudBackupConfig.enabled &&
-                            server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV &&
-                            server.cloudBackupConfig.webDavUrl.isNotBlank()
-                        ) {
-                            val backupFile = File(File(serverRepository.getServerDirectory(server.id), "backups"), b.fileName)
+                        val cfg = server.cloudBackupConfig
+                        if (cfg.enabled) {
+                            val backupFile = File(serverRepository.getBackupsDirectory(server.id), b.fileName)
                             if (backupFile.exists()) {
                                 scopeProvider()?.launch {
-                                    com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig)
+                                    when (cfg.provider) {
+                                        com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV -> {
+                                            if (cfg.webDavUrl.isNotBlank()) {
+                                                com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, cfg)
+                                            }
+                                        }
+                                        com.devwithzachary.mineserve.backup.cloud.CloudProviderType.MINESERVE_CLOUD -> {
+                                            if (cloudManager.isLinked) {
+                                                cloudManager.uploadBackupToCloud(server.id, backupFile)
+                                            }
+                                        }
+                                        com.devwithzachary.mineserve.backup.cloud.CloudProviderType.SAF_FOLDER -> Unit
+                                    }
                                 }
                             }
                         }

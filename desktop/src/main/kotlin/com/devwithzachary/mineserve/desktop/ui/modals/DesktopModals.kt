@@ -248,11 +248,17 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                         rowTypes.forEach { t ->
                             val active = type == t
+                            val unsupportedOnHost = com.devwithzachary.mineserve.desktop.DesktopPlatform.isMacOs && t == ServerType.BEDROCK_BDS
                             Surface(
-                                onClick = { type = t },
+                                onClick = { if (!unsupportedOnHost) type = t },
+                                enabled = !unsupportedOnHost,
                                 shape = ShapeDefaults.Medium,
                                 color = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainer,
-                                contentColor = if (active) colorScheme.onPrimaryContainer else colorScheme.onSurface,
+                                contentColor = when {
+                                    unsupportedOnHost -> colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                    active -> colorScheme.onPrimaryContainer
+                                    else -> colorScheme.onSurface
+                                },
                                 border = null,
                                 modifier = Modifier.weight(1f)
                             ) {
@@ -283,9 +289,17 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                                         }
                                     }
                                     Text(
-                                        text = t.description,
+                                        text = if (unsupportedOnHost) {
+                                            "Unavailable on macOS (no native Mojang binary). Use Bedrock (Geyser) instead."
+                                        } else {
+                                            t.description
+                                        },
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = if (active) colorScheme.onPrimaryContainer.copy(alpha = 0.85f) else colorScheme.onSurfaceVariant,
+                                        color = when {
+                                            unsupportedOnHost -> colorScheme.onSurfaceVariant.copy(alpha = 0.55f)
+                                            active -> colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
+                                            else -> colorScheme.onSurfaceVariant
+                                        },
                                         maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
@@ -536,7 +550,7 @@ private fun CreateServerModal(viewModel: DesktopViewModel) {
                         val resolvedPort = (portText.toIntOrNull() ?: if (type == ServerType.BEDROCK_BDS) 19132 else 25565).coerceIn(1, 65535)
                         val jarFileName = when (type) {
                             ServerType.FORGE, ServerType.NEOFORGE -> "installer.jar"
-                            ServerType.BEDROCK_BDS -> "bedrock_server"
+                            ServerType.BEDROCK_BDS -> com.devwithzachary.mineserve.desktop.DesktopPlatform.bedrockBinaryName
                             else -> "server.jar"
                         }
                         viewModel.scope.launch {

@@ -1,0 +1,457 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: 'Release version or tag (e.g. 1.9.0-BETA or 1.9.0)'
+        required: true
+        type: string
+      prerelease:
+        description: 'Mark as pre-release (auto-true when version contains "-")'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  meta:
+    name: Resolve Release Metadata
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+      is_prerelease: ${{ steps.resolve.outputs.is_prerelease }}
+    steps:
+      - name: Resolve version and pre-release flag
+        id: resolve
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VER="${{ inputs.release_version }}"
+          else
+            VER="${GITHUB_REF_NAME}"
+          fi
+          if [[ "$VER" == *-* ]] || [ "${{ inputs.prerelease }}" = "true" ]; then
+            PRE="true"
+          else
+            PRE="false"
+          fi
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "is_prerelease=$PRE" >> "$GITHUB_OUTPUT"
+          echo "Resolved release: version=$VER prerelease=$PRE"
+
+  build-android:
+    name: Build Android APK & Play Store AAB
+    runs-on: ubuntu-24.04
+    needs: meta
+    steps:
+      - name: Checkout repository (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Prepare Android release signing config
+        shell: bash
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > app/release.keystore
+            cat > key.properties <<EOF
+          storeFile=release.keystore
+          storePassword=${KEYSTORE_PASS}
+          keyAlias=${KEY_ALIAS}
+          keyPassword=${KEY_PASS}
+          EOF
+            echo "Android release signing configured."
+          else
+            echo "ANDROID_KEYSTORE_BASE64 secret not set; building unsigned test artifacts."
+          fi
+
+      - name: Run F-Droid reproducible Android release build
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        run: ./scripts/build_release_linux.sh
+
+      - name: Clean up signing secrets from workspace
+        if: always()
+        shell: bash
+        run: rm -f key.properties app/release.keystore
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-artifacts
+          path: |
+            release/*.apk
+            release/*.aab
+
+  build-linux:
+    name: Build Linux Packages
+    runs-on: ubuntu-24.04
+    needs: meta
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build Linux packages (.tar.gz, .deb, .rpm, AppImage, PKGBUILD)
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        run: ./scripts/build_linux_packages.sh
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release/*
+
+  build-macos:
+    name: Build macOS (${{ matrix.arch }})
+    needs: meta
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            arch: arm64
+          - os: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and package macOS .dmg + portable .tar.gz
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          ./gradlew :core:test :desktop:test :desktop:packageDmg :desktop:installDist -PexcludeAndroid=true -Pcompose.desktop.packaging.checkJdkVendor=false --no-daemon
+          mkdir -p release
+          DMG_FILE=$(find desktop/build/compose/binaries/main/dmg -maxdepth 1 -name '*.dmg' | head -n 1)
+          if [ -n "$DMG_FILE" ]; then
+            cp "$DMG_FILE" "release/MineServe-${RELEASE_VERSION}-macos-${TARGET_ARCH}.dmg"
+          fi
+          tar -C desktop/build/install/desktop -czf "release/MineServe-${RELEASE_VERSION}-macos-${TARGET_ARCH}-portable.tar.gz" .
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-artifacts
+          path: release/*
+
+  build-windows:
+    name: Build Windows x64
+    runs-on: windows-2025
+    needs: meta
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure WiX Toolset 3.14 is on PATH
+        shell: pwsh
+        run: |
+          $wix314 = "C:\Program Files (x86)\WiX Toolset v3.14\bin"
+          if (-not (Get-Command candle.exe -ErrorAction SilentlyContinue)) {
+            if (Test-Path $wix314) {
+              "$wix314" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+            } else {
+              choco install wixtoolset -y --no-progress
+              if (Test-Path $wix314) {
+                "$wix314" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+              }
+            }
+          }
+
+      - name: Test and package Windows .msi, .exe, and portable .zip
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        run: |
+          .\gradlew.bat :core:test :desktop:test :desktop:packageMsi :desktop:packageExe :desktop:installDist -PexcludeAndroid=true --no-daemon
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          $msi = Get-ChildItem desktop\build\compose\binaries\main\msi\*.msi | Select-Object -First 1
+          if ($msi) { Copy-Item $msi.FullName "release\MineServe-$env:RELEASE_VERSION-windows-x64.msi" }
+          $exe = Get-ChildItem desktop\build\compose\binaries\main\exe\*.exe | Select-Object -First 1
+          if ($exe) { Copy-Item $exe.FullName "release\MineServe-$env:RELEASE_VERSION-windows-x64.exe" }
+          Compress-Archive -Path "desktop\build\install\desktop\*" -DestinationPath "release\MineServe-$env:RELEASE_VERSION-windows-x64-portable.zip" -Force
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: release/*
+
+  publish-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-24.04
+    needs:
+      - meta
+      - build-android
+      - build-linux
+      - build-macos
+      - build-windows
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+
+      - name: Generate SHA256SUMS.txt
+        shell: bash
+        run: |
+          cd release
+          rm -f SHA256SUMS.txt
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' | sort | sed 's|^\./||' | xargs -r sha256sum > SHA256SUMS.txt
+          ls -lh
+
+      - name: Generate release notes from CHANGELOG.md
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+          IS_PRERELEASE: ${{ needs.meta.outputs.is_prerelease }}
+        run: |
+          {
+            if [ "$IS_PRERELEASE" = "true" ]; then
+              echo "> **Pre-Release Build (\`${RELEASE_VERSION}\`)**: Automated end-to-end release test build across Android, Linux, macOS (Beta), and Windows (Beta)."
+              echo ""
+            fi
+            awk '/^## \[/{if (found) exit; found=1; next} found{print}' CHANGELOG.md
+          } > release_notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.meta.outputs.version }}
+          name: MineServe v${{ needs.meta.outputs.version }}
+          prerelease: ${{ needs.meta.outputs.is_prerelease == 'true' }}
+          body_path: release_notes.md
+          files: release/*
+
+  publish-docker:
+    name: Publish Multi-Arch Docker Images
+    runs-on: ubuntu-24.04
+    needs:
+      - meta
+      - publish-release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in to Docker Hub (when configured)
+        if: secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compute Docker tags
+        id: tags
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+          IS_PRERELEASE: ${{ needs.meta.outputs.is_prerelease }}
+          DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+        run: |
+          SECONDARY_TAG="latest"
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            SECONDARY_TAG="beta"
+          fi
+          TAGS="ghcr.io/devwithzachary/mineserve:${RELEASE_VERSION},ghcr.io/devwithzachary/mineserve:${SECONDARY_TAG}"
+          if [ -n "$DOCKERHUB_USER" ]; then
+            TAGS="${TAGS},docker.io/${DOCKERHUB_USER}/mineserve:${RELEASE_VERSION},docker.io/${DOCKERHUB_USER}/mineserve:${SECONDARY_TAG}"
+          fi
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push multi-arch Docker images
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+
+  publish-apt-rpm:
+    name: Publish Signed APT & RPM Repos
+    runs-on: ubuntu-24.04
+    needs:
+      - meta
+      - publish-release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release
+
+      - name: Stage or publish GPG-signed APT & RPM repos
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+          IS_PRERELEASE: ${{ needs.meta.outputs.is_prerelease }}
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          WEB_REPO_PAT: ${{ secrets.WEB_REPO_PAT }}
+        run: |
+          if [ "$IS_PRERELEASE" = "false" ] && [ -n "$GPG_PRIVATE_KEY" ] && [ -n "$GPG_KEY_ID" ] && [ -n "$WEB_REPO_PAT" ]; then
+            echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+            git clone "https://x-access-token:${WEB_REPO_PAT}@github.com/devwithzachary/MineServe-web.git" web-repo
+            ./scripts/publish_apt_rpm_repos.sh --gpg-key "$GPG_KEY_ID" --version "$RELEASE_VERSION" --web-dir web-repo
+            cd web-repo
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add apt rpm
+            if ! git diff --cached --quiet; then
+              git commit -m "Update APT & RPM repositories for MineServe v${RELEASE_VERSION}"
+              git push origin HEAD
+            fi
+          else
+            echo "Running dry-run APT & RPM verification with ephemeral GPG key..."
+            gpg --batch --passphrase '' --quick-gen-key "MineServe Test Key <test@mineserve.app>" rsa3072 sign 1d
+            TEST_KEY=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr:/ {print $10; exit}')
+            ./scripts/publish_apt_rpm_repos.sh --dry-run --gpg-key "$TEST_KEY" --version "$RELEASE_VERSION"
+          fi
+
+      - name: Upload staged APT & RPM repo artifact (on dry-run)
+        if: needs.meta.outputs.is_prerelease == 'true' || secrets.GPG_PRIVATE_KEY == '' || secrets.WEB_REPO_PAT == ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: apt-rpm-staging
+          path: release/repo-staging
+
+  publish-aur:
+    name: Stage / Publish AUR (mineserve-bin)
+    runs-on: ubuntu-24.04
+    needs:
+      - meta
+      - publish-release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-artifacts
+          path: release
+
+      - name: Stage or publish AUR mineserve-bin
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+          IS_PRERELEASE: ${{ needs.meta.outputs.is_prerelease }}
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          if [ "$IS_PRERELEASE" = "false" ] && [ -n "$AUR_SSH_PRIVATE_KEY" ]; then
+            mkdir -p ~/.ssh
+            chmod 700 ~/.ssh
+            printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+            chmod 600 ~/.ssh/id_ed25519
+            ssh-keyscan -H aur.archlinux.org >> ~/.ssh/known_hosts
+            git config --global user.name "Zachary Powell"
+            git config --global user.email "zachary@zpweb.site"
+            ./scripts/publish_aur.sh --push --version "$RELEASE_VERSION"
+          else
+            ./scripts/publish_aur.sh --stage-only --version "$RELEASE_VERSION"
+          fi
+
+      - name: Upload staged AUR PKGBUILD & .SRCINFO
+        uses: actions/upload-artifact@v4
+        with:
+          name: aur-mineserve-bin
+          path: release/aur-mineserve-bin
+
+  publish-winget:
+    name: Generate / Submit Windows Winget Manifests
+    runs-on: ubuntu-24.04
+    needs:
+      - meta
+      - publish-release
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: release
+
+      - name: Generate Winget 1.6.0 manifests
+        env:
+          RELEASE_VERSION: ${{ needs.meta.outputs.version }}
+        run: ./scripts/publish_winget.sh --version "$RELEASE_VERSION"
+
+      - name: Upload Winget manifests artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: winget-manifests
+          path: release/winget
+
+      - name: Submit Winget PR (stable releases with WINGET_PAT)
+        if: needs.meta.outputs.is_prerelease == 'false' && secrets.WINGET_PAT != ''
+        uses: vedantmgoyal9/winget-releaser@v2
+        with:
+          identifier: DevWithZachary.MineServe
+          installers-regex: '\.msi$'
+          token: ${{ secrets.WINGET_PAT }}

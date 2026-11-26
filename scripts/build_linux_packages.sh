@@ -14,7 +14,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
-VERSION_NAME=$(grep -E 'versionName\s*=' app/build.gradle.kts | head -n 1 | sed 's/.*"\(.*\)".*/\1/')
+VERSION_NAME="${RELEASE_VERSION:-$(grep -E 'versionName\s*=' app/build.gradle.kts | head -n 1 | sed 's/.*"\(.*\)".*/\1/')}"
+DEB_VERSION="$(printf '%s' "$VERSION_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/-/~/g')"
+RPM_VERSION="${VERSION_NAME%%-*}"
+if [[ "$VERSION_NAME" == *-* ]]; then
+    RPM_SUFFIX="$(printf '%s' "${VERSION_NAME#*-}" | tr '[:upper:]' '[:lower:]' | tr '-' '.')"
+    RPM_RELEASE="0.1.${RPM_SUFFIX}%{?dist}"
+else
+    RPM_RELEASE="1%{?dist}"
+fi
+ARCH_PKGVER="${VERSION_NAME//-/_}"
 UNAME_ARCH="$(uname -m)"
 case "$UNAME_ARCH" in
     x86_64|amd64)
@@ -41,7 +50,7 @@ rm -rf "$BUILD_STAGE"
 mkdir -p "$RELEASE_DIR" "$BUILD_STAGE"
 
 echo "[1/5] Running unit tests and compiling Linux Desktop & Headless distributions..."
-./gradlew :core:test :desktop:test :desktop:installDist :desktop:createDistributable
+./gradlew :core:test :desktop:test :desktop:installDist :desktop:createDistributable -PexcludeAndroid=true --no-daemon
 
 ICON_SRC="$PROJECT_ROOT/app/src/main/res/drawable/ic_launcher_logo.png"
 DESKTOP_ENTRY_SRC="$PROJECT_ROOT/packaging/linux/mineserve.desktop"
@@ -99,7 +108,10 @@ create_install_scripts "$PORTABLE_STAGE"
 
 tar -C "$BUILD_STAGE" -czf "$RELEASE_DIR/${PORTABLE_DIR_NAME}.tar.gz" "$PORTABLE_DIR_NAME"
 cp "$PROJECT_ROOT/packaging/linux/PKGBUILD" "$RELEASE_DIR/PKGBUILD"
-sed -i "s/^pkgver=.*/pkgver=${VERSION_NAME}/" "$RELEASE_DIR/PKGBUILD"
+sed -i "s/^pkgver=.*/pkgver=${ARCH_PKGVER}/" "$RELEASE_DIR/PKGBUILD"
+if [ "$VERSION_NAME" != "$ARCH_PKGVER" ]; then
+    sed -i "s/\${pkgver}/${VERSION_NAME}/g" "$RELEASE_DIR/PKGBUILD"
+fi
 cp "$PROJECT_ROOT/packaging/linux/install.sh" "$RELEASE_DIR/install.sh"
 chmod +x "$PROJECT_ROOT/packaging/linux/install.sh" "$RELEASE_DIR/install.sh"
 if [ -d "$PROJECT_ROOT/../MineServer-Web" ]; then
@@ -167,7 +179,7 @@ chmod 755 "$DEB_ROOT/DEBIAN/postinst"
 INSTALLED_KB=$(du -sk "$DEB_ROOT/opt/mineserve" | awk '{print $1}')
 cat > "$DEB_ROOT/DEBIAN/control" << EOF
 Package: mineserve
-Version: ${VERSION_NAME}
+Version: ${DEB_VERSION}
 Section: games
 Priority: optional
 Architecture: ${DEB_ARCH}
@@ -256,13 +268,23 @@ cp "$ICON_SRC" "$RPM_TOP/SOURCES/mineserve.png"
 cp "$SYSTEMD_UNIT_SRC" "$RPM_TOP/SOURCES/mineserve.service"
 cp "$SYSUSERS_SRC" "$RPM_TOP/SOURCES/mineserve.sysusers"
 cp "$PROJECT_ROOT/packaging/linux/mineserve.spec" "$RPM_TOP/SPECS/mineserve.spec"
-sed -i "s/^Version:.*/Version:        ${VERSION_NAME}/" "$RPM_TOP/SPECS/mineserve.spec"
+sed -i "s/^Version:.*/Version:        ${RPM_VERSION}/" "$RPM_TOP/SPECS/mineserve.spec"
+sed -i "s/^Release:.*/Release:        ${RPM_RELEASE}/" "$RPM_TOP/SPECS/mineserve.spec"
 
 if command -v rpmbuild >/dev/null 2>&1; then
     rpmbuild --define "_topdir $RPM_TOP" -bb "$RPM_TOP/SPECS/mineserve.spec"
     find "$RPM_TOP/RPMS" -name "*.rpm" -exec cp {} "$RELEASE_DIR/" \;
+elif command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    echo "  -> 'rpmbuild' not installed locally; building .rpm via fedora:41 Docker container..."
+    HOST_UID=$(id -u)
+    HOST_GID=$(id -g)
+    docker run --rm \
+        -v "$RPM_TOP:/rpmbuild" \
+        fedora:41 \
+        bash -c "dnf install -y -q rpm-build && rpmbuild --define '_topdir /rpmbuild' -bb /rpmbuild/SPECS/mineserve.spec && chown -R ${HOST_UID}:${HOST_GID} /rpmbuild/RPMS"
+    find "$RPM_TOP/RPMS" -name "*.rpm" -exec cp {} "$RELEASE_DIR/" \;
 else
-    echo "  -> Skipping .rpm build: 'rpmbuild' is not installed on this host (install rpm-build/rpm-tools to generate Fedora/RHEL packages)."
+    echo "  -> Skipping .rpm build: neither 'rpmbuild' nor a running Docker daemon is available."
 fi
 
 echo ""

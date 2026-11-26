@@ -31,7 +31,8 @@ compose.desktop {
                 else -> targetFormats(TargetFormat.Deb, TargetFormat.Rpm, TargetFormat.AppImage)
             }
             packageName = if (isMacOs || isWindows) "MineServe" else "mineserve"
-            packageVersion = appVersionName
+            val numericPackageVersion = appVersionName.substringBefore("-").ifBlank { "1.0.0" }
+            packageVersion = numericPackageVersion
             description = "MineServe - Cross-Platform Minecraft Server Manager"
             vendor = "DevWithZachary"
             modules("java.instrument", "java.management", "java.naming", "java.prefs", "java.security.jgss", "jdk.management", "jdk.unsupported")

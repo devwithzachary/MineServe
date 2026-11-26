@@ -1,7 +1,7 @@
 services:
   mineserve:
     build: .
-    image: ghcr.io/devwithzachary/mineserve:1.8.0
+    image: ghcr.io/devwithzachary/mineserve:latest
     container_name: mineserve
     restart: unless-stopped
     ports:

@@ -560,6 +560,7 @@ internal class DesktopWebExtendedHandlers(
                         .put("fullAddress", tState.fullAddress)
                         .put("publicHost", tState.publicHost)
                         .put("publicPort", tState.publicPort)
+                        .put("panelUrl", tState.panelUrl ?: "")
                     is DesktopTunnelState.Error -> JSONObject()
                         .put("status", "error")
                         .put("errorMessage", tState.errorMessage)
@@ -933,6 +934,7 @@ internal class DesktopWebExtendedHandlers(
             is DesktopTunnelState.Disconnected -> "disconnected"
         }
         val tunnelAddress = (tState as? DesktopTunnelState.Connected)?.fullAddress.orEmpty()
+        val panelUrl = (tState as? DesktopTunnelState.Connected)?.panelUrl.orEmpty()
         val tunnelMessage = when (tState) {
             is DesktopTunnelState.Connecting -> tState.claimUrl ?: tState.message
             is DesktopTunnelState.Error -> tState.errorMessage
@@ -973,6 +975,7 @@ internal class DesktopWebExtendedHandlers(
             .put("tunnelProviderLabel", providerLabel)
             .put("tunnelStatus", tunnelStatus)
             .put("tunnelAddress", tunnelAddress)
+            .put("panelUrl", panelUrl)
             .put("tunnelMessage", tunnelMessage)
             .put("portForwardStatus", pfStatus)
             .put("directAddress", directAddress)

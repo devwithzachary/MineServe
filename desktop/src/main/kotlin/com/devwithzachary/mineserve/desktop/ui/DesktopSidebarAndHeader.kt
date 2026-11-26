@@ -777,6 +777,33 @@ fun DesktopServerHeader(
                                 viewModel.copyToClipboard(addr, "Copied tunnel address: $addr")
                             }
                         )
+                        val pUrl = ts.panelUrl
+                        if (!pUrl.isNullOrBlank()) {
+                            Surface(
+                                onClick = { viewModel.copyToClipboard(pUrl, "Copied Cloud Panel URL: $pUrl") },
+                                shape = ShapeDefaults.Small,
+                                color = colorScheme.secondaryContainer,
+                                contentColor = colorScheme.onSecondaryContainer,
+                                border = null
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Public,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Text(
+                                        text = "Panel: ${pUrl.removePrefix("https://")}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontFamily = LocalMineServeMonoFontFamily.current
+                                    )
+                                }
+                            }
+                        }
                         FilledTonalButton(
                             onClick = { viewModel.networkManager.stopTunnel(server.id) },
                             shape = ShapeDefaults.Small,

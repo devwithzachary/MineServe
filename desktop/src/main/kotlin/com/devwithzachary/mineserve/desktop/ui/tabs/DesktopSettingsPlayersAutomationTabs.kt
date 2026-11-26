@@ -63,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.devwithzachary.mineserve.api.MineServeHttpClient
@@ -139,6 +140,9 @@ fun DesktopSettingsTab(
     var customRelayHost by remember(server.id) { mutableStateOf(server.tunnelConfig.customRelayHost) }
     var customRelayPort by remember(server.id) { mutableStateOf(server.tunnelConfig.customRelayPort.toString()) }
     var cloudSubdomain by remember(server.id) { mutableStateOf(server.tunnelConfig.cloudSubdomain) }
+    var cloudRegion by remember(server.id) { mutableStateOf(server.tunnelConfig.cloudRegion.ifBlank { "us-east" }) }
+    var cloudDomain by remember(server.id) { mutableStateOf(server.tunnelConfig.cloudDomain.ifBlank { "play.mineserve.app" }) }
+    var playitSecret by remember(server.id) { mutableStateOf(server.tunnelConfig.playitSecret) }
     var pfAutoForward by remember(server.id) { mutableStateOf(server.portForwardConfig.autoForward) }
 
     var availableVersions by remember(server.type) { mutableStateOf<List<String>>(emptyList()) }
@@ -340,12 +344,97 @@ fun DesktopSettingsTab(
                             OutlinedTextField(
                                 value = cloudSubdomain,
                                 onValueChange = { cloudSubdomain = it },
-                                label = { Text("Preferred Subdomain (.play.mineserve.app)") },
+                                label = { Text("Preferred Subdomain (.$cloudDomain)") },
                                 singleLine = true,
                                 textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
                                 modifier = Modifier.fillMaxWidth()
                             )
+                            Text(
+                                text = "Relay Region",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(
+                                    "us-east" to "US East",
+                                    "eu-west" to "EU West",
+                                    "eu-central" to "EU Central",
+                                    "ap-southeast" to "Asia Pacific"
+                                ).forEach { (id, label) ->
+                                    FilterChip(
+                                        selected = cloudRegion == id,
+                                        onClick = { cloudRegion = id },
+                                        label = { Text(label) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = colorScheme.tertiaryContainer,
+                                            selectedLabelColor = colorScheme.onTertiaryContainer,
+                                            containerColor = colorScheme.surfaceContainerHigh,
+                                            labelColor = colorScheme.onSurfaceVariant
+                                        ),
+                                        border = null
+                                    )
+                                }
+                            }
+                            Text(
+                                text = "Domain",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = colorScheme.onSurfaceVariant
+                            )
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                listOf(
+                                    "play.mineserve.app" to "play.mineserve.app",
+                                    "playms.uk" to "playms.uk (Pro)"
+                                ).forEach { (id, label) ->
+                                    FilterChip(
+                                        selected = cloudDomain == id,
+                                        onClick = { cloudDomain = id },
+                                        label = { Text(label) },
+                                        colors = FilterChipDefaults.filterChipColors(
+                                            selectedContainerColor = colorScheme.tertiaryContainer,
+                                            selectedLabelColor = colorScheme.onTertiaryContainer,
+                                            containerColor = colorScheme.surfaceContainerHigh,
+                                            labelColor = colorScheme.onSurfaceVariant
+                                        ),
+                                        border = null
+                                    )
+                                }
+                            }
+                            val activePanelUrl = (tunnelState as? DesktopTunnelState.Connected)?.panelUrl
+                            if (!activePanelUrl.isNullOrBlank()) {
+                                Surface(
+                                    onClick = { viewModel.openUrlInBrowser(activePanelUrl) },
+                                    shape = ShapeDefaults.Small,
+                                    color = colorScheme.secondaryContainer,
+                                    contentColor = colorScheme.onSecondaryContainer,
+                                    border = null,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = "Cloud Web Panel: $activePanelUrl",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        fontFamily = monoFont,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+                                    )
+                                }
+                            }
                         }
+                    } else if (provider == TunnelProvider.PLAYIT) {
+                        OutlinedTextField(
+                            value = playitSecret,
+                            onValueChange = { playitSecret = it },
+                            label = { Text("Playit Secret (optional)") },
+                            placeholder = { Text("Leave blank to claim interactively") },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = monoFont),
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                 }
                 HorizontalDivider(color = colorScheme.outlineVariant.copy(alpha = 0.4f))
@@ -378,7 +467,10 @@ fun DesktopSettingsTab(
                                 autoStart = tunnelAutoStart,
                                 customRelayHost = customRelayHost.trim().ifBlank { "bore.pub" },
                                 customRelayPort = customRelayPort.toIntOrNull() ?: 7835,
-                                cloudSubdomain = cloudSubdomain.trim().lowercase(Locale.US)
+                                playitSecret = playitSecret.trim(),
+                                cloudSubdomain = cloudSubdomain.trim().lowercase(Locale.US),
+                                cloudRegion = cloudRegion,
+                                cloudDomain = cloudDomain
                             )
                             val updated = server.copy(tunnelConfig = updatedCfg)
                             viewModel.serverRepository.updateServer(updated)

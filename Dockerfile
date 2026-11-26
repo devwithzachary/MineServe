@@ -5,6 +5,7 @@ WORKDIR /workspace
 COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
 COPY gradle ./gradle
 COPY core ./core
+COPY designsystem ./designsystem
 COPY desktop ./desktop
 COPY app/build.gradle.kts ./app/build.gradle.kts
 COPY app/src/main/assets/webadmin ./app/src/main/assets/webadmin

@@ -18,7 +18,8 @@ import kotlinx.coroutines.launch
 
 class DesktopSchedulerManager(
     private val serverRepository: DesktopServerRepository,
-    private val processManager: DesktopProcessManager
+    private val processManager: DesktopProcessManager,
+    private val cloudManager: DesktopCloudManager? = null
 ) {
     companion object {
         private const val TAG = "DesktopSchedulerManager"
@@ -204,15 +205,8 @@ class DesktopSchedulerManager(
                 val backupEntry = res.getOrNull()
                 if (backupEntry != null) {
                     DiscordWebhookClient.notifyBackupCompleted(server, "World Backup", backupEntry.fileName)
-                    if (server.cloudBackupConfig.enabled &&
-                        server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV &&
-                        server.cloudBackupConfig.webDavUrl.isNotBlank()
-                    ) {
-                        val backupFile = java.io.File(java.io.File(serverRepository.getServerDirectory(server.id), "backups"), backupEntry.fileName)
-                        if (backupFile.exists()) {
-                            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig)
-                        }
-                    }
+                    val backupFile = java.io.File(serverRepository.getBackupsDirectory(server.id), backupEntry.fileName)
+                    maybeAutoSyncBackup(server, backupFile)
                 }
                 if (isRunning) {
                     processManager.sendCommand(server.id, "save-on")
@@ -236,15 +230,8 @@ class DesktopSchedulerManager(
                 val backupEntry = res.getOrNull()
                 if (backupEntry != null) {
                     DiscordWebhookClient.notifyBackupCompleted(server, "Full Server Backup", backupEntry.fileName)
-                    if (server.cloudBackupConfig.enabled &&
-                        server.cloudBackupConfig.provider == com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV &&
-                        server.cloudBackupConfig.webDavUrl.isNotBlank()
-                    ) {
-                        val backupFile = java.io.File(java.io.File(serverRepository.getServerDirectory(server.id), "backups"), backupEntry.fileName)
-                        if (backupFile.exists()) {
-                            com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, server.cloudBackupConfig)
-                        }
-                    }
+                    val backupFile = java.io.File(serverRepository.getBackupsDirectory(server.id), backupEntry.fileName)
+                    maybeAutoSyncBackup(server, backupFile)
                 }
                 if (isRunning) {
                     processManager.sendCommand(server.id, "save-on")
@@ -281,6 +268,24 @@ class DesktopSchedulerManager(
                     processManager.sendCommand(server.id, formatted)
                 }
             }
+        }
+    }
+
+    private suspend fun maybeAutoSyncBackup(server: MinecraftServer, backupFile: java.io.File) {
+        val cfg = server.cloudBackupConfig
+        if (!cfg.enabled || !backupFile.exists()) return
+        when (cfg.provider) {
+            com.devwithzachary.mineserve.backup.cloud.CloudProviderType.WEBDAV -> {
+                if (cfg.webDavUrl.isNotBlank()) {
+                    com.devwithzachary.mineserve.backup.cloud.WebDavClient().uploadBackup(backupFile, cfg)
+                }
+            }
+            com.devwithzachary.mineserve.backup.cloud.CloudProviderType.MINESERVE_CLOUD -> {
+                if (cloudManager?.isLinked == true) {
+                    cloudManager.uploadBackupToCloud(server.id, backupFile)
+                }
+            }
+            com.devwithzachary.mineserve.backup.cloud.CloudProviderType.SAF_FOLDER -> Unit
         }
     }
 }

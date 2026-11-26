@@ -238,7 +238,8 @@ fun main(args: Array<String>) {
     )
     val schedulerManager = DesktopSchedulerManager(
         serverRepository = serverRepository,
-        processManager = processManager
+        processManager = processManager,
+        cloudManager = cloudManager
     )
     schedulerManager.start()
 

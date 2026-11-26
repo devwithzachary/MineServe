@@ -43,7 +43,7 @@ if ! docker info >/dev/null 2>&1; then
 fi
 
 # 2. Extract Version Info
-VERSION_NAME=$(grep -E 'versionName\s*=' app/build.gradle.kts | head -n 1 | sed 's/.*"\(.*\)".*/\1/')
+VERSION_NAME="${RELEASE_VERSION:-$(grep -E 'versionName\s*=' app/build.gradle.kts | head -n 1 | sed 's/.*"\(.*\)".*/\1/')}"
 VERSION_CODE=$(grep -E 'versionCode\s*=' app/build.gradle.kts | head -n 1 | sed 's/[^0-9]*//g')
 
 echo "📦 Target Version: $VERSION_NAME (code: $VERSION_CODE)"
@@ -200,17 +200,21 @@ docker run --rm \
 
         echo "🔍 Verifying release APK signature..."
         APKSIGNER_BIN=$(find /opt/android-sdk/build-tools -name apksigner 2>/dev/null | sort -V | tail -n 1)
-        if [ -n "$APKSIGNER_BIN" ]; then
+        if [ -f "app/build/outputs/apk/release/app-release.apk" ] && [ -n "$APKSIGNER_BIN" ]; then
             "$APKSIGNER_BIN" verify --verbose app/build/outputs/apk/release/app-release.apk
+        elif [ -f "app/build/outputs/apk/release/app-release-unsigned.apk" ]; then
+            echo "ℹ️  Built unsigned APK (app-release-unsigned.apk) because release keystore was not provided."
         fi
     '
 
 OUT_DIR="$PROJECT_ROOT/release"
 AAB_SOURCE="$PROJECT_ROOT/app/build/outputs/bundle/release/app-release.aab"
 APK_SOURCE="$PROJECT_ROOT/app/build/outputs/apk/release/app-release.apk"
+APK_UNSIGNED_SOURCE="$PROJECT_ROOT/app/build/outputs/apk/release/app-release-unsigned.apk"
 
 AAB_TARGET="$OUT_DIR/MineServe-${VERSION_NAME}-playstore.aab"
 APK_TARGET="$OUT_DIR/MineServe-${VERSION_NAME}-release.apk"
+APK_UNSIGNED_TARGET="$OUT_DIR/MineServe-${VERSION_NAME}-unsigned.apk"
 
 if [ -f "$AAB_SOURCE" ]; then
     cp "$AAB_SOURCE" "$AAB_TARGET"
@@ -218,6 +222,8 @@ fi
 
 if [ -f "$APK_SOURCE" ]; then
     cp "$APK_SOURCE" "$APK_TARGET"
+elif [ -f "$APK_UNSIGNED_SOURCE" ]; then
+    cp "$APK_UNSIGNED_SOURCE" "$APK_UNSIGNED_TARGET"
 fi
 
 sha256_file() {

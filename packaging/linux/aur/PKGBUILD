@@ -1,0 +1,38 @@
+# Maintainer: Zachary <https://github.com/devwithzachary/MineServe>
+pkgname=mineserve-bin
+pkgver=1.9.0
+pkgrel=1
+pkgdesc="Native Linux Minecraft Java, Modded, Proxy, and Bedrock Server Manager (Desktop GUI & Headless Web UI)"
+arch=('x86_64')
+url="https://github.com/devwithzachary/MineServe"
+license=('GPL-3.0-or-later')
+provides=('mineserve')
+conflicts=('mineserve')
+depends=('java-runtime>=21' 'hicolor-icon-theme')
+optdepends=(
+    'python-dbus: Native KDE Plasma / Wayland StatusNotifierItem system tray integration'
+    'python-gobject: GLib event loop for native D-Bus system tray'
+    'xdg-utils: Open server directories and Web Admin URLs in desktop browser'
+)
+source=("https://github.com/devwithzachary/MineServe/releases/download/${pkgver}/MineServe-${pkgver}-linux-portable-nojre.tar.gz")
+sha256sums=('REPLACE_WITH_SHA256')
+
+package() {
+    install -d "${pkgdir}/opt/mineserve"
+    cp -r "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/"* "${pkgdir}/opt/mineserve/"
+    chmod 755 "${pkgdir}/opt/mineserve/bin/mineserve" "${pkgdir}/opt/mineserve/bin/desktop"
+
+    install -d "${pkgdir}/usr/bin"
+    ln -sf "/opt/mineserve/bin/mineserve" "${pkgdir}/usr/bin/mineserve"
+
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.desktop" \
+        "${pkgdir}/usr/share/applications/mineserve.desktop"
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.png" \
+        "${pkgdir}/usr/share/icons/hicolor/512x512/apps/mineserve.png"
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.png" \
+        "${pkgdir}/usr/share/pixmaps/mineserve.png"
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.service" \
+        "${pkgdir}/usr/lib/systemd/system/mineserve.service"
+    install -Dm644 "${srcdir}/MineServe-${pkgver}-linux-portable-nojre/share/mineserve.sysusers" \
+        "${pkgdir}/usr/lib/sysusers.d/mineserve.conf"
+}

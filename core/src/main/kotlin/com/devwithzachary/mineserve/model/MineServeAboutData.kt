@@ -40,7 +40,7 @@ data class FilteredReleaseChangelog(
 enum class SharedCreditCategory(val label: String) {
     ALL("All"),
     SERVERS("Server Software"),
-    SYSTEM("Runtime & Linux"),
+    SYSTEM("Runtime & System"),
     TUNNELING("Tunneling"),
     LIBRARIES("APIs & Libraries")
 }

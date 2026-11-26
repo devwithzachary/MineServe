@@ -104,7 +104,7 @@ fun MineServeDesktopApp(viewModel: DesktopViewModel) {
                             ) {
                                 MineServeEmptyState(
                                     icon = Icons.Rounded.Dns,
-                                    title = "Welcome to MineServe for Linux",
+                                    title = "Welcome to MineServe for ${com.devwithzachary.mineserve.desktop.DesktopPlatform.shortName}",
                                     supportingText = "Create a new Paper, Fabric, NeoForge, Forge, Purpur, Vanilla, Bedrock, or Proxy server, or import an existing server .zip archive."
                                 )
                                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
