@@ -275,27 +275,35 @@ object MineServeAboutData {
             initialExpanded = true,
             highlights = listOf(
                 PlatformChangelogHighlight(
-                    text = "macOS & Windows Desktop Betas: Native Compose Desktop GUI and --headless Web Admin mode on macOS (Apple Silicon & Intel .dmg / portable .tar.gz) and Windows x64 (.msi / .exe / portable .zip) with automatic OpenJDK provisioning and menu bar / system tray integration.",
+                    text = "Added beta builds for macOS (Apple Silicon and Intel) and Windows (x64) with both the desktop app and headless mode.",
                     platform = ChangelogPlatform.ALL
                 ),
                 PlatformChangelogHighlight(
-                    text = "Material Design 3 \"Obsidian & Ore\" Redesign: Refreshed Android, Desktop (Linux, macOS, Windows), and Web Remote Admin with Light and Dark themes, cleaner borderless tonal surfaces, and updated typography (Plus Jakarta Sans + JetBrains Mono).",
+                    text = "Added scheduled tasks, idle sleep with auto-wake on ping, automatic tunnels and port forwarding, and Discord webhook alerts on desktop.",
                     platform = ChangelogPlatform.ALL
                 ),
                 PlatformChangelogHighlight(
-                    text = "Android Material You & Workspace Parity: Added an optional Android 12+ Material You wallpaper dynamic color toggle in App Settings, unified the 6-tab server workspace, and added Audit Log CSV export.",
+                    text = "Added chunk pre-generation, automatic GeyserMC setup, crash log quick-fixes, WebDAV backup sync, and Velocity/BungeeCord proxy routing on desktop.",
+                    platform = ChangelogPlatform.ALL
+                ),
+                PlatformChangelogHighlight(
+                    text = "Added an optional Material You dynamic color toggle on Android 12 and newer.",
                     platform = ChangelogPlatform.ANDROID
                 ),
                 PlatformChangelogHighlight(
-                    text = "Unified 2-Step Create Server & WebUI Parity: Standardized server creation (software descriptions + Minecraft version in Step 1, configuration & EULA in Step 2) and brought 1:1 Headless WebUI parity with offline self-hosted fonts, native dialogs, and Desktop-matching App Settings tabs.",
+                    text = "Added per-server access controls for desktop panel users, custom server data and Java folder settings on desktop, and audit log CSV export.",
                     platform = ChangelogPlatform.ALL
                 ),
                 PlatformChangelogHighlight(
-                    text = "Desktop Team & Host Controls: Added per-server access restrictions in Desktop Create User, Audit Log CSV export on Desktop, and configurable Server Data and Java Runtimes directories in Desktop and Desktop WebUI App Settings.",
+                    text = "Redesigned Android, desktop, and the web admin panel with a unified Material Design 3 look and dark and light themes.",
                     platform = ChangelogPlatform.ALL
                 ),
                 PlatformChangelogHighlight(
-                    text = "Full Desktop Engine Parity & Automation: Added Desktop background scheduling (backups, restarts, broadcasts, commands), Idle Sleep & Auto-Wake on Ping, auto-start tunnels/UPnP, live Discord webhooks, Cloud Web Panel relay, GeyserMC auto-bundling, Chunk Pre-Generator, WebDAV backup sync, Crash Log Analyzer with 1-click quick fixes, and native Velocity/BungeeCord Proxy Route editing.",
+                    text = "Organized server management into six consistent tabs and simplified server creation into a two-step flow across every platform.",
+                    platform = ChangelogPlatform.ALL
+                ),
+                PlatformChangelogHighlight(
+                    text = "Updated the web admin panel with locally bundled fonts for offline LAN use, built-in dialogs, and a desktop-matched settings layout.",
                     platform = ChangelogPlatform.ALL
                 )
             )

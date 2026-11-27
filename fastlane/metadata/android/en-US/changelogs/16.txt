@@ -1,4 +1,7 @@
-• macOS & Windows Betas: Native Compose GUI, --headless Web Admin, and portable OpenJDK (.dmg, .msi/.exe/.zip).
-• Full Desktop Parity: Scheduled tasks, Idle Sleep & Auto-Wake, auto-tunnels/UPnP, Discord alerts, Chunk Pre-Gen, WebDAV sync, Crash quick-fixes, and Proxy editor.
-• Material Design 3 ("Obsidian & Ore"): Refreshed Android, Desktop, and WebUI with Light/Dark themes and Android 12+ Material You colors.
-• Unified 6-Tab Workspace: 2-step Create Server flow and Audit Log CSV export.
+What's New:
+- Added beta builds for macOS and Windows with desktop and headless modes.
+- Brought scheduled tasks, idle sleep, auto-tunnels, Discord alerts, chunk pre-generation, WebDAV backups, crash fixes, and proxy routing to desktop.
+- Added optional Material You dynamic colors on Android 12+ and CSV export for the audit log.
+
+What's Changed:
+- Redesigned Android, desktop, and the web panel with dark and light themes, six consistent server tabs, and a simpler two-step setup flow.
