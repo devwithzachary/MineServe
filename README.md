@@ -14,6 +14,7 @@
 
 [![Get it on Google Play](https://img.shields.io/badge/Google_Play-Download-34A853?style=for-the-badge&logo=google-play&logoColor=white)](https://play.google.com/store/apps/details?id=com.devwithzachary.mineserve)
 [![Get it on F-Droid](https://img.shields.io/badge/F--Droid-Coming_Soon-1976D2?style=for-the-badge&logo=f-droid&logoColor=white)](https://f-droid.org/packages/com.devwithzachary.mineserve/)
+[![Obtainium](https://img.shields.io/badge/Obtainium-Direct_APK-4F46E5?style=for-the-badge&logo=android&logoColor=white)](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/devwithzachary/MineServe)
 [![GitHub Releases](https://img.shields.io/badge/GitHub_Releases-Download-10B981?style=for-the-badge&logo=github&logoColor=white)](https://github.com/devwithzachary/MineServe/releases/latest)
 [![Website](https://img.shields.io/badge/Website-mineserve.app-22D3EE?style=for-the-badge&logo=google-chrome&logoColor=white)](https://mineserve.app)
 [![Discord](https://img.shields.io/badge/Discord-Community-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/QdT9yCrKmV)
@@ -32,6 +33,15 @@
 - **Unified GUI & Web Remote Admin**: Native Material Design 3 ("Obsidian & Ore") interface with a 6-tab server workspace, live ANSI/SSE console, crash quick-fixes, Squaremap live map, and multi-user RBAC Web Admin on port `8080`.
 
 > Looking for full feature walkthroughs, CLI flags, RBAC permissions, or source build instructions? Read the **[Complete User Guide](USER_GUIDE.md)**.
+
+### How MineServe Compares
+
+| Tool | Platforms | Setup | License & Ads | Built-In Tunnels |
+| :--- | :--- | :--- | :--- | :--- |
+| **MineServe** | Android (rootless), Linux, Win, macOS, Docker | 1-line script, APK, or Docker | GPL-3.0, zero ads | Bore, Playit.gg, UPnP, optional Cloud |
+| **Crafty Controller** | Linux, Win, macOS, Docker | Docker or Python install | GPL-3.0, zero ads | Manual port forward / DIY |
+| **Pterodactyl / Pelican** | Linux + Docker | Nginx, MariaDB, Redis, Wings | MIT, zero ads | Manual / VPS public IP |
+| **Aternos** | Web browser (cloud) | Browser signup | Closed, web ad-funded | Built-in (with queues & RAM caps) |
 
 ---
 

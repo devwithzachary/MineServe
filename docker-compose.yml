@@ -1,6 +1,6 @@
 services:
   mineserve:
-    build: .
+    # build: .  # Uncomment only when building locally from source
     image: ghcr.io/devwithzachary/mineserve:latest
     container_name: mineserve
     restart: unless-stopped

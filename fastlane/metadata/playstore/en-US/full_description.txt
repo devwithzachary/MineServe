@@ -1,68 +1,61 @@
-Host dedicated, high-performance Minecraft servers directly on your Android phone or tablet! MineServe brings desktop-grade server software to mobile with zero root permissions required.
+Host dedicated Minecraft servers directly on your Android phone or tablet with zero root permissions required.
 
-Whether you want to play survival with friends over Wi-Fi, host a custom modpack, or run a 24/7 community server with plugins and web administration, MineServe gives you full control in your pocket.
+Whether you want to play survival with friends over Wi-Fi, host a modded world, or run a community server with plugins and a browser control panel, MineServe gives you full local control in a clean Material Design 3 interface.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚡ WHY CHOOSE MINESERVE?
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHY CHOOSE MINESERVE?
 
-🔒 100% ROOTLESS SANDBOX
-Runs entirely in Android user space using native PRoot virtualization. No root access, Magisk, or unlocked bootloaders required. Resumable downloads and local .jar / .tar.gz imports make setup effortless.
+100% ROOTLESS SANDBOX
+Runs in Android user space using native PRoot virtualization. No root access, Magisk, or unlocked bootloaders required. Resumable downloads and local .jar / .tar.gz imports make first-run setup straightforward.
 
-🎮 11 SUPPORTED SERVER & PROXY ENGINES
-Choose the right software for your world with 1-tap automated installation:
-• PaperMC: High-performance, low-latency engine with rich plugin support
-• PurpurMC: Feature-packed Paper drop-in with extensive customization
-• Folia: Regionized multithreading server software by PaperMC
-• Fabric: Lightweight, modern modular modding toolchain
-• Minecraft Forge: Classic and modern modding platform (1.1 to 1.21+)
-• NeoForge: Community-driven modding platform for modern modpacks
-• Vanilla: Official Java server software from Mojang (1.0 to 1.21+)
-• Bedrock Cross-Play (Geyser + Floodgate): Let friends on iOS, Android, Xbox, PlayStation, and Switch join your Java server!
-• Bedrock Dedicated Server (Beta): Official Mojang native Bedrock server
-• Velocity & BungeeCord Proxies: Link multiple servers into one network
+11 SUPPORTED SERVER & PROXY ENGINES
+Create any server in a quick 2-step wizard:
+- PaperMC: High-performance, low-latency engine with plugin support
+- PurpurMC: Feature-packed Paper drop-in with deep customization
+- Folia: Regionized multithreading server software by PaperMC
+- Fabric: Lightweight, modern modular modding platform
+- Minecraft Forge: Classic and modern modding platform (1.1 to 1.21+)
+- NeoForge: Community-driven modding platform for modern modpacks
+- Vanilla: Official Java server software from Mojang (1.0 to 1.21+)
+- Bedrock Cross-Play (Geyser + Floodgate): Let friends on iOS, Android, Xbox, PlayStation, and Switch join your Java server
+- Bedrock Dedicated Server (Beta): Official Mojang native Bedrock server
+- Velocity & BungeeCord Proxies: Link multiple servers into one network
 
-☕ MULTI-VERSION OPENJDK ISOLATION
-MineServe manages isolated Java runtimes to run any Minecraft release:
-• OpenJDK 25 & 21 (Minecraft 1.20.5+ & modern releases)
-• OpenJDK 17 (Minecraft 1.17 - 1.20.4)
-• OpenJDK 8 (Legacy 1.16.5 down to 1.0)
+MULTI-VERSION OPENJDK ISOLATION
+MineServe automatically manages isolated Java runtimes:
+- OpenJDK 25 & 21 (Minecraft 1.20.5+ & modern releases)
+- OpenJDK 17 (Minecraft 1.17 - 1.20.4)
+- OpenJDK 8 (Legacy 1.16.5 down to 1.0)
 
-🖥️ MULTI-USER DESKTOP & TABLET WEB ADMIN
-Manage your servers from any computer or tablet browser! Create team accounts (Owner, Admin, Moderator, Viewer roles) with Audit Log tracking, stream live SSE console logs, upload & extract .zip files in the browser File Manager, view rolling CPU/RAM/TPS charts, and upgrade engine builds in 1 tap.
+MATERIAL DESIGN 3 & MULTI-USER WEB ADMIN
+Customize Dark or Light themes (with optional Material You dynamic colors on Android 12+), or manage your server from any computer browser on port 8080. Create team accounts (Owner, Admin, Moderator, Viewer) with CSV Audit Log export, stream live console logs, upload & extract .zip files, view live CPU/RAM/TPS charts, and upgrade engine builds.
 
-🌐 ZERO-CONFIG MULTIPLAYER & OPTIONAL CLOUD
-• Automatic UPnP & NAT-PMP router port forwarding for direct WAN play
-• Built-in native bore.pub and Playit.gg public tunnels (works over 4G/5G and CGNAT without port forwarding)
-• Optional MineServe Cloud add-on (with 6-digit email code sign-in) for custom *.play.mineserve.app (and *.playms.uk) addresses, remote Web Admin access, and encrypted Cloudflare R2 backups
+ZERO-CONFIG MULTIPLAYER & OPTIONAL CLOUD
+- Automatic UPnP & NAT-PMP router port forwarding for direct WAN play
+- Built-in bore.pub and Playit.gg public tunnels (works over 4G/5G and CGNAT without port forwarding)
+- Optional MineServe Cloud add-on (6-digit email code sign-in) for custom *.play.mineserve.app addresses, remote Web Admin access, and encrypted Cloudflare R2 backups
 
-🧩 MODRINTH BROWSER & SMART .MRPACK MODPACKS
-Search thousands of plugins and mods from Modrinth with 1-tap install, import Modrinth .mrpack modpacks or server .zip archives with automatic client-only mod filtering, or import custom .jar files from device storage.
+MODRINTH BROWSER & SMART .MRPACK MODPACKS
+Search thousands of plugins and mods from Modrinth with 1-tap install, import Modrinth .mrpack modpacks or server .zip archives with automatic client-only mod filtering, or upload custom .jar files.
 
-🌍 ADVANCED WORLD, MAP & BACKUP TOOLS
-• Import/export .zip and .mcworld saves and reset Nether or End dimensions
-• Pre-generate spawn chunks, inspect .mca region files, and prune uninhabited chunks
-• Built-in 2D Squaremap live web map viewer
-• 1-tap local zip backups with automated cloud sync to Nextcloud, WebDAV, Google Drive (SAF), or MineServe Cloud
+WORLD, MAP & BACKUP TOOLS
+- Import/export .zip and .mcworld saves and reset Nether or End dimensions
+- Pre-generate spawn chunks, inspect .mca region files, and prune uninhabited chunks
+- Built-in 2D Squaremap live web map viewer
+- 1-tap local zip backups with sync to Nextcloud, WebDAV, Android SAF folders, or MineServe Cloud
 
-💤 SMART AUTOMATION, WIDGETS & SAFEGUARDS
-• Smart Idle Auto-Shutdown and Auto-Wake on player ping
-• Cron-scheduled backups, restarts, and broadcasts
-• Low-Battery and Thermal Auto-Stop safeguards
-• Home Screen Widget and Quick Settings Tile for 1-tap control
-• Native Discord webhook notifications and Crash Log Analyzer
+AUTOMATION, WIDGETS & SAFEGUARDS
+- Idle Auto-Shutdown and Auto-Wake on player ping
+- Cron-scheduled backups, restarts, and broadcasts
+- Low-Battery and Thermal Auto-Stop safeguards
+- Home Screen Widget and Quick Settings Tile for 1-tap control
+- Native Discord webhook notifications and Crash Log Analyzer
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌐 COMMUNITY & OPEN SOURCE
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MineServe is 100% free, ad-free, open-source software licensed under GPL-3.0.
+OPEN SOURCE & AD-FREE
+MineServe is 100% free, ad-free, and GPL-3.0 open source.
+- Website: https://mineserve.app
+- Discord: https://discord.gg/QdT9yCrKmV
+- Source Code: https://github.com/devwithzachary/MineServe
 
-• Website: https://mineserve.app
-• Discord: https://discord.gg/QdT9yCrKmV
-• Source Code: https://github.com/devwithzachary/MineServe
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ DISCLAIMER
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DISCLAIMER
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.
 Minecraft is a trademark of Mojang Synergies AB.
