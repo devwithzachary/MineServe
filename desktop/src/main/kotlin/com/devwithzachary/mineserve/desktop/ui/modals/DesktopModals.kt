@@ -1011,6 +1011,8 @@ private fun MineServeCloudModal(viewModel: DesktopViewModel) {
 
         Spacer(modifier = Modifier.height(14.dp))
 
+        val pricing = remember { desktopCloudPricingForLocale(Locale.getDefault()) }
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
             MineServeCard(
                 containerColor = colorScheme.surfaceContainer,
@@ -1018,17 +1020,36 @@ private fun MineServeCloudModal(viewModel: DesktopViewModel) {
                 contentPadding = PaddingValues(16.dp),
                 modifier = Modifier.weight(1f)
             ) {
-                Text("MineServe Plus", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("MineServe Plus", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Surface(
+                        shape = ShapeDefaults.Small,
+                        color = colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = "7-DAY FREE TRIAL",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
                 Text(
-                    text = "\$2.99 / month",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = monoFont),
+                    text = "${pricing.plusMonthly} / mo (or ${pricing.plusYearly} / yr)",
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = monoFont),
                     fontWeight = FontWeight.Bold,
                     color = colorScheme.primary
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text("- 1 Custom .play.mineserve.app / .playms.uk Subdomain", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                Text("- 10 GB Encrypted R2 Cloud Backups", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                Text("- Priority US & EU Relay Bandwidth", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- 1 Custom *.play.mineserve.app Address (Port 25565)", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- Remote HTTPS Web Admin & Live Map (*.panel.mineserve.app)", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- 10 GB Encrypted Cloudflare R2 Cloud Backups", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- Multi-Region Low-Latency Relays (US, UK, EU, AP)", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
             }
             MineServeCard(
                 containerColor = colorScheme.surfaceContainer,
@@ -1038,19 +1059,28 @@ private fun MineServeCloudModal(viewModel: DesktopViewModel) {
             ) {
                 Text("MineServe Pro", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    text = "\$6.99 / month",
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = monoFont),
+                    text = "${pricing.proMonthly} / mo (or ${pricing.proYearly} / yr)",
+                    style = MaterialTheme.typography.titleMedium.copy(fontFamily = monoFont),
                     fontWeight = FontWeight.Bold,
                     color = extended.warning
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text("- Up to 3 Custom Subdomains + Admin Relay", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                Text("- 50 GB Encrypted R2 Cloud Backups", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
-                Text("- Unmetered Multi-Region Relay Traffic", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- Up to 3 Custom Addresses", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- Short *.playms.uk Addresses or Custom Domain (CNAME / SRV)", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- 50 GB Encrypted Cloudflare R2 Cloud Backups", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
+                Text("- Simultaneous Java TCP + Bedrock UDP Relays", style = MaterialTheme.typography.bodySmall, color = colorScheme.onSurfaceVariant)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = "MineServe is 100% free and GPL-3.0 open source. Optional Cloud plans fund ongoing development.",
+            style = MaterialTheme.typography.bodySmall,
+            color = colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             Button(
@@ -1061,11 +1091,38 @@ private fun MineServeCloudModal(viewModel: DesktopViewModel) {
                     contentColor = colorScheme.onTertiary
                 )
             ) {
-                Text("Open Cloud Portal (cloud.mineserve.app)")
+                Text("Start 7-Day Free Trial (cloud.mineserve.app)")
                 Spacer(modifier = Modifier.width(6.dp))
                 Icon(Icons.AutoMirrored.Rounded.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
             }
         }
+    }
+}
+
+private data class DesktopCloudPricing(
+    val plusMonthly: String,
+    val plusYearly: String,
+    val proMonthly: String,
+    val proYearly: String
+)
+
+private fun desktopCloudPricingForLocale(locale: Locale): DesktopCloudPricing {
+    val euroCountries = setOf(
+        "AT", "BE", "CY", "DE", "EE", "ES", "FI", "FR", "GR", "HR",
+        "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PT", "SI", "SK"
+    )
+    return when (locale.country.uppercase(Locale.US)) {
+        "US" -> DesktopCloudPricing("$3.99", "$39.99", "$8.99", "$89.99")
+        "CA" -> DesktopCloudPricing("CA$5.49", "CA$54.99", "CA$12.49", "CA$124.99")
+        "AU" -> DesktopCloudPricing("A$5.99", "A$59.99", "A$13.99", "A$139.99")
+        "NZ" -> DesktopCloudPricing("NZ$6.49", "NZ$64.99", "NZ$14.99", "NZ$149.99")
+        "BR" -> DesktopCloudPricing("R$21.90", "R$219", "R$49.90", "R$499")
+        "IN" -> DesktopCloudPricing("₹319", "₹3,190", "₹749", "₹7,490")
+        "JP" -> DesktopCloudPricing("¥590", "¥5,900", "¥1,390", "¥13,900")
+        "PL" -> DesktopCloudPricing("14.99 zł", "149.99 zł", "34.99 zł", "349.99 zł")
+        "SE" -> DesktopCloudPricing("39 kr", "399 kr", "89 kr", "899 kr")
+        in euroCountries -> DesktopCloudPricing("€3.49", "€34.99", "€7.99", "€79.99")
+        else -> DesktopCloudPricing("£2.99", "£29.99", "£6.99", "£69.99")
     }
 }
 
