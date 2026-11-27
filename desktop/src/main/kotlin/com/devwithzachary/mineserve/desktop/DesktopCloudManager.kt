@@ -141,7 +141,10 @@ class DesktopCloudManager(
 
             // Exchange for dedicated per-device token
             runCatching {
-                val linkBody = JSONObject().put("deviceName", DesktopHostTelemetry.getHostDisplayName().take(60)).toString()
+                val linkBody = JSONObject()
+                    .put("deviceName", DesktopHostTelemetry.getHostDisplayName().take(60))
+                    .put("platform", DesktopPlatform.platformKey)
+                    .toString()
                 val linkReq = MineServeHttpClient.newRequestBuilder("$apiBaseUrl/v1/devices/link")
                     .header("Authorization", "Bearer $finalToken")
                     .post(linkBody.toRequestBody(JSON_MEDIA))

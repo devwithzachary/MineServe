@@ -9,7 +9,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
@@ -22,6 +21,7 @@ import com.devwithzachary.mineserve.auth.UserRepository
 import com.devwithzachary.mineserve.core.CoreLog
 import com.devwithzachary.mineserve.core.Logger
 import com.devwithzachary.mineserve.designsystem.assets.DesktopBrandAssets
+import com.devwithzachary.mineserve.designsystem.theme.MineServePalette
 import com.devwithzachary.mineserve.desktop.ui.DesktopViewModel
 import com.devwithzachary.mineserve.desktop.ui.DesktopSystemTrayManager
 import com.devwithzachary.mineserve.desktop.ui.MineServeDesktopApp
@@ -156,7 +156,7 @@ private fun printUsage() {
 private object FallbackAppIconPainter : Painter() {
     override val intrinsicSize = Size(64f, 64f)
     override fun DrawScope.onDraw() {
-        drawRoundRect(color = Color(0xFF10B981))
+        drawRoundRect(color = MineServePalette.EmeraldSeed)
     }
 }
 
