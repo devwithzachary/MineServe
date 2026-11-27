@@ -2,7 +2,7 @@
 
 All notable changes to the MineServe project will be documented in this file.
 
-## [1.9.0] - Unreleased
+## [1.9.0] - 2026-11-27
 
 ### What's New
 - Added beta builds for macOS (Apple Silicon and Intel) and Windows (x64) with both the desktop app and headless mode, available as native installers or portable archives.

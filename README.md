@@ -47,6 +47,15 @@
 
 ## Screenshots
 
+### Desktop Studio & Headless WebUI (:8080)
+
+<p align="center">
+  <img src="docs/screenshots/desktop.png" width="49%" alt="MineServe Desktop Studio" />
+  <img src="docs/screenshots/webui.png" width="49%" alt="MineServe Headless WebUI" />
+</p>
+
+### Android (100% Rootless)
+
 <p align="center">
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/01_dashboard.png" width="23%" alt="MineServe Dashboard" />
   <img src="fastlane/metadata/android/en-US/images/phoneScreenshots/02_server_detail.png" width="23%" alt="Server Detail &amp; Telemetry" />

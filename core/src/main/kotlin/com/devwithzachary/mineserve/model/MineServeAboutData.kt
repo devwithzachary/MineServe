@@ -69,8 +69,8 @@ object MineServeAboutData {
      * Unified release version shared across Android, Linux Desktop, and Web Remote Admin.
      * Always kept in lockstep with `versionName` in `app/build.gradle.kts`.
      */
-    const val APP_VERSION = "1.8.1"
-    const val VERSION_CODE = 15
+    const val APP_VERSION = "1.9.0"
+    const val VERSION_CODE = 16
 
     const val WEBSITE_URL = "https://mineserve.app"
     const val GITHUB_REPO_URL = "https://github.com/devwithzachary/MineServe"
@@ -271,7 +271,7 @@ object MineServeAboutData {
     val FULL_CHANGELOG_HISTORY: List<PlatformReleaseChangelog> = listOf(
         PlatformReleaseChangelog(
             version = "v1.9.0",
-            date = "In Progress",
+            date = "November 27, 2026",
             initialExpanded = true,
             highlights = listOf(
                 PlatformChangelogHighlight(

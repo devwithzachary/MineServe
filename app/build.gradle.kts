@@ -17,8 +17,8 @@ android {
         applicationId = "com.devwithzachary.mineserve"
         minSdk = 23
         targetSdk = 36
-        versionCode = 15
-        versionName = "1.8.1"
+        versionCode = 16
+        versionName = "1.9.0"
         buildConfigField("boolean", "IS_PLAY_STORE", isPlayStoreBuild.toString())
         buildConfigField("boolean", "FORCE_PROD_CLOUD", forceProdCloud.toString())
 

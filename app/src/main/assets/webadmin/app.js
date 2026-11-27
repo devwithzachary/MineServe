@@ -3280,7 +3280,7 @@
       try {
         const data = await apiFetch("/api/about");
         cachedAboutData = data;
-        if ($("about-version-badge")) $("about-version-badge").textContent = `v${data.version || "1.8.1"}`;
+        if ($("about-version-badge")) $("about-version-badge").textContent = `v${data.version || "1.9.0"}`;
         if ($("about-platform-badge")) $("about-platform-badge").textContent = String(data.platform || "linux").toUpperCase();
 
         const links = data.links || {};
